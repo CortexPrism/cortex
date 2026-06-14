@@ -115,14 +115,72 @@ const HTML = `<!DOCTYPE html>
 
   /* Divider */
   .divider { height:1px; background:var(--border); margin:8px 0; }
+
+  /* ── Skeleton loading ─────────────────────────── */
+  .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, rgba(255,255,255,0.06) 50%, var(--bg3) 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; border-radius:6px; }
+  @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+  .skeleton-line { height:14px; margin-bottom:8px; width:100%; }
+  .skeleton-line:nth-child(2) { width:85%; }
+  .skeleton-line:nth-child(3) { width:60%; }
+  .skeleton-card { height:80px; margin-bottom:10px; }
+
+  /* ── Toast notifications ──────────────────────── */
+  #toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:360px; }
+  .toast { padding:12px 16px; border-radius:10px; font-size:13px; line-height:1.4; box-shadow:0 8px 32px rgba(0,0,0,0.4); animation: toastIn 0.25s ease-out; display:flex; align-items:flex-start; gap:10px; backdrop-filter:blur(8px); }
+  .toast-success { background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; }
+  .toast-error { background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; }
+  .toast-info { background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; }
+  .toast-warning { background:rgba(234,179,8,0.15); border:1px solid rgba(234,179,8,0.3); color:#fbbf24; }
+  @keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+  .toast-out { animation: toastOut 0.25s ease-in forwards; }
+  @keyframes toastOut { from { transform:translateX(0); opacity:1; } to { transform:translateX(100%); opacity:0; } }
+
+  /* ── Responsive sidebar ───────────────────────── */
+  .sidebar-overlay { display:none; }
+  @media (max-width:768px) {
+    .sidebar { position:fixed; left:-260px; top:0; bottom:0; z-index:50; transition:left 0.25s ease; }
+    .sidebar.open { left:0; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:49; }
+    .sidebar-overlay.open { display:block; }
+    .main-area { margin-left:0 !important; }
+    #hamburger { display:flex !important; }
+  }
+  #hamburger { display:none; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; cursor:pointer; border:none; background:rgba(255,255,255,0.05); color:var(--text2); transition:background 0.15s; flex-shrink:0; }
+  #hamburger:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+
+  /* ── Tooltip ──────────────────────────────────── */
+  [data-tip] { position:relative; }
+  [data-tip]:hover::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#1a1a24; color:var(--text); font-size:11px; padding:4px 10px; border-radius:6px; white-space:nowrap; border:1px solid var(--border); pointer-events:none; z-index:100; }
+
+  /* ── Code block enhancements ──────────────────── */
+  .md pre { position:relative; }
+  .md pre .copy-btn { position:absolute; top:6px; right:6px; opacity:0; transition:opacity 0.15s; background:rgba(255,255,255,0.08); border:none; color:var(--text3); cursor:pointer; padding:4px 8px; border-radius:4px; font-size:11px; }
+  .md pre:hover .copy-btn { opacity:1; }
+  .md pre .copy-btn:hover { background:rgba(255,255,255,0.15); color:var(--text); }
+
+  /* ── Fade transitions ─────────────────────────── */
+  .page-fade-in { animation: fadeIn 0.2s ease-out; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Card hover effects ───────────────────────── */
+  .card, .card-sm { transition: border-color 0.2s, box-shadow 0.2s; }
+  .card:hover, .card-sm:hover { border-color: rgba(255,255,255,0.12); box-shadow:0 0 0 1px rgba(99,102,241,0.1); }
+  .sess-item, .nav-item { transition: all 0.15s; }
+
+  /* ── Scrollbar for log tables ─────────────────── */
+  .log-table-scroll { overflow-y:auto; }
+  .log-table-scroll::-webkit-scrollbar { width:6px; }
 </style>
 </head>
 <body>
 
 <div style="display:flex;height:100vh;overflow:hidden;">
 
+<!-- ── Sidebar overlay (mobile) ─────────────────────────── -->
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
 <!-- ── Sidebar ──────────────────────────────────────────── -->
-<aside style="width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+<aside id="sidebar" class="sidebar" style="width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
 
   <!-- Logo -->
   <div style="padding:18px 16px 12px;border-bottom:1px solid var(--border);">
@@ -136,47 +194,47 @@ const HTML = `<!DOCTYPE html>
 
   <!-- Nav -->
   <nav style="padding:8px;flex:1;overflow-y:auto;">
-    <button class="nav-item active" onclick="showPage('status')" id="nav-status">
-      <span class="icon">🏠</span> Status
+    <button class="nav-item active" onclick="showPage('status');closeMobileSidebar()" id="nav-status">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Status
     </button>
-    <button class="nav-item" onclick="showPage('chat')" id="nav-chat">
-      <span class="icon">💬</span> Chat
+    <button class="nav-item" onclick="showPage('chat');closeMobileSidebar()" id="nav-chat">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Chat
     </button>
-    <button class="nav-item" onclick="showPage('lens')" id="nav-lens">
-      <span class="icon">🔭</span> Lens
+    <button class="nav-item" onclick="showPage('lens');closeMobileSidebar()" id="nav-lens">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></span> Lens
     </button>
-    <button class="nav-item" onclick="showPage('memory')" id="nav-memory">
-      <span class="icon">🧠</span> Memory
+    <button class="nav-item" onclick="showPage('memory');closeMobileSidebar()" id="nav-memory">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Memory
     </button>
-    <button class="nav-item" onclick="showPage('jobs')" id="nav-jobs">
-      <span class="icon">⏱</span> Jobs
+    <button class="nav-item" onclick="showPage('jobs');closeMobileSidebar()" id="nav-jobs">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Jobs
     </button>
-    <button class="nav-item" onclick="showPage('skills')" id="nav-skills">
-      <span class="icon">⚡</span> Skills
+    <button class="nav-item" onclick="showPage('skills');closeMobileSidebar()" id="nav-skills">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Skills
     </button>
-    <button class="nav-item" onclick="showPage('policies')" id="nav-policies">
-      <span class="icon">🛡</span> Policies
+    <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Policies
     </button>
-    <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
-      <span class="icon">📊</span> Analytics
+    <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
     </button>
-    <button class="nav-item" onclick="showPage('sessions')" id="nav-sessions">
-      <span class="icon">🗂</span> Sessions
+    <button class="nav-item" onclick="showPage('sessions');closeMobileSidebar()" id="nav-sessions">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Sessions
     </button>
-    <button class="nav-item" onclick="showPage('settings')" id="nav-settings">
-      <span class="icon">⚙</span> Settings
+    <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
     </button>
-    <button class="nav-item" onclick="showPage('plugins')" id="nav-plugins">
-      <span class="icon">🧩</span> Plugins
+    <button class="nav-item" onclick="showPage('plugins');closeMobileSidebar()" id="nav-plugins">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Plugins
     </button>
-    <button class="nav-item" onclick="showPage('soul')" id="nav-soul">
-      <span class="icon">✦</span> Soul
+    <button class="nav-item" onclick="showPage('soul');closeMobileSidebar()" id="nav-soul">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span> Soul
     </button>
-    <button class="nav-item" onclick="showPage('cron')" id="nav-cron">
-      <span class="icon">🕐</span> Cron
+    <button class="nav-item" onclick="showPage('cron');closeMobileSidebar()" id="nav-cron">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Cron
     </button>
-    <button class="nav-item" onclick="showPage('logs')" id="nav-logs">
-      <span class="icon">📋</span> Logs
+    <button class="nav-item" onclick="showPage('logs');closeMobileSidebar()" id="nav-logs">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Logs
     </button>
 
     <div class="divider" style="margin:8px 4px;"></div>
@@ -194,10 +252,26 @@ const HTML = `<!DOCTYPE html>
 </aside>
 
 <!-- ── Main area ─────────────────────────────────────────── -->
-<main style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
+<main class="main-area" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
 
   <!-- Page: Chat -->
-  <div id="page-chat" style="display:flex;flex:1;overflow:hidden;">
+  <div id="page-chat" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
+
+    <!-- Chat header -->
+    <div style="padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <button id="hamburger" onclick="toggleSidebar()" data-tip="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span style="font-size:13px;font-weight:500;color:var(--text2);">Chat</span>
+      <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost" onclick="newChat()" style="font-size:12px;padding:5px 12px;" data-tip="Start new session">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New
+        </button>
+        <button class="btn btn-ghost" onclick="showPage('sessions')" style="font-size:12px;padding:5px 12px;" data-tip="Browse sessions">History</button>
+      </div>
+    </div>
 
     <!-- Message list -->
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
@@ -421,7 +495,6 @@ const HTML = `<!DOCTYPE html>
           <option value="memory">MEMORY.md</option>
         </select>
         <button class="btn btn-primary" onclick="saveSoulFile()">Save</button>
-        <span id="soul-saved" style="font-size:12px;color:#4ade80;display:none;">✓ Saved</span>
       </div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
@@ -494,11 +567,68 @@ const HTML = `<!DOCTYPE html>
 </main>
 </div>
 
+<div id="toast-container"></div>
+
 <script>
 const BASE = window.location.origin;
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws';
 let ws, sessionId = null, agentBubble = null, agentRaw = '';
 let currentPage = 'chat';
+
+// ── Toast notifications ─────────────────────────
+function toast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  const icons = { success:'✓', error:'✕', info:'●', warning:'⚠' };
+  el.innerHTML = '<span style="flex-shrink:0;font-weight:700;">' + (icons[type] || '●') + '</span><span>' + message + '</span>';
+  container.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('toast-out');
+    setTimeout(() => el.remove(), 250);
+  }, duration);
+}
+
+// ── Sidebar toggle (responsive) ─────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeMobileSidebar() {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+}
+
+// ── Relative time ───────────────────────────────
+function timeAgo(dateStr) {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const sec = Math.floor((now - then) / 1000);
+  if (sec < 5) return 'just now';
+  if (sec < 60) return sec + 's ago';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return min + 'm ago';
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr + 'h ago';
+  const days = Math.floor(hr / 24);
+  if (days < 30) return days + 'd ago';
+  return new Date(dateStr).toLocaleDateString();
+}
+
+// ── New chat ────────────────────────────────────
+function newChat() {
+  chatLog.innerHTML = '';
+  sessionId = null;
+  agentBubble = null;
+  agentRaw = '';
+  document.getElementById('chat-session-id').textContent = '';
+  document.getElementById('thinking-bar').style.display = 'none';
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'new_session' }));
+  }
+}
 
 // ── Markdown ────────────────────────────────────────────────
 marked.setOptions({ breaks: true, gfm: true });
@@ -515,6 +645,7 @@ function connect() {
     switch (msg.type) {
       case 'session':
         sessionId = msg.sessionId;
+        document.getElementById('chat-session-id').textContent = sessionId ? sessionId.slice(-12) : '';
         loadSessionsSidebar();
         break;
       case 'start':
@@ -616,24 +747,26 @@ function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
     document.getElementById('page-' + p).style.display = 'none';
+    document.getElementById('page-' + p).classList.remove('page-fade-in');
     const nav = document.getElementById('nav-' + p);
     if (nav) nav.classList.toggle('active', p === name);
   });
   const page = document.getElementById('page-' + name);
-  page.style.display = name === 'chat' || name === 'sessions' ? 'flex' : 'flex';
-  if (name === 'status') loadStatus();
-  if (name === 'lens') loadLens();
-  if (name === 'memory') loadMemoryStats();
-  if (name === 'jobs') loadJobs();
-  if (name === 'skills') loadSkills();
-  if (name === 'policies') loadPolicies();
-  if (name === 'analytics') loadAnalytics();
-  if (name === 'sessions') loadSessionsList();
-  if (name === 'settings') loadSettings();
-  if (name === 'plugins') loadPlugins();
-  if (name === 'soul') loadSoulFile();
-  if (name === 'cron') loadCronJobs();
-  if (name === 'logs') loadLogs();
+  page.style.display = 'flex';
+  // Trigger reflow then add animation class
+  void page.offsetWidth;
+  page.classList.add('page-fade-in');
+  // Show hamburger only on non-chat pages
+  const ham = document.getElementById('hamburger');
+  if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
+
+  const loaders = {
+    status: loadStatus, lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
+    skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
+    sessions: loadSessionsList, settings: loadSettings, plugins: loadPlugins,
+    soul: loadSoulFile, cron: loadCronJobs, logs: loadLogs,
+  };
+  if (loaders[name]) loaders[name]();
 }
 
 // ── Sessions sidebar ────────────────────────────────────────
@@ -691,17 +824,24 @@ async function loadLens() {
   const filtered = filter ? events.filter(e => e.event_type === filter) : events;
 
   const el = document.getElementById('lens-log');
-  if (!filtered.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No events yet.</p>'; return; }
+  if (!filtered.length) {
+    el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">' +
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>' +
+      '<p style="color:var(--text3);font-size:13px;">No events yet.</p>' +
+      '<p style="color:var(--text3);font-size:11px;margin-top:4px;">Activity will appear here as Cortex processes requests.</p></div>';
+    return;
+  }
 
   el.innerHTML = filtered.map(ev => {
     const color = EVT_COLORS[ev.event_type] ?? 'var(--text3)';
     const ts = new Date(ev.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const rel = timeAgo(ev.started_at);
     const dur = ev.duration_ms ? \`<span style="color:var(--text3);">\${ev.duration_ms}ms</span>\` : '';
     const cost = ev.cost_usd > 0 ? \`<span style="color:#4ade80;">$\${Number(ev.cost_usd).toFixed(5)}</span>\` : '';
-    return \`<div class="lens-row">
-      <span style="color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:72px;">\${ts}</span>
+    return \`<div class="lens-row" title="\${new Date(ev.started_at).toLocaleString()}">
+      <span style="color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:72px;" title="\${ts}">\${rel}</span>
       <span style="color:\${color};min-width:160px;font-size:11px;font-weight:500;">\${ev.event_type}</span>
-      <span style="color:var(--text2);flex:1;">\${esc(ev.summary ?? ev.action ?? '')}</span>
+      <span style="color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(ev.summary ?? ev.action ?? '')}</span>
       <span style="display:flex;gap:8px;align-items:center;">\${dur}\${cost}</span>
     </div>\`;
   }).join('');
@@ -730,7 +870,7 @@ async function searchMemory() {
   const el = document.getElementById('mem-results');
   el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Searching…</p>';
   const hits = await fetch(\`\${BASE}/api/memory/search?q=\${encodeURIComponent(q)}\`).then(r => r.json()).catch(() => []);
-  if (!hits.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No results found.</p>'; return; }
+  if (!hits.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;text-align:center;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:10px;opacity:0.4;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg><p style="color:var(--text3);font-size:13px;">No results found for "' + esc(q) + '"</p></div>'; return; }
 
   el.innerHTML = '';
   for (const h of hits) {
@@ -756,7 +896,7 @@ const JOB_COLORS = { pending:'#fbbf24', running:'#38bdf8', completed:'#4ade80', 
 async function loadJobs() {
   const jobs = await fetch(BASE + '/api/jobs').then(r => r.json()).catch(() => []);
   const el = document.getElementById('jobs-list');
-  if (!jobs.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No jobs scheduled.</p>'; return; }
+  if (!jobs.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p style="color:var(--text3);font-size:13px;">No jobs scheduled.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Create a job from the Cron page or via the CLI.</p></div>'; return; }
 
   el.innerHTML = '';
   for (const j of jobs) {
@@ -784,7 +924,7 @@ async function loadJobs() {
 async function loadSkills() {
   const skills = await fetch(BASE + '/api/skills').then(r => r.json()).catch(() => []);
   const el = document.getElementById('skills-list');
-  if (!skills.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No skills extracted yet. Skills are learned automatically from multi-step tasks.</p>'; return; }
+  if (!skills.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><p style="color:var(--text3);font-size:13px;">No procedural skills yet.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Skills are learned automatically from multi-step tasks.</p></div>'; return; }
 
   el.innerHTML = '';
   for (const s of skills) {
@@ -818,7 +958,7 @@ async function loadSkills() {
 async function loadPolicies() {
   const policies = await fetch(BASE + '/api/policies').then(r => r.json()).catch(() => []);
   const el = document.getElementById('policies-list');
-  if (!policies.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No policies configured.</p>'; return; }
+  if (!policies.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><p style="color:var(--text3);font-size:13px;">No security policies configured.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Default deny rules are always active. Use the CLI to add custom policies.</p></div>'; return; }
 
   el.innerHTML = '';
   for (const p of policies) {
@@ -846,9 +986,15 @@ function esc(s) {
 
 // ── Status page ──────────────────────────────────────────────
 async function loadStatus() {
+  const el = document.getElementById('status-content');
+  if (!el) return;
+  // Skeleton
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">' +
+    Array(4).fill('<div class="skeleton skeleton-card"></div>').join('') + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+    Array(2).fill('<div class="skeleton" style="height:200px;border-radius:10px;"></div>').join('') + '</div>';
   try {
     const st = await fetch(BASE + '/api/system').then(r => r.json());
-    const el = document.getElementById('status-content');
     if (!el) return;
 
     const fmt = (b) => b >= 1e9 ? (b/1e9).toFixed(1)+'GB' : b >= 1e6 ? (b/1e6).toFixed(0)+'MB' : b+'B';
@@ -857,10 +1003,18 @@ async function loadStatus() {
     const diskPct = pct(st.disk.used, st.disk.total);
     const upH = Math.floor(st.uptime/3600), upM = Math.floor((st.uptime%3600)/60);
 
+    const daemonIcon = (name) => {
+      const svgs = {
+        validator: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+        executor: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+        scheduler: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+      };
+      return svgs[name] || '';
+    };
     const daemons = [
-      {key:'validator',label:'Validator',icon:'🛡'},
-      {key:'executor',label:'Executor',icon:'⚙'},
-      {key:'scheduler',label:'Scheduler',icon:'⏱'},
+      {key:'validator',label:'Validator'},
+      {key:'executor',label:'Executor'},
+      {key:'scheduler',label:'Scheduler'},
     ];
 
     el.innerHTML = \`
@@ -892,7 +1046,7 @@ async function loadStatus() {
             const up = st.daemons[d.key];
             return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
               <div style="display:flex;align-items:center;gap:8px;">
-                <span>\${d.icon}</span>
+                <span style="color:\${up?'#4ade80':'var(--text3)'};">\${daemonIcon(d.key)}</span>
                 <span style="font-size:13px;">\${d.label}</span>
               </div>
               <span class="badge" style="background:\${up?'rgba(34,197,94,0.12)':'rgba(239,68,68,0.1)'};color:\${up?'#4ade80':'#f87171'};">
@@ -900,7 +1054,9 @@ async function loadStatus() {
               </span>
             </div>\`;
           }).join('')}
-          <div style="margin-top:10px;font-size:11px;color:var(--text3);">Run <code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;">cortex daemon start</code> to start all daemons</div>
+          \${daemons.some(d => !st.daemons[d.key])
+            ? '<div style="margin-top:10px;padding:8px 12px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);border-radius:6px;font-size:11px;color:#fbbf24;">⚠ Some daemons are stopped. Run <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">cortex daemon start</code> to start them.</div>'
+            : '<div style="margin-top:10px;font-size:11px;color:#4ade80;">✓ All daemons running</div>'}
         </div>
 
         <!-- Resources -->
@@ -1023,7 +1179,7 @@ async function loadSessionsList() {
 function renderSessionsList(sessions) {
   const el = document.getElementById('sessions-table');
   if (!el) return;
-  if (!sessions.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No sessions found.</p>'; return; }
+  if (!sessions.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="color:var(--text3);font-size:13px;">No sessions found.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Start a chat session to see it here.</p></div>'; return; }
   el.innerHTML = sessions.map(s => \`
     <div class="card-sm" style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:6px;" onclick="openSession('\${s.id}')">
       <div style="flex:1;min-width:0;">
@@ -1085,11 +1241,13 @@ async function exportSession(id) {
   const blob = new Blob([JSON.stringify({ session_id: id, events }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = \`cortex-session-\${id}.json\`; a.click();
+  toast('Session exported', 'success');
 }
 
 async function deleteSession(id) {
   if (!confirm(\`Delete session \${id.slice(-12)}? This removes all its Lens events.\`)) return;
-  await fetch(\`\${BASE}/api/sessions/\${id}\`, { method: 'DELETE' });
+  const res = await fetch(\`\${BASE}/api/sessions/\${id}\`, { method: 'DELETE' });
+  if (res.ok) toast('Session deleted', 'success');
   loadSessionsList();
 }
 
@@ -1128,7 +1286,6 @@ async function loadSettings() {
       </div>
       <div style="margin-top:14px;display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
-        <span id="settings-saved" style="font-size:12px;color:#4ade80;display:none;align-self:center;">✓ Saved</span>
       </div>
     </div>
 
@@ -1149,8 +1306,8 @@ async function loadSettings() {
               <input class="inp" id="key-model-\${p}" placeholder="e.g. gpt-4o-mini" value="\${esc(pCfg?.model ?? '')}" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key \${pCfg?.apiKey ? '('+pCfg.apiKey+')' : ''}</label>
-              <input class="inp" id="key-val-\${p}" type="password" placeholder="Enter new key to update…" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key \${pCfg?.apiKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
+              <input class="inp" id="key-val-\${p}" type="password" placeholder="Enter new key to update…" autocomplete="off" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
             </div>
           </div>
           \${p === 'ollama' ? \`<div style="margin-top:6px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL</label>
@@ -1192,9 +1349,8 @@ async function saveSettings() {
       cascade: [],
     },
   };
-  await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  const saved = document.getElementById('settings-saved');
-  if (saved) { saved.style.display = 'inline'; setTimeout(() => saved.style.display = 'none', 2000); }
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { toast('Settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
 }
 
 async function saveProvider(kind) {
@@ -1204,7 +1360,8 @@ async function saveProvider(kind) {
   const body = { kind, model };
   if (apiKey) body.apiKey = apiKey;
   if (baseUrl) body.baseUrl = baseUrl;
-  await fetch(BASE + '/api/config/provider', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const res = await fetch(BASE + '/api/config/provider', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { toast(apiKey ? kind + ' provider saved' : kind + ' model updated', 'success'); } else { toast('Failed to save provider', 'error'); }
   loadSettings();
 }
 
@@ -1213,7 +1370,7 @@ async function loadPlugins() {
   const plugins = await fetch(BASE + '/api/plugins').then(r => r.json()).catch(() => []);
   const el = document.getElementById('plugins-list');
   if (!el) return;
-  if (!plugins.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No plugins installed. Click "+ Install Plugin" to add one.</p>'; return; }
+  if (!plugins.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><p style="color:var(--text3);font-size:13px;">No plugins installed.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Click "+ Install Plugin" to add an ESM, MCP, or WASM plugin.</p></div>'; return; }
   el.innerHTML = plugins.map(p => {
     const caps = JSON.parse(p.capabilities || '[]');
     return \`<div class="card" style="display:flex;align-items:flex-start;gap:14px;">
@@ -1257,7 +1414,7 @@ async function submitInstallPlugin() {
     author: document.getElementById('pm-author').value || undefined,
   };
   const res = await fetch(BASE + '/api/plugins/install', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (res.ok) { hideInstallModal(); loadPlugins(); }
+  if (res.ok) { hideInstallModal(); toast('Plugin installed', 'success'); loadPlugins(); }
   else { document.getElementById('pm-status').textContent = 'Install failed.'; }
 }
 async function togglePlugin(id, enable) {
@@ -1266,7 +1423,8 @@ async function togglePlugin(id, enable) {
 }
 async function deletePlugin(id) {
   if (!confirm('Remove this plugin?')) return;
-  await fetch(\`\${BASE}/api/plugins/\${id}\`, { method: 'DELETE' });
+  const res = await fetch(\`\${BASE}/api/plugins/\${id}\`, { method: 'DELETE' });
+  if (res.ok) toast('Plugin removed', 'success');
   loadPlugins();
 }
 
@@ -1282,13 +1440,13 @@ async function saveSoulFile() {
   const key = document.getElementById('soul-file-select').value;
   const content = document.getElementById('soul-editor').value;
   await fetch(\`\${BASE}/api/soul/\${key}\`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content }) });
-  const s = document.getElementById('soul-saved');
-  s.style.display = 'inline'; setTimeout(() => s.style.display = 'none', 2000);
+  toast('Soul file saved', 'success');
 }
 async function appendMemoryNote() {
   const note = document.getElementById('memory-note').value.trim();
   if (!note) return;
-  await fetch(BASE + '/api/soul/memory/append', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ note }) });
+  const res = await fetch(BASE + '/api/soul/memory/append', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ note }) });
+  if (res.ok) toast('Note appended', 'success');
   document.getElementById('memory-note').value = '';
   if (document.getElementById('soul-file-select').value === 'memory') loadSoulFile();
 }
@@ -1341,20 +1499,23 @@ async function submitCronJob() {
     maxAttempts: Number(document.getElementById('cj-max').value) || 3,
   };
   const res = await fetch(BASE + '/api/jobs', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (res.ok) { hideCronModal(); loadCronJobs(); }
+  if (res.ok) { hideCronModal(); toast('Job created', 'success'); loadCronJobs(); }
   else { document.getElementById('cj-status').textContent = 'Create failed.'; }
 }
 async function triggerJob(id) {
-  await fetch(\`\${BASE}/api/jobs/\${id}/trigger\`, { method: 'POST' });
+  const res = await fetch(\`\${BASE}/api/jobs/\${id}/trigger\`, { method: 'POST' });
+  if (res.ok) toast('Job triggered', 'success');
   loadCronJobs();
 }
 async function cancelJobUI(id) {
-  await fetch(\`\${BASE}/api/jobs/\${id}/cancel\`, { method: 'POST' });
+  const res = await fetch(\`\${BASE}/api/jobs/\${id}/cancel\`, { method: 'POST' });
+  if (res.ok) toast('Job cancelled', 'warning');
   loadCronJobs();
 }
 async function deleteJobUI(id) {
   if (!confirm('Delete this job?')) return;
-  await fetch(\`\${BASE}/api/jobs/\${id}\`, { method: 'DELETE' });
+  const res = await fetch(\`\${BASE}/api/jobs/\${id}\`, { method: 'DELETE' });
+  if (res.ok) toast('Job deleted', 'success');
   loadCronJobs();
 }
 

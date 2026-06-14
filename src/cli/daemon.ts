@@ -8,21 +8,21 @@ const PROCESS_DEFS = [
     label: 'Cortex Validator',
     entry: 'src/processes/validator-process.ts',
     sock: VALIDATOR_SOCK,
-    permissions: ['--allow-read', '--allow-write', '--allow-net', '--allow-env', '--allow-sys'],
+    permissions: ['--allow-read', '--allow-write', '--allow-net', '--allow-env', '--allow-sys', '--allow-ffi'],
   },
   {
     name: 'executor',
     label: 'Cortex Executor',
     entry: 'src/processes/executor-process.ts',
     sock: EXECUTOR_SOCK,
-    permissions: ['--allow-read', '--allow-write', '--allow-run', '--allow-net', '--allow-env', '--allow-sys'],
+    permissions: ['--allow-read', '--allow-write', '--allow-run', '--allow-net', '--allow-env', '--allow-sys', '--allow-ffi'],
   },
   {
     name: 'scheduler',
     label: 'Cortex Scheduler',
     entry: 'src/processes/scheduler-process.ts',
     sock: SCHEDULER_SOCK,
-    permissions: ['--allow-read', '--allow-write', '--allow-run', '--allow-net', '--allow-env', '--allow-sys'],
+    permissions: ['--allow-read', '--allow-write', '--allow-run', '--allow-net', '--allow-env', '--allow-sys', '--allow-ffi'],
   },
 ] as const;
 

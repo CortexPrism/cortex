@@ -49,3 +49,6 @@ coverage/
 
 # ── Design / spec docs (pre-existing, not for public repo) ────
 docs/design/
+
+# Kilo AI
+.kilo/

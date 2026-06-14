@@ -9,11 +9,25 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
-Planned for future sprints:
-- Desktop app (Tauri)
-- Distributed cluster mode (multi-node SQLite WAL)
-- Slack channel adapter
-- WASM plugin runtime
+### Added
+- **`src/server/ui.ts`** — UI/UX overhaul
+  - SVG icons replacing all emoji in sidebar navigation (14 Feather-style icons)
+  - Responsive sidebar with hamburger toggle and slide-in animation for mobile (≤768px)
+  - Toast notification system (success/error/info/warning) with auto-dismiss for all write actions
+  - Skeleton loading shimmer placeholders on Status page
+  - Visual empty states with contextual SVG icons across all 9 data pages
+  - Smooth page-fade-in transitions on navigation
+  - Relative time formatting (`timeAgo()`) in Lens event rows
+  - `data-tip` tooltip utility on header buttons
+  - Chat header with session ID badge, New Chat, and History buttons
+  - `newChat()` function to start fresh sessions without page reload
+  - Daemon status alert banner on Status page when processes are stopped
+
+### Changed
+- **`src/server/ui.ts`** — improved empty states, API key masking in Settings (shows "✓ set" instead of plaintext), card hover effects, custom scrollbar, `autocomplete="off"` on password fields
+- **`src/cli/daemon.ts`** — added `--allow-ffi` to all 3 process permission sets required by libsql native binding
+
+---
 
 ---
 
