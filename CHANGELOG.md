@@ -11,6 +11,31 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Automated update system** — `cortex update` CLI command with version checking, binary replacement,
+  source git/tarball fallback, health checks, and automatic rollback
+  - `cortex update` — check and apply the latest release
+  - `cortex update --check` — dry-run check, no changes
+  - `cortex update --channel pre` — include pre-release versions
+  - `cortex update --rollback` — revert to previous version (24h grace period)
+  - `cortex update --status` — show current/latest version and channel
+  - `cortex update --force` — bypass dirty working tree check (source mode)
+  - `UpdateConfig` in `~/.cortex/config.json`: `channel`, `checkOnStartup`, `autoUpdate`,
+    `checkIntervalHours`, `githubToken`, `gpgKeyPath`
+  - GitHub API release fetching with 1-hour TTL caching (`~/.cortex/update-cache.json`)
+  - Install manifest (`~/.cortex/install.json`) tracks source/binary mode, version, and rollback
+    state
+  - SHA-256 checksum verification + GPG signature verification for binary artifacts
+  - Lock file (`~/.cortex/update.lock`) prevents concurrent update operations
+  - Auto-check on daemon startup (notifies of available updates without auto-applying)
+- **Self-contained binary mode** — compiled `deno compile` binary supports `--subprocess` dispatch
+  for validator, executor, scheduler, and supervisor, replacing `deno run <entry.ts>` spawning
+  - `src/main.ts` detects `--subprocess` flag before CLI parser and dispatches to the correct
+    process function
+  - Supervisor uses `isCompiledBinary()` heuristic to choose `--subprocess <name>` vs
+    `deno run --allow-all main.ts --subprocess <name>` for child process spawning
+  - `VERSION` file at repo root — single source of version truth, enforced against `deno.json` in CI
+  - Cross-compilation release workflow (`.github/workflows/release.yml`) with matrix build for
+    linux-x64, linux-arm64, darwin-x64, darwin-arm64, windows-x64
 - **Kilo (AI Gateway) provider** — OpenAI-compatible provider for the Kilo API at `api.kilo.ai`
   - New `src/llm/kilo.ts` provider extending `OpenAICompatibleProvider` with `kilo/sonnet` as
     default model

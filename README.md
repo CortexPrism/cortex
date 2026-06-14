@@ -70,6 +70,7 @@ Commands:
   vault             Encrypted credential vault (store / get / list / delete)
   policy            Security policy rules (list / add / remove / check)
   migrate           Initialise or migrate all databases
+  update            Check for updates and manage Cortex version
 ```
 
 ### `cortex chat`
@@ -100,6 +101,20 @@ cortex run script.py --fix --max-fix 6  # Up to 6 fix attempts
 ```
 
 Supported languages: `python`, `javascript`, `typescript`, `bash`, `ruby`, `go`, `rust`
+
+### `cortex update`
+
+```bash
+cortex update                          # Check for updates and apply
+cortex update --check                  # Dry-run, show available versions
+cortex update --channel pre            # Include pre-release versions
+cortex update --rollback               # Revert to previous version
+cortex update --status                 # Show current/latest version and channel
+cortex update --force                  # Bypass dirty working tree check (source mode)
+```
+
+Supports both **source mode** (git clone) and **binary mode** (compiled `deno compile` binary).
+Binary downloads are verified against SHA-256 checksums and optionally GPG signatures.
 
 ### `cortex daemon`
 
@@ -242,6 +257,14 @@ Config file: `~/.cortex/config.json`
       { "provider": "ollama", "model": "llama3.1:8b" },
       { "provider": "anthropic", "model": "claude-haiku-4-5" }
     ]
+  },
+  "update": {
+    "channel": "stable",
+    "checkOnStartup": true,
+    "autoUpdate": false,
+    "checkIntervalHours": 24,
+    "githubToken": null,
+    "gpgKeyPath": null
   }
 }
 ```
@@ -324,7 +347,7 @@ Query
 
 ```bash
 deno task dev       # Run with --allow-all
-deno task check     # Type-check (zero errors expected)
+deno task check     # Type-check (zero errors expected — CI also verifies VERSION vs deno.json sync)
 deno task lint      # Lint
 deno task fmt       # Format
 deno task serve     # Start HTTP server on :3000
@@ -344,6 +367,7 @@ src/
 │   ├── chat.ts                  cortex chat
 │   ├── daemon.ts                cortex daemon (start/run/status/stop) + ensureDaemons()
 │   ├── jobs.ts                  cortex jobs
+│   ├── update-cmd.ts            cortex update (check/apply/rollback/status)
 │   ├── memory-cmd.ts            cortex memory
 │   ├── migrate.ts               cortex migrate
 │   ├── policy-cmd.ts            cortex policy
@@ -358,6 +382,11 @@ src/
 ├── config/
 │   ├── config.ts                CortexConfig interface + load/save
 │   └── paths.ts                 XDG-style data paths
+├── update/
+│   ├── mod.ts                   Public API: checkForUpdates, applyUpdate, getUpdateStatus, rollback
+│   ├── checker.ts               GitHub API client, semver comparison, caching
+│   ├── installer.ts             Binary replacement, git checkout, tarball, manifest management
+│   └── rollback.ts              Health check, backup restoration, grace period cleanup
 ├── db/
 │   ├── client.ts                libsql Db wrapper
 │   ├── lens.ts                  Cortex Lens audit log
