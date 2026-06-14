@@ -1,0 +1,51 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+.deno/
+
+# ── Databases (runtime data) ──────────────────────────────────
+*.db
+*.db-wal
+*.db-shm
+
+# ── Environment / secrets ─────────────────────────────────────
+.env
+.env.*
+.envrc
+
+# ── Build artifacts ───────────────────────────────────────────
+dist/
+build/
+out/
+*.js.map
+
+# ── Editor / IDE ──────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+ehthumbs.db
+
+# ── Cortex runtime data ───────────────────────────────────────
+.cortex/
+/data/
+
+# ── Test artifacts ────────────────────────────────────────────
+coverage/
+/tmp/
+
+# ── Design / spec docs (pre-existing, not for public repo) ────
+docs/design/

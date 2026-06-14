@@ -1,0 +1,8 @@
+-- Migration 007: Add scheduler v2 columns to jobs table
+
+ALTER TABLE jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'once';
+ALTER TABLE jobs ADD COLUMN schedule TEXT;
+ALTER TABLE jobs ADD COLUMN command TEXT NOT NULL DEFAULT '';
+ALTER TABLE jobs ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE jobs ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE jobs ADD COLUMN last_error TEXT;

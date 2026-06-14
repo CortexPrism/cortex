@@ -1,0 +1,257 @@
+import { getMemoryDb } from '../db/client.ts';
+import type { InValue } from 'npm:@libsql/client';
+
+function graphId(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export type RelationType =
+  | 'uses' | 'replaces' | 'extends' | 'is_part_of' | 'is_instance_of'
+  | 'related_to' | 'contradicts' | 'supports' | 'causes' | 'requires' | 'configures';
+
+export interface GraphEntity {
+  id: string;
+  name: string;
+  type: string;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface GraphRelation {
+  id: string;
+  source_id: string;
+  target_id: string;
+  relation: RelationType;
+  strength: number;
+  context: string | null;
+  created_at: string;
+}
+
+export interface GraphHit {
+  entity: GraphEntity;
+  relation: RelationType;
+  direction: 'outbound' | 'inbound';
+  strength: number;
+  peer: GraphEntity;
+}
+
+export async function upsertEntity(opts: {
+  name: string;
+  type: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<string> {
+  const db = await getMemoryDb();
+
+  const existing = await db.get<{ id: string }>(
+    `SELECT id FROM graph_entities WHERE name = ? AND type = ? LIMIT 1`,
+    [opts.name, opts.type],
+  );
+  if (existing) return existing.id;
+
+  const id = graphId('ent');
+  const now = new Date().toISOString();
+  await db.run(
+    `INSERT INTO graph_entities (id, name, type, description, metadata, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      opts.name,
+      opts.type,
+      opts.description ?? null,
+      JSON.stringify(opts.metadata ?? {}),
+      now,
+      now,
+    ] as InValue[],
+  );
+
+  return id;
+}
+
+export async function addRelation(opts: {
+  sourceName: string;
+  sourceType: string;
+  targetName: string;
+  targetType: string;
+  relation: RelationType;
+  strength?: number;
+  context?: string;
+}): Promise<string> {
+  const [sourceId, targetId] = await Promise.all([
+    upsertEntity({ name: opts.sourceName, type: opts.sourceType }),
+    upsertEntity({ name: opts.targetName, type: opts.targetType }),
+  ]);
+
+  const db = await getMemoryDb();
+
+  const existing = await db.get<{ id: string }>(
+    `SELECT id FROM graph_relations WHERE source_id = ? AND target_id = ? AND relation = ? LIMIT 1`,
+    [sourceId, targetId, opts.relation],
+  );
+
+  if (existing) {
+    await db.run(
+      `UPDATE graph_relations
+       SET strength = MIN(1.0, strength + 0.1),
+           access_count = access_count + 1,
+           updated_at = datetime('now')
+       WHERE id = ?`,
+      [existing.id],
+    );
+    return existing.id;
+  }
+
+  const id = graphId('rel');
+  const now = new Date().toISOString();
+  await db.run(
+    `INSERT INTO graph_relations (id, source_id, target_id, relation, strength, context, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      sourceId,
+      targetId,
+      opts.relation,
+      opts.strength ?? 1.0,
+      opts.context ?? null,
+      now,
+      now,
+    ] as InValue[],
+  );
+
+  return id;
+}
+
+export async function traverseGraph(
+  entityName: string,
+  opts: { depth?: number; relationTypes?: RelationType[]; limit?: number } = {},
+): Promise<GraphHit[]> {
+  const db = await getMemoryDb();
+  const depth = opts.depth ?? 2;
+  const limit = opts.limit ?? 20;
+
+  const root = await db.get<GraphEntity>(
+    `SELECT * FROM graph_entities WHERE name = ? LIMIT 1`,
+    [entityName],
+  );
+  if (!root) return [];
+
+  const visited = new Set<string>([root.id]);
+  const results: GraphHit[] = [];
+  const queue: Array<{ id: string; currentDepth: number }> = [{ id: root.id, currentDepth: 0 }];
+
+  while (queue.length > 0 && results.length < limit) {
+    const { id, currentDepth } = queue.shift()!;
+    if (currentDepth >= depth) continue;
+
+    const typeFilter = opts.relationTypes?.length
+      ? `AND relation IN (${opts.relationTypes.map(() => '?').join(',')})`
+      : '';
+    const typeArgs = opts.relationTypes ?? [];
+
+    const outbound = await db.all<{
+      id: string; target_id: string; relation: string; strength: number; context: string | null; created_at: string;
+    }>(
+      `SELECT id, target_id, relation, strength, context, created_at
+       FROM graph_relations WHERE source_id = ? ${typeFilter} ORDER BY strength DESC LIMIT 10`,
+      [id, ...typeArgs] as InValue[],
+    );
+
+    const inbound = await db.all<{
+      id: string; source_id: string; relation: string; strength: number; context: string | null; created_at: string;
+    }>(
+      `SELECT id, source_id, relation, strength, context, created_at
+       FROM graph_relations WHERE target_id = ? ${typeFilter} ORDER BY strength DESC LIMIT 10`,
+      [id, ...typeArgs] as InValue[],
+    );
+
+    for (const edge of outbound) {
+      if (visited.has(edge.target_id)) continue;
+      visited.add(edge.target_id);
+      const peer = await db.get<GraphEntity>(
+        `SELECT * FROM graph_entities WHERE id = ?`,
+        [edge.target_id],
+      );
+      if (!peer) continue;
+      results.push({
+        entity: root,
+        relation: edge.relation as RelationType,
+        direction: 'outbound',
+        strength: edge.strength,
+        peer,
+      });
+      queue.push({ id: edge.target_id, currentDepth: currentDepth + 1 });
+    }
+
+    for (const edge of inbound) {
+      if (visited.has(edge.source_id)) continue;
+      visited.add(edge.source_id);
+      const peer = await db.get<GraphEntity>(
+        `SELECT * FROM graph_entities WHERE id = ?`,
+        [edge.source_id],
+      );
+      if (!peer) continue;
+      results.push({
+        entity: root,
+        relation: edge.relation as RelationType,
+        direction: 'inbound',
+        strength: edge.strength,
+        peer,
+      });
+      queue.push({ id: edge.source_id, currentDepth: currentDepth + 1 });
+    }
+  }
+
+  return results.sort((a, b) => b.strength - a.strength).slice(0, limit);
+}
+
+export async function searchEntities(query: string, limit = 10): Promise<GraphEntity[]> {
+  const db = await getMemoryDb();
+  return await db.all<GraphEntity>(
+    `SELECT * FROM graph_entities
+     WHERE name LIKE ? OR description LIKE ?
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+    [`%${query}%`, `%${query}%`, limit] as InValue[],
+  );
+}
+
+export async function extractAndStoreEntities(text: string, sessionId?: string): Promise<void> {
+  const patterns: Array<{ regex: RegExp; type: string }> = [
+    { regex: /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g, type: 'concept' },
+    { regex: /`([a-zA-Z_][a-zA-Z0-9_.]+)`/g, type: 'code' },
+    { regex: /https?:\/\/([a-zA-Z0-9.-]+)/g, type: 'domain' },
+  ];
+
+  const found: Array<{ name: string; type: string }> = [];
+
+  for (const { regex, type } of patterns) {
+    const matches = text.matchAll(regex);
+    for (const match of matches) {
+      const name = (match[1] ?? match[0]).trim();
+      if (name.length >= 3 && name.length <= 80) {
+        found.push({ name, type });
+      }
+    }
+  }
+
+  if (found.length === 0) return;
+
+  const deduped = [...new Map(found.map((f) => [`${f.type}:${f.name}`, f])).values()].slice(0, 20);
+
+  const context = sessionId ? `Mentioned in session ${sessionId}` : undefined;
+
+  for (let i = 0; i < deduped.length - 1; i++) {
+    const a = deduped[i];
+    const b = deduped[i + 1];
+    await addRelation({
+      sourceName: a.name,
+      sourceType: a.type,
+      targetName: b.name,
+      targetType: b.type,
+      relation: 'related_to',
+      strength: 0.5,
+      context,
+    }).catch(() => {});
+  }
+}
