@@ -11,6 +11,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- (none)
+
+## [0.18.0] — 2026-06-14
+
+### Added
+
 - **Automated update system** — `cortex update` CLI command with version checking, binary replacement,
   source git/tarball fallback, health checks, and automatic rollback
   - `cortex update` — check and apply the latest release
