@@ -801,6 +801,101 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return await applyRedo(wsRedoMatch[1]);
   }
 
+  // ── Marketplace API proxy ────────────────────────────────
+
+  const MARKETPLACE_BASE = 'https://cortexprism.io';
+
+  // GET /api/marketplace/plugins
+  if (req.method === 'GET' && path === '/api/marketplace/plugins') {
+    const params = url.searchParams.toString();
+    const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins?${params}`);
+    const data = await res.json();
+    return json(data, res.status);
+  }
+
+  // GET /api/marketplace/agents
+  if (req.method === 'GET' && path === '/api/marketplace/agents') {
+    const params = url.searchParams.toString();
+    const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/agents?${params}`);
+    const data = await res.json();
+    return json(data, res.status);
+  }
+
+  // GET /api/marketplace/categories
+  if (req.method === 'GET' && path === '/api/marketplace/categories') {
+    const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/categories`);
+    const data = await res.json();
+    return json(data, res.status);
+  }
+
+  // GET /api/marketplace/stats
+  if (req.method === 'GET' && path === '/api/marketplace/stats') {
+    const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/stats`);
+    const data = await res.json();
+    return json(data, res.status);
+  }
+
+  // POST /api/marketplace/plugins/:slug/install
+  const mpPluginInstallMatch = path.match(/^\/api\/marketplace\/plugins\/([^/]+)\/install$/);
+  if (req.method === 'POST' && mpPluginInstallMatch) {
+    const slug = mpPluginInstallMatch[1];
+    const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins/${slug}/download`);
+    if (!dlRes.ok) return json({ error: `Plugin "${slug}" not found` }, 404);
+    const manifest = await dlRes.json() as {
+      id?: string; name: string; version: string; description?: string;
+      kind: string; entryPoint: string; capabilities?: string[];
+      author?: string; homepage?: string;
+    };
+    const { installPlugin } = await import('../plugins/registry.ts');
+    try {
+      await installPlugin({
+        id: manifest.id ?? '',
+        name: manifest.name,
+        version: manifest.version,
+        description: manifest.description ?? '',
+        kind: manifest.kind as 'esm' | 'mcp' | 'wasm',
+        entryPoint: manifest.entryPoint,
+        capabilities: manifest.capabilities ?? [],
+        author: manifest.author,
+        homepage: manifest.homepage,
+      });
+      return json({ ok: true, name: manifest.name });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 400);
+    }
+  }
+
+  // POST /api/marketplace/agents/:slug/import
+  const mpAgentImportMatch = path.match(/^\/api\/marketplace\/agents\/([^/]+)\/import$/);
+  if (req.method === 'POST' && mpAgentImportMatch) {
+    const slug = mpAgentImportMatch[1];
+    const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/agents/${slug}/download`);
+    if (!dlRes.ok) return json({ error: `Agent "${slug}" not found` }, 404);
+    const data = await dlRes.json() as {
+      name: string; description?: string; provider?: string; model?: string;
+      temperature?: number; tools?: string[]; tags?: string[]; systemPrompt?: string;
+      soulContent?: string;
+    };
+    if (!data.name) return json({ error: 'Invalid agent config: missing name' }, 400);
+    const { registerAgent } = await import('../agent/manager.ts');
+    try {
+      const agent = await registerAgent({
+        name: data.name,
+        description: data.description,
+        provider: data.provider as never,
+        model: data.model,
+        temperature: data.temperature,
+        soul: data.soulContent,
+        systemPrompt: data.systemPrompt,
+        tools: data.tools,
+        tags: data.tags,
+      });
+      return json({ ok: true, name: agent.name, id: agent.id });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 400);
+    }
+  }
+
   // GET /api/workspace/history?path=&agentId=&limit=
   if (req.method === 'GET' && path === '/api/workspace/history') {
     const db = await (await import('../db/client.ts')).getCoreDb();

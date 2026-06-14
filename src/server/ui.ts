@@ -353,6 +353,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('plugins');closeMobileSidebar()" id="nav-plugins">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Plugins
     </button>
+    <button class="nav-item" onclick="showPage('marketplace');closeMobileSidebar()" id="nav-marketplace">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Marketplace
+    </button>
 
     <!-- Monitoring -->
     <div class="nav-section">Monitoring</div>
@@ -735,6 +738,35 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Page: Marketplace -->
+  <div id="page-marketplace" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;">
+        <h1 style="font-size:15px;font-weight:600;">Marketplace</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Discover plugins and agents from the CortexPrism marketplace</p>
+      </div>
+      <span id="mp-stats" style="font-size:11px;color:var(--text3);"></span>
+      <button class="btn btn-ghost" onclick="loadMarketplace()">↻ Refresh</button>
+    </div>
+    <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">
+      <input id="mp-search" class="inp" placeholder="Search marketplace…" style="flex:1;" oninput="marketplaceDelayedSearch()" />
+      <select id="mp-kind" class="inp" style="width:140px;" onchange="loadMarketplace()">
+        <option value="">All kinds</option>
+        <option value="esm">ESM</option>
+        <option value="mcp">MCP</option>
+        <option value="wasm">WASM</option>
+      </select>
+      <select id="mp-category" class="inp" style="width:160px;" onchange="loadMarketplace()">
+        <option value="">All categories</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;">
+      <button id="mp-tab-plugins" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:rgba(99,102,241,0.1);color:var(--accent2);border-bottom:2px solid var(--accent);" onclick="switchMarketplaceTab('plugins')">Plugins</button>
+      <button id="mp-tab-agents" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;" onclick="switchMarketplaceTab('agents')">Agents</button>
+    </div>
+    <div id="mp-content" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+
   <!-- Page: Soul -->
   <div id="page-soul" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -1087,7 +1119,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','editor','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','analytics','logs'];
+const PAGES = ['chat','editor','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs'];
 function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
@@ -1109,7 +1141,7 @@ function showPage(name) {
     status: loadStatus, lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings, plugins: loadPlugins,
-    soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
+    marketplace: loadMarketplace, soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
   };
   if (loaders[name]) loaders[name]();
 }
@@ -2345,6 +2377,175 @@ async function deletePlugin(id) {
   const res = await fetch(\`\${BASE}/api/plugins/\${id}\`, { method: 'DELETE' });
   if (res.ok) toast('Plugin removed', 'success');
   loadPlugins();
+}
+
+// ── Marketplace ────────────────────────────────────────────────
+let marketplaceTab = 'plugins';
+let marketplaceSearchTimeout = null;
+
+function marketplaceDelayedSearch() {
+  if (marketplaceSearchTimeout) clearTimeout(marketplaceSearchTimeout);
+  marketplaceSearchTimeout = setTimeout(loadMarketplace, 300);
+}
+
+function switchMarketplaceTab(tab) {
+  marketplaceTab = tab;
+  const pluginsBtn = document.getElementById('mp-tab-plugins');
+  const agentsBtn = document.getElementById('mp-tab-agents');
+  if (tab === 'plugins') {
+    pluginsBtn.style.background = 'rgba(99,102,241,0.1)';
+    pluginsBtn.style.color = 'var(--accent2)';
+    pluginsBtn.style.borderBottomColor = 'var(--accent)';
+    agentsBtn.style.background = 'transparent';
+    agentsBtn.style.color = 'var(--text2)';
+    agentsBtn.style.borderBottomColor = 'transparent';
+  } else {
+    agentsBtn.style.background = 'rgba(99,102,241,0.1)';
+    agentsBtn.style.color = 'var(--accent2)';
+    agentsBtn.style.borderBottomColor = 'var(--accent)';
+    pluginsBtn.style.background = 'transparent';
+    pluginsBtn.style.color = 'var(--text2)';
+    pluginsBtn.style.borderBottomColor = 'transparent';
+  }
+  loadMarketplace();
+}
+
+async function loadMarketplaceCategories() {
+  try {
+    const cats = await fetch(BASE + '/api/marketplace/categories').then(r => r.json()).catch(() => []);
+    const sel = document.getElementById('mp-category');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">All categories</option>' +
+      cats.map(c => '<option value="' + esc(c.slug) + '">' + esc(c.name) + ' (' + (c.pluginCount + c.agentCount) + ')</option>').join('');
+  } catch {}
+}
+
+async function loadMarketplace() {
+  const el = document.getElementById('mp-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:60px 20px;"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>';
+
+  await loadMarketplaceCategories();
+
+  const search = document.getElementById('mp-search')?.value?.trim() || '';
+  const kind = document.getElementById('mp-kind')?.value || '';
+  const category = document.getElementById('mp-category')?.value || '';
+
+  try {
+    // Load stats
+    const stats = await fetch(BASE + '/api/marketplace/stats').then(r => r.json()).catch(() => null);
+    const statsEl = document.getElementById('mp-stats');
+    if (statsEl && stats) {
+      statsEl.textContent = stats.totalPlugins + ' plugins · ' + stats.totalAgents + ' agents · ' + (stats.totalDownloads >= 1000 ? Math.round(stats.totalDownloads/1000) + 'K' : stats.totalDownloads) + ' downloads';
+    }
+
+    if (marketplaceTab === 'plugins') {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (kind) params.set('kind', kind);
+      if (category) params.set('category', category);
+      params.set('limit', '50');
+      const data = await fetch(BASE + '/api/marketplace/plugins?' + params.toString()).then(r => r.json()).catch(() => null);
+      if (!data || !data.plugins?.length) {
+        el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><p style="color:var(--text3);font-size:13px;">No plugins found' + (search ? ' for "' + esc(search) + '"' : '') + '.</p></div>';
+        return;
+      }
+      el.innerHTML = '';
+      for (const p of data.plugins) {
+        const d = document.createElement('div');
+        d.className = 'card-sm';
+        d.innerHTML = \`
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
+                <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${esc(p.kind)}</span>
+                <span style="font-size:11px;color:var(--text3);">v\${esc(p.version)}</span>
+                \${p.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
+              </div>
+              <p style="font-size:12px;color:var(--text2);margin-bottom:4px;">\${esc(p.description || '')}</p>
+              <div style="font-size:11px;color:var(--text3);">
+                \${esc(p.slug)} · \${p.downloads} downloads
+                \${p.author ? ' · by ' + esc(p.author) : ''}
+                \${p.category ? ' · ' + esc(p.category) : ''}
+              </div>
+            </div>
+            <button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="installMarketplacePlugin('\${esc(p.slug)}', '\${esc(p.kind)}')">Install</button>
+          </div>
+        \`;
+        el.appendChild(d);
+      }
+    } else {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (category) params.set('category', category);
+      params.set('limit', '50');
+      const data = await fetch(BASE + '/api/marketplace/agents?' + params.toString()).then(r => r.json()).catch(() => null);
+      if (!data || !data.agents?.length) {
+        el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p style="color:var(--text3);font-size:13px;">No agents found' + (search ? ' for "' + esc(search) + '"' : '') + '.</p></div>';
+        return;
+      }
+      el.innerHTML = '';
+      for (const a of data.agents) {
+        const d = document.createElement('div');
+        d.className = 'card-sm';
+        d.innerHTML = \`
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="font-size:13px;font-weight:600;">\${esc(a.name)}</span>
+                \${a.provider ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(a.provider) + '</span>' : ''}
+                <span style="font-size:11px;color:var(--text3);">v\${esc(a.version)}</span>
+                \${a.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(a.rating)) + '</span>' : ''}
+              </div>
+              <p style="font-size:12px;color:var(--text2);margin-bottom:4px;">\${esc(a.description || '')}</p>
+              <div style="font-size:11px;color:var(--text3);">
+                \${esc(a.slug)} · \${a.downloads} downloads
+                \${a.model ? ' · ' + esc(a.model) : ''}
+                \${a.author ? ' · by ' + esc(a.author) : ''}
+                \${a.tags?.length ? ' · [' + a.tags.map(t => esc(t)).join(', ') + ']' : ''}
+              </div>
+            </div>
+            <button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="importMarketplaceAgent('\${esc(a.slug)}')">Import</button>
+          </div>
+        \`;
+        el.appendChild(d);
+      }
+    }
+  } catch (e) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 20px;"><p style="color:#f87171;font-size:13px;">Failed to load marketplace: ' + esc(e.message) + '</p><p style="font-size:12px;color:var(--text3);margin-top:6px;">Make sure the Cortex server can reach https://cortexprism.io</p></div>';
+  }
+}
+
+async function installMarketplacePlugin(slug, kind) {
+  try {
+    const res = await fetch(BASE + '/api/marketplace/plugins/' + encodeURIComponent(slug) + '/install', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Install failed' }));
+      toast(err.error || 'Install failed', 'error');
+      return;
+    }
+    toast('Plugin "' + slug + '" installed successfully', 'success');
+    loadMarketplace();
+  } catch (e) {
+    toast('Install error: ' + e.message, 'error');
+  }
+}
+
+async function importMarketplaceAgent(slug) {
+  try {
+    const res = await fetch(BASE + '/api/marketplace/agents/' + encodeURIComponent(slug) + '/import', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Import failed' }));
+      toast(err.error || 'Import failed', 'error');
+      return;
+    }
+    const data = await res.json();
+    toast('Agent "' + data.name + '" imported successfully', 'success');
+    loadMarketplace();
+  } catch (e) {
+    toast('Import error: ' + e.message, 'error');
+  }
 }
 
 // ── Soul ──────────────────────────────────────────────────────
