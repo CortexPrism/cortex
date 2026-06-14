@@ -17,8 +17,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Automated update system** — `cortex update` CLI command with version checking, binary replacement,
-  source git/tarball fallback, health checks, and automatic rollback
+- **Automated update system** — `cortex update` CLI command with version checking, binary
+  replacement, source git/tarball fallback, health checks, and automatic rollback
   - `cortex update` — check and apply the latest release
   - `cortex update --check` — dry-run check, no changes
   - `cortex update --channel pre` — include pre-release versions
