@@ -1,4 +1,5 @@
 import { getCoreDb } from '../../../db/client.ts';
+import { emitFileChange } from '../../../workspace/events.ts';
 
 function simpleHash(text: string): string {
   let hash = 0;
@@ -37,6 +38,10 @@ export async function logFileEdit(entry: EditLogEntry): Promise<string> {
       entry.tool,
     ],
   );
+
+  const action = entry.tool === 'file_delete' ? 'delete' : entry.tool === 'file_rename' ? 'rename' : 'write';
+  emitFileChange({ agentId: entry.agentId, filePath: entry.filePath, action });
+
   return id;
 }
 

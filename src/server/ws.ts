@@ -13,6 +13,7 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
+import { onFileChange } from '../workspace/events.ts';
 import {
   fileWriteTool,
   fileEditTool,
@@ -40,15 +41,33 @@ function send(ws: WebSocket, data: unknown): void {
   }
 }
 
+const wsClients = new Set<WebSocket>();
+
+function broadcast(msg: unknown): void {
+  const data = JSON.stringify(msg);
+  for (const ws of wsClients) {
+    if (ws.readyState === WebSocket.OPEN) {
+      try { ws.send(data); } catch { /* client may have disconnected */ }
+    }
+  }
+}
+
 export function handleWebSocket(req: Request): Response {
   const { socket: ws, response } = Deno.upgradeWebSocket(req);
+  wsClients.add(ws);
 
   let sessionId: string | null = null;
   let sessionDbRef: Awaited<ReturnType<typeof initSessionDb>> | null = null;
 
+  const unsubscribe = onFileChange((event) => {
+    broadcast({ type: 'file_change', ...event });
+  });
+
   ws.onopen = () => send(ws, { type: 'connected' });
 
   ws.onclose = async () => {
+    wsClients.delete(ws);
+    unsubscribe();
     if (sessionId && sessionDbRef) {
       await Promise.allSettled([
         closeSession(sessionId),

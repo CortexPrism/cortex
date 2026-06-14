@@ -1,6 +1,6 @@
 import { listSessions, getSession } from '../db/sessions.ts';
 import { getSessionEvents } from '../db/lens.ts';
-import { getLensDb } from '../db/client.ts';
+import { getLensDb, type InValue } from '../db/client.ts';
 import { listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
@@ -697,34 +697,50 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // ── Workspace undo/redo/history endpoints ────────────────
 
-  // POST /api/workspace/agents/:agentId/undo
-  const wsUndoMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/undo$/);
-  if (req.method === 'POST' && wsUndoMatch) {
-    const agentId = wsUndoMatch[1];
+  async function applyUndo(agentId?: string): Promise<Response> {
     const db = await (await import('../db/client.ts')).getCoreDb();
-    const row = await db.get<{ before_text: string; file_path: string }>(
-      `SELECT before_text, file_path FROM file_edit_log
-       WHERE agent_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [agentId],
-    );
+    let query = `SELECT before_text, file_path FROM file_edit_log WHERE 1=1`;
+    const params: InValue[] = [];
+    if (agentId) { query += ` AND agent_id = ?`; params.push(agentId); }
+    query += ` ORDER BY created_at DESC LIMIT 1`;
+    const row = await db.get<{ before_text: string; file_path: string }>(query, params);
     if (!row) return err('No edits to undo', 404);
     await Deno.writeTextFile(row.file_path, row.before_text);
     return json({ ok: true, path: row.file_path });
   }
 
-  // POST /api/workspace/agents/:agentId/redo
-  const wsRedoMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/redo$/);
-  if (req.method === 'POST' && wsRedoMatch) {
-    const agentId = wsRedoMatch[1];
+  async function applyRedo(agentId?: string): Promise<Response> {
     const db = await (await import('../db/client.ts')).getCoreDb();
-    const row = await db.get<{ after_text: string; file_path: string }>(
-      `SELECT after_text, file_path FROM file_edit_log
-       WHERE agent_id = ? AND tool = 'file_undo' ORDER BY created_at DESC LIMIT 1`,
-      [agentId],
-    );
+    let query = `SELECT after_text, file_path FROM file_edit_log WHERE tool = 'file_undo'`;
+    const params: InValue[] = [];
+    if (agentId) { query += ` AND agent_id = ?`; params.push(agentId); }
+    query += ` ORDER BY created_at DESC LIMIT 1`;
+    const row = await db.get<{ after_text: string; file_path: string }>(query, params);
     if (!row) return err('No edits to redo', 404);
     await Deno.writeTextFile(row.file_path, row.after_text);
     return json({ ok: true, path: row.file_path });
+  }
+
+  // POST /api/workspace/undo — global workspace undo
+  if (req.method === 'POST' && path === '/api/workspace/undo') {
+    return await applyUndo();
+  }
+
+  // POST /api/workspace/redo — global workspace redo
+  if (req.method === 'POST' && path === '/api/workspace/redo') {
+    return await applyRedo();
+  }
+
+  // POST /api/workspace/agents/:agentId/undo
+  const wsUndoMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/undo$/);
+  if (req.method === 'POST' && wsUndoMatch) {
+    return await applyUndo(wsUndoMatch[1]);
+  }
+
+  // POST /api/workspace/agents/:agentId/redo
+  const wsRedoMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/redo$/);
+  if (req.method === 'POST' && wsRedoMatch) {
+    return await applyRedo(wsRedoMatch[1]);
   }
 
   // GET /api/workspace/history?path=&agentId=&limit=

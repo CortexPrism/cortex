@@ -1,6 +1,7 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
 import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
 import { gitAutoCommit, gitEnsureBranch } from '../../../workspace/git.ts';
+import { logFileEdit } from './common.ts';
 
 export const fileRenameTool: Tool = {
   definition: {
@@ -49,6 +50,16 @@ export const fileRenameTool: Tool = {
 
       await gitEnsureBranch(workspaceDir, `workspace/${context.agentId}`);
       await gitAutoCommit(workspaceDir, context.agentId, src, 'file_rename');
+
+      await logFileEdit({
+        agentId: context.agentId,
+        sessionId: context.sessionId,
+        workspaceType: workspace,
+        filePath: src,
+        beforeText: '',
+        afterText: `renamed to ${dest}`,
+        tool: 'file_rename',
+      });
 
       return {
         toolName: 'file_rename',

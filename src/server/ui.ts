@@ -437,6 +437,7 @@ const HTML = `<!DOCTYPE html>
             <button class="btn btn-ghost" onclick="editorUndo()" style="padding:2px 8px;font-size:11px;" data-tip="Undo">↩ Undo</button>
             <button class="btn btn-ghost" onclick="editorRedo()" style="padding:2px 8px;font-size:11px;" data-tip="Redo">↪ Redo</button>
             <span id="editor-modified" style="color:#fbbf24;"></span>
+            <button class="btn btn-ghost" onclick="editorDeleteFile()" style="padding:2px 8px;font-size:11px;color:#f87171;" data-tip="Delete file">✕ Delete</button>
             <button class="btn btn-primary" onclick="editorSave()" style="padding:3px 12px;font-size:11px;">Save</button>
           </div>
         </div>
@@ -968,6 +969,14 @@ function connect() {
       case 'error':
         document.getElementById('thinking-bar').style.display = 'none';
         appendBubble('error', msg.error);
+        break;
+      case 'file_change':
+        if (currentPage === 'editor') {
+          editorRefreshTree();
+          if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split('/').pop()) {
+            editorOpenFile(editorCurrentFile);
+          }
+        }
         break;
     }
   };
@@ -2429,11 +2438,32 @@ async function editorSave() {
   }
 }
 
+async function editorDeleteFile() {
+  if (!editorCurrentFile) return;
+  if (!confirm('Delete ' + editorCurrentFile + '?')) return;
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(editorCurrentFile)
+    : BASE + '/api/workspace/files/' + encodeURIComponent(editorCurrentFile);
+  try {
+    const res = await fetch(url, { method: 'DELETE' });
+    if (res.ok) {
+      toast('File deleted', 'success');
+      editorCloseTab(editorCurrentFile);
+      editorRefreshTree();
+    } else {
+      toast('Failed to delete file', 'error');
+    }
+  } catch (e) {
+    toast('Delete error: ' + e.message, 'error');
+  }
+}
+
 async function editorUndo() {
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   const url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/undo'
-    : BASE + '/api/workspace/history?limit=1';
+    : BASE + '/api/workspace/undo';
   try {
     const res = await fetch(url, { method: 'POST' });
     if (res.ok) {
@@ -2451,7 +2481,7 @@ async function editorRedo() {
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   const url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/redo'
-    : BASE + '/api/workspace/history?limit=1';
+    : BASE + '/api/workspace/redo';
   try {
     const res = await fetch(url, { method: 'POST' });
     if (res.ok) {

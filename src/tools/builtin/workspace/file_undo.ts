@@ -25,23 +25,25 @@ export const fileUndoTool: Tool = {
 
   async execute(args: Record<string, unknown>, context: ToolContext): Promise<ToolCallResult> {
     const start = Date.now();
+    const rawPath = String(args.path ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
 
     try {
       const db = await getCoreDb();
       const workspaceType = workspace;
 
+      let query = `SELECT id, before_text, after_text, file_path FROM file_edit_log
+         WHERE agent_id = ? AND workspace_type = ?`;
+      const params: string[] = [context.agentId, workspaceType];
+      if (rawPath) { query += ` AND file_path = ?`; params.push(rawPath); }
+      query += ` ORDER BY created_at DESC LIMIT 1`;
+
       const row = await db.get<{
         id: string;
         before_text: string;
         after_text: string;
         file_path: string;
-      }>(
-        `SELECT id, before_text, after_text, file_path FROM file_edit_log
-         WHERE agent_id = ? AND workspace_type = ?
-         ORDER BY created_at DESC LIMIT 1`,
-        [context.agentId, workspaceType],
-      );
+      }>(query, params);
 
       if (!row) throw new Error('No edits found to undo');
 
@@ -106,24 +108,25 @@ export const fileRedoTool: Tool = {
 
   async execute(args: Record<string, unknown>, context: ToolContext): Promise<ToolCallResult> {
     const start = Date.now();
+    const rawPath = String(args.path ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
 
     try {
       const db = await getCoreDb();
       const workspaceType = workspace;
 
-      // Find the most recent undo entry
+      let query = `SELECT id, before_text, after_text, file_path FROM file_edit_log
+         WHERE agent_id = ? AND workspace_type = ? AND tool = 'file_undo'`;
+      const params: string[] = [context.agentId, workspaceType];
+      if (rawPath) { query += ` AND file_path = ?`; params.push(rawPath); }
+      query += ` ORDER BY created_at DESC LIMIT 1`;
+
       const row = await db.get<{
         id: string;
         before_text: string;
         after_text: string;
         file_path: string;
-      }>(
-        `SELECT id, before_text, after_text, file_path FROM file_edit_log
-         WHERE agent_id = ? AND workspace_type = ? AND tool = 'file_undo'
-         ORDER BY created_at DESC LIMIT 1`,
-        [context.agentId, workspaceType],
-      );
+      }>(query, params);
 
       if (!row) throw new Error('No undo entries found to redo');
 
