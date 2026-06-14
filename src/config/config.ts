@@ -16,6 +16,39 @@ export interface RouterConfig {
   cascade: Array<{ provider: ProviderKind; model: string }>;
 }
 
+/** Defines a named, selectable agent with its own identity, model, tools, and behaviour. */
+export interface AgentConfig {
+  id: string;
+  name: string;
+  description?: string;
+  /** Inline soul content (takes precedence over soulFile) */
+  soul?: string;
+  /** Path to a SOUL.md file */
+  soulFile?: string;
+  /** Path to a USER.md file */
+  userFile?: string;
+  /** Path to a MEMORY.md file */
+  memoryFile?: string;
+  /** Additional system prompt appended to the soul */
+  systemPrompt?: string;
+  /** Override the default provider for this agent */
+  provider?: ProviderKind;
+  /** Override the model for this agent */
+  model?: string;
+  /** Override max turns */
+  maxTurns?: number;
+  /** Model temperature (0–2) */
+  temperature?: number;
+  /** Tool allow-list: empty or undefined means all available tools */
+  tools?: string[];
+  /** Per-agent router cascade (overrides global router when set) */
+  router?: RouterConfig;
+  /** Categorisation tags */
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CortexConfig {
   version: number;
   defaultProvider: ProviderKind;
@@ -26,6 +59,10 @@ export interface CortexConfig {
     streamOutput: boolean;
   };
   router: RouterConfig;
+  /** Named agent registry */
+  agents: Record<string, AgentConfig>;
+  /** Currently selected/default agent ID */
+  defaultAgent: string;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -46,6 +83,8 @@ const DEFAULT_CONFIG: CortexConfig = {
     confidenceThreshold: 0.7,
     cascade: [],
   },
+  agents: {},
+  defaultAgent: 'default',
 };
 
 let _config: CortexConfig | null = null;
@@ -64,6 +103,20 @@ export async function loadConfig(): Promise<CortexConfig> {
 }
 
 export async function saveConfig(config: CortexConfig): Promise<void> {
+  if (!config.agents) config.agents = {};
+  if (!config.defaultAgent) config.defaultAgent = 'default';
+  // Ensure default agent always exists in saved config
+  if (!config.agents['default']) {
+    config.agents['default'] = {
+      id: 'default',
+      name: config.agent?.name || 'Cortex',
+      description: 'Default general-purpose agent using the system soul files',
+      maxTurns: config.agent?.maxTurns || 50,
+      tools: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
   await Deno.mkdir(PATHS.configDir, { recursive: true });
   await Deno.writeTextFile(PATHS.configFile, JSON.stringify(config, null, 2));
   _config = config;

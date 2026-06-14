@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { isFirstRun, loadConfig } from '../config/config.ts';
+import type { AgentConfig } from '../config/config.ts';
 import { buildProvider, buildCascadeRouter } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { initSessionDb } from '../db/migrate.ts';
@@ -10,11 +11,13 @@ import { loadSoulContext, buildSystemPrompt, ensureSoulFile } from '../agent/sou
 import { createSession, closeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { ToolRegistry } from '../tools/registry.ts';
+import type { Tool } from '../tools/types.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
+import { getDefaultAgent, loadAgentIdentity, listAgents } from '../agent/manager.ts';
 
 function makeSessionId(): string {
   return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -39,8 +42,10 @@ export const chatCommand = new Command()
   .description('Start an interactive chat session with Cortex')
   .option('-m, --model <model:string>', 'Override the model for this session')
   .option('-p, --provider <provider:string>', 'Override the provider for this session')
+  .option('-a, --agent <agent:string>', 'Use a specific agent identity')
+  .option('--list-agents', 'List available agents and exit')
   .option('--no-stream', 'Disable streaming output')
-  .action(async (options: { model?: string; provider?: string; stream?: boolean }) => {
+  .action(async (options: { model?: string; provider?: string; agent?: string; listAgents?: boolean; stream?: boolean }) => {
     let config = await loadConfig();
 
     if (await isFirstRun()) {
@@ -49,8 +54,38 @@ export const chatCommand = new Command()
       await runMigrations();
     }
 
+    // List agents and exit
+    if (options.listAgents) {
+      const agents = await listAgents();
+      console.log(bold('\n  Available Agents:'));
+      for (const a of agents) {
+        const active = config.defaultAgent === a.id ? green(' ●') : dim(' ○');
+        const p = a.provider ? ` [${a.provider}/${a.model || '?'}]` : '';
+        console.log(`  ${active}  ${bold(a.name)} ${dim(`(${a.id})`)}${p}`);
+      }
+      console.log('');
+      Deno.exit(0);
+    }
+
+    // Resolve agent
+    let agent: AgentConfig;
+    if (options.agent) {
+      const { getAgent } = await import('../agent/manager.ts');
+      const found = await getAgent(options.agent);
+      if (!found) {
+        console.error(red(`  Agent "${options.agent}" not found. Use --list-agents to see available agents.`));
+        Deno.exit(1);
+      }
+      agent = found;
+    } else {
+      agent = await getDefaultAgent();
+    }
+
+    // Apply agent overrides
     if (options.provider) {
       config = { ...config, defaultProvider: options.provider as never };
+    } else if (agent.provider) {
+      config = { ...config, defaultProvider: agent.provider as never };
     }
 
     let provider;
@@ -61,17 +96,21 @@ export const chatCommand = new Command()
       Deno.exit(1);
     }
     const activeProvider = provider!;
+    const model = options.model ?? agent.model ?? config.providers[config.defaultProvider]?.model ?? 'unknown';
 
-    const activeConfig = config.providers[config.defaultProvider]!;
-    const model = options.model ?? activeConfig.model;
     const cascadeRouter = buildCascadeRouter(config);
     const effectiveProvider = cascadeRouter ?? activeProvider;
     const sid = makeSessionId();
     const sessionDb = await initSessionDb(sid);
 
-    await ensureSoulFile();
-    const { soul, user, memory } = await loadSoulContext();
-    const systemPrompt = buildSystemPrompt(soul, undefined, user, memory);
+    // Load agent identity
+    const identity = await loadAgentIdentity(agent);
+    const systemPrompt = buildSystemPrompt(
+      identity.soul,
+      agent.systemPrompt,
+      identity.user,
+      identity.memory,
+    );
 
     await createSession(sid, 'cli');
     const sessionStart = new Date().toISOString();
@@ -80,17 +119,24 @@ export const chatCommand = new Command()
       session_id: sid,
       actor: 'user',
       action: 'session_start',
-      summary: `CLI session started with ${activeProvider.name}/${model}`,
+      summary: `CLI session started with agent "${agent.name}" / ${activeProvider.name}/${model}`,
       started_at: sessionStart,
     });
 
     const embedder = buildEmbedder(config);
 
+    // Build tool registry respecting agent's tool allow-list
     const registry = new ToolRegistry();
-    registry.register(fileReadTool);
-    registry.register(webSearchTool);
-    registry.register(shellTool);
-    registry.register(codeExecTool);
+    const allTools: Record<string, Tool> = {
+      file_read: fileReadTool,
+      web_search: webSearchTool,
+      shell: shellTool,
+      code_exec: codeExecTool,
+    };
+    const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
+    for (const name of allowedTools) {
+      if (allTools[name]) registry.register(allTools[name]);
+    }
 
     const approvalGate = async (_tool: string, command: string): Promise<boolean> => {
       await Deno.stdout.write(
@@ -104,7 +150,7 @@ export const chatCommand = new Command()
       return answer === 'y' || answer === 'yes';
     };
 
-    printBanner(config.agent.name, model, activeProvider.name);
+    printBanner(agent.name, model, activeProvider.name);
 
     const useStream = options.stream !== false;
     const enc = new TextEncoder();

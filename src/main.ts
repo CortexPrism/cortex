@@ -15,6 +15,7 @@ import { soulCommand } from './cli/soul-cmd.ts';
 import { discordCommand } from './cli/discord-cmd.ts';
 import { pluginsCommand } from './cli/plugins-cmd.ts';
 import { importCommand } from './cli/import-cmd.ts';
+import { agentCommand } from './cli/agent-cmd.ts';
 
 const program = new Command()
   .name('cortex')
@@ -35,6 +36,7 @@ const program = new Command()
   .command('soul', soulCommand)
   .command('discord', discordCommand)
   .command('plugins', pluginsCommand)
-  .command('import', importCommand);
+  .command('import', importCommand)
+  .command('agent', agentCommand);
 
 await program.parse(Deno.args);

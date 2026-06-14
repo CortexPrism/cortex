@@ -5,14 +5,19 @@ import { logEvent } from '../db/lens.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { buildProvider } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
+import type { AgentConfig } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { ToolRegistry } from '../tools/registry.ts';
+import type { Tool } from '../tools/types.ts';
 import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
+import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 type WsMsg =
-  | { type: 'chat'; message: string; sessionId?: string }
+  | { type: 'chat'; message: string; sessionId?: string; agentId?: string }
+  | { type: 'new_session' }
+  | { type: 'select_agent'; agentId: string }
   | { type: 'ping' };
 
 function send(ws: WebSocket, data: unknown): void {
@@ -46,6 +51,19 @@ export function handleWebSocket(req: Request): Response {
     }
   };
 
+  // Currently selected agent ID for this session
+  let activeAgent: AgentConfig | null = null;
+
+  async function resolveAgent(agentId?: string): Promise<AgentConfig> {
+    if (agentId) {
+      const { getAgent } = await import('../agent/manager.ts');
+      const agent = await getAgent(agentId);
+      if (agent) return agent;
+    }
+    if (activeAgent) return activeAgent;
+    return await getDefaultAgent();
+  }
+
   ws.onmessage = async (event: MessageEvent) => {
     let msg: WsMsg;
     try {
@@ -60,6 +78,41 @@ export function handleWebSocket(req: Request): Response {
       return;
     }
 
+    // Select agent for this WebSocket session
+    if (msg.type === 'select_agent') {
+      const { getAgent } = await import('../agent/manager.ts');
+      const agent = await getAgent(msg.agentId);
+      if (agent) {
+        activeAgent = agent;
+        send(ws, { type: 'agent_selected', agentId: agent.id, agentName: agent.name });
+      } else {
+        send(ws, { type: 'error', error: `Agent "${msg.agentId}" not found` });
+      }
+      return;
+    }
+
+    // New session — reset session state without closing WS
+    if (msg.type === 'new_session') {
+      if (sessionId && sessionDbRef) {
+        await Promise.allSettled([
+          closeSession(sessionId),
+          logEvent({
+            event_type: 'session_end',
+            session_id: sessionId,
+            actor: 'system',
+            action: 'session_end',
+            summary: 'Session ended via new_session',
+            started_at: new Date().toISOString(),
+          }),
+        ]);
+        sessionDbRef.close();
+      }
+      sessionId = null;
+      sessionDbRef = null;
+      send(ws, { type: 'session_ended' });
+      return;
+    }
+
     if (msg.type === 'chat') {
       if (!msg.message?.trim()) {
         send(ws, { type: 'error', error: 'Empty message' });
@@ -68,8 +121,13 @@ export function handleWebSocket(req: Request): Response {
 
       try {
         const config = await loadConfig();
-        const provider = buildProvider(config);
-        const activeConfig = config.providers[config.defaultProvider]!;
+        const agent = await resolveAgent(msg.agentId);
+        activeAgent = agent;
+
+        // Resolve provider: agent-specific or default
+        const providerKind = agent.provider || config.defaultProvider;
+        const provider = buildProvider({ ...config, defaultProvider: providerKind as never });
+        const model = agent.model || config.providers[providerKind]?.model || 'unknown';
         const embedder = buildEmbedder(config);
 
         if (!sessionId) {
@@ -81,26 +139,41 @@ export function handleWebSocket(req: Request): Response {
             session_id: sessionId,
             actor: 'user',
             action: 'session_start',
-            summary: `WebSocket session started`,
+            summary: `WebSocket session started with agent "${agent.name}"`,
             started_at: new Date().toISOString(),
           });
-          send(ws, { type: 'session', sessionId });
+          send(ws, { type: 'session', sessionId, agentId: agent.id, agentName: agent.name });
         }
 
-        const { soul, user, memory } = await loadSoulContext();
-        const systemPrompt = buildSystemPrompt(soul, undefined, user, memory);
+        // Load identity from agent's soul files (or inline soul)
+        const identity = await loadAgentIdentity(agent);
+        const systemPrompt = buildSystemPrompt(
+          identity.soul,
+          agent.systemPrompt,
+          identity.user,
+          identity.memory,
+        );
 
+        // Build tool registry respecting agent's tool allow-list
         const registry = new ToolRegistry();
-        registry.register(fileReadTool);
-        registry.register(webSearchTool);
-        registry.register(codeExecTool);
+        const allTools: Record<string, Tool> = {
+          file_read: fileReadTool,
+          web_search: webSearchTool,
+          code_exec: codeExecTool,
+        };
+        const allowedTools = agent.tools?.length
+          ? agent.tools
+          : Object.keys(allTools);
+        for (const name of allowedTools) {
+          if (allTools[name]) registry.register(allTools[name]);
+        }
 
         send(ws, { type: 'start' });
 
         const result = await agentTurn({
           userMessage: msg.message,
           provider: provider!,
-          model: activeConfig.model,
+          model,
           sessionDb: sessionDbRef!,
           sessionId,
           systemPrompt,

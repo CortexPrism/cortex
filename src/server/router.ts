@@ -4,7 +4,7 @@ import { getLensDb } from '../db/client.ts';
 import { listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
-import type { CortexConfig } from '../config/config.ts';
+import type { CortexConfig, AgentConfig } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { listSkills } from '../memory/skills.ts';
 import { listPolicies } from '../security/policy.ts';
@@ -16,6 +16,14 @@ import { createJob, cancelJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
+import {
+  listAgents,
+  getAgent,
+  registerAgent,
+  updateAgent,
+  deleteAgent,
+  selectAgent,
+} from '../agent/manager.ts';
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -403,6 +411,88 @@ export async function handleApi(req: Request): Promise<Response | null> {
     await Deno.mkdir(PATHS.configDir, { recursive: true });
     await Deno.writeTextFile(PATHS.memoryFile, `\n---\n[${ts}]\n${note}\n`, { append: true });
     return json({ ok: true });
+  }
+
+  // ── Agent Manager ────────────────────────────────────────
+
+  // GET /api/agents
+  if (req.method === 'GET' && path === '/api/agents') {
+    const agents = await listAgents();
+    return json(agents);
+  }
+
+  // GET /api/agents/current
+  if (req.method === 'GET' && path === '/api/agents/current') {
+    const { getDefaultAgent } = await import('../agent/manager.ts');
+    const agent = await getDefaultAgent();
+    const config = await loadConfig();
+    return json({
+      ...agent,
+      isDefault: config.defaultAgent === agent.id,
+      provider: config.defaultProvider,
+      model: agent.model || config.providers[config.defaultProvider]?.model || 'unknown',
+    });
+  }
+
+  // GET /api/agents/:id
+  const agentGetMatch = path.match(/^\/api\/agents\/([^/]+)$/);
+  if (req.method === 'GET' && agentGetMatch) {
+    const agent = await getAgent(agentGetMatch[1]);
+    if (!agent) return notFound('Agent not found');
+    return json(agent);
+  }
+
+  // GET /api/agents/:id/identity  — loaded soul/user/memory
+  const agentIdentityMatch = path.match(/^\/api\/agents\/([^/]+)\/identity$/);
+  if (req.method === 'GET' && agentIdentityMatch) {
+    const agent = await getAgent(agentIdentityMatch[1]);
+    if (!agent) return notFound('Agent not found');
+    const { loadAgentIdentity } = await import('../agent/manager.ts');
+    const identity = await loadAgentIdentity(agent);
+    return json(identity);
+  }
+
+  // POST /api/agents — create
+  if (req.method === 'POST' && path === '/api/agents') {
+    const body = await req.json() as Omit<AgentConfig, 'id' | 'createdAt' | 'updatedAt'> & { id?: string };
+    try {
+      const agent = await registerAgent(body);
+      return json(agent, 201);
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
+  }
+
+  // PUT /api/agents/:id — update
+  if (req.method === 'PUT' && agentGetMatch) {
+    const body = await req.json() as Partial<Omit<AgentConfig, 'id' | 'createdAt'>>;
+    try {
+      const agent = await updateAgent(agentGetMatch[1], body);
+      return json(agent);
+    } catch (e) {
+      return err((e as Error).message, 404);
+    }
+  }
+
+  // POST /api/agents/:id/select — set as active
+  const agentSelectMatch = path.match(/^\/api\/agents\/([^/]+)\/select$/);
+  if (req.method === 'POST' && agentSelectMatch) {
+    try {
+      await selectAgent(agentSelectMatch[1]);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 404);
+    }
+  }
+
+  // DELETE /api/agents/:id
+  if (req.method === 'DELETE' && agentGetMatch) {
+    try {
+      await deleteAgent(agentGetMatch[1]);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
 
   // ── Logs ─────────────────────────────────────────────────

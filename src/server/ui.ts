@@ -224,6 +224,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
     </button>
+    <button class="nav-item" onclick="showPage('agents');closeMobileSidebar()" id="nav-agents">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Agents
+    </button>
     <button class="nav-item" onclick="showPage('plugins');closeMobileSidebar()" id="nav-plugins">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Plugins
     </button>
@@ -262,9 +265,12 @@ const HTML = `<!DOCTYPE html>
       <button id="hamburger" onclick="toggleSidebar()" data-tip="Toggle sidebar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <span style="font-size:13px;font-weight:500;color:var(--text2);">Chat</span>
+      <span id="chat-agent-name" style="font-size:13px;font-weight:500;color:var(--accent2);"></span>
       <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <select id="chat-agent-select" class="inp" style="width:140px;font-size:12px;padding:5px 8px;" onchange="switchChatAgent(this.value)">
+          <option value="">Loading agents…</option>
+        </select>
         <button class="btn btn-ghost" onclick="newChat()" style="font-size:12px;padding:5px 12px;" data-tip="Start new session">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           New
@@ -456,6 +462,52 @@ const HTML = `<!DOCTYPE html>
     <div id="settings-content" style="flex:1;overflow-y:auto;padding:20px 24px;"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>
   </div>
 
+  <!-- Page: Agents -->
+  <div id="page-agents" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Agent Manager</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Manage agent identities, select active agent, define behaviours</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="showNewAgentForm()" data-tip="Create new agent">+ New Agent</button>
+        <button class="btn btn-ghost" onclick="loadAgents()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="agents-content" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <p style="color:var(--text3);font-size:13px;">Loading agents…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plugin install modal (shared) -->
+  <div id="new-agent-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:540px;max-height:90vh;overflow-y:auto;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:14px;" id="agent-modal-title">Create Agent</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name *</label><input class="inp" id="ag-name" placeholder="My Agent" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="ag-desc" placeholder="What this agent does" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider (optional override)</label>
+          <select class="inp" id="ag-provider"><option value="">Default</option><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="ollama">Ollama</option></select>
+        </div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model (optional override)</label><input class="inp" id="ag-model" placeholder="e.g. gpt-4o-mini" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature (0–2)</label><input class="inp" id="ag-temp" type="number" step="0.1" min="0" max="2" placeholder="Default" style="width:100px;" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">System Prompt (appended to soul)</label><textarea class="inp" id="ag-sysprompt" placeholder="Additional instructions…" style="resize:vertical;min-height:60px;font-size:12px;"></textarea></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tool Allow-list (comma-separated, empty=all)</label><input class="inp" id="ag-tools" placeholder="file_read, web_search, code_exec" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tags (comma-separated)</label><input class="inp" id="ag-tags" placeholder="coding, research" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Soul (inline or leave blank for default)</label><textarea class="inp" id="ag-soul" placeholder="Custom agent identity…" style="resize:vertical;min-height:80px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="submitAgentForm()" id="agent-submit-btn">Create Agent</button>
+        <button class="btn btn-ghost" onclick="hideAgentModal()">Cancel</button>
+        <span id="ag-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+      </div>
+      <input type="hidden" id="ag-edit-id" value="" />
+    </div>
+  </div>
+
   <!-- Page: Plugins -->
   <div id="page-plugins" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -630,6 +682,38 @@ function newChat() {
   }
 }
 
+// ── Agent selector ──────────────────────────────
+let currentAgentId = null;
+
+async function loadAgentSelector() {
+  const sel = document.getElementById('chat-agent-select');
+  if (!sel) return;
+  try {
+    const agents = await fetch(BASE + '/api/agents').then(r => r.json());
+    const current = await fetch(BASE + '/api/agents/current').then(r => r.json());
+    const activeId = current?.id || 'default';
+    currentAgentId = activeId;
+    document.getElementById('chat-agent-name').textContent = current?.name || 'Cortex';
+    sel.innerHTML = agents.map(a =>
+      \`<option value="\${a.id}" \${a.id === activeId ? 'selected' : ''}>\${esc(a.name)}\${a.id === 'default' ? ' (default)' : ''}</option>\`
+    ).join('');
+    // If more than 1 agent, show the selector; otherwise hide it
+    sel.style.display = agents.length > 1 ? 'inline-block' : 'none';
+  } catch { /* ignore */ }
+}
+
+function switchChatAgent(agentId) {
+  if (!agentId) return;
+  currentAgentId = agentId;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'select_agent', agentId }));
+  }
+  // Also update the header with the selected agent's name
+  const sel = document.getElementById('chat-agent-select');
+  const name = sel.options[sel.selectedIndex]?.text || agentId;
+  document.getElementById('chat-agent-name').textContent = name;
+}
+
 // ── Markdown ────────────────────────────────────────────────
 marked.setOptions({ breaks: true, gfm: true });
 function md(text) { return marked.parse(text || ''); }
@@ -646,7 +730,18 @@ function connect() {
       case 'session':
         sessionId = msg.sessionId;
         document.getElementById('chat-session-id').textContent = sessionId ? sessionId.slice(-12) : '';
+        if (msg.agentName) {
+          document.getElementById('chat-agent-name').textContent = msg.agentName;
+        }
         loadSessionsSidebar();
+        break;
+      case 'agent_selected':
+        document.getElementById('chat-agent-name').textContent = msg.agentName;
+        toast('Switched to agent: ' + msg.agentName, 'info');
+        break;
+      case 'session_ended':
+        sessionId = null;
+        document.getElementById('chat-session-id').textContent = '';
         break;
       case 'start':
         agentRaw = '';
@@ -726,7 +821,7 @@ function sendMessage() {
   const text = el.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
   appendBubble('user', text);
-  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId }));
+  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId }));
   el.value = '';
   el.style.height = 'auto';
 }
@@ -742,7 +837,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['status','chat','lens','memory','jobs','skills','policies','analytics','sessions','settings','plugins','soul','cron','logs'];
+const PAGES = ['status','chat','lens','memory','jobs','skills','policies','analytics','sessions','settings','agents','plugins','soul','cron','logs'];
 function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
@@ -1365,6 +1460,155 @@ async function saveProvider(kind) {
   loadSettings();
 }
 
+// ── Agents ───────────────────────────────────────────────────
+async function loadAgents() {
+  const el = document.getElementById('agents-content');
+  if (!el) return;
+  el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><div class="skeleton" style="width:200px;height:20px;margin-bottom:10px;"></div><div class="skeleton" style="width:300px;height:14px;"></div></div>';
+  try {
+    const [agents, currentRes] = await Promise.all([
+      fetch(BASE + '/api/agents').then(r => r.json()).catch(() => []),
+      fetch(BASE + '/api/agents/current').then(r => r.json()).catch(() => null),
+    ]);
+    const currentAgentId = currentRes?.id || 'default';
+    if (!agents.length) {
+      el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p style="color:var(--text3);font-size:13px;">No custom agents yet.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Click "+ New Agent" to create one.</p></div>';
+      return;
+    }
+    el.innerHTML = agents.map(a => {
+      const isActive = a.id === currentAgentId;
+      const provider = a.provider ? \`<span style="color:var(--text3);font-size:11px;">\${esc(a.provider)}/\${esc(a.model || '?')}</span>\` : '';
+      const tags = a.tags?.length ? a.tags.map(t => \`<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);font-size:10px;">\${esc(t)}</span>\`).join('') : '';
+      const toolCount = a.tools?.length || 0;
+      return \`<div class="card" style="\${isActive ? 'border-color:rgba(99,102,241,0.3);' : ''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span style="font-size:14px;font-weight:600;">\${esc(a.name)}</span>
+              <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);font-size:10px;">\${esc(a.id)}</span>
+              \${isActive ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">● active</span>' : ''}
+            </div>
+            \${a.description ? \`<p style="font-size:12px;color:var(--text2);margin-bottom:6px;">\${esc(a.description)}</p>\` : ''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+              \${provider}
+              \${a.temperature != null ? \`<span style="color:var(--text3);font-size:11px;">temp \${a.temperature}</span>\` : ''}
+              \${toolCount > 0 ? \`<span style="color:var(--text3);font-size:11px;">\${toolCount} tool(s)</span>\` : '<span style="color:var(--text3);font-size:11px;">all tools</span>'}
+              \${a.soul ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--accent2);font-size:10px;">custom soul</span>' : ''}
+              \${tags}
+            </div>
+            \${a.systemPrompt ? \`<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(a.systemPrompt)}</div>\` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">
+            \${!isActive ? \`<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent('\${a.id}')">Activate</button>\` : ''}
+            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent('\${a.id}')">Edit</button>
+            \${a.id !== 'default' ? \`<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent('\${a.id}')">✕</button>\` : ''}
+          </div>
+        </div>
+      </div>\`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = \`<p style="color:var(--text3);font-size:13px;">Error loading agents: \${e.message}</p>\`;
+  }
+}
+
+async function selectAgent(id) {
+  const res = await fetch(BASE + '/api/agents/' + encodeURIComponent(id) + '/select', { method: 'POST' });
+  if (res.ok) { toast('Agent activated', 'success'); loadAgents(); }
+  else { toast('Failed to activate agent', 'error'); }
+}
+
+async function deleteAgent(id) {
+  if (!confirm(\`Delete agent "\${id}"? This cannot be undone.\`)) return;
+  const res = await fetch(BASE + '/api/agents/' + encodeURIComponent(id), { method: 'DELETE' });
+  if (res.ok) { toast('Agent deleted', 'success'); loadAgents(); }
+  else {
+    const data = await res.json();
+    toast(data.error || 'Failed to delete agent', 'error');
+  }
+}
+
+function showNewAgentForm() {
+  document.getElementById('agent-modal-title').textContent = 'Create Agent';
+  document.getElementById('agent-submit-btn').textContent = 'Create Agent';
+  document.getElementById('ag-edit-id').value = '';
+  ['ag-name','ag-desc','ag-model','ag-sysprompt','ag-tools','ag-tags','ag-soul'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ag-provider').value = '';
+  document.getElementById('ag-temp').value = '';
+  document.getElementById('ag-status').textContent = '';
+  document.getElementById('new-agent-modal').style.display = 'flex';
+}
+
+async function editAgent(id) {
+  const res = await fetch(BASE + '/api/agents/' + encodeURIComponent(id));
+  if (!res.ok) { toast('Failed to load agent', 'error'); return; }
+  const a = await res.json();
+  document.getElementById('agent-modal-title').textContent = 'Edit Agent: ' + a.name;
+  document.getElementById('agent-submit-btn').textContent = 'Save Changes';
+  document.getElementById('ag-edit-id').value = a.id;
+  document.getElementById('ag-name').value = a.name || '';
+  document.getElementById('ag-desc').value = a.description || '';
+  document.getElementById('ag-provider').value = a.provider || '';
+  document.getElementById('ag-model').value = a.model || '';
+  document.getElementById('ag-temp').value = a.temperature != null ? a.temperature : '';
+  document.getElementById('ag-sysprompt').value = a.systemPrompt || '';
+  document.getElementById('ag-tools').value = (a.tools || []).join(', ');
+  document.getElementById('ag-tags').value = (a.tags || []).join(', ');
+  document.getElementById('ag-soul').value = a.soul || '';
+  document.getElementById('ag-status').textContent = '';
+  document.getElementById('new-agent-modal').style.display = 'flex';
+}
+
+function hideAgentModal() {
+  document.getElementById('new-agent-modal').style.display = 'none';
+}
+
+async function submitAgentForm() {
+  const name = document.getElementById('ag-name').value.trim();
+  if (!name) { document.getElementById('ag-status').textContent = 'Name is required.'; return; }
+  const editId = document.getElementById('ag-edit-id').value;
+  const tools = document.getElementById('ag-tools').value.trim();
+  const tags = document.getElementById('ag-tags').value.trim();
+  const temp = document.getElementById('ag-temp').value.trim();
+  const body = {
+    name,
+    description: document.getElementById('ag-desc').value.trim() || undefined,
+    provider: document.getElementById('ag-provider').value || undefined,
+    model: document.getElementById('ag-model').value.trim() || undefined,
+    temperature: temp ? Number(temp) : undefined,
+    systemPrompt: document.getElementById('ag-sysprompt').value.trim() || undefined,
+    tools: tools ? tools.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+    tags: tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+    soul: document.getElementById('ag-soul').value.trim() || undefined,
+  };
+
+  try {
+    let res;
+    if (editId) {
+      res = await fetch(BASE + '/api/agents/' + encodeURIComponent(editId), {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      });
+    } else {
+      res = await fetch(BASE + '/api/agents', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      });
+    }
+    if (res.ok) {
+      hideAgentModal();
+      toast(editId ? 'Agent updated' : 'Agent created', 'success');
+      loadAgents();
+    } else {
+      const data = await res.json();
+      document.getElementById('ag-status').textContent = data.error || 'Save failed.';
+    }
+  } catch (e) {
+    document.getElementById('ag-status').textContent = e.message;
+  }
+}
+
 // ── Plugins ──────────────────────────────────────────────────
 async function loadPlugins() {
   const plugins = await fetch(BASE + '/api/plugins').then(r => r.json()).catch(() => []);
@@ -1560,8 +1804,10 @@ function toggleLogAutoRefresh() {
 connect();
 loadSessionsSidebar();
 loadDaemonStatus();
+loadAgentSelector();
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
+setInterval(loadAgentSelector, 30_000);
 showPage('status');
 </script>
 </body>
