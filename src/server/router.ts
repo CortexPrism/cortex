@@ -67,10 +67,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
-  // GET /api/sessions
+  // GET /api/sessions?limit=&agentId=
   if (req.method === 'GET' && path === '/api/sessions') {
     const limit = Number(url.searchParams.get('limit') ?? 20);
-    const sessions = await listSessions(limit);
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const sessions = await listSessions(limit, agentId);
     return json(sessions);
   }
 
@@ -265,7 +266,39 @@ export async function handleApi(req: Request): Promise<Response | null> {
        FROM lens_events WHERE started_at >= ?`,
       [since],
     );
-    return json({ daily, models, totals });
+    const coreDb = await (await import('../db/client.ts')).getCoreDb();
+    const sessionsRows = await coreDb.all<{ id: string; agent_id: string }>(
+      `SELECT id, agent_id FROM sessions`,
+    );
+    const agentMap = new Map<string, string>();
+    for (const s of sessionsRows) agentMap.set(s.id, s.agent_id);
+
+    const rawEvents = await db.all<{ session_id: string; event_type: string; tokens_in: number; tokens_out: number; cost_usd: number }>(
+      `SELECT session_id, event_type, COALESCE(tokens_in,0) as tokens_in, COALESCE(tokens_out,0) as tokens_out, COALESCE(cost_usd,0) as cost_usd
+       FROM lens_events WHERE started_at >= ?`,
+      [since],
+    );
+
+    const agentStats = new Map<string, { sessions: Set<string>; llmCalls: number; tokensIn: number; tokensOut: number; cost: number }>();
+    for (const ev of rawEvents) {
+      const aid = agentMap.get(ev.session_id) || 'unknown';
+      let stat = agentStats.get(aid);
+      if (!stat) { stat = { sessions: new Set(), llmCalls: 0, tokensIn: 0, tokensOut: 0, cost: 0 }; agentStats.set(aid, stat); }
+      stat.sessions.add(ev.session_id);
+      if (ev.event_type === 'llm_call') stat.llmCalls++;
+      stat.tokensIn += ev.tokens_in;
+      stat.tokensOut += ev.tokens_out;
+      stat.cost += ev.cost_usd;
+    }
+    const perAgent = Array.from(agentStats.entries()).map(([agentId, st]) => ({
+      agent_id: agentId,
+      sessions: st.sessions.size,
+      llm_calls: st.llmCalls,
+      tokens_in: st.tokensIn,
+      tokens_out: st.tokensOut,
+      cost_usd: st.cost,
+    })).sort((a, b) => b.cost_usd - a.cost_usd);
+    return json({ daily, models, totals, perAgent });
   }
 
   // GET /api/system

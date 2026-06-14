@@ -3,6 +3,7 @@ import { getCoreDb } from './client.ts';
 export interface SessionRow {
   id: string;
   name: string | null;
+  agent_id: string;
   channel: string;
   status: string;
   turn_count: number;
@@ -15,6 +16,7 @@ export async function createSession(
   id: string,
   channel = 'cli',
   name?: string,
+  agentId?: string,
 ): Promise<void> {
   const db = await getCoreDb();
   const existing = await db.get<{ id: string }>(
@@ -23,9 +25,9 @@ export async function createSession(
   );
   if (existing) return;
   await db.run(
-    `INSERT INTO sessions (id, name, channel, status, turn_count, started_at)
-     VALUES (?, ?, ?, 'active', 0, datetime('now'))`,
-    [id, name ?? null, channel],
+    `INSERT INTO sessions (id, name, agent_id, channel, status, turn_count, started_at)
+     VALUES (?, ?, ?, ?, 'active', 0, datetime('now'))`,
+    [id, name ?? null, agentId ?? 'default', channel],
   );
 }
 
@@ -47,21 +49,24 @@ export async function incrementTurn(id: string): Promise<void> {
   );
 }
 
-export async function listSessions(limit = 20): Promise<SessionRow[]> {
+export async function listSessions(limit = 20, agentId?: string): Promise<SessionRow[]> {
   const db = await getCoreDb();
-  return await db.all<SessionRow>(
-    `SELECT id, name, channel, status, turn_count, started_at, last_turn_at, closed_at
-     FROM sessions
-     ORDER BY started_at DESC
-     LIMIT ?`,
-    [limit],
-  );
+  let query = `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at FROM sessions`;
+  const params: string[] = [];
+  if (agentId) { query += ` WHERE agent_id = ?`; params.push(agentId); }
+  query += ` ORDER BY started_at DESC LIMIT ?`;
+  params.push(String(limit));
+  return await db.all<SessionRow>(query, params);
+}
+
+export async function listAgentSessions(agentId: string, limit = 20): Promise<SessionRow[]> {
+  return listSessions(limit, agentId);
 }
 
 export async function getSession(id: string): Promise<SessionRow | undefined> {
   const db = await getCoreDb();
   return await db.get<SessionRow>(
-    `SELECT id, name, channel, status, turn_count, started_at, last_turn_at, closed_at
+    `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at
      FROM sessions WHERE id = ?`,
     [id],
   );

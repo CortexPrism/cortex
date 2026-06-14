@@ -558,7 +558,7 @@ const HTML = `<!DOCTYPE html>
         <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Daily Token Usage</div>
         <div style="height:220px;"><canvas id="tokens-chart"></canvas></div>
       </div>
-      <div class="card">
+      <div class="card" style="margin-bottom:16px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Per-Model Breakdown</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead><tr style="border-bottom:1px solid var(--border);">
@@ -569,6 +569,20 @@ const HTML = `<!DOCTYPE html>
             <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Cost</th>
           </tr></thead>
           <tbody id="model-table-body"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Per-Agent Breakdown</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="border-bottom:1px solid var(--border);">
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Agent</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Sessions</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">LLM Calls</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Tokens In</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Tokens Out</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Cost</th>
+          </tr></thead>
+          <tbody id="agent-table-body"></tbody>
         </table>
       </div>
     </div>
@@ -583,6 +597,9 @@ const HTML = `<!DOCTYPE html>
           <h1 style="font-size:15px;font-weight:600;">Sessions</h1>
           <p style="font-size:12px;color:var(--text3);margin-top:2px;">Browse, search, export, and delete sessions</p>
         </div>
+        <select id="sess-agent-filter" class="inp" style="width:140px;font-size:12px;" onchange="loadSessionsList()">
+          <option value="">All agents</option>
+        </select>
         <input id="sess-search" class="inp" placeholder="Search sessions…" style="width:220px;" oninput="searchSessions()" />
         <button class="btn btn-ghost" onclick="loadSessionsList()">↻ Refresh</button>
       </div>
@@ -1071,7 +1088,7 @@ function showPage(name) {
   const loaders = {
     status: loadStatus, lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
-    sessions: loadSessionsList, settings: loadSettings, plugins: loadPlugins,
+    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings, plugins: loadPlugins,
     soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
   };
   if (loaders[name]) loaders[name]();
@@ -1425,7 +1442,7 @@ async function loadAnalytics(days) {
   const data = await fetch(\`\${BASE}/api/analytics?days=\${days}\`).then(r => r.json()).catch(() => null);
   if (!data) return;
 
-  const { daily, models, totals } = data;
+  const { daily, models, totals, perAgent } = data;
 
   // Summary cards
   document.getElementById('an-sessions').textContent = totals?.sessions ?? 0;
@@ -1472,6 +1489,21 @@ async function loadAnalytics(days) {
           <td style="padding:8px 0;font-size:12px;color:#4ade80;">$\${Number(m.cost_usd).toFixed(5)}</td>
         </tr>\`).join('');
   }
+
+  // Agent usage table
+  const at = document.getElementById('agent-table-body');
+  if (at) {
+    at.innerHTML = !perAgent?.length
+      ? '<tr><td colspan="6" style="color:var(--text3);padding:12px 0;font-size:12px;">No agent usage recorded yet.</td></tr>'
+      : perAgent.map(a => \`<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 0;font-size:12px;color:var(--accent2);font-weight:500;">\${esc(a.agent_id)}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${a.sessions}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${a.llm_calls}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${fmtNum(a.tokens_in)}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${fmtNum(a.tokens_out)}</td>
+          <td style="padding:8px 0;font-size:12px;color:#4ade80;">$\${Number(a.cost_usd).toFixed(5)}</td>
+        </tr>\`).join('');
+  }
 }
 
 function fmtNum(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n); }
@@ -1480,8 +1512,20 @@ function fmtNum(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e
 let allSessions = [];
 
 async function loadSessionsList() {
-  allSessions = await fetch(BASE + '/api/sessions?limit=50').then(r => r.json()).catch(() => []);
+  const agentFilter = document.getElementById('sess-agent-filter')?.value ?? '';
+  const url = BASE + '/api/sessions?limit=50' + (agentFilter ? '&agentId=' + encodeURIComponent(agentFilter) : '');
+  allSessions = await fetch(url).then(r => r.json()).catch(() => []);
   renderSessionsList(allSessions);
+}
+
+async function loadSessionAgentFilter() {
+  try {
+    const agents = await fetch(BASE + '/api/agents').then(r => r.json());
+    const sel = document.getElementById('sess-agent-filter');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">All agents</option>' +
+      agents.map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + '</option>').join('');
+  } catch {}
 }
 
 function renderSessionsList(sessions) {
@@ -1493,6 +1537,7 @@ function renderSessionsList(sessions) {
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
+          \${s.agent_id && s.agent_id !== 'default' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
           <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':'var(--text3)'};">\${s.status}</span>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${new Date(s.started_at).toLocaleString()}</div>
@@ -1679,45 +1724,58 @@ async function loadAgents() {
   if (!el) return;
   el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><div class="skeleton" style="width:200px;height:20px;margin-bottom:10px;"></div><div class="skeleton" style="width:300px;height:14px;"></div></div>';
   try {
-    const [agents, currentRes] = await Promise.all([
+    const [agents, currentRes, sessions, workspaces] = await Promise.all([
       fetch(BASE + '/api/agents').then(r => r.json()).catch(() => []),
       fetch(BASE + '/api/agents/current').then(r => r.json()).catch(() => null),
+      fetch(BASE + '/api/sessions?limit=100').then(r => r.json()).catch(() => []),
+      fetch(BASE + '/api/workspace/agents').then(r => r.json()).catch(() => []),
     ]);
     const currentAgentId = currentRes?.id || 'default';
+    const wsMap = {};
+    for (const w of workspaces) wsMap[w.agentId] = w.workspaceDir;
+    const sessCount = {};
+    for (const s of sessions) {
+      const aid = s.agent_id || 'default';
+      sessCount[aid] = (sessCount[aid] || 0) + 1;
+    }
     if (!agents.length) {
       el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p style="color:var(--text3);font-size:13px;">No custom agents yet.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Click "+ New Agent" to create one.</p></div>';
       return;
     }
-    el.innerHTML = agents.map(a => {
-      const isActive = a.id === currentAgentId;
-      const provider = a.provider ? \`<span style="color:var(--text3);font-size:11px;">\${esc(a.provider)}/\${esc(a.model || '?')}</span>\` : '';
-      const tags = a.tags?.length ? a.tags.map(t => \`<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);font-size:10px;">\${esc(t)}</span>\`).join('') : '';
-      const toolCount = a.tools?.length || 0;
-      return \`<div class="card" style="\${isActive ? 'border-color:rgba(99,102,241,0.3);' : ''}">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-              <span style="font-size:14px;font-weight:600;">\${esc(a.name)}</span>
-              <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);font-size:10px;">\${esc(a.id)}</span>
-              \${isActive ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">● active</span>' : ''}
-            </div>
-            \${a.description ? \`<p style="font-size:12px;color:var(--text2);margin-bottom:6px;">\${esc(a.description)}</p>\` : ''}
-            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-              \${provider}
-              \${a.temperature != null ? \`<span style="color:var(--text3);font-size:11px;">temp \${a.temperature}</span>\` : ''}
-              \${toolCount > 0 ? \`<span style="color:var(--text3);font-size:11px;">\${toolCount} tool(s)</span>\` : '<span style="color:var(--text3);font-size:11px;">all tools</span>'}
-              \${a.soul ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--accent2);font-size:10px;">custom soul</span>' : ''}
-              \${tags}
-            </div>
-            \${a.systemPrompt ? \`<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(a.systemPrompt)}</div>\` : ''}
-          </div>
-          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">
-            \${!isActive ? \`<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent('\${a.id}')">Activate</button>\` : ''}
-            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent('\${a.id}')">Edit</button>
-            \${a.id !== 'default' ? \`<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent('\${a.id}')">✕</button>\` : ''}
-          </div>
-        </div>
-      </div>\`;
+    el.innerHTML = agents.map(function(a) {
+      var ac = [];
+      var cardBorder = a.id === currentAgentId ? 'border-color:rgba(99,102,241,0.3);' : '';
+      ac.push('<div class="card" style="' + cardBorder + '"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;"><div style="flex:1;min-width:0;">');
+      ac.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">');
+      ac.push('<span style="font-size:14px;font-weight:600;">' + esc(a.name) + '</span>');
+      ac.push('<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);font-size:10px;">' + esc(a.id) + '</span>');
+      if (a.id === currentAgentId) ac.push('<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">● active</span>');
+      ac.push('</div>');
+      if (a.description) ac.push('<p style="font-size:12px;color:var(--text2);margin-bottom:6px;">' + esc(a.description) + '</p>');
+      ac.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">');
+      if (a.provider) ac.push('<span style="color:var(--text3);font-size:11px;">' + esc(a.provider) + '/' + esc(a.model || '?') + '</span>');
+      if (a.temperature != null) ac.push('<span style="color:var(--text3);font-size:11px;">temp ' + a.temperature + '</span>');
+      var toolCount = a.tools ? a.tools.length : 0;
+      ac.push(toolCount > 0 ? '<span style="color:var(--text3);font-size:11px;">' + toolCount + ' tool(s)</span>' : '<span style="color:var(--text3);font-size:11px;">all tools</span>');
+      if (a.soul) ac.push('<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--accent2);font-size:10px;">custom soul</span>');
+      var sc = sessCount[a.id] || 0;
+      ac.push('<span class="badge" style="background:rgba(34,197,94,0.08);color:#4ade80;font-size:10px;">' + sc + ' session(s)</span>');
+      if (a.tags && a.tags.length) {
+        for (var ti = 0; ti < a.tags.length; ti++) {
+          ac.push('<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);font-size:10px;">' + esc(a.tags[ti]) + '</span>');
+        }
+      }
+      ac.push('</div>');
+      if (a.systemPrompt) ac.push('<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.systemPrompt) + '</div>');
+      var wsDir = wsMap[a.id] || '';
+      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">' + esc(wsDir) + '</div>');
+      ac.push('</div><div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">');
+      if (a.id !== currentAgentId) ac.push('<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent(\\'' + a.id + '\\')">Activate</button>');
+      ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
+      ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="showPage(\\'sessions\\');var f=document.getElementById(\\'sess-agent-filter\\');if(f){f.value=\\'' + a.id + '\\';loadSessionsList();}">Sessions</button>');
+      if (a.id !== 'default') ac.push('<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent(\\'' + a.id + '\\')">✕</button>');
+      ac.push('</div></div></div>');
+      return ac.join('');
     }).join('');
   } catch (e) {
     el.innerHTML = \`<p style="color:var(--text3);font-size:13px;">Error loading agents: \${e.message}</p>\`;
@@ -2107,20 +2165,63 @@ const CMD_PAGES = [
   { id:'logs', label:'Logs', icon:'📋', desc:'Filterable event log' },
 ];
 
-function filterCmdPalette(query) {
+let cmdPaletteCache = { agents: [], sessions: [] };
+
+async function filterCmdPalette(query) {
   const el = document.getElementById('cmd-results');
   const q = query.toLowerCase().trim();
-  const filtered = q ? CMD_PAGES.filter(p => p.label.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)) : CMD_PAGES;
-  if (!filtered.length) {
-    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No results found.</div>';
-    return;
-  }
-  el.innerHTML = filtered.map((p, i) =>
+
+  // Static pages
+  const pages = q ? CMD_PAGES.filter(p => p.label.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)) : CMD_PAGES;
+  let html = pages.map((p, i) =>
     '<button class="cmd-item' + (i === 0 ? ' active' : '') + '" onclick="navigateCmd(\\'' + p.id + '\\')" onmouseenter="highlightCmd(this)">' +
     '<span class="cmd-icon">' + p.icon + '</span>' +
     '<span class="cmd-label"><strong>' + p.label + '</strong><br><span style="font-size:11px;color:var(--text3);">' + p.desc + '</span></span>' +
     '</button>'
   ).join('');
+
+  // Dynamic agent/session results when query is typed
+  if (q) {
+    try {
+      const [agents, sessions] = await Promise.all([
+        fetch(BASE + '/api/agents').then(r => r.json()).catch(() => []),
+        fetch(BASE + '/api/sessions?limit=20').then(r => r.json()).catch(() => []),
+      ]);
+      cmdPaletteCache = { agents, sessions };
+
+      const matchingAgents = agents.filter(a =>
+        (a.name || '').toLowerCase().includes(q) || (a.id || '').toLowerCase().includes(q)
+      );
+      const matchingSessions = sessions.filter(s =>
+        (s.id || '').toLowerCase().includes(q)
+      );
+
+      if (matchingAgents.length) {
+        html += '<div style="padding:6px 16px;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid var(--border);">Agents</div>';
+        html += matchingAgents.slice(0, 5).map(function(a) {
+          return '<button class="cmd-item" onclick="closeCmdPalette({target:document.getElementById(\\'cmd-palette\\')});showPage(\\'agents\\');" onmouseenter="highlightCmd(this)">' +
+            '<span class="cmd-icon">👤</span>' +
+            '<span class="cmd-label"><strong>' + esc(a.name || a.id) + '</strong><br><span style="font-size:11px;color:var(--text3);">' + esc(a.id) + '</span></span>' +
+            '</button>';
+        }).join('');
+      }
+      if (matchingSessions.length) {
+        html += '<div style="padding:6px 16px;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid var(--border);">Sessions</div>';
+        html += matchingSessions.slice(0, 5).map(function(s) {
+          return '<button class="cmd-item" onclick="closeCmdPalette({target:document.getElementById(\\'cmd-palette\\')});openSession(\\'' + s.id + '\\');" onmouseenter="highlightCmd(this)">' +
+            '<span class="cmd-icon">💬</span>' +
+            '<span class="cmd-label"><strong>' + esc(s.id.slice(-20)) + '</strong><br><span style="font-size:11px;color:var(--text3);">' + (s.agent_id || 'default') + ' · ' + s.turn_count + ' turns</span></span>' +
+            '</button>';
+        }).join('');
+      }
+    } catch {}
+  }
+
+  if (!html) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No results found.</div>';
+    return;
+  }
+  el.innerHTML = html;
 }
 
 function navigateCmd(pageId) {
