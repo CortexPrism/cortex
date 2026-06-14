@@ -12,6 +12,7 @@ const HTML = `<!DOCTYPE html>
 <title>Cortex</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -135,7 +136,10 @@ const HTML = `<!DOCTYPE html>
 
   <!-- Nav -->
   <nav style="padding:8px;flex:1;overflow-y:auto;">
-    <button class="nav-item active" onclick="showPage('chat')" id="nav-chat">
+    <button class="nav-item active" onclick="showPage('status')" id="nav-status">
+      <span class="icon">🏠</span> Status
+    </button>
+    <button class="nav-item" onclick="showPage('chat')" id="nav-chat">
       <span class="icon">💬</span> Chat
     </button>
     <button class="nav-item" onclick="showPage('lens')" id="nav-lens">
@@ -152,6 +156,15 @@ const HTML = `<!DOCTYPE html>
     </button>
     <button class="nav-item" onclick="showPage('policies')" id="nav-policies">
       <span class="icon">🛡</span> Policies
+    </button>
+    <button class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
+      <span class="icon">📊</span> Analytics
+    </button>
+    <button class="nav-item" onclick="showPage('sessions')" id="nav-sessions">
+      <span class="icon">🗂</span> Sessions
+    </button>
+    <button class="nav-item" onclick="showPage('settings')" id="nav-settings">
+      <span class="icon">⚙</span> Settings
     </button>
 
     <div class="divider" style="margin:8px 4px;"></div>
@@ -264,6 +277,97 @@ const HTML = `<!DOCTYPE html>
       <p style="font-size:12px;color:var(--text3);margin-top:2px;">Cortex Policy Language rules — allow/deny by kind and pattern</p>
     </div>
     <div id="policies-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+
+  <!-- Page: Status -->
+  <div id="page-status" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">System Status</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Live overview of Cortex processes and resources</p>
+      </div>
+      <button class="btn btn-ghost" onclick="loadStatus()">↻ Refresh</button>
+    </div>
+    <div id="status-content" style="flex:1;overflow-y:auto;padding:20px 24px;"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>
+  </div>
+
+  <!-- Page: Analytics -->
+  <div id="page-analytics" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Analytics</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Token usage, cost, and session statistics</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="analytics-days" class="inp" style="width:120px;" onchange="loadAnalytics()">
+          <option value="7">7 days</option>
+          <option value="30" selected>30 days</option>
+          <option value="90">90 days</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadAnalytics()">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+        <div class="stat"><div class="stat-num" id="an-sessions">—</div><div class="stat-label">Sessions</div></div>
+        <div class="stat"><div class="stat-num" style="color:#818cf8;" id="an-tokens-in">—</div><div class="stat-label">Tokens In</div></div>
+        <div class="stat"><div class="stat-num" style="color:#34d399;" id="an-tokens-out">—</div><div class="stat-label">Tokens Out</div></div>
+        <div class="stat"><div class="stat-num" style="color:#4ade80;" id="an-cost">—</div><div class="stat-label">Est. Cost</div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Daily Token Usage</div>
+        <div style="height:220px;"><canvas id="tokens-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Per-Model Breakdown</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="border-bottom:1px solid var(--border);">
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Model</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Calls</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Tokens In</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Tokens Out</th>
+            <th style="padding:6px 0;color:var(--text3);font-weight:500;text-align:left;">Cost</th>
+          </tr></thead>
+          <tbody id="model-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Sessions -->
+  <div id="page-sessions" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <!-- List view -->
+    <div id="sessions-list-view" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;">
+          <h1 style="font-size:15px;font-weight:600;">Sessions</h1>
+          <p style="font-size:12px;color:var(--text3);margin-top:2px;">Browse, search, export, and delete sessions</p>
+        </div>
+        <input id="sess-search" class="inp" placeholder="Search sessions…" style="width:220px;" oninput="searchSessions()" />
+        <button class="btn btn-ghost" onclick="loadSessionsList()">↻ Refresh</button>
+      </div>
+      <div id="sessions-table" style="flex:1;overflow-y:auto;padding:16px 24px;"></div>
+    </div>
+    <!-- Detail view -->
+    <div id="sessions-detail-view" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <button class="btn btn-ghost" onclick="backToSessions()" style="padding:5px 10px;">← Back</button>
+        <span id="session-detail-title" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);"></span>
+        <button class="btn btn-ghost" style="margin-left:auto;font-size:12px;" onclick="exportSession(document.getElementById('session-detail-title').textContent)">⬇ Export JSON</button>
+      </div>
+      <div id="session-detail-log" style="flex:1;overflow-y:auto;padding:20px 28px;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+  </div>
+
+  <!-- Page: Settings -->
+  <div id="page-settings" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Settings</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Configure providers, API keys, agent behaviour, and model router</p>
+      </div>
+    </div>
+    <div id="settings-content" style="flex:1;overflow-y:auto;padding:20px 24px;"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>
   </div>
 
 </main>
@@ -386,7 +490,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','lens','memory','jobs','skills','policies'];
+const PAGES = ['status','chat','lens','memory','jobs','skills','policies','analytics','sessions','settings'];
 function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
@@ -395,12 +499,16 @@ function showPage(name) {
     if (nav) nav.classList.toggle('active', p === name);
   });
   const page = document.getElementById('page-' + name);
-  page.style.display = 'flex';
+  page.style.display = name === 'chat' || name === 'sessions' ? 'flex' : 'flex';
+  if (name === 'status') loadStatus();
   if (name === 'lens') loadLens();
   if (name === 'memory') loadMemoryStats();
   if (name === 'jobs') loadJobs();
   if (name === 'skills') loadSkills();
   if (name === 'policies') loadPolicies();
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'sessions') loadSessionsList();
+  if (name === 'settings') loadSettings();
 }
 
 // ── Sessions sidebar ────────────────────────────────────────
@@ -611,21 +719,377 @@ function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Status page ──────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const st = await fetch(BASE + '/api/system').then(r => r.json());
+    const el = document.getElementById('status-content');
+    if (!el) return;
+
+    const fmt = (b) => b >= 1e9 ? (b/1e9).toFixed(1)+'GB' : b >= 1e6 ? (b/1e6).toFixed(0)+'MB' : b+'B';
+    const pct = (u,t) => t > 0 ? Math.round(u/t*100) : 0;
+    const memPct = pct(st.memory.used, st.memory.total);
+    const diskPct = pct(st.disk.used, st.disk.total);
+    const upH = Math.floor(st.uptime/3600), upM = Math.floor((st.uptime%3600)/60);
+
+    const daemons = [
+      {key:'validator',label:'Validator',icon:'🛡'},
+      {key:'executor',label:'Executor',icon:'⚙'},
+      {key:'scheduler',label:'Scheduler',icon:'⏱'},
+    ];
+
+    el.innerHTML = \`
+      <!-- Summary cards -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+        <div class="card" style="text-align:center;">
+          <div style="font-size:2em;font-weight:700;color:var(--accent2);">\${st.activeSessions}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Active Sessions</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-size:2em;font-weight:700;color:#4ade80;">v\${st.version}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Cortex Version</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-size:1.4em;font-weight:700;color:#fbbf24;">\${st.provider}<span style="font-size:0.65em;color:var(--text3)"> / \${st.model}</span></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">LLM Provider</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-size:1.6em;font-weight:700;color:#38bdf8;">\${upH}h \${upM}m</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Server Uptime</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <!-- Daemons -->
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Process Daemons</div>
+          \${daemons.map(d => {
+            const up = st.daemons[d.key];
+            return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span>\${d.icon}</span>
+                <span style="font-size:13px;">\${d.label}</span>
+              </div>
+              <span class="badge" style="background:\${up?'rgba(34,197,94,0.12)':'rgba(239,68,68,0.1)'};color:\${up?'#4ade80':'#f87171'};">
+                \${up ? '● running' : '○ stopped'}
+              </span>
+            </div>\`;
+          }).join('')}
+          <div style="margin-top:10px;font-size:11px;color:var(--text3);">Run <code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;">cortex daemon start</code> to start all daemons</div>
+        </div>
+
+        <!-- Resources -->
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">System Resources</div>
+          \${st.memory.total > 0 ? \`
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--text2);">Memory</span>
+              <span style="color:var(--text3);">\${fmt(st.memory.used)} / \${fmt(st.memory.total)}</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
+              <div style="height:100%;width:\${memPct}%;background:\${memPct>85?'#f87171':memPct>60?'#fbbf24':'#4ade80'};border-radius:3px;transition:width 0.5s;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--text2);">Disk (home)</span>
+              <span style="color:var(--text3);">\${fmt(st.disk.used)} / \${fmt(st.disk.total)}</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
+              <div style="height:100%;width:\${diskPct}%;background:\${diskPct>85?'#f87171':diskPct>60?'#fbbf24':'#4ade80'};border-radius:3px;transition:width 0.5s;"></div>
+            </div>
+          </div>\` : '<p style="color:var(--text3);font-size:12px;">Resource info unavailable on this platform</p>'}
+        </div>
+
+        <!-- Recent sessions -->
+        <div class="card" style="grid-column:1/-1;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Recent Sessions</div>
+          \${st.recentSessions.length === 0 ? '<p style="color:var(--text3);font-size:12px;">No sessions yet — start a chat!</p>' :
+            st.recentSessions.map(s => \`
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openSession('\${s.id}')">
+                <div>
+                  <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-16)}</span>
+                  <span style="font-size:11px;color:var(--text3);margin-left:8px;">\${s.turn_count} turns</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:11px;color:var(--text3);">\${new Date(s.started_at).toLocaleString()}</span>
+                  <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':'var(--text3)'};">\${s.status}</span>
+                </div>
+              </div>
+            \`).join('')
+          }
+        </div>
+      </div>
+    \`;
+  } catch(e) {
+    const el = document.getElementById('status-content');
+    if (el) el.innerHTML = \`<p style="color:var(--text3);">Loading system info… (\${e.message})</p>\`;
+  }
+}
+
+// ── Analytics ────────────────────────────────────────────────
+let analyticsChart = null;
+
+async function loadAnalytics(days) {
+  days = days ?? Number(document.getElementById('analytics-days')?.value ?? 30);
+  const data = await fetch(\`\${BASE}/api/analytics?days=\${days}\`).then(r => r.json()).catch(() => null);
+  if (!data) return;
+
+  const { daily, models, totals } = data;
+
+  // Summary cards
+  document.getElementById('an-sessions').textContent = totals?.sessions ?? 0;
+  document.getElementById('an-tokens-in').textContent = fmtNum(totals?.total_tokens_in ?? 0);
+  document.getElementById('an-tokens-out').textContent = fmtNum(totals?.total_tokens_out ?? 0);
+  document.getElementById('an-cost').textContent = '$' + Number(totals?.total_cost ?? 0).toFixed(4);
+
+  // Chart
+  const ctx = document.getElementById('tokens-chart');
+  if (ctx && daily.length > 0) {
+    if (analyticsChart) analyticsChart.destroy();
+    analyticsChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: daily.map(d => d.date),
+        datasets: [
+          { label: 'Tokens In', data: daily.map(d => d.tokens_in), backgroundColor: 'rgba(99,102,241,0.6)', stack: 'tokens' },
+          { label: 'Tokens Out', data: daily.map(d => d.tokens_out), backgroundColor: 'rgba(34,197,94,0.5)', stack: 'tokens' },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#9090a8', font: { size: 11 } } } },
+        scales: {
+          x: { stacked: true, ticks: { color: '#55556a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { stacked: true, ticks: { color: '#55556a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        },
+      },
+    });
+  } else if (ctx) {
+    ctx.parentElement.innerHTML = '<p style="color:var(--text3);font-size:13px;text-align:center;padding:40px 0;">No data for this period yet — start some chat sessions.</p>';
+  }
+
+  // Model table
+  const mt = document.getElementById('model-table-body');
+  if (mt) {
+    mt.innerHTML = models.length === 0
+      ? '<tr><td colspan="5" style="color:var(--text3);padding:12px 0;font-size:12px;">No LLM calls recorded yet.</td></tr>'
+      : models.map(m => \`<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);">\${esc(m.model)}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${m.calls}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${fmtNum(m.tokens_in)}</td>
+          <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${fmtNum(m.tokens_out)}</td>
+          <td style="padding:8px 0;font-size:12px;color:#4ade80;">$\${Number(m.cost_usd).toFixed(5)}</td>
+        </tr>\`).join('');
+  }
+}
+
+function fmtNum(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n); }
+
+// ── Sessions deep-dive ───────────────────────────────────────
+let allSessions = [];
+
+async function loadSessionsList() {
+  allSessions = await fetch(BASE + '/api/sessions?limit=50').then(r => r.json()).catch(() => []);
+  renderSessionsList(allSessions);
+}
+
+function renderSessionsList(sessions) {
+  const el = document.getElementById('sessions-table');
+  if (!el) return;
+  if (!sessions.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px;">No sessions found.</p>'; return; }
+  el.innerHTML = sessions.map(s => \`
+    <div class="card-sm" style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:6px;" onclick="openSession('\${s.id}')">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
+          <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':'var(--text3)'};">\${s.status}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${new Date(s.started_at).toLocaleString()}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();exportSession('\${s.id}')">⬇ Export</button>
+        <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
+      </div>
+    </div>
+  \`).join('');
+}
+
+async function searchSessions() {
+  const q = document.getElementById('sess-search').value.trim();
+  if (!q) { renderSessionsList(allSessions); return; }
+  const results = await fetch(\`\${BASE}/api/sessions/search?q=\${encodeURIComponent(q)}\`).then(r => r.json()).catch(() => []);
+  renderSessionsList(results);
+}
+
+async function openSession(id) {
+  showPage('sessions');
+  document.getElementById('sessions-list-view').style.display = 'none';
+  document.getElementById('sessions-detail-view').style.display = 'flex';
+
+  const events = await fetch(\`\${BASE}/api/sessions/\${id}/events\`).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('session-detail-log');
+  const title = document.getElementById('session-detail-title');
+  title.textContent = id;
+
+  el.innerHTML = events.length === 0
+    ? '<p style="color:var(--text3);font-size:13px;">No events recorded for this session.</p>'
+    : events.map(ev => {
+        const isUser = ev.event_type === 'user_message';
+        const isAgent = ev.event_type === 'agent_response';
+        const isTool = ev.event_type === 'tool_call' || ev.event_type === 'tool_approved';
+        if (isUser) return \`<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+          <div class="bubble-user" style="font-size:13px;">\${esc(ev.summary ?? ev.action ?? '')}</div></div>\`;
+        if (isAgent) return \`<div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
+          <div class="bubble-agent md" style="font-size:13px;">\${md(ev.summary ?? ev.action ?? '')}</div></div>\`;
+        if (isTool) return \`<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">
+          <div class="bubble-tool">⚙ \${esc(ev.action)} \${ev.duration_ms ? '· '+ev.duration_ms+'ms' : ''}</div></div>\`;
+        return \`<div style="font-size:11px;color:var(--text3);padding:2px 0;font-family:'JetBrains Mono',monospace;">
+          [\${ev.event_type}] \${esc(ev.summary ?? ev.action ?? '')}\${ev.duration_ms?' · '+ev.duration_ms+'ms':''}</div>\`;
+      }).join('');
+}
+
+function backToSessions() {
+  document.getElementById('sessions-list-view').style.display = 'flex';
+  document.getElementById('sessions-detail-view').style.display = 'none';
+}
+
+async function exportSession(id) {
+  const events = await fetch(\`\${BASE}/api/sessions/\${id}/events\`).then(r => r.json()).catch(() => []);
+  const blob = new Blob([JSON.stringify({ session_id: id, events }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = \`cortex-session-\${id}.json\`; a.click();
+}
+
+async function deleteSession(id) {
+  if (!confirm(\`Delete session \${id.slice(-12)}? This removes all its Lens events.\`)) return;
+  await fetch(\`\${BASE}/api/sessions/\${id}\`, { method: 'DELETE' });
+  loadSessionsList();
+}
+
+// ── Settings ─────────────────────────────────────────────────
+async function loadSettings() {
+  const config = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
+  if (!config) return;
+
+  const providers = ['openai', 'anthropic', 'ollama'];
+  const el = document.getElementById('settings-content');
+  if (!el) return;
+
+  el.innerHTML = \`
+    <!-- General -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">General</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Agent Name</label>
+          <input class="inp" id="cfg-name" value="\${esc(config.agent?.name ?? 'Cortex')}" />
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Default Provider</label>
+          <select class="inp" id="cfg-provider">
+            \${providers.map(p => \`<option value="\${p}" \${config.defaultProvider===p?'selected':''}>\${p}</option>\`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max Turns</label>
+          <input class="inp" id="cfg-maxturns" type="number" value="\${config.agent?.maxTurns ?? 50}" />
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding-top:18px;">
+          <label style="font-size:12px;color:var(--text2);">Stream Output</label>
+          <input type="checkbox" id="cfg-stream" \${config.agent?.streamOutput?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+        <span id="settings-saved" style="font-size:12px;color:#4ade80;display:none;align-self:center;">✓ Saved</span>
+      </div>
+    </div>
+
+    <!-- API Keys -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">API Keys & Providers</div>
+      \${providers.map(p => {
+        const pCfg = config.providers?.[p];
+        return \`<div style="padding:12px 0;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:13px;font-weight:500;text-transform:capitalize;">\${p}</span>
+            \${pCfg ? '<span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">configured</span>'
+                    : '<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);">not set</span>'}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model</label>
+              <input class="inp" id="key-model-\${p}" placeholder="e.g. gpt-4o-mini" value="\${esc(pCfg?.model ?? '')}" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key \${pCfg?.apiKey ? '('+pCfg.apiKey+')' : ''}</label>
+              <input class="inp" id="key-val-\${p}" type="password" placeholder="Enter new key to update…" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+            </div>
+          </div>
+          \${p === 'ollama' ? \`<div style="margin-top:6px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL</label>
+            <input class="inp" id="key-url-\${p}" placeholder="http://localhost:11434" value="\${esc(pCfg?.baseUrl ?? '')}" style="font-size:12px;" /></div>\` : ''}
+          <button class="btn btn-ghost" style="margin-top:8px;font-size:12px;" onclick="saveProvider('\${p}')">Save \${p}</button>
+        </div>\`;
+      }).join('')}
+    </div>
+
+    <!-- Router -->
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Model Router (RouteLLM cascade)</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <label style="font-size:12px;color:var(--text2);">Enable cascade router</label>
+        <input type="checkbox" id="cfg-router" \${config.router?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confidence threshold (0–1)</label>
+        <input class="inp" id="cfg-confidence" type="number" step="0.05" min="0" max="1" value="\${config.router?.confidenceThreshold ?? 0.7}" style="width:120px;" />
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn btn-primary" onclick="saveSettings()">Save Router</button>
+      </div>
+    </div>
+  \`;
+}
+
+async function saveSettings() {
+  const body = {
+    defaultProvider: document.getElementById('cfg-provider')?.value,
+    agent: {
+      name: document.getElementById('cfg-name')?.value,
+      maxTurns: Number(document.getElementById('cfg-maxturns')?.value),
+      streamOutput: document.getElementById('cfg-stream')?.checked,
+    },
+    router: {
+      enabled: document.getElementById('cfg-router')?.checked,
+      confidenceThreshold: Number(document.getElementById('cfg-confidence')?.value),
+      cascade: [],
+    },
+  };
+  await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const saved = document.getElementById('settings-saved');
+  if (saved) { saved.style.display = 'inline'; setTimeout(() => saved.style.display = 'none', 2000); }
+}
+
+async function saveProvider(kind) {
+  const model = document.getElementById(\`key-model-\${kind}\`)?.value ?? '';
+  const apiKey = document.getElementById(\`key-val-\${kind}\`)?.value ?? '';
+  const baseUrl = document.getElementById(\`key-url-\${kind}\`)?.value ?? '';
+  const body = { kind, model };
+  if (apiKey) body.apiKey = apiKey;
+  if (baseUrl) body.baseUrl = baseUrl;
+  await fetch(BASE + '/api/config/provider', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  loadSettings();
+}
+
 // ── Boot ────────────────────────────────────────────────────
 connect();
 loadSessionsSidebar();
 loadDaemonStatus();
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
-
-// Welcome message
-appendBubble('agent', \`## Welcome to Cortex ✦
-
-I'm your agentic assistant. I can help with research, code, file analysis, and complex multi-step tasks.
-
-**Available tools:** file read, web search, code execution.
-
-Use the sidebar to explore your **memory**, **Lens** activity timeline, **jobs**, and security **policies**.\`);
+showPage('status');
 </script>
 </body>
 </html>`;
