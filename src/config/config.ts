@@ -22,6 +22,10 @@ export interface ProviderConfig {
   baseUrl?: string;
   /** For providers that need separate secret key (e.g. AWS Bedrock) */
   secretKey?: string;
+  /** Model fine-tuning overrides */
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
 }
 
 export interface RouterConfig {

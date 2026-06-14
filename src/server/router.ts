@@ -4,7 +4,7 @@ import { getLensDb, type InValue } from '../db/client.ts';
 import { listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
-import type { CortexConfig, AgentConfig } from '../config/config.ts';
+import type { ProviderKind, CortexConfig, AgentConfig } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { listSkills } from '../memory/skills.ts';
 import { listPolicies } from '../security/policy.ts';
@@ -218,15 +218,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true });
   }
 
-  // PUT /api/config/provider — set a provider's apiKey/model without sending others
+  // PUT /api/config/provider — set a provider's apiKey/model/fine-tune params
   if (req.method === 'PUT' && path === '/api/config/provider') {
-    const body = await req.json() as { kind: string; model?: string; apiKey?: string; baseUrl?: string };
+    const body = await req.json() as { kind: string; model?: string; apiKey?: string; baseUrl?: string; secretKey?: string; temperature?: number; maxTokens?: number; topP?: number };
     const config = await loadConfig();
     const kind = body.kind as keyof typeof config.providers;
     const existing = config.providers[kind] ?? { kind, model: '' } as never;
     config.providers[kind] = { ...existing, ...body } as never;
     await saveConfig(config);
     return json({ ok: true });
+  }
+
+  // GET /api/providers/:kind/models?apiKey=...&baseUrl=... — fetch models from provider
+  const modelsMatch = path.match(/^\/api\/providers\/(\w+)\/models$/);
+  if (req.method === 'GET' && modelsMatch) {
+    const kind = modelsMatch[1] as ProviderKind;
+    const apiKey = url.searchParams.get('apiKey') ?? undefined;
+    const baseUrl = url.searchParams.get('baseUrl') ?? undefined;
+    const { fetchModels } = await import('./models.ts');
+    try {
+      const models = await fetchModels(kind, apiKey, baseUrl);
+      return json(models);
+    } catch (err) {
+      return json({ error: (err as Error).message }, { status: 502 });
+    }
   }
 
   // GET /api/analytics?days=30

@@ -4,6 +4,22 @@ export function serveUi(): Response {
   });
 }
 
+const PROVIDER_OPTIONS = [
+  { kind: 'openai', label: 'OpenAI' },
+  { kind: 'anthropic', label: 'Anthropic' },
+  { kind: 'google', label: 'Google Gemini' },
+  { kind: 'mistral', label: 'Mistral' },
+  { kind: 'groq', label: 'Groq' },
+  { kind: 'deepseek', label: 'DeepSeek' },
+  { kind: 'openrouter', label: 'OpenRouter' },
+  { kind: 'xai', label: 'xAI (Grok)' },
+  { kind: 'together', label: 'Together AI' },
+  { kind: 'bedrock', label: 'AWS Bedrock' },
+  { kind: 'cohere', label: 'Cohere' },
+  { kind: 'ollama', label: 'Ollama' },
+];
+const PROVIDER_OPTIONS_HTML = PROVIDER_OPTIONS.map(p => `<option value="${p.kind}">${p.label}</option>`).join('');
+
 const HTML = `<!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
@@ -671,7 +687,7 @@ const HTML = `<!DOCTYPE html>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name *</label><input class="inp" id="ag-name" placeholder="My Agent" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="ag-desc" placeholder="What this agent does" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider (optional override)</label>
-          <select class="inp" id="ag-provider"><option value="">Default</option><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google Gemini</option><option value="mistral">Mistral</option><option value="groq">Groq</option><option value="deepseek">DeepSeek</option><option value="openrouter">OpenRouter</option><option value="xai">xAI (Grok)</option><option value="together">Together AI</option><option value="bedrock">AWS Bedrock</option><option value="cohere">Cohere</option><option value="ollama">Ollama</option></select>
+          <select class="inp" id="ag-provider"><option value="">Default</option>${PROVIDER_OPTIONS_HTML}</select>
         </div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model (optional override)</label><input class="inp" id="ag-model" placeholder="e.g. gpt-4o-mini" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature (0–2)</label><input class="inp" id="ag-temp" type="number" step="0.1" min="0" max="2" placeholder="Default" style="width:100px;" /></div>
@@ -1605,11 +1621,34 @@ async function deleteSession(id) {
 }
 
 // ── Settings ─────────────────────────────────────────────────
+
+const PROVIDER_META = {
+  openai:     { label: 'OpenAI',      defaultModel: 'gpt-4o',        needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  anthropic:  { label: 'Anthropic',   defaultModel: 'claude-sonnet-4-5', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  google:     { label: 'Google Gemini', defaultModel: 'gemini-2.0-flash', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  mistral:    { label: 'Mistral',     defaultModel: 'mistral-large-latest', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  groq:       { label: 'Groq',        defaultModel: 'llama-3.3-70b-versatile', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  deepseek:   { label: 'DeepSeek',    defaultModel: 'deepseek-chat', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  openrouter: { label: 'OpenRouter',  defaultModel: 'openai/gpt-4o', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  xai:        { label: 'xAI (Grok)',  defaultModel: 'grok-2-latest', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  together:   { label: 'Together AI', defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  bedrock:    { label: 'AWS Bedrock', defaultModel: 'anthropic.claude-3-5-sonnet-20240620-v1:0', needsBaseUrl: true, needsSecret: true, defaultBaseUrl: 'us-east-1' },
+  cohere:     { label: 'Cohere',      defaultModel: 'command-r-plus', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  ollama:     { label: 'Ollama',      defaultModel: 'llama3.2',     needsBaseUrl: true,  needsSecret: false, defaultBaseUrl: 'http://localhost:11434' },
+};
+
+const PROVIDER_KINDS = Object.keys(PROVIDER_META);
+
+function providerLabel(kind) {
+  return PROVIDER_META[kind]?.label ?? kind;
+}
+
 async function loadSettings() {
   const config = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
   if (!config) return;
 
-  const providers = ['openai', 'anthropic', 'google', 'mistral', 'groq', 'deepseek', 'openrouter', 'xai', 'together', 'bedrock', 'cohere', 'ollama'];
+  const configured = PROVIDER_KINDS.filter(k => config.providers?.[k]?.apiKey || config.providers?.[k]?.model);
+  const unconfigured = PROVIDER_KINDS.filter(k => !configured.includes(k));
   const el = document.getElementById('settings-content');
   if (!el) return;
 
@@ -1625,7 +1664,7 @@ async function loadSettings() {
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Default Provider</label>
           <select class="inp" id="cfg-provider">
-            \${providers.map(p => \`<option value="\${p}" \${config.defaultProvider===p?'selected':''}>\${p}</option>\`).join('')}
+            \${configured.map(k => \`<option value="\${k}" \${config.defaultProvider===k?'selected':''}>\${providerLabel(k)}</option>\`).join('')}
           </select>
         </div>
         <div>
@@ -1642,36 +1681,52 @@ async function loadSettings() {
       </div>
     </div>
 
-    <!-- API Keys -->
+    <!-- Models & Providers -->
     <div class="card" style="margin-bottom:14px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">API Keys & Providers</div>
-      \${providers.map(p => {
-        const pCfg = config.providers?.[p];
-        return \`<div style="padding:12px 0;border-bottom:1px solid var(--border);">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:13px;font-weight:500;text-transform:capitalize;">\${p}</span>
-            \${pCfg ? '<span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">configured</span>'
-                    : '<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);">not set</span>'}
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model</label>
-              <input class="inp" id="key-model-\${p}" placeholder="e.g. gpt-4o-mini" value="\${esc(pCfg?.model ?? '')}" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;">Models & Providers</div>
+        <button class="btn btn-primary" onclick="showAddModelModal()" style="font-size:12px;">+ Add Model</button>
+      </div>
+
+      <!-- Configured -->
+      \${configured.length === 0 ? '<p style="font-size:12px;color:var(--text3);padding:20px 0;text-align:center;">No providers configured yet. Click "+ Add Model" to get started.</p>' : ''}
+      \${configured.map(k => {
+        const p = config.providers[k];
+        const meta = PROVIDER_META[k];
+        return \`<div class="card-sm" style="margin-bottom:10px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="font-size:13px;font-weight:500;">\${meta.label}</span>
+                <span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">● configured</span>
+              </div>
+              <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);flex-wrap:wrap;">
+                <span>Model: <span style="color:var(--text);font-family:'JetBrains Mono',monospace;">\${esc(p.model || '—')}</span></span>
+                \${p.temperature != null ? \`<span>Temp: <span style="color:var(--text);">\${p.temperature}</span></span>\` : ''}
+                \${p.maxTokens != null ? \`<span>Max tokens: <span style="color:var(--text);">\${p.maxTokens}</span></span>\` : ''}
+                \${p.topP != null ? \`<span>Top P: <span style="color:var(--text);">\${p.topP}</span></span>\` : ''}
+              </div>
             </div>
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key \${pCfg?.apiKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
-              <input class="inp" id="key-val-\${p}" type="password" placeholder="Enter new key to update…" autocomplete="off" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="showEditModelModal('\${k}')">Edit</button>
+              <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="removeProvider('\${k}')">Remove</button>
             </div>
           </div>
-          \${p === 'ollama' ? \`<div style="margin-top:6px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL</label>
-            <input class="inp" id="key-url-\${p}" placeholder="http://localhost:11434" value="\${esc(pCfg?.baseUrl ?? '')}" style="font-size:12px;" /></div>\` : ''}
-          \${p === 'bedrock' ? \`<div style="margin-top:6px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">AWS Region</label>
-            <input class="inp" id="key-url-\${p}" placeholder="us-east-1" value="\${esc(pCfg?.baseUrl ?? '')}" style="font-size:12px;" />
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;margin-top:6px;">Secret Access Key \${pCfg?.secretKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
-            <input class="inp" id="key-secret-\${p}" type="password" placeholder="Enter new secret key to update…" autocomplete="off" style="font-size:12px;" /></div>\` : ''}
-          <button class="btn btn-ghost" style="margin-top:8px;font-size:12px;" onclick="saveProvider('\${p}')">Save \${p}</button>
         </div>\`;
       }).join('')}
+
+      <!-- Unconfigured -->
+      <div style="margin-top:4px;">
+        <details style="font-size:12px;">
+          <summary style="cursor:pointer;color:var(--text3);padding:6px 0;">Available providers (\${unconfigured.length})</summary>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
+            \${unconfigured.map(k => \`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:6px;background:var(--bg);">
+              <span style="font-size:12px;">\${PROVIDER_META[k].label}</span>
+              <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;" onclick="showAddModelModal('\${k}')">Configure</button>
+            </div>\`).join('')}
+          </div>
+        </details>
+      </div>
     </div>
 
     <!-- Router -->
@@ -1710,18 +1765,241 @@ async function saveSettings() {
   if (res.ok) { toast('Settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
 }
 
-async function saveProvider(kind) {
-  const model = document.getElementById(\`key-model-\${kind}\`)?.value ?? '';
-  const apiKey = document.getElementById(\`key-val-\${kind}\`)?.value ?? '';
-  const baseUrl = document.getElementById(\`key-url-\${kind}\`)?.value ?? '';
-  const secretKey = document.getElementById(\`key-secret-\${kind}\`)?.value ?? '';
+async function removeProvider(kind) {
+  const body = { kind, model: '' };
+  await fetch(BASE + '/api/config/provider', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast(providerLabel(kind) + ' removed', 'info');
+  loadSettings();
+}
+
+let _fetchingModels = false;
+
+async function showAddModelModal(prefillKind) {
+  const modal = document.getElementById('model-modal');
+  if (modal) modal.remove();
+
+  const div = document.createElement('div');
+  div.id = 'model-modal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:center;justify-content:center;';
+  div.innerHTML = \`
+    <div class="card" style="width:520px;max-height:90vh;overflow-y:auto;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:14px;">Add Model</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider</label>
+          <select class="inp" id="modal-kind" onchange="onModalKindChange()">
+            \${PROVIDER_KINDS.map(k => \`<option value="\${k}" \${k===prefillKind?'selected':''}>\${PROVIDER_META[k].label}</option>\`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key</label>
+          <input class="inp" id="modal-apikey" type="password" placeholder="Enter API key…" autocomplete="off" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+        </div>
+        <div id="modal-baseurl-wrap" style="display:none;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL / Region</label>
+          <input class="inp" id="modal-baseurl" placeholder="" style="font-size:12px;" />
+        </div>
+        <div id="modal-secret-wrap" style="display:none;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Secret Access Key</label>
+          <input class="inp" id="modal-secret" type="password" placeholder="Enter secret key…" autocomplete="off" style="font-size:12px;" />
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-ghost" id="modal-fetch-btn" onclick="fetchModelsForModal()">Fetch Models</button>
+          <span id="modal-fetch-status" style="font-size:11px;color:var(--text3);"></span>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model</label>
+          <select class="inp" id="modal-model"><option value="">— Select a model —</option></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature</label>
+            <input class="inp" id="modal-temp" type="number" step="0.1" min="0" max="2" value="0.7" style="font-size:12px;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Max Tokens</label>
+            <input class="inp" id="modal-maxtokens" type="number" min="1" max="999999" placeholder="4096" style="font-size:12px;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Top P</label>
+            <input class="inp" id="modal-topp" type="number" step="0.05" min="0" max="1" placeholder="1.0" style="font-size:12px;" />
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="saveModelFromModal()">Save Model</button>
+        <button class="btn btn-ghost" onclick="closeModelModal()">Cancel</button>
+        <span id="modal-save-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+      </div>
+    </div>
+  \`;
+  document.body.appendChild(div);
+  onModalKindChange();
+}
+
+function closeModelModal() {
+  const modal = document.getElementById('model-modal');
+  if (modal) modal.remove();
+}
+
+async function showEditModelModal(kind) {
+  const config = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
+  if (!config) return;
+  const p = config.providers?.[kind];
+  const meta = PROVIDER_META[kind];
+  if (!meta) return;
+
+  const modal = document.getElementById('model-modal');
+  if (modal) modal.remove();
+
+  const div = document.createElement('div');
+  div.id = 'model-modal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:center;justify-content:center;';
+  div.innerHTML = \`
+    <div class="card" style="width:520px;max-height:90vh;overflow-y:auto;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:14px;">Edit \${esc(meta.label)}</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider</label>
+          <input class="inp" value="\${esc(meta.label)}" disabled style="font-size:12px;" />
+          <input type="hidden" id="modal-kind" value="\${kind}" />
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key \${p?.apiKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
+          <input class="inp" id="modal-apikey" type="password" placeholder="Enter new key to update…" autocomplete="off" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
+        </div>
+        \${meta.needsBaseUrl ? \`<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL / Region</label>
+          <input class="inp" id="modal-baseurl" value="\${esc(p?.baseUrl ?? '')}" style="font-size:12px;" /></div>\` : ''}
+        \${meta.needsSecret ? \`<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Secret Access Key \${p?.secretKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
+          <input class="inp" id="modal-secret" type="password" placeholder="Enter new secret key to update…" autocomplete="off" style="font-size:12px;" /></div>\` : ''}
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-ghost" id="modal-fetch-btn" onclick="fetchModelsForModal()">Fetch Models</button>
+          <span id="modal-fetch-status" style="font-size:11px;color:var(--text3);"></span>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model</label>
+          <select class="inp" id="modal-model"><option value="">\${esc(p?.model || '— Select a model —')}</option></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature</label>
+            <input class="inp" id="modal-temp" type="number" step="0.1" min="0" max="2" value="\${p?.temperature ?? 0.7}" style="font-size:12px;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Max Tokens</label>
+            <input class="inp" id="modal-maxtokens" type="number" min="1" max="999999" placeholder="4096" value="\${p?.maxTokens ?? ''}" style="font-size:12px;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Top P</label>
+            <input class="inp" id="modal-topp" type="number" step="0.05" min="0" max="1" placeholder="1.0" value="\${p?.topP ?? ''}" style="font-size:12px;" />
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="saveModelFromModal()">Save Changes</button>
+        <button class="btn btn-ghost" onclick="closeModelModal()">Cancel</button>
+        <span id="modal-save-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+      </div>
+    </div>
+  \`;
+  document.body.appendChild(div);
+}
+
+async function onModalKindChange() {
+  const kind = document.getElementById('modal-kind')?.value;
+  if (!kind) return;
+  const meta = PROVIDER_META[kind];
+  const baseUrlWrap = document.getElementById('modal-baseurl-wrap');
+  const secretWrap = document.getElementById('modal-secret-wrap');
+  const baseUrlInput = document.getElementById('modal-baseurl');
+  if (baseUrlWrap) baseUrlWrap.style.display = meta.needsBaseUrl ? 'block' : 'none';
+  if (secretWrap) secretWrap.style.display = meta.needsSecret ? 'block' : 'none';
+  if (baseUrlInput && meta.defaultBaseUrl) baseUrlInput.placeholder = meta.defaultBaseUrl;
+}
+
+async function fetchModelsForModal() {
+  if (_fetchingModels) return;
+  const kind = document.getElementById('modal-kind')?.value;
+  const apiKey = document.getElementById('modal-apikey')?.value;
+  const baseUrl = document.getElementById('modal-baseurl')?.value;
+  if (!kind) return;
+
+  if (!apiKey && kind !== 'ollama') {
+    document.getElementById('modal-fetch-status').textContent = 'API key required';
+    return;
+  }
+
+  _fetchingModels = true;
+  const btn = document.getElementById('modal-fetch-btn');
+  const status = document.getElementById('modal-fetch-status');
+  if (btn) btn.textContent = 'Fetching…';
+  if (status) status.textContent = '';
+
+  try {
+    const params = new URLSearchParams();
+    if (apiKey) params.set('apiKey', apiKey);
+    if (baseUrl) params.set('baseUrl', baseUrl);
+    const res = await fetch(BASE + '/api/providers/' + kind + '/models?' + params.toString());
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || 'Failed to fetch models');
+    }
+    const models = await res.json();
+    const select = document.getElementById('modal-model');
+    if (!select) return;
+    select.innerHTML = '<option value="">— Select a model —</option>'
+      + models.map(m => '<option value="' + esc(m.id) + '"'
+        + (m.name ? ' data-name="' + esc(m.name) + '"' : '')
+        + '>' + esc(m.name || m.id) + '</option>').join('');
+    if (status) status.textContent = models.length + ' models loaded';
+  } catch (err) {
+    if (status) status.textContent = 'Error: ' + err.message;
+  } finally {
+    _fetchingModels = false;
+    if (btn) btn.textContent = 'Fetch Models';
+  }
+}
+
+async function saveModelFromModal() {
+  const kind = document.getElementById('modal-kind')?.value;
+  const model = document.getElementById('modal-model')?.value;
+  const apiKey = document.getElementById('modal-apikey')?.value;
+  const baseUrl = document.getElementById('modal-baseurl')?.value;
+  const secret = document.getElementById('modal-secret')?.value;
+  const temp = document.getElementById('modal-temp')?.value;
+  const maxTokens = document.getElementById('modal-maxtokens')?.value;
+  const topP = document.getElementById('modal-topp')?.value;
+  const status = document.getElementById('modal-save-status');
+
+  if (!kind || !model) {
+    if (status) status.textContent = 'Please select a model';
+    return;
+  }
+
   const body = { kind, model };
   if (apiKey) body.apiKey = apiKey;
   if (baseUrl) body.baseUrl = baseUrl;
-  if (secretKey) body.secretKey = secretKey;
-  const res = await fetch(BASE + '/api/config/provider', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (res.ok) { toast(apiKey || secretKey ? kind + ' provider saved' : kind + ' model updated', 'success'); } else { toast('Failed to save provider', 'error'); }
-  loadSettings();
+  if (secret) body.secretKey = secret;
+  if (temp) body.temperature = parseFloat(temp);
+  if (maxTokens) body.maxTokens = parseInt(maxTokens, 10);
+  if (topP) body.topP = parseFloat(topP);
+
+  try {
+    const res = await fetch(BASE + '/api/config/provider', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      toast(providerLabel(kind) + ' saved', 'success');
+      closeModelModal();
+      loadSettings();
+    } else {
+      if (status) status.textContent = 'Failed to save';
+    }
+  } catch {
+    if (status) status.textContent = 'Network error';
+  }
 }
 
 // ── Agents ───────────────────────────────────────────────────
