@@ -74,6 +74,7 @@ jobs:
         run: deno compile --target "${{ matrix.target }}" --output "${{ matrix.artifact }}" src/main.ts
 
       - name: Package archive
+        shell: bash
         run: |
           if [ "${{ matrix.package-ext }}" = ".zip" ]; then
             zip "${{ matrix.artifact }}.zip" "${{ matrix.artifact }}.exe"
