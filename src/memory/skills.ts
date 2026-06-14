@@ -115,7 +115,9 @@ export async function findMatchingSkills(description: string, limit = 5): Promis
     );
   }
 
-  const conditions = words.slice(0, 5).map(() => `(name LIKE ? OR description LIKE ? OR trigger_pattern LIKE ?)`).join(' OR ');
+  const conditions = words.slice(0, 5).map(() =>
+    `(name LIKE ? OR description LIKE ? OR trigger_pattern LIKE ?)`
+  ).join(' OR ');
   const args = words.slice(0, 5).flatMap((w) => [`%${w}%`, `%${w}%`, `%${w}%`]);
 
   return await db.all<Skill>(
@@ -143,7 +145,9 @@ export async function extractSkillFromSession(
   if (toolCalls.length < 2) return null;
 
   const toolSummary = toolCalls
-    .map((tc, i) => `${i + 1}. ${tc.tool}(${JSON.stringify(tc.params)}) → ${tc.result.slice(0, 100)}`)
+    .map((tc, i) =>
+      `${i + 1}. ${tc.tool}(${JSON.stringify(tc.params)}) → ${tc.result.slice(0, 100)}`
+    )
     .join('\n');
 
   const prompt = `You are analyzing an agent task to extract a reusable skill pattern.
@@ -179,7 +183,10 @@ If this is not a reusable pattern, respond: {"skip": true}`;
     const parsed = JSON.parse(jsonMatch[0]);
     if (parsed.skip) return null;
 
-    const steps: SkillStep[] = (parsed.steps ?? []).map((s: Record<string, unknown>, i: number) => ({
+    const steps: SkillStep[] = (parsed.steps ?? []).map((
+      s: Record<string, unknown>,
+      i: number,
+    ) => ({
       step: i + 1,
       action: String(s.action ?? ''),
       description: String(s.action ?? ''),

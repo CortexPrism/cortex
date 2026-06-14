@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  DENO_VERSION: "2.x"
+  DENO_VERSION: '2.x'
 
 jobs:
   quality:

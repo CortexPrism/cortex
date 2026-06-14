@@ -19,7 +19,9 @@ const PROVIDER_OPTIONS = [
   { kind: 'kilo', label: 'Kilo (AI Gateway)' },
   { kind: 'ollama', label: 'Ollama' },
 ];
-const PROVIDER_OPTIONS_HTML = PROVIDER_OPTIONS.map(p => `<option value="${p.kind}">${p.label}</option>`).join('');
+const PROVIDER_OPTIONS_HTML = PROVIDER_OPTIONS.map((p) =>
+  `<option value="${p.kind}">${p.label}</option>`
+).join('');
 
 const HTML = `<!DOCTYPE html>
 <html lang="en" class="h-full">

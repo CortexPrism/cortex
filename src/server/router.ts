@@ -1,38 +1,49 @@
-import { listSessions, getSession, resumeSession, deleteSession as deleteSessionDb } from '../db/sessions.ts';
+import {
+  deleteSession as deleteSessionDb,
+  getSession,
+  listSessions,
+  resumeSession,
+} from '../db/sessions.ts';
 import { getSessionEvents } from '../db/lens.ts';
 import { getLensDb, type InValue } from '../db/client.ts';
 import { listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
-import type { ProviderKind, CortexConfig, AgentConfig } from '../config/config.ts';
+import type { AgentConfig, CortexConfig, ProviderKind } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { listSkills } from '../memory/skills.ts';
 import { listPolicies } from '../security/policy.ts';
 import { getMemoryDb } from '../db/client.ts';
-import { pingProcess, VALIDATOR_SOCK, EXECUTOR_SOCK, SCHEDULER_SOCK } from '../ipc/transport.ts';
-import { listPlugins, installPlugin, enablePlugin, disablePlugin, removePlugin } from '../plugins/registry.ts';
+import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
+import {
+  disablePlugin,
+  enablePlugin,
+  installPlugin,
+  listPlugins,
+  removePlugin,
+} from '../plugins/registry.ts';
 import type { PluginManifest } from '../plugins/registry.ts';
-import { createJob, cancelJob } from '../scheduler/scheduler.ts';
+import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
 import {
-  listAgents,
-  getAgent,
-  registerAgent,
-  updateAgent,
   deleteAgent,
+  getAgent,
+  listAgents,
+  registerAgent,
   selectAgent,
+  updateAgent,
 } from '../agent/manager.ts';
 import {
-  registerService,
-  listServices,
-  getService,
-  updateService,
   deleteService,
+  getRuntimeStatus,
+  getService,
+  listServices,
+  registerService,
   startService,
   stopService,
-  getRuntimeStatus,
+  updateService,
 } from '../services/manager.ts';
 
 function json(data: unknown, status = 200): Response {
@@ -169,7 +180,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!session) return notFound('Session not found');
     const { initSessionDb } = await import('../db/migrate.ts');
     const db = await initSessionDb(msgsMatch[1]);
-    const rows = await db.all<{ role: string; content: string; token_count: number; created_at: string }>(
+    const rows = await db.all<
+      { role: string; content: string; token_count: number; created_at: string }
+    >(
       `SELECT role, content, token_count, created_at FROM session_messages ORDER BY id ASC`,
     );
     return json(rows);
@@ -204,7 +217,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
       db.get<{ count: number }>(`SELECT COUNT(*) as count FROM reflection_memory`),
       db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory`),
     ]);
-    return json({ episodic: ep?.count ?? 0, semantic: sem?.count ?? 0, reflection: ref?.count ?? 0, procedural: proc?.count ?? 0 });
+    return json({
+      episodic: ep?.count ?? 0,
+      semantic: sem?.count ?? 0,
+      reflection: ref?.count ?? 0,
+      procedural: proc?.count ?? 0,
+    });
   }
 
   // GET /api/config
@@ -229,7 +247,16 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // PUT /api/config/provider — set a provider's apiKey/model/fine-tune params
   if (req.method === 'PUT' && path === '/api/config/provider') {
-    const body = await req.json() as { kind: string; model?: string; apiKey?: string; baseUrl?: string; secretKey?: string; temperature?: number; maxTokens?: number; topP?: number };
+    const body = await req.json() as {
+      kind: string;
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+      secretKey?: string;
+      temperature?: number;
+      maxTokens?: number;
+      topP?: number;
+    };
     const config = await loadConfig();
     const kind = body.kind as keyof typeof config.providers;
     const existing = config.providers[kind] ?? { kind, model: '' } as never;
@@ -249,7 +276,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const models = await fetchModels(kind, apiKey, baseUrl);
       return json(models);
     } catch (err) {
-      return json({ error: (err as Error).message }, { status: 502 });
+      return json({ error: (err as Error).message }, 502);
     }
   }
 
@@ -258,7 +285,16 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const days = Number(url.searchParams.get('days') ?? 30);
     const db = await getLensDb();
     const since = new Date(Date.now() - days * 86_400_000).toISOString();
-    const daily = await db.all<{ date: string; sessions: number; llm_calls: number; tokens_in: number; tokens_out: number; cost_usd: number }>(
+    const daily = await db.all<
+      {
+        date: string;
+        sessions: number;
+        llm_calls: number;
+        tokens_in: number;
+        tokens_out: number;
+        cost_usd: number;
+      }
+    >(
       `SELECT
          strftime('%Y-%m-%d', started_at) as date,
          COUNT(DISTINCT session_id) as sessions,
@@ -271,7 +307,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
        GROUP BY date ORDER BY date ASC`,
       [since],
     );
-    const models = await db.all<{ model: string; calls: number; tokens_in: number; tokens_out: number; cost_usd: number }>(
+    const models = await db.all<
+      { model: string; calls: number; tokens_in: number; tokens_out: number; cost_usd: number }
+    >(
       `SELECT
          COALESCE(model, 'unknown') as model,
          COUNT(*) as calls,
@@ -282,7 +320,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
        GROUP BY model ORDER BY calls DESC`,
       [since],
     );
-    const totals = await db.get<{ sessions: number; total_cost: number; total_tokens_in: number; total_tokens_out: number }>(
+    const totals = await db.get<
+      { sessions: number; total_cost: number; total_tokens_in: number; total_tokens_out: number }
+    >(
       `SELECT COUNT(DISTINCT session_id) as sessions,
          SUM(COALESCE(cost_usd,0)) as total_cost,
          SUM(COALESCE(tokens_in,0)) as total_tokens_in,
@@ -297,17 +337,31 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const agentMap = new Map<string, string>();
     for (const s of sessionsRows) agentMap.set(s.id, s.agent_id);
 
-    const rawEvents = await db.all<{ session_id: string; event_type: string; tokens_in: number; tokens_out: number; cost_usd: number }>(
+    const rawEvents = await db.all<
+      {
+        session_id: string;
+        event_type: string;
+        tokens_in: number;
+        tokens_out: number;
+        cost_usd: number;
+      }
+    >(
       `SELECT session_id, event_type, COALESCE(tokens_in,0) as tokens_in, COALESCE(tokens_out,0) as tokens_out, COALESCE(cost_usd,0) as cost_usd
        FROM lens_events WHERE started_at >= ?`,
       [since],
     );
 
-    const agentStats = new Map<string, { sessions: Set<string>; llmCalls: number; tokensIn: number; tokensOut: number; cost: number }>();
+    const agentStats = new Map<
+      string,
+      { sessions: Set<string>; llmCalls: number; tokensIn: number; tokensOut: number; cost: number }
+    >();
     for (const ev of rawEvents) {
       const aid = agentMap.get(ev.session_id) || 'unknown';
       let stat = agentStats.get(aid);
-      if (!stat) { stat = { sessions: new Set(), llmCalls: 0, tokensIn: 0, tokensOut: 0, cost: 0 }; agentStats.set(aid, stat); }
+      if (!stat) {
+        stat = { sessions: new Set(), llmCalls: 0, tokensIn: 0, tokensOut: 0, cost: 0 };
+        agentStats.set(aid, stat);
+      }
       stat.sessions.add(ev.session_id);
       if (ev.event_type === 'llm_call') stat.llmCalls++;
       stat.tokensIn += ev.tokens_in;
@@ -341,13 +395,20 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const memRaw = await new Deno.Command('free', { args: ['-b'], stdout: 'piped' }).output();
       const memText = new TextDecoder().decode(memRaw.stdout);
       const memLine = memText.split('\n')[1]?.split(/\s+/);
-      if (memLine) { memInfo = { total: Number(memLine[1]), used: Number(memLine[2]), free: Number(memLine[3]) }; }
+      if (memLine) {
+        memInfo = { total: Number(memLine[1]), used: Number(memLine[2]), free: Number(memLine[3]) };
+      }
     } catch { /* non-linux */ }
     try {
-      const dfRaw = await new Deno.Command('df', { args: ['-B1', Deno.env.get('HOME') ?? '/'], stdout: 'piped' }).output();
+      const dfRaw = await new Deno.Command('df', {
+        args: ['-B1', Deno.env.get('HOME') ?? '/'],
+        stdout: 'piped',
+      }).output();
       const dfText = new TextDecoder().decode(dfRaw.stdout);
       const dfLine = dfText.split('\n')[1]?.split(/\s+/);
-      if (dfLine) { diskInfo = { total: Number(dfLine[1]), used: Number(dfLine[2]), free: Number(dfLine[3]) }; }
+      if (dfLine) {
+        diskInfo = { total: Number(dfLine[1]), used: Number(dfLine[2]), free: Number(dfLine[3]) };
+      }
     } catch { /* ignore */ }
     return json({
       version: '0.9.0',
@@ -456,7 +517,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const soulGetMatch = path.match(/^\/api\/soul\/(soul|user|memory)$/);
   if (req.method === 'GET' && soulGetMatch) {
     const fileKey = soulGetMatch[1] as 'soul' | 'user' | 'memory';
-    const filePath = fileKey === 'soul' ? PATHS.soulFile : fileKey === 'user' ? PATHS.userFile : PATHS.memoryFile;
+    const filePath = fileKey === 'soul'
+      ? PATHS.soulFile
+      : fileKey === 'user'
+      ? PATHS.userFile
+      : PATHS.memoryFile;
     const content = (await exists(filePath)) ? await Deno.readTextFile(filePath) : '';
     return json({ content, path: filePath });
   }
@@ -465,7 +530,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const soulPutMatch = path.match(/^\/api\/soul\/(soul|user|memory)$/);
   if (req.method === 'PUT' && soulPutMatch) {
     const fileKey = soulPutMatch[1] as 'soul' | 'user' | 'memory';
-    const filePath = fileKey === 'soul' ? PATHS.soulFile : fileKey === 'user' ? PATHS.userFile : PATHS.memoryFile;
+    const filePath = fileKey === 'soul'
+      ? PATHS.soulFile
+      : fileKey === 'user'
+      ? PATHS.userFile
+      : PATHS.memoryFile;
     const { content } = await req.json() as { content: string };
     await Deno.mkdir(PATHS.configDir, { recursive: true });
     await Deno.writeTextFile(filePath, content);
@@ -522,7 +591,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/agents — create
   if (req.method === 'POST' && path === '/api/agents') {
-    const body = await req.json() as Omit<AgentConfig, 'id' | 'createdAt' | 'updatedAt'> & { id?: string };
+    const body = await req.json() as Omit<AgentConfig, 'id' | 'createdAt' | 'updatedAt'> & {
+      id?: string;
+    };
     try {
       const agent = await registerAgent(body);
       return json(agent, 201);
@@ -577,7 +648,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && svcGetMatch) {
     const svc = await getService(svcGetMatch[1]);
     if (!svc) return notFound('Service not found');
-    const rt = (await getRuntimeStatus()).find(r => r.id === svcGetMatch[1]);
+    const rt = (await getRuntimeStatus()).find((r) => r.id === svcGetMatch[1]);
     return json({ ...svc, runtime: rt ?? null });
   }
 
@@ -667,7 +738,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (wsGlobalFilesMatch && req.method === 'GET') {
     const { getGlobalWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
     const relPath = workspaceRelPath(wsGlobalFilesMatch, 1);
-    const targetPath = relPath ? resolveWorkspacePath('global', relPath, 'global') : getGlobalWorkspaceDir();
+    const targetPath = relPath
+      ? resolveWorkspacePath('global', relPath, 'global')
+      : getGlobalWorkspaceDir();
     try {
       const stat = await Deno.stat(targetPath);
       if (stat.isDirectory) {
@@ -710,10 +783,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
 
   if (wsAgentFilesMatch && req.method === 'GET') {
-    const { ensureAgentWorkspace, getAgentWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const { ensureAgentWorkspace, getAgentWorkspaceDir, resolveWorkspacePath } = await import(
+      '../workspace/paths.ts'
+    );
     const agentId = wsAgentFilesMatch[1];
     const relPath = workspaceRelPath(wsAgentFilesMatch);
-    const targetPath = relPath ? resolveWorkspacePath(agentId, relPath, 'agent') : await ensureAgentWorkspace(agentId);
+    const targetPath = relPath
+      ? resolveWorkspacePath(agentId, relPath, 'agent')
+      : await ensureAgentWorkspace(agentId);
     try {
       const stat = await Deno.stat(targetPath);
       if (stat.isDirectory) {
@@ -759,7 +836,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const db = await (await import('../db/client.ts')).getCoreDb();
     let query = `SELECT before_text, file_path FROM file_edit_log WHERE 1=1`;
     const params: InValue[] = [];
-    if (agentId) { query += ` AND agent_id = ?`; params.push(agentId); }
+    if (agentId) {
+      query += ` AND agent_id = ?`;
+      params.push(agentId);
+    }
     query += ` ORDER BY created_at DESC LIMIT 1`;
     const row = await db.get<{ before_text: string; file_path: string }>(query, params);
     if (!row) return err('No edits to undo', 404);
@@ -771,7 +851,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const db = await (await import('../db/client.ts')).getCoreDb();
     let query = `SELECT after_text, file_path FROM file_edit_log WHERE tool = 'file_undo'`;
     const params: InValue[] = [];
-    if (agentId) { query += ` AND agent_id = ?`; params.push(agentId); }
+    if (agentId) {
+      query += ` AND agent_id = ?`;
+      params.push(agentId);
+    }
     query += ` ORDER BY created_at DESC LIMIT 1`;
     const row = await db.get<{ after_text: string; file_path: string }>(query, params);
     if (!row) return err('No edits to redo', 404);
@@ -842,9 +925,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins/${slug}/download`);
     if (!dlRes.ok) return json({ error: `Plugin "${slug}" not found` }, 404);
     const manifest = await dlRes.json() as {
-      id?: string; name: string; version: string; description?: string;
-      kind: string; entryPoint: string; capabilities?: string[];
-      author?: string; homepage?: string;
+      id?: string;
+      name: string;
+      version: string;
+      description?: string;
+      kind: string;
+      entryPoint: string;
+      capabilities?: string[];
+      author?: string;
+      homepage?: string;
     };
     const { installPlugin } = await import('../plugins/registry.ts');
     try {
@@ -872,8 +961,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/agents/${slug}/download`);
     if (!dlRes.ok) return json({ error: `Agent "${slug}" not found` }, 404);
     const data = await dlRes.json() as {
-      name: string; description?: string; provider?: string; model?: string;
-      temperature?: number; tools?: string[]; tags?: string[]; systemPrompt?: string;
+      name: string;
+      description?: string;
+      provider?: string;
+      model?: string;
+      temperature?: number;
+      tools?: string[];
+      tags?: string[];
+      systemPrompt?: string;
       soulContent?: string;
     };
     if (!data.name) return json({ error: 'Invalid agent config: missing name' }, 400);
@@ -904,8 +999,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const limit = Number(url.searchParams.get('limit') ?? 50);
     let query = `SELECT * FROM file_edit_log WHERE 1=1`;
     const params: string[] = [];
-    if (filePath) { query += ` AND file_path = ?`; params.push(filePath); }
-    if (agentId) { query += ` AND agent_id = ?`; params.push(agentId); }
+    if (filePath) {
+      query += ` AND file_path = ?`;
+      params.push(filePath);
+    }
+    if (agentId) {
+      query += ` AND agent_id = ?`;
+      params.push(agentId);
+    }
     query += ` ORDER BY created_at DESC LIMIT ?`;
     params.push(String(limit));
     const rows = await db.all(query, params);

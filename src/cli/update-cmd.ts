@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
-import { bold, green, yellow, red, dim, cyan } from '@std/fmt/colors';
-import { checkForUpdates, applyUpdate, rollback, getUpdateStatus, cleanup } from '../update/mod.ts';
+import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
+import { applyUpdate, checkForUpdates, cleanup, getUpdateStatus, rollback } from '../update/mod.ts';
 
 export const updateCommand = new Command()
   .name('update')
@@ -10,24 +10,34 @@ export const updateCommand = new Command()
   .option('--rollback', 'Rollback to previous version')
   .option('--status', 'Show current version, latest available, and channel')
   .option('--force', 'Bypass dirty working tree check (source mode only)')
-  .action(async (opts: { check?: boolean; channel?: string; rollback?: boolean; status?: boolean; force?: boolean }) => {
-    if (opts.status) {
-      await showStatus();
-      return;
-    }
+  .action(
+    async (
+      opts: {
+        check?: boolean;
+        channel?: string;
+        rollback?: boolean;
+        status?: boolean;
+        force?: boolean;
+      },
+    ) => {
+      if (opts.status) {
+        await showStatus();
+        return;
+      }
 
-    if (opts.rollback) {
-      await doRollback();
-      return;
-    }
+      if (opts.rollback) {
+        await doRollback();
+        return;
+      }
 
-    if (opts.check) {
-      await doCheck(opts.channel);
-      return;
-    }
+      if (opts.check) {
+        await doCheck(opts.channel);
+        return;
+      }
 
-    await doUpdate(opts.channel, opts.force);
-  });
+      await doUpdate(opts.channel, opts.force);
+    },
+  );
 
 async function showStatus(): Promise<void> {
   const status = await getUpdateStatus();
@@ -35,7 +45,9 @@ async function showStatus(): Promise<void> {
   console.log(bold('\n  Cortex Update Status'));
   console.log('  ' + '─'.repeat(40));
   console.log(`  Current version:  ${cyan(status.currentVersion)}`);
-  console.log(`  Latest version:   ${status.latestVersion ? cyan(status.latestVersion) : dim('unknown')}`);
+  console.log(
+    `  Latest version:   ${status.latestVersion ? cyan(status.latestVersion) : dim('unknown')}`,
+  );
   console.log(`  Channel:          ${status.channel}`);
   console.log(`  Install type:     ${status.installType || dim('unknown')}`);
   console.log(`  Update available: ${status.updateAvailable ? green('yes') : dim('no')}`);
@@ -60,7 +72,9 @@ async function doCheck(channelOverride?: string): Promise<void> {
   console.log(`  Current version:  ${cyan(result.currentVersion)}`);
 
   if (result.status === 'available') {
-    console.log(`  Latest version:   ${green(result.latestVersion!)} ${yellow('(update available)')}`);
+    console.log(
+      `  Latest version:   ${green(result.latestVersion!)} ${yellow('(update available)')}`,
+    );
     console.log(`  Published:        ${dim(result.latestRelease?.publishedAt || '')}`);
     console.log(`  Run ${bold('cortex update')} to apply the update.`);
   } else {

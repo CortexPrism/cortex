@@ -66,7 +66,9 @@ export async function loadSoul(): Promise<string> {
   return (await readIfExists(PATHS.soulFile)) ?? DEFAULT_SOUL;
 }
 
-export async function loadSoulContext(): Promise<{ soul: string; user: string | null; memory: string | null }> {
+export async function loadSoulContext(): Promise<
+  { soul: string; user: string | null; memory: string | null }
+> {
   const [soul, user, memory] = await Promise.all([
     loadSoul(),
     readIfExists(PATHS.userFile),
@@ -82,7 +84,9 @@ export async function ensureSoulFile(): Promise<void> {
   }
 }
 
-export async function initSoulFiles(force = false): Promise<{ created: string[]; skipped: string[] }> {
+export async function initSoulFiles(
+  force = false,
+): Promise<{ created: string[]; skipped: string[] }> {
   await Deno.mkdir(PATHS.configDir, { recursive: true });
   const files = [
     { path: PATHS.soulFile, content: DEFAULT_SOUL, name: 'SOUL.md' },
@@ -92,8 +96,11 @@ export async function initSoulFiles(force = false): Promise<{ created: string[];
   const created: string[] = [];
   const skipped: string[] = [];
   for (const { path, content, name } of files) {
-    if (!force && await exists(path)) { skipped.push(name); }
-    else { await Deno.writeTextFile(path, content); created.push(name); }
+    if (!force && await exists(path)) skipped.push(name);
+    else {
+      await Deno.writeTextFile(path, content);
+      created.push(name);
+    }
   }
   return { created, skipped };
 }

@@ -1,7 +1,13 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
-import { listPlugins, enablePlugin, disablePlugin, removePlugin, installPlugin } from '../plugins/registry.ts';
+import {
+  disablePlugin,
+  enablePlugin,
+  installPlugin,
+  listPlugins,
+  removePlugin,
+} from '../plugins/registry.ts';
 import type { PluginKind } from '../plugins/registry.ts';
 
 export const pluginsCommand = new Command()
@@ -23,7 +29,9 @@ export const pluginsCommand = new Command()
         for (const p of plugins) {
           const status = p.enabled ? green('● enabled') : dim('○ disabled');
           const kind = cyan(p.kind.padEnd(5));
-          console.log(`  ${status}  ${kind}  ${bold(p.name)}@${p.version}  ${dim(p.description ?? '')}`);
+          console.log(
+            `  ${status}  ${kind}  ${bold(p.name)}@${p.version}  ${dim(p.description ?? '')}`,
+          );
           console.log(dim(`           id: ${p.id}`));
         }
         console.log('');
@@ -41,7 +49,9 @@ export const pluginsCommand = new Command()
           const rest = source.slice('marketplace:'.length);
           const match = rest.match(/^([^/]+)\/plugins\/(.+)$/);
           if (!match) {
-            console.log(red('  Invalid marketplace reference. Use marketplace:<host>/plugins/<slug>'));
+            console.log(
+              red('  Invalid marketplace reference. Use marketplace:<host>/plugins/<slug>'),
+            );
             return;
           }
           const host = match[1];
@@ -55,15 +65,24 @@ export const pluginsCommand = new Command()
           manifest = await res.json();
         } else if (source.startsWith('http://') || source.startsWith('https://')) {
           const res = await fetch(source);
-          if (!res.ok) { console.log(red(`  Fetch failed: ${res.status}`)); return; }
+          if (!res.ok) {
+            console.log(red(`  Fetch failed: ${res.status}`));
+            return;
+          }
           manifest = await res.json();
         } else {
           manifest = JSON.parse(await Deno.readTextFile(source));
         }
         const m = manifest as {
-          id?: string; name: string; version: string; description?: string;
-          kind: string; entryPoint: string; capabilities?: string[];
-          author?: string; homepage?: string;
+          id?: string;
+          name: string;
+          version: string;
+          description?: string;
+          kind: string;
+          entryPoint: string;
+          capabilities?: string[];
+          author?: string;
+          homepage?: string;
         };
         await installPlugin({
           id: m.id ?? '',

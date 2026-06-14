@@ -1,7 +1,7 @@
 import { join } from '@std/path';
 import { exists } from '@std/fs';
 import { addPolicy, listPolicies } from './policy.ts';
-import type { PolicyKind, PolicyEffect } from './policy.ts';
+import type { PolicyEffect, PolicyKind } from './policy.ts';
 
 export interface CplRule {
   kind: PolicyKind;
@@ -57,7 +57,10 @@ function parseYamlPolicy(text: string): CplFile {
       continue;
     }
 
-    if (stripped === 'rules:') { inRules = true; continue; }
+    if (stripped === 'rules:') {
+      inRules = true;
+      continue;
+    }
     if (!inRules) continue;
 
     if (stripped.startsWith('- kind:') || stripped.startsWith('-\n  kind:')) {
@@ -73,20 +76,24 @@ function parseYamlPolicy(text: string): CplFile {
 
     if (!currentRule) continue;
 
-    if (stripped.startsWith('kind:')) currentRule.kind = stripped.split(':')[1]?.trim() as PolicyKind;
-    else if (stripped.startsWith('effect:')) currentRule.effect = stripped.split(':')[1]?.trim() as PolicyEffect;
-    else if (stripped.startsWith('pattern:')) {
+    if (stripped.startsWith('kind:')) {
+      currentRule.kind = stripped.split(':')[1]?.trim() as PolicyKind;
+    } else if (stripped.startsWith('effect:')) {
+      currentRule.effect = stripped.split(':')[1]?.trim() as PolicyEffect;
+    } else if (stripped.startsWith('pattern:')) {
       currentRule.pattern = stripped.slice('pattern:'.length).trim().replace(/^["']|["']$/g, '');
-    }
-    else if (stripped.startsWith('reason:')) {
+    } else if (stripped.startsWith('reason:')) {
       currentRule.reason = stripped.slice('reason:'.length).trim().replace(/^["']|["']$/g, '');
-    }
-    else if (stripped.startsWith('priority:')) currentRule.priority = parseInt(stripped.split(':')[1]?.trim() ?? '100');
-    else if (stripped.startsWith('require_justification:')) currentRule.requireJustification = stripped.includes('true');
-    else if (stripped === 'paths:') { inPaths = true; currentRule.paths = []; }
-    else if (inPaths && stripped.startsWith('- ')) {
+    } else if (stripped.startsWith('priority:')) {
+      currentRule.priority = parseInt(stripped.split(':')[1]?.trim() ?? '100');
+    } else if (stripped.startsWith('require_justification:')) {
+      currentRule.requireJustification = stripped.includes('true');
+    } else if (stripped === 'paths:') {
+      inPaths = true;
+      currentRule.paths = [];
+    } else if (inPaths && stripped.startsWith('- ')) {
       currentRule.paths!.push(stripped.slice(2).replace(/^["']|["']$/g, ''));
-    } else { inPaths = false; }
+    } else inPaths = false;
   }
 
   flush();
@@ -110,7 +117,9 @@ export async function findCplFile(cwd = Deno.cwd()): Promise<string | null> {
   return null;
 }
 
-export async function importCplFile(filePath: string): Promise<{ imported: number; skipped: number }> {
+export async function importCplFile(
+  filePath: string,
+): Promise<{ imported: number; skipped: number }> {
   const cpl = await loadCplFile(filePath);
   if (!cpl) return { imported: 0, skipped: 0 };
 
@@ -122,7 +131,10 @@ export async function importCplFile(filePath: string): Promise<{ imported: numbe
 
   for (const rule of cpl.rules) {
     const key = `${rule.kind}:${rule.pattern}`;
-    if (existingPatterns.has(key)) { skipped++; continue; }
+    if (existingPatterns.has(key)) {
+      skipped++;
+      continue;
+    }
 
     let reason = rule.reason ?? '';
     if (rule.requireJustification) reason += ' [justification required]';

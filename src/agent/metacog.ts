@@ -30,8 +30,18 @@ const AMBIGUITY_PATTERNS = [
 ];
 
 const RESEARCH_KEYWORDS = [
-  'research', 'compare', 'survey', 'find out', 'look up', 'summarize',
-  'analyze', 'review', 'investigate', 'explore', 'study', 'gather',
+  'research',
+  'compare',
+  'survey',
+  'find out',
+  'look up',
+  'summarize',
+  'analyze',
+  'review',
+  'investigate',
+  'explore',
+  'study',
+  'gather',
 ];
 
 const MULTI_STEP_PATTERNS = [
@@ -78,7 +88,8 @@ export function assessTask(message: string): MetaAssessment {
     return {
       decision: 'ask_first',
       reason: 'Message is ambiguous — needs clarification before proceeding',
-      requiresClarification: 'Could you clarify what you mean? I want to make sure I do the right thing.',
+      requiresClarification:
+        'Could you clarify what you mean? I want to make sure I do the right thing.',
     };
   }
 
@@ -86,7 +97,8 @@ export function assessTask(message: string): MetaAssessment {
     return {
       decision: 'ask_first',
       reason: 'Task references unspecified resources (repo, server, file, etc.)',
-      requiresClarification: 'I\'d like to help — could you provide more specifics (e.g., which repo, server, or file)?',
+      requiresClarification:
+        "I'd like to help — could you provide more specifics (e.g., which repo, server, or file)?",
     };
   }
 
@@ -95,7 +107,7 @@ export function assessTask(message: string): MetaAssessment {
       decision: 'plan_with_rollback',
       reason: 'Destructive multi-step operation — planning with rollback checkpoints',
       suggestedPrefix:
-        'I\'ll plan this carefully with rollback checkpoints at each stage. Here\'s my approach:\n\n',
+        "I'll plan this carefully with rollback checkpoints at each stage. Here's my approach:\n\n",
     };
   }
 
@@ -104,7 +116,7 @@ export function assessTask(message: string): MetaAssessment {
       decision: 'parallelize',
       reason: 'Research-heavy task with independent sub-questions — parallelizing',
       suggestedPrefix:
-        'This has several independent research threads. I\'ll address each in parallel:\n\n',
+        "This has several independent research threads. I'll address each in parallel:\n\n",
     };
   }
 
@@ -145,7 +157,7 @@ export function applyMetaCogPrefix(
 function getSystemGuidance(assessment: MetaAssessment): string {
   switch (assessment.decision) {
     case 'plan_with_rollback':
-      return 'This task is risky. Before acting, explicitly state: (1) what you\'re about to do, (2) what could go wrong, (3) how to roll back. Then execute step by step with checkpoints.';
+      return "This task is risky. Before acting, explicitly state: (1) what you're about to do, (2) what could go wrong, (3) how to roll back. Then execute step by step with checkpoints.";
     case 'parallelize':
       return 'This task has independent sub-questions. Identify them explicitly and address each in sequence with clear headers.';
     case 'delegate':

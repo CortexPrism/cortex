@@ -2,7 +2,7 @@ import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { Secret } from '@cliffy/prompt';
 import { runMigrations } from '../db/migrate.ts';
-import { vaultStore, vaultGet, vaultList, vaultDelete } from '../security/vault.ts';
+import { vaultDelete, vaultGet, vaultList, vaultStore } from '../security/vault.ts';
 
 export const vaultCommand = new Command()
   .name('vault')
@@ -13,7 +13,9 @@ export const vaultCommand = new Command()
       .description('Store a secret in the vault (prompts for value)')
       .arguments('<name:string>')
       .option('-s, --service <service:string>', 'Service name', { default: 'general' })
-      .option('-t, --type <type:string>', 'Credential type (api_key, token, password)', { default: 'api_key' })
+      .option('-t, --type <type:string>', 'Credential type (api_key, token, password)', {
+        default: 'api_key',
+      })
       .action(async (opts: { service: string; type: string }, name: string) => {
         await runMigrations();
         const value = await Secret.prompt(`  Value for "${name}" (hidden): `);
@@ -21,7 +23,12 @@ export const vaultCommand = new Command()
           console.error(red('  Error: value cannot be empty'));
           Deno.exit(1);
         }
-        const id = await vaultStore({ name, service: opts.service, value, credentialType: opts.type });
+        const id = await vaultStore({
+          name,
+          service: opts.service,
+          value,
+          credentialType: opts.type,
+        });
         console.log(green(`  ✓ Stored: ${bold(name)} [${id}]`));
       }),
   )
@@ -57,7 +64,9 @@ export const vaultCommand = new Command()
         console.log(dim('  ────────────────────────────────────────'));
         for (const e of entries) {
           console.log(
-            `  ${bold(e.name)}  ${dim(e.service)}  ${yellow(e.credential_type)}  ${dim(`used ${e.usage_count}x`)}`,
+            `  ${bold(e.name)}  ${dim(e.service)}  ${yellow(e.credential_type)}  ${
+              dim(`used ${e.usage_count}x`)
+            }`,
           );
         }
         console.log('');

@@ -1,7 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, dim, green, yellow } from '@std/fmt/colors';
 import { PATHS } from '../config/paths.ts';
-import { initSoulFiles, loadSoulContext, appendToMemoryFile } from '../agent/soul.ts';
+import { appendToMemoryFile, initSoulFiles, loadSoulContext } from '../agent/soul.ts';
 
 export const soulCommand = new Command()
   .name('soul')
@@ -16,7 +16,9 @@ export const soulCommand = new Command()
         for (const f of created) console.log(green(`  ✓ Created: ${PATHS.configDir}/${f}`));
         for (const f of skipped) console.log(dim(`  ~ Skipped (exists): ${f}`));
         if (created.length > 0) {
-          console.log(dim(`\n  Edit these files to personalise your agent, then restart cortex.\n`));
+          console.log(
+            dim(`\n  Edit these files to personalise your agent, then restart cortex.\n`),
+          );
         }
       }),
   )
@@ -61,7 +63,12 @@ export const soulCommand = new Command()
         };
         const target = pathMap[file.toUpperCase()] ?? pathMap['SOUL.md'];
         const editor = Deno.env.get('EDITOR') ?? Deno.env.get('VISUAL') ?? 'vi';
-        const proc = new Deno.Command(editor, { args: [target], stdin: 'inherit', stdout: 'inherit', stderr: 'inherit' });
+        const proc = new Deno.Command(editor, {
+          args: [target],
+          stdin: 'inherit',
+          stdout: 'inherit',
+          stderr: 'inherit',
+        });
         const { code } = await proc.output();
         if (code !== 0) console.log(yellow(`  Editor exited with code ${code}`));
       }),

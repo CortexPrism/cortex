@@ -7,4 +7,4 @@ export { fileListTool } from './file_list.ts';
 export { fileTreeTool } from './file_tree.ts';
 export { fileInfoTool } from './file_info.ts';
 export { fileSearchTool } from './file_search.ts';
-export { fileUndoTool, fileRedoTool } from './file_undo.ts';
+export { fileRedoTool, fileUndoTool } from './file_undo.ts';

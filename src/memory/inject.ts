@@ -1,5 +1,5 @@
 import type { EmbeddingProvider } from './embeddings.ts';
-import { retrieve, type MemoryHit } from './store.ts';
+import { type MemoryHit, retrieve } from './store.ts';
 
 const MEMORY_SECTION_MARKER = '\n\n---\n\n## Relevant Memory\n\n';
 

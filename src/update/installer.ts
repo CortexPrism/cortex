@@ -1,4 +1,4 @@
-import { join, dirname } from '@std/path';
+import { dirname, join } from '@std/path';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
 import type { ReleaseInfo } from './checker.ts';
@@ -33,7 +33,8 @@ function getCurrentPlatformAssetName(): string | null {
 
 async function detectInstallType(): Promise<InstallManifest> {
   const execPath = Deno.execPath();
-  const isBinary = !execPath.endsWith('deno') && !execPath.endsWith('deno.exe') && !execPath.endsWith('.ts');
+  const isBinary = !execPath.endsWith('deno') && !execPath.endsWith('deno.exe') &&
+    !execPath.endsWith('.ts');
 
   if (isBinary) {
     const binaryPath = await Deno.realPath(execPath);
@@ -166,7 +167,9 @@ async function gitCheckout(version: string, installPath: string, force: boolean)
   });
   const checkoutResult = await checkoutCmd.output();
   if (checkoutResult.code !== 0) {
-    throw new Error(`git checkout ${tag} failed: ${new TextDecoder().decode(checkoutResult.stderr)}`);
+    throw new Error(
+      `git checkout ${tag} failed: ${new TextDecoder().decode(checkoutResult.stderr)}`,
+    );
   }
 }
 

@@ -41,7 +41,8 @@ export async function checkPolicy(
         return {
           allowed: rule.effect === 'allow',
           rule,
-          reason: rule.reason ?? (rule.effect === 'deny' ? `Denied by rule: ${rule.pattern}` : 'Allowed'),
+          reason: rule.reason ??
+            (rule.effect === 'deny' ? `Denied by rule: ${rule.pattern}` : 'Allowed'),
         };
       }
     } catch {
@@ -64,7 +65,14 @@ export async function addPolicy(opts: {
   await db.run(
     `INSERT INTO policy_rules (id, kind, effect, pattern, reason, priority, created_at)
      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
-    [id, opts.kind, opts.effect, opts.pattern, opts.reason ?? null, opts.priority ?? 100] as InValue[],
+    [
+      id,
+      opts.kind,
+      opts.effect,
+      opts.pattern,
+      opts.reason ?? null,
+      opts.priority ?? 100,
+    ] as InValue[],
   );
   return id;
 }

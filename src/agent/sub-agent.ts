@@ -103,9 +103,11 @@ export async function* spawnSubAgent(
   // Spawn the sub-agent process
   const cmd = new Deno.Command(Deno.execPath(), {
     args: [
-      'run', '--allow-all',
+      'run',
+      '--allow-all',
       new URL('../../src/processes/sub-agent-entry.ts', import.meta.url).pathname,
-      '--id', id,
+      '--id',
+      id,
     ],
     stdin: 'piped',
     stdout: 'piped',

@@ -1,4 +1,4 @@
-import { join, resolve, normalize } from '@std/path';
+import { join, normalize, resolve } from '@std/path';
 import { ensureDir } from '@std/fs';
 import { PATHS } from '../config/paths.ts';
 

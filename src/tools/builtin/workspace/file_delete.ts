@@ -1,5 +1,10 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace, getAgentWorkspaceDir, getGlobalWorkspaceDir } from '../../../workspace/paths.ts';
+import {
+  ensureAgentWorkspace,
+  getAgentWorkspaceDir,
+  getGlobalWorkspaceDir,
+  resolveWorkspacePath,
+} from '../../../workspace/paths.ts';
 import { gitAutoCommit, gitEnsureBranch } from '../../../workspace/git.ts';
 import { logFileEdit } from './common.ts';
 
@@ -44,7 +49,10 @@ export const fileDeleteTool: Tool = {
       const rootDir = workspace === 'agent'
         ? getAgentWorkspaceDir(context.agentId)
         : getGlobalWorkspaceDir();
-      if (resolveWorkspacePath(context.agentId, filePath, workspace) === resolveWorkspacePath(context.agentId, rootDir, workspace)) {
+      if (
+        resolveWorkspacePath(context.agentId, filePath, workspace) ===
+          resolveWorkspacePath(context.agentId, rootDir, workspace)
+      ) {
         throw new Error('Cannot delete workspace root');
       }
 

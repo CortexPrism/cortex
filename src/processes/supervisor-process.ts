@@ -1,4 +1,9 @@
-import { ensureSocketDir, VALIDATOR_SOCK, EXECUTOR_SOCK, SCHEDULER_SOCK } from '../ipc/transport.ts';
+import {
+  ensureSocketDir,
+  EXECUTOR_SOCK,
+  SCHEDULER_SOCK,
+  VALIDATOR_SOCK,
+} from '../ipc/transport.ts';
 
 interface ProcDef {
   name: string;
@@ -43,7 +48,10 @@ async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
 }
 
 export async function runSupervisor(): Promise<void> {
-  const children = new Map<string, { proc: ProcDef; process: Deno.ChildProcess; restartCount: number }>();
+  const children = new Map<
+    string,
+    { proc: ProcDef; process: Deno.ChildProcess; restartCount: number }
+  >();
 
   async function startOne(proc: ProcDef): Promise<void> {
     const existing = children.get(proc.name);
@@ -51,7 +59,11 @@ export async function runSupervisor(): Promise<void> {
 
     if (restartCount > 0) {
       const delay = Math.min(Math.pow(2, restartCount) * 1000, 30000);
-      console.log(`[supervisor] ${proc.label} crashed. Restarting in ${delay / 1000}s (attempt ${restartCount})...`);
+      console.log(
+        `[supervisor] ${proc.label} crashed. Restarting in ${
+          delay / 1000
+        }s (attempt ${restartCount})...`,
+      );
       await new Promise((r) => setTimeout(r, delay));
     }
 
@@ -80,7 +92,9 @@ export async function runSupervisor(): Promise<void> {
   const shutdown = () => {
     console.log('\n[supervisor] Shutting down...');
     for (const [name, child] of children) {
-      try { child.process.kill('SIGTERM'); } catch { /* ignore */ }
+      try {
+        child.process.kill('SIGTERM');
+      } catch { /* ignore */ }
       children.delete(name);
     }
     Deno.exit(0);

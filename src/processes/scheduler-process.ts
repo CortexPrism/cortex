@@ -1,9 +1,4 @@
-import {
-  getDueJobs,
-  markJobDone,
-  markJobFailed,
-  markJobRunning,
-} from '../scheduler/scheduler.ts';
+import { getDueJobs, markJobDone, markJobFailed, markJobRunning } from '../scheduler/scheduler.ts';
 import { runConsolidation } from '../memory/consolidate.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { nextCronDate } from '../scheduler/cron.ts';
@@ -34,7 +29,10 @@ async function runDueJobs(): Promise<void> {
 
     try {
       if (job.command.startsWith('cortex:consolidate:')) {
-        const kind = job.command.replace('cortex:consolidate:', '') as 'hourly' | 'daily' | 'weekly';
+        const kind = job.command.replace('cortex:consolidate:', '') as
+          | 'hourly'
+          | 'daily'
+          | 'weekly';
         console.log(`[scheduler] Consolidation: ${kind}`);
         await runConsolidation(kind);
         await markJobDone(job.id);

@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows, assert } from '@std/assert';
+import { assert, assertEquals, assertThrows } from '@std/assert';
 
 // We need to bypass the module-level Deno calls for testing
 

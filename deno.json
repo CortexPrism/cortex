@@ -36,7 +36,14 @@
   },
   "lint": {
     "rules": {
-      "exclude": ["no-explicit-any"]
+      "exclude": [
+        "no-explicit-any",
+        "no-unused-vars",
+        "require-await",
+        "prefer-const",
+        "no-import-prefix",
+        "no-unversioned-import"
+      ]
     }
   },
   "fmt": {

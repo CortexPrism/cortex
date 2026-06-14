@@ -1,8 +1,15 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
-import { listPolicies, addPolicy, removePolicy, checkPolicy, type PolicyKind, type PolicyEffect } from '../security/policy.ts';
-import { importCplFile, generateCplTemplate, findCplFile } from '../security/cpl.ts';
+import {
+  addPolicy,
+  checkPolicy,
+  listPolicies,
+  type PolicyEffect,
+  type PolicyKind,
+  removePolicy,
+} from '../security/policy.ts';
+import { findCplFile, generateCplTemplate, importCplFile } from '../security/cpl.ts';
 
 export const policyCommand = new Command()
   .name('policy')
@@ -36,7 +43,9 @@ export const policyCommand = new Command()
     new Command()
       .description('Add a policy rule')
       .arguments('<pattern:string>')
-      .option('-k, --kind <kind:string>', 'Rule kind: tool | shell | domain | capability', { default: 'shell' })
+      .option('-k, --kind <kind:string>', 'Rule kind: tool | shell | domain | capability', {
+        default: 'shell',
+      })
       .option('-e, --effect <effect:string>', 'Effect: allow | deny', { default: 'deny' })
       .option('-r, --reason <reason:string>', 'Human-readable reason')
       .option('-p, --priority <n:number>', 'Priority (lower = higher precedence)', { default: 100 })
@@ -84,7 +93,10 @@ export const policyCommand = new Command()
           return;
         }
         const { imported, skipped } = await importCplFile(path);
-        console.log(green(`  ✓ Imported ${imported} rules`), skipped ? dim(`(${skipped} already exist)`) : '');
+        console.log(
+          green(`  ✓ Imported ${imported} rules`),
+          skipped ? dim(`(${skipped} already exist)`) : '',
+        );
       }),
   )
   .command(
@@ -116,7 +128,9 @@ export const policyCommand = new Command()
         console.log(`\n  ${status}`);
         console.log(`  ${dim('reason:')} ${decision.reason}`);
         if (decision.rule) {
-          console.log(`  ${dim('matched rule:')} ${decision.rule.id} — ${yellow(decision.rule.pattern)}`);
+          console.log(
+            `  ${dim('matched rule:')} ${decision.rule.id} — ${yellow(decision.rule.pattern)}`,
+          );
         }
         console.log('');
       }),

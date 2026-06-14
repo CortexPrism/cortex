@@ -39,7 +39,11 @@ export async function logFileEdit(entry: EditLogEntry): Promise<string> {
     ],
   );
 
-  const action = entry.tool === 'file_delete' ? 'delete' : entry.tool === 'file_rename' ? 'rename' : 'write';
+  const action = entry.tool === 'file_delete'
+    ? 'delete'
+    : entry.tool === 'file_rename'
+    ? 'rename'
+    : 'write';
   emitFileChange({ agentId: entry.agentId, filePath: entry.filePath, action });
 
   return id;

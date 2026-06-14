@@ -1,6 +1,13 @@
 import { ensureDir } from '@std/fs';
 import { join } from '@std/path';
-import { getCoreDb, getLensDb, getMemoryDb, getPluginsDb, getSessionDb, getVaultDb } from './client.ts';
+import {
+  getCoreDb,
+  getLensDb,
+  getMemoryDb,
+  getPluginsDb,
+  getSessionDb,
+  getVaultDb,
+} from './client.ts';
 import { PATHS } from '../config/paths.ts';
 import type { Db } from './client.ts';
 
@@ -73,7 +80,11 @@ export async function runMigrations(): Promise<void> {
     { db: await getVaultDb(), sqlFile: '004_vault.sql', label: 'vault.db' },
     { db: await getPluginsDb(), sqlFile: '005_plugins.sql', label: 'plugins.db' },
     { db: coreDb, sqlFile: '007_jobs_v2.sql', label: 'cortex.db (jobs v2)' },
-    { db: await getMemoryDb(), sqlFile: '008_memory_embeddings.sql', label: 'memory.db (embeddings)' },
+    {
+      db: await getMemoryDb(),
+      sqlFile: '008_memory_embeddings.sql',
+      label: 'memory.db (embeddings)',
+    },
     { db: coreDb, sqlFile: '009_policy.sql', label: 'cortex.db (policy)' },
     { db: coreDb, sqlFile: '010_services.sql', label: 'cortex.db (services)' },
     { db: coreDb, sqlFile: '011_workspace.sql', label: 'cortex.db (workspace)' },

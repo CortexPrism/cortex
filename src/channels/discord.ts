@@ -81,7 +81,9 @@ export class DiscordAdapter {
     });
   }
 
-  private handlePayload(payload: { op: number; d: unknown; s: number | null; t: string | null }): void {
+  private handlePayload(
+    payload: { op: number; d: unknown; s: number | null; t: string | null },
+  ): void {
     const { op, d, s, t } = payload;
 
     if (s !== null) this.sequenceNumber = s;

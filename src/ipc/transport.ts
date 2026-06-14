@@ -79,7 +79,9 @@ async function readLine(conn: Deno.Conn, timeoutMs = 10_000): Promise<string> {
   while (Date.now() < deadline) {
     const remaining = deadline - Date.now();
     const readPromise = conn.read(buf);
-    const timeoutPromise = new Promise<null>((_, r) => setTimeout(() => r(new Error('timeout')), remaining));
+    const timeoutPromise = new Promise<null>((_, r) =>
+      setTimeout(() => r(new Error('timeout')), remaining)
+    );
 
     const n = await Promise.race([readPromise, timeoutPromise]) as number | null;
     if (n === null) break;
@@ -107,7 +109,9 @@ export async function sendMessage(
 ): Promise<IpcMessage> {
   const conn = await Promise.race([
     Deno.connect({ transport: 'unix', path }),
-    new Promise<never>((_, r) => setTimeout(() => r(new Error(`connect timeout: ${path}`)), timeoutMs)),
+    new Promise<never>((_, r) =>
+      setTimeout(() => r(new Error(`connect timeout: ${path}`)), timeoutMs)
+    ),
   ]);
 
   try {
@@ -115,7 +119,9 @@ export async function sendMessage(
     const line = await readLine(conn, timeoutMs);
     return JSON.parse(line) as IpcMessage;
   } finally {
-    try { conn.close(); } catch { /* already closed */ }
+    try {
+      conn.close();
+    } catch { /* already closed */ }
   }
 }
 
@@ -125,7 +131,9 @@ export async function listenMessages(
 ): Promise<void> {
   await ensureSocketDir();
 
-  try { await Deno.remove(path); } catch { /* stale socket */ }
+  try {
+    await Deno.remove(path);
+  } catch { /* stale socket */ }
 
   const listener = Deno.listen({ transport: 'unix', path });
   console.log(`[ipc] Listening on ${path}`);
@@ -147,12 +155,16 @@ async function handleConnection(
 
     const respond = async (reply: IpcMessage): Promise<void> => {
       await writeLine(conn, reply);
-      try { conn.close(); } catch { /* already closed */ }
+      try {
+        conn.close();
+      } catch { /* already closed */ }
     };
 
     await handler(msg, respond);
   } catch {
-    try { conn.close(); } catch { /* already closed */ }
+    try {
+      conn.close();
+    } catch { /* already closed */ }
   }
 }
 

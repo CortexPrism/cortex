@@ -39,9 +39,7 @@ export const fileReadTool: Tool = {
     const offset = typeof args.offset === 'number' ? Math.max(1, args.offset) : 1;
     const limit = typeof args.limit === 'number' ? args.limit : undefined;
 
-    const filePath = rawPath.startsWith('/')
-      ? rawPath
-      : resolve(join(context.workingDir, rawPath));
+    const filePath = rawPath.startsWith('/') ? rawPath : resolve(join(context.workingDir, rawPath));
 
     try {
       const stat = await Deno.stat(filePath);
@@ -65,7 +63,9 @@ export const fileReadTool: Tool = {
         .map((l, i) => `${String(offset + i).padStart(4)} │ ${l}`)
         .join('\n');
 
-      const header = `// ${filePath}  (${totalLines} lines${truncated ? ', truncated at 64KB' : ''})`;
+      const header = `// ${filePath}  (${totalLines} lines${
+        truncated ? ', truncated at 64KB' : ''
+      })`;
       return result(true, `${header}\n${numbered}`, undefined, start);
     } catch (err) {
       return result(false, '', (err as Error).message, start);

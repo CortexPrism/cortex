@@ -58,9 +58,20 @@ export async function loadMcpPlugin(row: PluginRow): Promise<LoadedPlugin> {
         });
         const json = await res.json() as { result?: unknown; error?: { message: string } };
         if (json.error) throw new Error(json.error.message);
-        return { toolName: mcpTool.definition.name, success: true, output: JSON.stringify(json.result), durationMs: Date.now() - t0 };
+        return {
+          toolName: mcpTool.definition.name,
+          success: true,
+          output: JSON.stringify(json.result),
+          durationMs: Date.now() - t0,
+        };
       } catch (e) {
-        return { toolName: mcpTool.definition.name, success: false, output: '', error: (e as Error).message, durationMs: Date.now() - t0 };
+        return {
+          toolName: mcpTool.definition.name,
+          success: false,
+          output: '',
+          error: (e as Error).message,
+          durationMs: Date.now() - t0,
+        };
       }
     },
   };

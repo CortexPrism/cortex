@@ -1,9 +1,5 @@
 import { listenMessages, VALIDATOR_SOCK } from '../ipc/transport.ts';
-import type {
-  IpcMessage,
-  IntentMessage,
-  IntentResponseMessage,
-} from '../ipc/transport.ts';
+import type { IntentMessage, IntentResponseMessage, IpcMessage } from '../ipc/transport.ts';
 import { checkPolicy } from '../security/policy.ts';
 import type { PolicyKind } from '../security/policy.ts';
 import { runMigrations } from '../db/migrate.ts';
@@ -22,8 +18,10 @@ async function handleIntent(
     (params.domain as string) ??
     action;
 
-  const policyKind: PolicyKind = action.startsWith('shell') ? 'shell'
-    : action.includes('domain') || action.includes('http') ? 'domain'
+  const policyKind: PolicyKind = action.startsWith('shell')
+    ? 'shell'
+    : action.includes('domain') || action.includes('http')
+    ? 'domain'
     : 'tool';
 
   const allowed = await checkPolicy(policyKind, targetValue);

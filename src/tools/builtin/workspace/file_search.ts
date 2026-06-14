@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 
 export const fileSearchTool: Tool = {
   definition: {
@@ -54,8 +54,8 @@ export const fileSearchTool: Tool = {
       const searchDir = rawPath
         ? resolveWorkspacePath(context.agentId, rawPath, workspace)
         : workspace === 'agent'
-          ? (await ensureAgentWorkspace(context.agentId))
-          : Deno.cwd();
+        ? (await ensureAgentWorkspace(context.agentId))
+        : Deno.cwd();
 
       const regex = new RegExp(patternStr, 'g');
       const results: string[] = [];
@@ -64,9 +64,8 @@ export const fileSearchTool: Tool = {
       await searchInDir(searchDir, regex, include, results, maxResults, 0);
       fileCount = results.length;
 
-      const output = results.length === 0
-        ? 'No matches found.'
-        : results.join('\n') + (fileCount >= maxResults ? `\n... (max ${maxResults} results, truncated)` : '');
+      const output = results.length === 0 ? 'No matches found.' : results.join('\n') +
+        (fileCount >= maxResults ? `\n... (max ${maxResults} results, truncated)` : '');
 
       return {
         toolName: 'file_search',

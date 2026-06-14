@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 import { gitAutoCommit, gitEnsureBranch } from '../../../workspace/git.ts';
 import { logFileEdit } from './common.ts';
 

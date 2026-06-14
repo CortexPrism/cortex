@@ -10,11 +10,15 @@ const listeners = new Set<FileChangeListener>();
 
 export function onFileChange(listener: FileChangeListener): () => void {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function emitFileChange(event: FileChangeEvent): void {
   for (const listener of listeners) {
-    try { listener(event); } catch { /* ignore listener errors */ }
+    try {
+      listener(event);
+    } catch { /* ignore listener errors */ }
   }
 }

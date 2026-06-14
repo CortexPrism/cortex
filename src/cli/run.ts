@@ -3,7 +3,7 @@ import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { loadConfig } from '../config/config.ts';
 import { buildProvider } from '../llm/router.ts';
 import { runMigrations } from '../db/migrate.ts';
-import { runInSandbox, formatSandboxResult, isDockerAvailable } from '../sandbox/executor.ts';
+import { formatSandboxResult, isDockerAvailable, runInSandbox } from '../sandbox/executor.ts';
 import { autofix } from '../sandbox/autofix.ts';
 
 export const runCommand = new Command()
@@ -70,15 +70,19 @@ export const runCommand = new Command()
       model: activeConfig.model,
       maxRounds: opts.maxFix,
       onProgress: (round, runResult, fixedCode) => {
-        const status = runResult.exitCode === 0 && !runResult.timedOut
-          ? green('✓')
-          : red('✗');
-        console.log(`  Round ${round}: ${status} exit ${runResult.exitCode} · ${runResult.durationMs}ms`);
+        const status = runResult.exitCode === 0 && !runResult.timedOut ? green('✓') : red('✗');
+        console.log(
+          `  Round ${round}: ${status} exit ${runResult.exitCode} · ${runResult.durationMs}ms`,
+        );
         if (runResult.stdout.trim()) {
-          console.log(dim(runResult.stdout.trimEnd().split('\n').map((l) => `    ${l}`).join('\n')));
+          console.log(
+            dim(runResult.stdout.trimEnd().split('\n').map((l) => `    ${l}`).join('\n')),
+          );
         }
         if (runResult.stderr.trim() && runResult.exitCode !== 0) {
-          console.log(red(runResult.stderr.trim().split('\n').slice(0, 5).map((l) => `    ${l}`).join('\n')));
+          console.log(
+            red(runResult.stderr.trim().split('\n').slice(0, 5).map((l) => `    ${l}`).join('\n')),
+          );
         }
         if (fixedCode) {
           console.log(yellow(`  → LLM proposed fix (${fixedCode.length} chars)`));

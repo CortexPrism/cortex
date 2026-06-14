@@ -131,7 +131,16 @@ export async function vaultGet(name: string, requestor = 'system'): Promise<stri
 }
 
 export async function vaultList(): Promise<
-  Array<{ id: string; name: string; service: string; credential_type: string; created_at: string; usage_count: number }>
+  Array<
+    {
+      id: string;
+      name: string;
+      service: string;
+      credential_type: string;
+      created_at: string;
+      usage_count: number;
+    }
+  >
 > {
   const db = await getVaultDb();
   return await db.all(

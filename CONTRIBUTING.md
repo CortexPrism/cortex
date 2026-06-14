@@ -30,7 +30,8 @@ deno task fmt
 - **No hardcoded secrets** — use `CORTEX_VAULT_KEY` env var; never commit credentials
 - **No hardcoded paths** — use `PATHS` from `src/config/paths.ts`
 - **Async-first** — prefer `async/await` over raw Promise chains
-- **Fire-and-forget pattern** — background tasks (memory write, reflection) must use `.catch(() => {})` and never block the response
+- **Fire-and-forget pattern** — background tasks (memory write, reflection) must use
+  `.catch(() => {})` and never block the response
 - **Error handling** — catch at boundaries; surface useful error messages to the user
 
 ## Adding a New Tool
@@ -56,6 +57,7 @@ deno task fmt
 ## Commit Style
 
 Use conventional commits:
+
 ```
 feat: add discord channel adapter
 fix: handle empty response from Ollama

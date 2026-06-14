@@ -28,10 +28,12 @@ export async function gitAutoCommit(
 
     const commitCmd = new Deno.Command('git', {
       args: [
-        '-C', dir,
+        '-C',
+        dir,
         'commit',
         '--no-gpg-sign',
-        '-m', `agent/${agentId}: ${toolName} ${filePath}`,
+        '-m',
+        `agent/${agentId}: ${toolName} ${filePath}`,
         '--allow-empty',
       ],
       stdout: 'null',

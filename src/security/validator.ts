@@ -7,9 +7,16 @@ export interface ValidationResult {
 }
 
 const FILE_TOOLS = new Set([
-  'file_read', 'file_write', 'file_edit', 'file_patch',
-  'file_delete', 'file_rename', 'file_list', 'file_tree',
-  'file_info', 'file_search',
+  'file_read',
+  'file_write',
+  'file_edit',
+  'file_patch',
+  'file_delete',
+  'file_rename',
+  'file_list',
+  'file_tree',
+  'file_info',
+  'file_search',
 ]);
 
 export async function validateToolCall(

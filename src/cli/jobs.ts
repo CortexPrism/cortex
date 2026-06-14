@@ -14,12 +14,18 @@ import { runConsolidation } from '../memory/consolidate.ts';
 
 function statusColor(status: string): string {
   switch (status) {
-    case 'pending': return yellow('pending');
-    case 'running': return cyan('running');
-    case 'completed': return green('completed');
-    case 'failed': return red('failed');
-    case 'cancelled': return dim('cancelled');
-    default: return status;
+    case 'pending':
+      return yellow('pending');
+    case 'running':
+      return cyan('running');
+    case 'completed':
+      return green('completed');
+    case 'failed':
+      return red('failed');
+    case 'cancelled':
+      return dim('cancelled');
+    default:
+      return status;
   }
 }
 
@@ -114,7 +120,10 @@ export const jobsCommand = new Command()
 
           try {
             if (job.command.startsWith('cortex:consolidate:')) {
-              const kind = job.command.replace('cortex:consolidate:', '') as 'hourly' | 'daily' | 'weekly';
+              const kind = job.command.replace('cortex:consolidate:', '') as
+                | 'hourly'
+                | 'daily'
+                | 'weekly';
               await runConsolidation(kind);
               await markJobDone(job.id);
 

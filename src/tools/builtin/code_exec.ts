@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import { runInSandbox, formatSandboxResult } from '../../sandbox/executor.ts';
+import { formatSandboxResult, runInSandbox } from '../../sandbox/executor.ts';
 
 export const codeExecTool: Tool = {
   definition: {
@@ -40,7 +40,13 @@ export const codeExecTool: Tool = {
     const stdin = args.stdin ? String(args.stdin) : undefined;
 
     if (!code) {
-      return { toolName: 'code_exec', success: false, output: '', error: 'No code provided', durationMs: 0 };
+      return {
+        toolName: 'code_exec',
+        success: false,
+        output: '',
+        error: 'No code provided',
+        durationMs: 0,
+      };
     }
 
     if (context.approvalGate) {

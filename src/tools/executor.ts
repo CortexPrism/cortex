@@ -12,7 +12,12 @@ export function parseToolCalls(text: string): ToolCallRequest[] {
 
   while ((match = TOOL_CALL_RE.exec(text)) !== null) {
     try {
-      const parsed = JSON.parse(match[1]) as { tool?: string; name?: string; args?: Record<string, unknown>; arguments?: Record<string, unknown> };
+      const parsed = JSON.parse(match[1]) as {
+        tool?: string;
+        name?: string;
+        args?: Record<string, unknown>;
+        arguments?: Record<string, unknown>;
+      };
       const toolName = parsed.tool ?? parsed.name ?? '';
       const args = parsed.args ?? parsed.arguments ?? {};
       if (toolName) calls.push({ toolName, args });
@@ -93,8 +98,7 @@ export function injectToolsIntoPrompt(
     .map((t) => {
       const params = t.params
         .map(
-          (p) =>
-            `  - ${p.name} (${p.type}${p.required ? ', required' : ''}): ${p.description}`,
+          (p) => `  - ${p.name} (${p.type}${p.required ? ', required' : ''}): ${p.description}`,
         )
         .join('\n');
       return `### ${t.name}\n${t.description}\nParameters:\n${params}`;

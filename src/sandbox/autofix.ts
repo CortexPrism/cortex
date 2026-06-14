@@ -1,5 +1,10 @@
 import type { LLMProvider } from '../llm/types.ts';
-import { runInSandbox, formatSandboxResult, type SandboxOptions, type SandboxResult } from './executor.ts';
+import {
+  formatSandboxResult,
+  runInSandbox,
+  type SandboxOptions,
+  type SandboxResult,
+} from './executor.ts';
 
 const MAX_FIX_ROUNDS = 4;
 
@@ -20,7 +25,8 @@ export interface AutofixResult {
   success: boolean;
 }
 
-const FIX_SYSTEM = `You are an expert code debugger. Given code and its error output, return ONLY the corrected code with no explanation, no markdown fences, no commentary. Just the raw fixed code.`;
+const FIX_SYSTEM =
+  `You are an expert code debugger. Given code and its error output, return ONLY the corrected code with no explanation, no markdown fences, no commentary. Just the raw fixed code.`;
 
 export async function autofix(opts: AutofixOptions): Promise<AutofixResult> {
   const maxRounds = opts.maxRounds ?? MAX_FIX_ROUNDS;
@@ -46,7 +52,8 @@ export async function autofix(opts: AutofixOptions): Promise<AutofixResult> {
       `EXIT CODE: ${result.exitCode}`,
     ].filter(Boolean).join('\n');
 
-    const fixRequest = `Language: ${opts.language}\n\nCode:\n${code}\n\nError:\n${errorContext}\n\nReturn only the fixed code:`;
+    const fixRequest =
+      `Language: ${opts.language}\n\nCode:\n${code}\n\nError:\n${errorContext}\n\nReturn only the fixed code:`;
 
     try {
       const llmResult = await opts.provider.complete({

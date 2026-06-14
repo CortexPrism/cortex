@@ -1,9 +1,5 @@
-import { listenMessages, EXECUTOR_SOCK } from '../ipc/transport.ts';
-import type {
-  IpcMessage,
-  ExecuteMessage,
-  ExecuteResultMessage,
-} from '../ipc/transport.ts';
+import { EXECUTOR_SOCK, listenMessages } from '../ipc/transport.ts';
+import type { ExecuteMessage, ExecuteResultMessage, IpcMessage } from '../ipc/transport.ts';
 import { logEvent } from '../db/lens.ts';
 import { runMigrations } from '../db/migrate.ts';
 

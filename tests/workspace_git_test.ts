@@ -1,4 +1,4 @@
-import { assertEquals, assert } from '@std/assert';
+import { assert, assertEquals } from '@std/assert';
 import { join } from '@std/path';
 
 Deno.test('gitInit initializes a git repo', async () => {
@@ -76,7 +76,10 @@ Deno.test('gitAutoCommit creates a commit', async () => {
   });
   const result = await logCmd.output();
   const log = new TextDecoder().decode(result.stdout).trim();
-  assert(log.includes('agent/test-agent'), `Expected commit message to include agent id. Got: ${log}`);
+  assert(
+    log.includes('agent/test-agent'),
+    `Expected commit message to include agent id. Got: ${log}`,
+  );
 
   await Deno.remove(dir, { recursive: true });
 });

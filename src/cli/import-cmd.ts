@@ -1,11 +1,11 @@
 import { Command } from '@cliffy/command';
-import { bold, dim, green, red, yellow, cyan } from '@std/fmt/colors';
+import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { exists } from '@std/fs';
 import { join } from '@std/path';
 import { runMigrations } from '../db/migrate.ts';
 import { writeEpisodic } from '../memory/store.ts';
 import { addPolicy } from '../security/policy.ts';
-import type { PolicyKind, PolicyEffect } from '../security/policy.ts';
+import type { PolicyEffect, PolicyKind } from '../security/policy.ts';
 
 interface OpenClawMemory {
   id?: string;
@@ -178,7 +178,13 @@ export const importCommand = new Command()
               totalMessages += result.messages;
               totalPolicies += result.policies;
               totalErrors += result.errors;
-              console.log(green(`✓  memories=${result.memories} messages=${result.messages} policies=${result.policies}${result.errors ? red(` errors=${result.errors}`) : ''}`));
+              console.log(
+                green(
+                  `✓  memories=${result.memories} messages=${result.messages} policies=${result.policies}${
+                    result.errors ? red(` errors=${result.errors}`) : ''
+                  }`,
+                ),
+              );
             }
           } catch (e) {
             console.log(red(`✗  ${(e as Error).message}`));
@@ -204,7 +210,11 @@ export const importCommand = new Command()
       .action(async (_: void, file: string) => {
         await runMigrations();
         const result = await importFromFile(file);
-        console.log(green(`\n  ✓ Imported: memories=${result.memories} messages=${result.messages} policies=${result.policies}`));
+        console.log(
+          green(
+            `\n  ✓ Imported: memories=${result.memories} messages=${result.messages} policies=${result.policies}`,
+          ),
+        );
         if (result.errors > 0) console.log(red(`  Errors: ${result.errors}`));
         console.log('');
       }),

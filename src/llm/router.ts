@@ -11,8 +11,8 @@ import { TogetherProvider } from './together.ts';
 import { BedrockProvider } from './bedrock.ts';
 import { CohereProvider } from './cohere.ts';
 import { KiloProvider } from './kilo.ts';
-import type { LLMProvider, CompletionOptions, CompletionResult, CompletionChunk } from './types.ts';
-import type { CortexConfig, ProviderKind, ProviderConfig } from '../config/config.ts';
+import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { CortexConfig, ProviderConfig, ProviderKind } from '../config/config.ts';
 
 function createProvider(kind: ProviderKind, cfg: ProviderConfig): LLMProvider {
   switch (kind) {

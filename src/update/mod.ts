@@ -2,7 +2,7 @@ import { loadConfig } from '../config/config.ts';
 import { checkForUpdates as checkerCheckForUpdates } from './checker.ts';
 import type { CheckResult } from './checker.ts';
 import { installBinaryUpdate, installSourceUpdate, loadManifest } from './installer.ts';
-import { healthCheck, rollbackUpdate, cleanupOldBackups } from './rollback.ts';
+import { cleanupOldBackups, healthCheck, rollbackUpdate } from './rollback.ts';
 import type { RollbackResult } from './rollback.ts';
 import { exists } from '@std/fs';
 import { PATHS } from '../config/paths.ts';
@@ -106,7 +106,11 @@ export async function applyUpdate(
     );
 
     if (checkResult.status === 'error') {
-      return { success: false, version: manifest.version, error: checkResult.error || 'Check failed' };
+      return {
+        success: false,
+        version: manifest.version,
+        error: checkResult.error || 'Check failed',
+      };
     }
 
     if (checkResult.status === 'up-to-date') {
@@ -134,7 +138,9 @@ export async function applyUpdate(
       return {
         success: false,
         version: manifest.version,
-        error: `Health check failed after update. Rollback ${rollbackResult.success ? 'succeeded' : 'also failed'}.`,
+        error: `Health check failed after update. Rollback ${
+          rollbackResult.success ? 'succeeded' : 'also failed'
+        }.`,
         needsRollback: true,
       };
     }

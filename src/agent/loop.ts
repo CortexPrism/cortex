@@ -16,11 +16,12 @@ import { injectMemory } from '../memory/inject.ts';
 import { writeEpisodic } from '../memory/store.ts';
 import { reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
-import { assessTask, applyMetaCogPrefix } from './metacog.ts';
+import { applyMetaCogPrefix, assessTask } from './metacog.ts';
 
 const MAX_TOOL_ROUNDS = 8;
 
-const FALLBACK_SYSTEM_PROMPT = 'You are Cortex, an intelligent agentic assistant. Be helpful, precise, and honest.';
+const FALLBACK_SYSTEM_PROMPT =
+  'You are Cortex, an intelligent agentic assistant. Be helpful, precise, and honest.';
 
 export interface AgentTurnOptions {
   userMessage: string;
@@ -116,10 +117,21 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       persistMessage(sessionDb, 'assistant', clarification),
       incrementTurn(sessionId),
     ]);
-    return { response: clarification, tokensIn: 0, tokensOut: 0, costUsd: 0, turnId, durationMs: Date.now() - started };
+    return {
+      response: clarification,
+      tokensIn: 0,
+      tokensOut: 0,
+      costUsd: 0,
+      turnId,
+      durationMs: Date.now() - started,
+    };
   }
 
-  const memoryEnrichedPrompt = await injectMemory(systemPrompt, userMessage, options.embedder ?? null)
+  const memoryEnrichedPrompt = await injectMemory(
+    systemPrompt,
+    userMessage,
+    options.embedder ?? null,
+  )
     .catch(() => systemPrompt);
 
   const metaCogPrompt = applyMetaCogPrefix(metaAssessment, memoryEnrichedPrompt);
@@ -136,11 +148,13 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       let roundResponse = '';
 
       if (stream && onChunk && round === 0) {
-        for await (const chunk of provider.stream({
-          messages: currentMessages,
-          model,
-          systemPrompt: effectiveSystemPrompt,
-        })) {
+        for await (
+          const chunk of provider.stream({
+            messages: currentMessages,
+            model,
+            systemPrompt: effectiveSystemPrompt,
+          })
+        ) {
           if (!chunk.done) {
             roundResponse += chunk.delta;
             onChunk(chunk.delta);
@@ -193,7 +207,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     throw err;
   } finally {
     const durationMs = Date.now() - started;
-    const episodicSummary = `User: ${userMessage.slice(0, 200)}\nAssistant: ${(response || '(error)').slice(0, 200)}`;
+    const episodicSummary = `User: ${userMessage.slice(0, 200)}\nAssistant: ${
+      (response || '(error)').slice(0, 200)
+    }`;
     await Promise.allSettled([
       persistMessage(sessionDb, 'assistant', response || '(error)', tokensOut),
       incrementTurn(sessionId),
@@ -206,8 +222,8 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       extractAndStoreEntities(`${userMessage} ${response}`, sessionId).catch(() => {}),
       options.enableReflection && response
         ? reflectOnTurn(userMessage, response, provider, model)
-            .then((r) => storeReflection(sessionId, r))
-            .catch(() => {})
+          .then((r) => storeReflection(sessionId, r))
+          .catch(() => {})
         : Promise.resolve(),
       logEvent({
         event_type: 'llm_call',

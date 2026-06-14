@@ -89,7 +89,8 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   }
 
   const args = [
-    'run', '--rm',
+    'run',
+    '--rm',
     '--network=none',
     '--memory=256m',
     '--cpus=0.5',

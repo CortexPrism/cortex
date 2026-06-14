@@ -120,8 +120,8 @@ export function buildEmbedder(config: CortexConfig): EmbeddingProvider {
 
   if (provider.kind === 'ollama') {
     const baseUrl = provider.baseUrl ?? 'http://localhost:11434';
-    const embModel = (provider as { embeddingModel?: string }).embeddingModel
-      ?? 'nomic-embed-text';
+    const embModel = (provider as { embeddingModel?: string }).embeddingModel ??
+      'nomic-embed-text';
     return new OllamaEmbedder(baseUrl, embModel);
   }
 

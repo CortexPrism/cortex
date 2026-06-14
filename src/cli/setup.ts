@@ -1,4 +1,4 @@
-import { Select, Input, Secret } from '@cliffy/prompt';
+import { Input, Secret, Select } from '@cliffy/prompt';
 import { bold, cyan, green, yellow } from '@std/fmt/colors';
 import type { CortexConfig, ProviderKind } from '../config/config.ts';
 import { saveConfig } from '../config/config.ts';
@@ -8,7 +8,7 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   console.log('');
   console.log(bold(cyan('  Welcome to CortexPrism')));
   console.log(cyan('  ─────────────────────────────────'));
-  console.log('  Let\'s get you set up in under a minute.\n');
+  console.log("  Let's get you set up in under a minute.\n");
 
   const providerChoice = (await Select.prompt({
     message: 'Which LLM provider do you want to use?',
@@ -106,7 +106,8 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
       default: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
     });
     updated.providers.bedrock = {
-      kind: 'bedrock', model,
+      kind: 'bedrock',
+      model,
       apiKey: accessKeyId,
       secretKey: secretAccessKey,
       baseUrl: region,

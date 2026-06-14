@@ -1,4 +1,8 @@
-import { BedrockRuntimeClient, ConverseCommand, ConverseStreamCommand } from 'npm:@aws-sdk/client-bedrock-runtime';
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  ConverseStreamCommand,
+} from 'npm:@aws-sdk/client-bedrock-runtime';
 import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {

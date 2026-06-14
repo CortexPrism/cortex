@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 
 export const fileListTool: Tool = {
   definition: {
@@ -58,7 +58,11 @@ export const fileListTool: Tool = {
   },
 };
 
-async function listEntries(basePath: string, prefix: string, recursive: boolean): Promise<string[]> {
+async function listEntries(
+  basePath: string,
+  prefix: string,
+  recursive: boolean,
+): Promise<string[]> {
   const results: string[] = [];
   const dir = Deno.readDir(basePath);
 

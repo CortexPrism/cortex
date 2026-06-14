@@ -128,7 +128,9 @@ async function bedrockModels(): Promise<ModelEntry[]> {
       { id: 'amazon.titan-text-premier-v1:0', name: 'Titan Text Premier' },
     ];
   }
-  const data = await res.json() as { modelSummaries: Array<{ modelId: string; modelName?: string }> };
+  const data = await res.json() as {
+    modelSummaries: Array<{ modelId: string; modelName?: string }>;
+  };
   return data.modelSummaries.map((m) => ({ id: m.modelId, name: m.modelName }));
 }
 
@@ -148,7 +150,11 @@ const LISTERS: Record<string, ModelLister | null> = {
   kilo: kiloModels,
 };
 
-export function fetchModels(kind: ProviderKind, apiKey?: string, baseUrl?: string): Promise<ModelEntry[]> {
+export function fetchModels(
+  kind: ProviderKind,
+  apiKey?: string,
+  baseUrl?: string,
+): Promise<ModelEntry[]> {
   const lister = LISTERS[kind];
   if (!lister) throw new Error(`Model listing not supported for provider: ${kind}`);
   return lister(apiKey ?? '', baseUrl);

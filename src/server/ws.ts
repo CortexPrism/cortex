@@ -1,6 +1,6 @@
 import { agentTurn } from '../agent/loop.ts';
-import { loadSoulContext, buildSystemPrompt } from '../agent/soul.ts';
-import { createSession, closeSession, getSession, resumeSession } from '../db/sessions.ts';
+import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
+import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { buildProvider } from '../llm/router.ts';
@@ -15,17 +15,17 @@ import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
 import { onFileChange } from '../workspace/events.ts';
 import {
-  fileWriteTool,
-  fileEditTool,
-  filePatchTool,
   fileDeleteTool,
-  fileRenameTool,
-  fileListTool,
-  fileTreeTool,
+  fileEditTool,
   fileInfoTool,
-  fileSearchTool,
-  fileUndoTool,
+  fileListTool,
+  filePatchTool,
   fileRedoTool,
+  fileRenameTool,
+  fileSearchTool,
+  fileTreeTool,
+  fileUndoTool,
+  fileWriteTool,
 } from '../tools/builtin/workspace/index.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
@@ -47,7 +47,9 @@ function broadcast(msg: unknown): void {
   const data = JSON.stringify(msg);
   for (const ws of wsClients) {
     if (ws.readyState === WebSocket.OPEN) {
-      try { ws.send(data); } catch { /* client may have disconnected */ }
+      try {
+        ws.send(data);
+      } catch { /* client may have disconnected */ }
     }
   }
 }
@@ -211,9 +213,7 @@ export function handleWebSocket(req: Request): Response {
           code_exec: codeExecTool,
           sub_agent: subAgentTool,
         };
-        const allowedTools = agent.tools?.length
-          ? agent.tools
-          : Object.keys(allTools);
+        const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
         for (const name of allowedTools) {
           if (allTools[name]) registry.register(allTools[name]);
         }

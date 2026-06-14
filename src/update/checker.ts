@@ -92,7 +92,9 @@ async function fetchReleases(token: string | null): Promise<ReleaseInfo[]> {
 
   if (!resp.ok) {
     if (resp.status === 403 && resp.headers.get('X-RateLimit-Remaining') === '0') {
-      throw new Error('GitHub API rate limit exceeded. Set update.githubToken in config for higher limits.');
+      throw new Error(
+        'GitHub API rate limit exceeded. Set update.githubToken in config for higher limits.',
+      );
     }
     throw new Error(`GitHub API responded with ${resp.status}: ${resp.statusText}`);
   }
@@ -146,9 +148,7 @@ function evaluateReleases(
   currentVersion: string,
   channel: 'stable' | 'pre-release',
 ): CheckResult {
-  const filtered = channel === 'stable'
-    ? releases.filter((r) => !r.prerelease)
-    : releases;
+  const filtered = channel === 'stable' ? releases.filter((r) => !r.prerelease) : releases;
 
   if (filtered.length === 0) {
     return { status: 'up-to-date', currentVersion };

@@ -63,7 +63,18 @@ export async function writeEpisodic(opts: {
     `INSERT INTO episodic_memory
        (id, session_id, summary, topics, entities, start_time, importance, embedding, embedding_model, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, opts.sessionId, opts.summary, topics, entities, now, importance, embedding, embModel, now] as InValue[],
+    [
+      id,
+      opts.sessionId,
+      opts.summary,
+      topics,
+      entities,
+      now,
+      importance,
+      embedding,
+      embModel,
+      now,
+    ] as InValue[],
   );
 
   await db.run(
@@ -107,7 +118,18 @@ export async function writeSemantic(opts: {
     `INSERT INTO semantic_memory
        (id, content, summary, category, tags, importance, embedding, embedding_model, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, opts.content, opts.summary ?? null, category, tags, importance, embedding, embModel, now, now] as InValue[],
+    [
+      id,
+      opts.content,
+      opts.summary ?? null,
+      category,
+      tags,
+      importance,
+      embedding,
+      embModel,
+      now,
+      now,
+    ] as InValue[],
   );
 
   await db.run(

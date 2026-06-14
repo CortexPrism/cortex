@@ -72,9 +72,13 @@ export async function incrementTurn(id: string): Promise<void> {
 
 export async function listSessions(limit = 20, agentId?: string): Promise<SessionRow[]> {
   const db = await getCoreDb();
-  let query = `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at FROM sessions`;
+  let query =
+    `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at FROM sessions`;
   const params: string[] = [];
-  if (agentId) { query += ` WHERE agent_id = ?`; params.push(agentId); }
+  if (agentId) {
+    query += ` WHERE agent_id = ?`;
+    params.push(agentId);
+  }
   query += ` ORDER BY started_at DESC LIMIT ?`;
   params.push(String(limit));
   return await db.all<SessionRow>(query, params);

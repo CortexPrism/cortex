@@ -10,7 +10,8 @@ export interface ReflectionResult {
   summary: string;
 }
 
-const REFLECT_SYSTEM = `You are a meta-cognitive assessor. Given a user message and an agent response, evaluate:
+const REFLECT_SYSTEM =
+  `You are a meta-cognitive assessor. Given a user message and an agent response, evaluate:
 1. confidence: 0.0-1.0 — how certain is the response?
 2. quality: 0.0-1.0 — how useful/accurate/complete is the response?
 3. issues: list of specific problems (empty array if none)
@@ -30,7 +31,9 @@ export async function reflectOnTurn(
   provider: LLMProvider,
   model: string,
 ): Promise<ReflectionResult> {
-  const prompt = `User: ${userMessage.slice(0, 400)}\n\nAgent: ${agentResponse.slice(0, 600)}\n\nAssess this exchange:`;
+  const prompt = `User: ${userMessage.slice(0, 400)}\n\nAgent: ${
+    agentResponse.slice(0, 600)
+  }\n\nAssess this exchange:`;
 
   try {
     const result = await provider.complete({
@@ -85,7 +88,9 @@ export async function storeReflection(
 
 export async function listReflections(
   limit = 20,
-): Promise<Array<{ id: string; pattern: string; category: string; confidence: number; created_at: string }>> {
+): Promise<
+  Array<{ id: string; pattern: string; category: string; confidence: number; created_at: string }>
+> {
   const db = await getMemoryDb();
   return await db.all(
     `SELECT id, pattern, category, confidence, created_at
@@ -115,13 +120,15 @@ export async function consolidateReflections(
 
   const patternList = rows.map((r, i) => `${i + 1}. [${r.category}] ${r.pattern}`).join('\n');
 
-  const consolidatePrompt = `These are observed patterns from an AI agent's interactions:\n\n${patternList}\n\nIdentify the most important meta-patterns (broader generalizations). Return JSON array of strings, max 5 items. Example: ["User prefers concise answers","Agent excels at technical topics"]`;
+  const consolidatePrompt =
+    `These are observed patterns from an AI agent's interactions:\n\n${patternList}\n\nIdentify the most important meta-patterns (broader generalizations). Return JSON array of strings, max 5 items. Example: ["User prefers concise answers","Agent excels at technical topics"]`;
 
   try {
     const result = await provider.complete({
       messages: [{ role: 'user', content: consolidatePrompt }],
       model,
-      systemPrompt: 'You consolidate observed patterns into high-level meta-patterns. Return only a JSON array of strings.',
+      systemPrompt:
+        'You consolidate observed patterns into high-level meta-patterns. Return only a JSON array of strings.',
     });
 
     const json = result.content.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();

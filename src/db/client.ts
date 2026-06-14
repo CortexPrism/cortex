@@ -1,4 +1,5 @@
 import { createClient, type InValue } from 'npm:@libsql/client';
+export type { InValue };
 import { PATHS } from '../config/paths.ts';
 
 function splitSql(sql: string): string[] {
@@ -149,5 +150,10 @@ export function closeAll(): void {
   _lensDb?.close();
   _vaultDb?.close();
   _pluginsDb?.close();
-  _coreDb = _memoryDb = _lensDb = _vaultDb = _pluginsDb = null;
+  _coreDb =
+    _memoryDb =
+    _lensDb =
+    _vaultDb =
+    _pluginsDb =
+      null;
 }

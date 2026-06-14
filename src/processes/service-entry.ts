@@ -87,7 +87,7 @@ async function main(): Promise<void> {
     code_exec: codeExecTool,
   };
   const toolList = def.tools
-    ? def.tools.split(',').map(s => s.trim()).filter(Boolean)
+    ? def.tools.split(',').map((s) => s.trim()).filter(Boolean)
     : Object.keys(allTools);
   for (const name of toolList) {
     if (allTools[name]) registry.register(allTools[name]);

@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
-import { bold, green, red, dim, cyan } from '@std/fmt/colors';
-import { pingProcess, VALIDATOR_SOCK, EXECUTOR_SOCK, SCHEDULER_SOCK } from '../ipc/transport.ts';
+import { bold, cyan, dim, green, red } from '@std/fmt/colors';
+import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import { checkForUpdates } from '../update/mod.ts';
 import { loadConfig } from '../config/config.ts';
 
@@ -41,7 +41,11 @@ async function autoCheck(): Promise<void> {
     if (!config.update.checkOnStartup) return;
     const result = await checkForUpdates();
     if (result.status === 'available') {
-      console.error(dim(`[update] Version ${result.latestVersion} available (current: ${result.currentVersion}). Run \`cortex update\` to apply.`));
+      console.error(
+        dim(
+          `[update] Version ${result.latestVersion} available (current: ${result.currentVersion}). Run \`cortex update\` to apply.`,
+        ),
+      );
     }
   } catch {
     // silently ignore check failures on startup
@@ -63,7 +67,12 @@ export async function ensureDaemons(): Promise<void> {
 }
 
 async function stopDaemons(): Promise<void> {
-  const patterns = ['supervisor-process', 'validator-process', 'executor-process', 'scheduler-process'];
+  const patterns = [
+    'supervisor-process',
+    'validator-process',
+    'executor-process',
+    'scheduler-process',
+  ];
   for (const pat of patterns) {
     try {
       const cmd = new Deno.Command('pkill', { args: ['-f', pat] });

@@ -17,7 +17,18 @@ Deno.test('file_edit_log table can be created and queried', async () => {
   await db.run(
     `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['test_1', 'agent-1', 'sess-1', 'agent', '/test/file.txt', 'old', 'new', 'abc', 'def', 'file_write'],
+    [
+      'test_1',
+      'agent-1',
+      'sess-1',
+      'agent',
+      '/test/file.txt',
+      'old',
+      'new',
+      'abc',
+      'def',
+      'file_write',
+    ],
   );
 
   const row = await db.get<{ agent_id: string; file_path: string }>(

@@ -1,6 +1,7 @@
 # CortexPrism
 
-> An open-source agentic harness system. Hosts, orchestrates, and empowers AI agents with memory, tools, sandboxed code execution, a web UI, reflection, model routing, and layered security.
+> An open-source agentic harness system. Hosts, orchestrates, and empowers AI agents with memory,
+> tools, sandboxed code execution, a web UI, reflection, model routing, and layered security.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
@@ -9,15 +10,20 @@
 
 ## Features
 
-- **Interactive chat** — streaming CLI chat with 12 LLM providers: Anthropic, OpenAI, Google Gemini, Mistral, Groq, DeepSeek, OpenRouter, xAI, Together AI, AWS Bedrock, Cohere, Ollama
+- **Interactive chat** — streaming CLI chat with 12 LLM providers: Anthropic, OpenAI, Google Gemini,
+  Mistral, Groq, DeepSeek, OpenRouter, xAI, Together AI, AWS Bedrock, Cohere, Ollama
 - **Tool use** — file read, shell execution, web search, code execution — all with approval gates
-- **Coding sandbox** — ephemeral Docker containers (or subprocess fallback) with resource limits; LLM auto-fix loop
-- **5-tier memory** — episodic (FTS5 keyword), semantic (vector embeddings), reflection (learned patterns); multi-strategy retrieval with decay scoring
+- **Coding sandbox** — ephemeral Docker containers (or subprocess fallback) with resource limits;
+  LLM auto-fix loop
+- **5-tier memory** — episodic (FTS5 keyword), semantic (vector embeddings), reflection (learned
+  patterns); multi-strategy retrieval with decay scoring
 - **Model router** — RouteLLM cascading: tries cheapest model first, escalates on low confidence
-- **Web UI + REST API** — built-in HTTP server with WebSocket streaming, Lens timeline, memory search, and jobs dashboard
+- **Web UI + REST API** — built-in HTTP server with WebSocket streaming, Lens timeline, memory
+  search, and jobs dashboard
 - **Per-turn reflection** — LLM self-assessment of confidence/quality; meta-pattern consolidation
 - **Scheduled jobs** — SQLite-persisted cron with retry
-- **Security (Parallax model)** — every tool call gated through a policy validator; AES-256-GCM credential vault; regex allow/deny rules
+- **Security (Parallax model)** — every tool call gated through a policy validator; AES-256-GCM
+  credential vault; regex allow/deny rules
 - **Cortex Lens** — full activity audit log of all sessions, tool calls, and policy decisions
 
 ---
@@ -40,7 +46,8 @@ cd cortex
 deno task chat
 ```
 
-On first run, Cortex will prompt you to choose an LLM provider and enter credentials. Config is saved to `~/.cortex/config.json`.
+On first run, Cortex will prompt you to choose an LLM provider and enter credentials. Config is
+saved to `~/.cortex/config.json`.
 
 ---
 
@@ -76,6 +83,7 @@ cortex chat --no-stream              # Disable streaming output
 ```
 
 Slash commands inside chat:
+
 ```
 /exit   Quit
 /help   Show available commands
@@ -104,6 +112,7 @@ cortex daemon status                 # Show running/stopped for each daemon proc
 ```
 
 Three daemon processes are managed:
+
 - **Validator** — approves/rejects tool intents via security policy
 - **Executor** — executes approved tool calls (file ops, shell commands)
 - **Scheduler** — runs cron jobs and periodic memory consolidation
@@ -123,9 +132,11 @@ cortex stop --server-only            # Stop only the HTTP server
 cortex stop --daemon-only            # Stop only the daemon processes
 ```
 
-Web UI tabs: **Chat** (WebSocket streaming), **Lens** (activity timeline), **Memory** (search), **Jobs** (status)
+Web UI tabs: **Chat** (WebSocket streaming), **Lens** (activity timeline), **Memory** (search),
+**Jobs** (status)
 
 REST API endpoints:
+
 ```
 GET  /api/health
 GET  /api/sessions?limit=20
@@ -165,7 +176,8 @@ cortex vault list
 cortex vault delete "openai-key"
 ```
 
-Vault uses **AES-256-GCM** encryption with **PBKDF2** key derivation (100k iterations, SHA-256). The passphrase is never stored — only held in the environment variable at runtime.
+Vault uses **AES-256-GCM** encryption with **PBKDF2** key derivation (100k iterations, SHA-256). The
+passphrase is never stored — only held in the environment variable at runtime.
 
 ### `cortex policy`
 
@@ -177,6 +189,7 @@ cortex policy remove pol_abc123
 ```
 
 Default deny rules (seeded on first migrate):
+
 - `rm\s+-rf\s+/` — recursive root delete
 - `:\(\)\{.*\}` — fork bomb patterns
 - `dd\s+if=.*of=/dev/` — direct disk writes
@@ -193,18 +206,28 @@ Config file: `~/.cortex/config.json`
   "version": 1,
   "defaultProvider": "anthropic",
   "providers": {
-    "anthropic":  { "kind": "anthropic",  "model": "claude-sonnet-4-5",       "apiKey": "sk-..." },
-    "openai":     { "kind": "openai",     "model": "gpt-4o",                  "apiKey": "sk-..." },
-    "google":     { "kind": "google",     "model": "gemini-2.0-flash",        "apiKey": "..." },
-    "mistral":    { "kind": "mistral",    "model": "mistral-large-latest",    "apiKey": "..." },
-    "groq":       { "kind": "groq",       "model": "llama-3.3-70b-versatile", "apiKey": "gsk_..." },
-    "deepseek":   { "kind": "deepseek",   "model": "deepseek-chat",           "apiKey": "sk-..." },
-    "openrouter": { "kind": "openrouter", "model": "openai/gpt-4o",           "apiKey": "..." },
-    "xai":        { "kind": "xai",        "model": "grok-2-latest",           "apiKey": "..." },
-    "together":   { "kind": "together",   "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "apiKey": "..." },
-    "bedrock":    { "kind": "bedrock",    "model": "anthropic.claude-3-5-sonnet-20240620-v1:0", "apiKey": "AKIA...", "secretKey": "...", "baseUrl": "us-east-1" },
-    "cohere":     { "kind": "cohere",     "model": "command-r-plus",          "apiKey": "..." },
-    "ollama":     { "kind": "ollama",     "model": "llama3.2",                "baseUrl": "http://localhost:11434" }
+    "anthropic": { "kind": "anthropic", "model": "claude-sonnet-4-5", "apiKey": "sk-..." },
+    "openai": { "kind": "openai", "model": "gpt-4o", "apiKey": "sk-..." },
+    "google": { "kind": "google", "model": "gemini-2.0-flash", "apiKey": "..." },
+    "mistral": { "kind": "mistral", "model": "mistral-large-latest", "apiKey": "..." },
+    "groq": { "kind": "groq", "model": "llama-3.3-70b-versatile", "apiKey": "gsk_..." },
+    "deepseek": { "kind": "deepseek", "model": "deepseek-chat", "apiKey": "sk-..." },
+    "openrouter": { "kind": "openrouter", "model": "openai/gpt-4o", "apiKey": "..." },
+    "xai": { "kind": "xai", "model": "grok-2-latest", "apiKey": "..." },
+    "together": {
+      "kind": "together",
+      "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "apiKey": "..."
+    },
+    "bedrock": {
+      "kind": "bedrock",
+      "model": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+      "apiKey": "AKIA...",
+      "secretKey": "...",
+      "baseUrl": "us-east-1"
+    },
+    "cohere": { "kind": "cohere", "model": "command-r-plus", "apiKey": "..." },
+    "ollama": { "kind": "ollama", "model": "llama3.2", "baseUrl": "http://localhost:11434" }
   },
   "agent": {
     "name": "Cortex",
@@ -215,8 +238,8 @@ Config file: `~/.cortex/config.json`
     "enabled": false,
     "confidenceThreshold": 0.7,
     "cascade": [
-      { "provider": "ollama",    "model": "llama3.2:3b" },
-      { "provider": "ollama",    "model": "llama3.1:8b" },
+      { "provider": "ollama", "model": "llama3.2:3b" },
+      { "provider": "ollama", "model": "llama3.1:8b" },
       { "provider": "anthropic", "model": "claude-haiku-4-5" }
     ]
   }
@@ -228,20 +251,21 @@ Config file: `~/.cortex/config.json`
 Default: `~/.cortex/data/`
 
 Override:
+
 ```bash
 CORTEX_DATA_DIR=/data/cortex cortex chat
 ```
 
 ### Databases
 
-| File | Contents |
-|---|---|
-| `cortex.db` | Core: sessions, jobs, policy rules |
-| `memory.db` | 5-tier memory: episodic, semantic, reflection |
-| `lens.db` | Audit log: all events, tool calls, policy checks |
-| `vault.db` | Encrypted credentials |
-| `plugins.db` | Plugin registry (future) |
-| `sess_*.db` | Per-session ephemeral message history |
+| File         | Contents                                         |
+| ------------ | ------------------------------------------------ |
+| `cortex.db`  | Core: sessions, jobs, policy rules               |
+| `memory.db`  | 5-tier memory: episodic, semantic, reflection    |
+| `lens.db`    | Audit log: all events, tool calls, policy checks |
+| `vault.db`   | Encrypted credentials                            |
+| `plugins.db` | Plugin registry (future)                         |
+| `sess_*.db`  | Per-session ephemeral message history            |
 
 ---
 

@@ -35,7 +35,10 @@ export const fileUndoTool: Tool = {
       let query = `SELECT id, before_text, after_text, file_path FROM file_edit_log
          WHERE agent_id = ? AND workspace_type = ?`;
       const params: string[] = [context.agentId, workspaceType];
-      if (rawPath) { query += ` AND file_path = ?`; params.push(rawPath); }
+      if (rawPath) {
+        query += ` AND file_path = ?`;
+        params.push(rawPath);
+      }
       query += ` ORDER BY created_at DESC LIMIT 1`;
 
       const row = await db.get<{
@@ -61,7 +64,8 @@ export const fileUndoTool: Tool = {
           row.file_path,
           row.after_text,
           row.before_text,
-          '', '',
+          '',
+          '',
           'file_undo',
         ],
       );
@@ -118,7 +122,10 @@ export const fileRedoTool: Tool = {
       let query = `SELECT id, before_text, after_text, file_path FROM file_edit_log
          WHERE agent_id = ? AND workspace_type = ? AND tool = 'file_undo'`;
       const params: string[] = [context.agentId, workspaceType];
-      if (rawPath) { query += ` AND file_path = ?`; params.push(rawPath); }
+      if (rawPath) {
+        query += ` AND file_path = ?`;
+        params.push(rawPath);
+      }
       query += ` ORDER BY created_at DESC LIMIT 1`;
 
       const row = await db.get<{
@@ -143,7 +150,8 @@ export const fileRedoTool: Tool = {
           row.file_path,
           row.before_text,
           row.after_text,
-          '', '',
+          '',
+          '',
           'file_redo',
         ],
       );

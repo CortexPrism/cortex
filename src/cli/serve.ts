@@ -1,5 +1,5 @@
 import { Command } from '@cliffy/command';
-import { bold, green, red, dim, cyan } from '@std/fmt/colors';
+import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { startServer } from '../server/server.ts';
 
 async function findServerProcess(
@@ -33,7 +33,9 @@ async function waitForServer(host: string, port: number, timeoutMs: number): Pro
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`http://${host}:${port}/api/health`, { signal: AbortSignal.timeout(1000) });
+      const res = await fetch(`http://${host}:${port}/api/health`, {
+        signal: AbortSignal.timeout(1000),
+      });
       if (res.ok) return true;
     } catch {
       // not ready yet
@@ -49,7 +51,9 @@ export async function stopBackgroundServer(port = 3000): Promise<boolean> {
 
   try {
     Deno.kill(existing.pid, 'SIGTERM');
-    console.log(cyan(`  Stopped cortex server (pid ${existing.pid}, http://${existing.host}:${port})`));
+    console.log(
+      cyan(`  Stopped cortex server (pid ${existing.pid}, http://${existing.host}:${port})`),
+    );
     return true;
   } catch {
     console.log(dim('  Could not stop server process'));
@@ -65,59 +69,71 @@ export const serveCommand = new Command()
   .option('-d, --daemon', 'Run the server in the background')
   .option('-r, --restart', 'Restart an existing background server (only with --daemon)')
   .option('-s, --stop', 'Stop a background server')
-  .action(async (opts: { port: number; host: string; daemon?: boolean; restart?: boolean; stop?: boolean }) => {
-    if (opts.stop) {
-      const stopped = await stopBackgroundServer(opts.port);
-      if (!stopped) console.log(dim(`  No server found on port ${opts.port}`));
-      Deno.exit(0);
-    }
+  .action(
+    async (
+      opts: { port: number; host: string; daemon?: boolean; restart?: boolean; stop?: boolean },
+    ) => {
+      if (opts.stop) {
+        const stopped = await stopBackgroundServer(opts.port);
+        if (!stopped) console.log(dim(`  No server found on port ${opts.port}`));
+        Deno.exit(0);
+      }
 
-    if (opts.daemon) {
-      if (opts.restart) {
-        const existing = await findServerProcess(opts.port);
-        if (existing) {
-          try {
-            Deno.kill(existing.pid, 'SIGTERM');
-            console.log(cyan(`  Stopped existing server (pid ${existing.pid})`));
-            await new Promise((r) => setTimeout(r, 1000));
-          } catch {
-            console.log(dim('  Could not stop existing server'));
+      if (opts.daemon) {
+        if (opts.restart) {
+          const existing = await findServerProcess(opts.port);
+          if (existing) {
+            try {
+              Deno.kill(existing.pid, 'SIGTERM');
+              console.log(cyan(`  Stopped existing server (pid ${existing.pid})`));
+              await new Promise((r) => setTimeout(r, 1000));
+            } catch {
+              console.log(dim('  Could not stop existing server'));
+            }
+            opts.host = existing.host;
+          } else {
+            console.log(dim(`  No existing server found on port ${opts.port}`));
           }
-          opts.host = existing.host;
-        } else {
-          console.log(dim(`  No existing server found on port ${opts.port}`));
         }
+
+        const entryPath = new URL('../main.ts', import.meta.url).pathname;
+        const cmd = new Deno.Command(Deno.execPath(), {
+          args: [
+            'run',
+            '--allow-all',
+            entryPath,
+            'serve',
+            '--port',
+            String(opts.port),
+            '--host',
+            opts.host,
+          ],
+          stdout: 'null',
+          stderr: 'null',
+          stdin: 'null',
+        });
+
+        try {
+          cmd.spawn();
+        } catch (err) {
+          console.log(red(`  Failed to start server: ${(err as Error).message}`));
+          Deno.exit(1);
+        }
+
+        const alive = await waitForServer(opts.host, opts.port, 5000);
+        if (alive) {
+          console.log(
+            green(`  ✓ Cortex server started in background (http://${opts.host}:${opts.port})`),
+          );
+        } else {
+          console.log(red(`  ✕ Server failed to start on ${opts.host}:${opts.port}`));
+          console.log(dim('    Run without --daemon to see error output'));
+          Deno.exit(1);
+        }
+
+        Deno.exit(0);
       }
 
-      const entryPath = new URL('../main.ts', import.meta.url).pathname;
-      const cmd = new Deno.Command(Deno.execPath(), {
-        args: [
-          'run', '--allow-all', entryPath,
-          'serve', '--port', String(opts.port), '--host', opts.host,
-        ],
-        stdout: 'null',
-        stderr: 'null',
-        stdin: 'null',
-      });
-
-      try {
-        cmd.spawn();
-      } catch (err) {
-        console.log(red(`  Failed to start server: ${(err as Error).message}`));
-        Deno.exit(1);
-      }
-
-      const alive = await waitForServer(opts.host, opts.port, 5000);
-      if (alive) {
-        console.log(green(`  ✓ Cortex server started in background (http://${opts.host}:${opts.port})`));
-      } else {
-        console.log(red(`  ✕ Server failed to start on ${opts.host}:${opts.port}`));
-        console.log(dim('    Run without --daemon to see error output'));
-        Deno.exit(1);
-      }
-
-      Deno.exit(0);
-    }
-
-    await startServer({ port: opts.port, host: opts.host });
-  });
+      await startServer({ port: opts.port, host: opts.host });
+    },
+  );

@@ -4,14 +4,18 @@ on:
   push:
     tags: ['v*']
 
+env:
+  DENO_VERSION: '2.x'
+
 jobs:
-  release:
+  check:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: 2.x
+          deno-version: ${{ env.DENO_VERSION }}
 
       - name: Verify version consistency
         run: |
@@ -23,47 +27,101 @@ jobs:
             exit 1
           fi
 
-      - name: Lint & type-check
-        run: |
-          deno lint
-          deno fmt --check
-          deno check src/main.ts
+      - run: deno lint
+      - run: deno fmt --check
+      - run: deno check src/main.ts
 
-      - name: Cross-compile binaries
-        run: |
-          PLATFORMS=(
-            "x86_64-unknown-linux-gnu:cortex-x86_64-linux"
-            "aarch64-unknown-linux-gnu:cortex-aarch64-linux"
-            "x86_64-apple-darwin:cortex-x86_64-darwin"
-            "aarch64-apple-darwin:cortex-aarch64-darwin"
-            "x86_64-pc-windows-msvc:cortex-x86_64-windows.exe"
-          )
-          mkdir -p dist
-          for pair in "${PLATFORMS[@]}"; do
-            TARGET="${pair%%:*}"
-            NAME="${pair##*:}"
-            deno compile --target "$TARGET" --output "dist/$NAME" src/main.ts
-          done
+  compile:
+    name: Compile ${{ matrix.name }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: cortex-x86_64-linux
+            package-ext: .tar.gz
+          - name: linux-arm64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: cortex-aarch64-linux
+            package-ext: .tar.gz
+          - name: darwin-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: cortex-x86_64-darwin
+            package-ext: .tar.gz
+          - name: darwin-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: cortex-aarch64-darwin
+            package-ext: .tar.gz
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: cortex-x86_64-windows
+            package-ext: .zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-      - name: Package artifacts
+      - name: Compile binary
+        run: deno compile --target "${{ matrix.target }}" --output "${{ matrix.artifact }}" src/main.ts
+
+      - name: Package archive
+        run: |
+          if [ "${{ matrix.package-ext }}" = ".zip" ]; then
+            zip "${{ matrix.artifact }}.zip" "${{ matrix.artifact }}.exe"
+          else
+            tar czf "${{ matrix.artifact }}.tar.gz" "${{ matrix.artifact }}"
+          fi
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}${{ matrix.package-ext }}
+          path: ${{ matrix.artifact }}${{ matrix.package-ext }}
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
         run: |
           cd dist
-          for file in cortex-*; do
-            if echo "$file" | grep -q '\.exe$'; then
-              zip "${file%.exe}.zip" "$file"
-            else
-              tar czf "${file}.tar.gz" "$file"
-            fi
-          done
-          rm -f cortex-*.exe cortex-*
-          sha256sum cortex-*.tar.gz cortex-*.zip > checksums.txt
+          sha256sum cortex-* > checksums.txt
+          echo "Checksums:"
+          cat checksums.txt
 
       - name: Sign checksums
         run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --import
-          gpg --detach-sign --armor checksums.txt
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null
+            gpg --batch --detach-sign --armor checksums.txt
+            echo "checksums.txt signed"
+          else
+            echo "GPG_PRIVATE_KEY not set — skipping signature"
+          fi
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: List dist contents
+        run: ls -la dist/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -71,3 +129,5 @@ jobs:
           files: dist/*
           prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

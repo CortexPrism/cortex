@@ -1,15 +1,15 @@
 import {
+  EXECUTOR_SOCK,
+  makeIntentId,
   pingProcess,
   sendMessage,
-  makeIntentId,
   VALIDATOR_SOCK,
-  EXECUTOR_SOCK,
 } from './transport.ts';
 import type {
-  IntentMessage,
-  IntentResponseMessage,
   ExecuteMessage,
   ExecuteResultMessage,
+  IntentMessage,
+  IntentResponseMessage,
 } from './transport.ts';
 
 let _validatorAvailable: boolean | null = null;

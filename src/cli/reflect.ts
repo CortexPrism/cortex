@@ -1,7 +1,7 @@
 import { Command } from '@cliffy/command';
-import { bold, cyan, dim, green, yellow, red } from '@std/fmt/colors';
+import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
-import { listReflections, consolidateReflections } from '../agent/reflect.ts';
+import { consolidateReflections, listReflections } from '../agent/reflect.ts';
 import { loadConfig } from '../config/config.ts';
 import { buildProvider } from '../llm/router.ts';
 
@@ -17,9 +17,7 @@ export const reflectCommand = new Command()
       .action(async (opts: { limit: number; category?: string }) => {
         await runMigrations();
         const rows = await listReflections(opts.limit);
-        const filtered = opts.category
-          ? rows.filter((r) => r.category === opts.category)
-          : rows;
+        const filtered = opts.category ? rows.filter((r) => r.category === opts.category) : rows;
 
         if (filtered.length === 0) {
           console.log(dim('\n  No reflection patterns yet. Run some chat sessions first.\n'));
@@ -64,7 +62,9 @@ export const reflectCommand = new Command()
         if (count > 0) {
           console.log(green(`  ✓ Extracted ${count} meta-pattern(s)`));
         } else {
-          console.log(dim('  No new meta-patterns found (need more data or patterns already consolidated)'));
+          console.log(
+            dim('  No new meta-patterns found (need more data or patterns already consolidated)'),
+          );
         }
         console.log('');
       }),

@@ -6,8 +6,17 @@ function graphId(prefix: string): string {
 }
 
 export type RelationType =
-  | 'uses' | 'replaces' | 'extends' | 'is_part_of' | 'is_instance_of'
-  | 'related_to' | 'contradicts' | 'supports' | 'causes' | 'requires' | 'configures';
+  | 'uses'
+  | 'replaces'
+  | 'extends'
+  | 'is_part_of'
+  | 'is_instance_of'
+  | 'related_to'
+  | 'contradicts'
+  | 'supports'
+  | 'causes'
+  | 'requires'
+  | 'configures';
 
 export interface GraphEntity {
   id: string;
@@ -150,7 +159,12 @@ export async function traverseGraph(
     const typeArgs = opts.relationTypes ?? [];
 
     const outbound = await db.all<{
-      id: string; target_id: string; relation: string; strength: number; context: string | null; created_at: string;
+      id: string;
+      target_id: string;
+      relation: string;
+      strength: number;
+      context: string | null;
+      created_at: string;
     }>(
       `SELECT id, target_id, relation, strength, context, created_at
        FROM graph_relations WHERE source_id = ? ${typeFilter} ORDER BY strength DESC LIMIT 10`,
@@ -158,7 +172,12 @@ export async function traverseGraph(
     );
 
     const inbound = await db.all<{
-      id: string; source_id: string; relation: string; strength: number; context: string | null; created_at: string;
+      id: string;
+      source_id: string;
+      relation: string;
+      strength: number;
+      context: string | null;
+      created_at: string;
     }>(
       `SELECT id, source_id, relation, strength, context, created_at
        FROM graph_relations WHERE target_id = ? ${typeFilter} ORDER BY strength DESC LIMIT 10`,

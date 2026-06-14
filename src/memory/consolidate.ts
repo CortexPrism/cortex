@@ -130,8 +130,11 @@ export async function runWeeklyConsolidation(): Promise<void> {
 
 export async function runConsolidation(kind: 'hourly' | 'daily' | 'weekly'): Promise<void> {
   switch (kind) {
-    case 'hourly': return runHourlyConsolidation();
-    case 'daily': return runDailyConsolidation();
-    case 'weekly': return runWeeklyConsolidation();
+    case 'hourly':
+      return runHourlyConsolidation();
+    case 'daily':
+      return runDailyConsolidation();
+    case 'weekly':
+      return runWeeklyConsolidation();
   }
 }

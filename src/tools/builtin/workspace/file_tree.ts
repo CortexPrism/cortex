@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 
 export const fileTreeTool: Tool = {
   definition: {

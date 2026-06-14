@@ -1,11 +1,12 @@
-import type { Tool, ToolContext, ToolCallResult } from '../types.ts';
+import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { spawnSubAgent } from '../../agent/sub-agent.ts';
 import type { ProviderKind } from '../../config/config.ts';
 
 export const subAgentTool: Tool = {
   definition: {
     name: 'sub_agent',
-    description: `Delegate a complex, independent task to a sub-agent that runs in its own process with its own model and tools. Use this when a task is self-contained, time-consuming, or requires a different capability than you have. The sub-agent runs concurrently and its full response is returned.`,
+    description:
+      `Delegate a complex, independent task to a sub-agent that runs in its own process with its own model and tools. Use this when a task is self-contained, time-consuming, or requires a different capability than you have. The sub-agent runs concurrently and its full response is returned.`,
     params: [
       {
         name: 'task',
@@ -16,7 +17,8 @@ export const subAgentTool: Tool = {
       {
         name: 'agent',
         type: 'string',
-        description: 'Registered agent ID to use (e.g. "researcher", "coder"). Omit for the default agent.',
+        description:
+          'Registered agent ID to use (e.g. "researcher", "coder"). Omit for the default agent.',
         required: false,
       },
       {
@@ -40,7 +42,8 @@ export const subAgentTool: Tool = {
       {
         name: 'tools',
         type: 'string',
-        description: 'Comma-separated tool allow-list (e.g. "web_search,file_read"). Defaults to all.',
+        description:
+          'Comma-separated tool allow-list (e.g. "web_search,file_read"). Defaults to all.',
         required: false,
       },
     ],

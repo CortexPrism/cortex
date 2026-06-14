@@ -1,8 +1,13 @@
 import { Command } from '@cliffy/command';
-import { bold, green, red, dim, cyan } from '@std/fmt/colors';
+import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { stopBackgroundServer } from './serve.ts';
 
-const DAEMON_PATTERNS = ['supervisor-process', 'validator-process', 'executor-process', 'scheduler-process'];
+const DAEMON_PATTERNS = [
+  'supervisor-process',
+  'validator-process',
+  'executor-process',
+  'scheduler-process',
+];
 
 async function stopDaemons(): Promise<void> {
   let anyStopped = false;

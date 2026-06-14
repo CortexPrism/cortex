@@ -4,7 +4,7 @@ import { loadConfig } from '../config/config.ts';
 import { buildProvider } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { initSessionDb, runMigrations } from '../db/migrate.ts';
-import { loadSoulContext, buildSystemPrompt } from '../agent/soul.ts';
+import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { createSession } from '../db/sessions.ts';
 import { DiscordAdapter } from '../channels/discord.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
@@ -24,7 +24,9 @@ export const discordCommand = new Command()
 
     const token = opts.token ?? Deno.env.get('DISCORD_TOKEN');
     if (!token) {
-      console.log(red('  Error: Discord bot token required. Use --token or DISCORD_TOKEN env var.'));
+      console.log(
+        red('  Error: Discord bot token required. Use --token or DISCORD_TOKEN env var.'),
+      );
       console.log(dim('  Get a token at https://discord.com/developers/applications'));
       Deno.exit(1);
     }
@@ -44,7 +46,10 @@ export const discordCommand = new Command()
     const { soul, user, memory } = await loadSoulContext();
     const systemPrompt = buildSystemPrompt(soul, undefined, user, memory);
 
-    const perUserSessions = new Map<string, { sessionId: string; sessionDb: Awaited<ReturnType<typeof initSessionDb>> }>();
+    const perUserSessions = new Map<
+      string,
+      { sessionId: string; sessionDb: Awaited<ReturnType<typeof initSessionDb>> }
+    >();
 
     const adapter = new DiscordAdapter({ token, prefix: opts.prefix });
 

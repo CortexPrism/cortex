@@ -59,7 +59,21 @@ function makeId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-export async function registerService(def: Omit<ServiceDef, 'id' | 'status' | 'pid' | 'lastStartedAt' | 'lastHealthCheck' | 'restartCount' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<string> {
+export async function registerService(
+  def:
+    & Omit<
+      ServiceDef,
+      | 'id'
+      | 'status'
+      | 'pid'
+      | 'lastStartedAt'
+      | 'lastHealthCheck'
+      | 'restartCount'
+      | 'createdAt'
+      | 'updatedAt'
+    >
+    & { id?: string },
+): Promise<string> {
   const db = await getCoreDb();
   const id = def.id || makeId(def.name);
   const now = new Date().toISOString();
@@ -68,11 +82,21 @@ export async function registerService(def: Omit<ServiceDef, 'id' | 'status' | 'p
     `INSERT INTO services (id, name, description, agent_id, model, provider, system_prompt, tools, port, auto_start, max_restarts, health_check_interval, env, status, pid, last_started_at, last_health_check, restart_count, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stopped', NULL, NULL, NULL, 0, ?, ?)`,
     [
-      id, def.name, def.description || null, def.agentId,
-      def.model || null, def.provider || null, def.systemPrompt || null,
-      def.tools || null, def.port || 0, def.autoStart ? 1 : 0,
-      def.maxRestarts ?? 3, def.healthCheckInterval ?? 30,
-      def.env || null, now, now,
+      id,
+      def.name,
+      def.description || null,
+      def.agentId,
+      def.model || null,
+      def.provider || null,
+      def.systemPrompt || null,
+      def.tools || null,
+      def.port || 0,
+      def.autoStart ? 1 : 0,
+      def.maxRestarts ?? 3,
+      def.healthCheckInterval ?? 30,
+      def.env || null,
+      now,
+      now,
     ] as InValue[],
   );
 
@@ -102,10 +126,17 @@ export async function updateService(id: string, patch: Partial<ServiceDef>): Pro
   const values: unknown[] = [];
 
   const fieldMap: Record<string, string> = {
-    name: 'name', description: 'description', agentId: 'agent_id',
-    model: 'model', provider: 'provider', systemPrompt: 'system_prompt',
-    tools: 'tools', port: 'port', autoStart: 'auto_start',
-    maxRestarts: 'max_restarts', healthCheckInterval: 'health_check_interval',
+    name: 'name',
+    description: 'description',
+    agentId: 'agent_id',
+    model: 'model',
+    provider: 'provider',
+    systemPrompt: 'system_prompt',
+    tools: 'tools',
+    port: 'port',
+    autoStart: 'auto_start',
+    maxRestarts: 'max_restarts',
+    healthCheckInterval: 'health_check_interval',
     env: 'env',
   };
 
@@ -178,7 +209,7 @@ export async function startService(id: string): Promise<void> {
     model: def.model || undefined,
     provider: def.provider || undefined,
     systemPrompt: def.systemPrompt || undefined,
-    tools: def.tools ? def.tools.split(',').map(s => s.trim()) : undefined,
+    tools: def.tools ? def.tools.split(',').map((s) => s.trim()) : undefined,
     timeout: 0, // no timeout for services
   };
 
@@ -188,10 +219,13 @@ export async function startService(id: string): Promise<void> {
 
   const cmd = new Deno.Command(Deno.execPath(), {
     args: [
-      'run', '--allow-all',
+      'run',
+      '--allow-all',
       new URL('../../src/processes/service-entry.ts', import.meta.url).pathname,
-      '--service-id', id,
-      '--port', String(def.port || 0),
+      '--service-id',
+      id,
+      '--port',
+      String(def.port || 0),
     ],
     stdin: 'null',
     stdout: 'piped',
@@ -246,8 +280,8 @@ async function monitorService(id: string, process: Deno.ChildProcess): Promise<v
       [new Date().toISOString(), id] as InValue[],
     );
     // Exponential backoff: 2^restart_count seconds
-    const delay = Math.min(Math.pow(2, (def.restartCount ?? 0)) * 1000, 30000);
-    await new Promise(r => setTimeout(r, delay));
+    const delay = Math.min(Math.pow(2, def.restartCount ?? 0) * 1000, 30000);
+    await new Promise((r) => setTimeout(r, delay));
     startService(id).catch(() => {});
   } else {
     await db.run(
@@ -325,9 +359,11 @@ export async function startAutoServices(): Promise<void> {
   }
 }
 
-export async function getRuntimeStatus(): Promise<Array<{ id: string; running: boolean; pid: number | null; uptime: number | null }>> {
+export async function getRuntimeStatus(): Promise<
+  Array<{ id: string; running: boolean; pid: number | null; uptime: number | null }>
+> {
   const services = await listServices();
-  return services.map(s => {
+  return services.map((s) => {
     const runtime = runningServices.get(s.id);
     return {
       id: s.id,

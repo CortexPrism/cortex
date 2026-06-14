@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 import { gitAutoCommit, gitEnsureBranch } from '../../../workspace/git.ts';
 import { logFileEdit } from './common.ts';
 
@@ -116,7 +116,11 @@ function applySimplePatch(text: string, patch: string): string {
 
       i++;
       const hunkLines: string[] = [];
-      while (i < patchLines.length && !patchLines[i].startsWith('@@') && !patchLines[i].startsWith('---') && !patchLines[i].startsWith('+++') && !patchLines[i].startsWith('diff')) {
+      while (
+        i < patchLines.length && !patchLines[i].startsWith('@@') &&
+        !patchLines[i].startsWith('---') && !patchLines[i].startsWith('+++') &&
+        !patchLines[i].startsWith('diff')
+      ) {
         if (!patchLines[i].startsWith('\\')) hunkLines.push(patchLines[i]);
         i++;
       }
@@ -134,7 +138,11 @@ function applySimplePatch(text: string, patch: string): string {
       // Verify context matches
       for (let j = 0; j < removed.length && j < origCount; j++) {
         if (result[origStart + j] !== removed[j]) {
-          throw new Error(`Context mismatch at line ${origStart + j + 1}: expected "${removed[j]}", got "${result[origStart + j]}"`);
+          throw new Error(
+            `Context mismatch at line ${origStart + j + 1}: expected "${removed[j]}", got "${
+              result[origStart + j]
+            }"`,
+          );
         }
       }
 

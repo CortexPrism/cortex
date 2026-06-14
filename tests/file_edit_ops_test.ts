@@ -1,10 +1,19 @@
-import { assertEquals, assert } from '@std/assert';
+import { assert, assertEquals } from '@std/assert';
 
 // Test the core edit operation logic by dynamically importing the module
 // and accessing internal functions
 
 Deno.test('file_edit tools exist and have correct definitions', async () => {
-  const { fileWriteTool, fileEditTool, fileDeleteTool, fileListTool, fileInfoTool, fileSearchTool, fileUndoTool, fileRedoTool } = await import('../src/tools/builtin/workspace/index.ts');
+  const {
+    fileWriteTool,
+    fileEditTool,
+    fileDeleteTool,
+    fileListTool,
+    fileInfoTool,
+    fileSearchTool,
+    fileUndoTool,
+    fileRedoTool,
+  } = await import('../src/tools/builtin/workspace/index.ts');
 
   assertEquals(fileWriteTool.definition.name, 'file_write');
   assertEquals(fileEditTool.definition.name, 'file_edit');
@@ -24,10 +33,17 @@ Deno.test('file_edit tools exist and have correct definitions', async () => {
 Deno.test('workspace tools barrel exports all tools', async () => {
   const mod = await import('../src/tools/builtin/workspace/index.ts');
   const expected = [
-    'fileWriteTool', 'fileEditTool', 'filePatchTool',
-    'fileDeleteTool', 'fileRenameTool', 'fileListTool',
-    'fileTreeTool', 'fileInfoTool', 'fileSearchTool',
-    'fileUndoTool', 'fileRedoTool',
+    'fileWriteTool',
+    'fileEditTool',
+    'filePatchTool',
+    'fileDeleteTool',
+    'fileRenameTool',
+    'fileListTool',
+    'fileTreeTool',
+    'fileInfoTool',
+    'fileSearchTool',
+    'fileUndoTool',
+    'fileRedoTool',
   ];
   for (const name of expected) {
     assert(name in mod, `Expected ${name} to be exported`);

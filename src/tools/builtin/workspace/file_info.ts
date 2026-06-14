@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { resolveWorkspacePath, ensureAgentWorkspace } from '../../../workspace/paths.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 
 export const fileInfoTool: Tool = {
   definition: {
@@ -33,7 +33,13 @@ export const fileInfoTool: Tool = {
       const filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
       const stat = await Deno.stat(filePath);
-      const type = stat.isFile ? 'file' : stat.isDirectory ? 'directory' : stat.isSymlink ? 'symlink' : 'other';
+      const type = stat.isFile
+        ? 'file'
+        : stat.isDirectory
+        ? 'directory'
+        : stat.isSymlink
+        ? 'symlink'
+        : 'other';
       const size = stat.size;
       const mtime = stat.mtime?.toISOString() ?? 'N/A';
       const birthtime = stat.birthtime?.toISOString() ?? 'N/A';

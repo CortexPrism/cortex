@@ -19,7 +19,7 @@ import { buildSystemPrompt } from '../agent/soul.ts';
 import { ToolRegistry } from '../tools/registry.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { initSessionDb } from '../db/migrate.ts';
-import { createSession, closeSession } from '../db/sessions.ts';
+import { closeSession, createSession } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
 import type { Tool } from '../tools/types.ts';
 import { fileReadTool } from '../tools/builtin/file_read.ts';
@@ -27,17 +27,17 @@ import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import {
-  fileWriteTool,
-  fileEditTool,
-  filePatchTool,
   fileDeleteTool,
-  fileRenameTool,
-  fileListTool,
-  fileTreeTool,
+  fileEditTool,
   fileInfoTool,
-  fileSearchTool,
-  fileUndoTool,
+  fileListTool,
+  filePatchTool,
   fileRedoTool,
+  fileRenameTool,
+  fileSearchTool,
+  fileTreeTool,
+  fileUndoTool,
+  fileWriteTool,
 } from '../tools/builtin/workspace/index.ts';
 
 interface InitMessage {
@@ -118,7 +118,9 @@ async function main(): Promise<void> {
     let memory = '';
 
     if (!soul && agentConfig.soulFile) {
-      try { soul = await Deno.readTextFile(agentConfig.soulFile); } catch { /* ignore */ }
+      try {
+        soul = await Deno.readTextFile(agentConfig.soulFile);
+      } catch { /* ignore */ }
     }
 
     const systemPrompt = buildSystemPrompt(soul, config.config.systemPrompt, user, memory);
@@ -173,7 +175,9 @@ async function main(): Promise<void> {
       toolContext: {
         workingDir: Deno.cwd(),
         agentId: config.config.agentId ?? agentConfig.id ?? 'default',
-        workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(config.config.agentId ?? agentConfig.id ?? 'default'),
+        workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(
+          config.config.agentId ?? agentConfig.id ?? 'default',
+        ),
       },
       embedder,
     });
@@ -194,7 +198,6 @@ async function main(): Promise<void> {
         durationMs: result.durationMs,
       },
     });
-
   } catch (e) {
     send({
       type: 'error',
