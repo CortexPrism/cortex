@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Fixed
+- **JavaScript syntax errors in SPA** — escape sequences (`\'`, `\n`, `\/`) inside the outer template literal were consumed by the backtick parser, producing broken JS (bare `'` chars, actual newlines in strings, broken regex). Changed to double-backslash (`\\'`, `\\n`, `\\/`) so the output HTML contains correct JS escape sequences.
+
 ### Added
 - **Workspace infrastructure** (`src/workspace/`) — agent-scoped private workspaces + shared global workspace:
   - `paths.ts` — `resolveWorkspacePath` with path traversal protection, `ensureAgentWorkspace`, `getAgentWorkspaceDir`, `getGlobalWorkspaceDir`
