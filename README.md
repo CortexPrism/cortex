@@ -94,9 +94,10 @@ Supported languages: `python`, `javascript`, `typescript`, `bash`, `ruby`, `go`,
 
 ```bash
 cortex daemon start                  # Start supervisor + all daemons in background (auto-restart on crash)
+cortex daemon stop                   # Stop all daemon processes
+cortex daemon restart                # Restart all daemon processes (stop + 1s delay + start)
 cortex daemon run                    # Run supervisor in foreground (for systemd / tmux)
 cortex daemon status                 # Show running/stopped for each daemon process
-cortex daemon stop                   # Stop all daemon processes
 ```
 
 Three daemon processes are managed:
@@ -112,6 +113,7 @@ The supervisor auto-restarts any crashed daemon with exponential backoff.
 cortex serve                         # http://127.0.0.1:3000 (foreground)
 cortex serve --port 8080 --host 0.0.0.0
 cortex serve -d                      # Run in the background (daemon mode)
+cortex serve -d -r                   # Restart background server on the same port
 ```
 
 Web UI tabs: **Chat** (WebSocket streaming), **Lens** (activity timeline), **Memory** (search), **Jobs** (status)

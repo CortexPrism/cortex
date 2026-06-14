@@ -671,7 +671,7 @@ const HTML = `<!DOCTYPE html>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name *</label><input class="inp" id="ag-name" placeholder="My Agent" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="ag-desc" placeholder="What this agent does" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider (optional override)</label>
-          <select class="inp" id="ag-provider"><option value="">Default</option><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="ollama">Ollama</option></select>
+          <select class="inp" id="ag-provider"><option value="">Default</option><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google Gemini</option><option value="mistral">Mistral</option><option value="groq">Groq</option><option value="deepseek">DeepSeek</option><option value="openrouter">OpenRouter</option><option value="xai">xAI (Grok)</option><option value="together">Together AI</option><option value="bedrock">AWS Bedrock</option><option value="cohere">Cohere</option><option value="ollama">Ollama</option></select>
         </div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model (optional override)</label><input class="inp" id="ag-model" placeholder="e.g. gpt-4o-mini" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature (0–2)</label><input class="inp" id="ag-temp" type="number" step="0.1" min="0" max="2" placeholder="Default" style="width:100px;" /></div>
@@ -1609,7 +1609,7 @@ async function loadSettings() {
   const config = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
   if (!config) return;
 
-  const providers = ['openai', 'anthropic', 'ollama'];
+  const providers = ['openai', 'anthropic', 'google', 'mistral', 'groq', 'deepseek', 'openrouter', 'xai', 'together', 'bedrock', 'cohere', 'ollama'];
   const el = document.getElementById('settings-content');
   if (!el) return;
 
@@ -1665,6 +1665,10 @@ async function loadSettings() {
           </div>
           \${p === 'ollama' ? \`<div style="margin-top:6px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL</label>
             <input class="inp" id="key-url-\${p}" placeholder="http://localhost:11434" value="\${esc(pCfg?.baseUrl ?? '')}" style="font-size:12px;" /></div>\` : ''}
+          \${p === 'bedrock' ? \`<div style="margin-top:6px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">AWS Region</label>
+            <input class="inp" id="key-url-\${p}" placeholder="us-east-1" value="\${esc(pCfg?.baseUrl ?? '')}" style="font-size:12px;" />
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;margin-top:6px;">Secret Access Key \${pCfg?.secretKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
+            <input class="inp" id="key-secret-\${p}" type="password" placeholder="Enter new secret key to update…" autocomplete="off" style="font-size:12px;" /></div>\` : ''}
           <button class="btn btn-ghost" style="margin-top:8px;font-size:12px;" onclick="saveProvider('\${p}')">Save \${p}</button>
         </div>\`;
       }).join('')}
@@ -1710,11 +1714,13 @@ async function saveProvider(kind) {
   const model = document.getElementById(\`key-model-\${kind}\`)?.value ?? '';
   const apiKey = document.getElementById(\`key-val-\${kind}\`)?.value ?? '';
   const baseUrl = document.getElementById(\`key-url-\${kind}\`)?.value ?? '';
+  const secretKey = document.getElementById(\`key-secret-\${kind}\`)?.value ?? '';
   const body = { kind, model };
   if (apiKey) body.apiKey = apiKey;
   if (baseUrl) body.baseUrl = baseUrl;
+  if (secretKey) body.secretKey = secretKey;
   const res = await fetch(BASE + '/api/config/provider', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (res.ok) { toast(apiKey ? kind + ' provider saved' : kind + ' model updated', 'success'); } else { toast('Failed to save provider', 'error'); }
+  if (res.ok) { toast(apiKey || secretKey ? kind + ' provider saved' : kind + ' model updated', 'success'); } else { toast('Failed to save provider', 'error'); }
   loadSettings();
 }
 
