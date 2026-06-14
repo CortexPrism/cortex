@@ -17,9 +17,14 @@ export async function createSession(
   name?: string,
 ): Promise<void> {
   const db = await getCoreDb();
+  const existing = await db.get<{ id: string }>(
+    `SELECT id FROM sessions WHERE id = ?`,
+    [id],
+  );
+  if (existing) return;
   await db.run(
     `INSERT INTO sessions (id, name, channel, status, turn_count, started_at)
-     VALUES (?, ?, 'cli', 'active', 0, datetime('now'))`,
+     VALUES (?, ?, ?, 'active', 0, datetime('now'))`,
     [id, name ?? null, channel],
   );
 }
