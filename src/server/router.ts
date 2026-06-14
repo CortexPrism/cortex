@@ -608,7 +608,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const wsGlobalFilesMatch = path.match(/^\/api\/workspace\/files(\/.*)?$/);
   if (wsGlobalFilesMatch && req.method === 'GET') {
     const { getGlobalWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
-    const relPath = wsGlobalFilesMatch[1] ?? '';
+    const relPath = workspaceRelPath(wsGlobalFilesMatch);
     const targetPath = relPath ? resolveWorkspacePath('global', relPath, 'global') : getGlobalWorkspaceDir();
     try {
       const stat = await Deno.stat(targetPath);
@@ -628,7 +628,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   if (wsGlobalFilesMatch && req.method === 'PUT') {
     const { resolveWorkspacePath } = await import('../workspace/paths.ts');
-    const relPath = wsGlobalFilesMatch[1] ?? '';
+    const relPath = workspaceRelPath(wsGlobalFilesMatch);
     const targetPath = resolveWorkspacePath('global', relPath, 'global');
     const { content } = await req.json() as { content: string };
     await Deno.writeTextFile(targetPath, content);
@@ -637,7 +637,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   if (wsGlobalFilesMatch && req.method === 'DELETE') {
     const { resolveWorkspacePath } = await import('../workspace/paths.ts');
-    const relPath = wsGlobalFilesMatch[1] ?? '';
+    const relPath = workspaceRelPath(wsGlobalFilesMatch);
     const targetPath = resolveWorkspacePath('global', relPath, 'global');
     await Deno.remove(targetPath, { recursive: true });
     return json({ ok: true });
@@ -645,11 +645,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // Workspace file routes for agent workspaces
   const wsAgentFilesMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/files(\/.*)?$/);
+  function workspaceRelPath(match: RegExpMatchArray): string {
+    return (match[2] ?? '').replace(/^\//, '');
+  }
+
   if (wsAgentFilesMatch && req.method === 'GET') {
-    const { getAgentWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const { ensureAgentWorkspace, getAgentWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
     const agentId = wsAgentFilesMatch[1];
-    const relPath = wsAgentFilesMatch[2] ?? '';
-    const targetPath = relPath ? resolveWorkspacePath(agentId, relPath, 'agent') : getAgentWorkspaceDir(agentId);
+    const relPath = workspaceRelPath(wsAgentFilesMatch);
+    const targetPath = relPath ? resolveWorkspacePath(agentId, relPath, 'agent') : await ensureAgentWorkspace(agentId);
     try {
       const stat = await Deno.stat(targetPath);
       if (stat.isDirectory) {
@@ -667,9 +671,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
 
   if (wsAgentFilesMatch && req.method === 'PUT') {
-    const { resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const { ensureAgentWorkspace, resolveWorkspacePath } = await import('../workspace/paths.ts');
     const agentId = wsAgentFilesMatch[1];
-    const relPath = wsAgentFilesMatch[2] ?? '';
+    await ensureAgentWorkspace(agentId);
+    const relPath = workspaceRelPath(wsAgentFilesMatch);
     const targetPath = resolveWorkspacePath(agentId, relPath, 'agent');
     const { content } = await req.json() as { content: string };
     await Deno.writeTextFile(targetPath, content);
@@ -677,9 +682,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
 
   if (wsAgentFilesMatch && req.method === 'DELETE') {
-    const { resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const { ensureAgentWorkspace, resolveWorkspacePath } = await import('../workspace/paths.ts');
     const agentId = wsAgentFilesMatch[1];
-    const relPath = wsAgentFilesMatch[2] ?? '';
+    await ensureAgentWorkspace(agentId);
+    const relPath = workspaceRelPath(wsAgentFilesMatch);
     const targetPath = resolveWorkspacePath(agentId, relPath, 'agent');
     await Deno.remove(targetPath, { recursive: true });
     return json({ ok: true });
