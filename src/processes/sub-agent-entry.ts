@@ -26,6 +26,19 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
+import {
+  fileWriteTool,
+  fileEditTool,
+  filePatchTool,
+  fileDeleteTool,
+  fileRenameTool,
+  fileListTool,
+  fileTreeTool,
+  fileInfoTool,
+  fileSearchTool,
+  fileUndoTool,
+  fileRedoTool,
+} from '../tools/builtin/workspace/index.ts';
 
 interface InitMessage {
   type: 'init';
@@ -114,6 +127,17 @@ async function main(): Promise<void> {
     const registry = new ToolRegistry();
     const allTools: Record<string, Tool> = {
       file_read: fileReadTool,
+      file_write: fileWriteTool,
+      file_edit: fileEditTool,
+      file_patch: filePatchTool,
+      file_delete: fileDeleteTool,
+      file_rename: fileRenameTool,
+      file_list: fileListTool,
+      file_tree: fileTreeTool,
+      file_info: fileInfoTool,
+      file_search: fileSearchTool,
+      file_undo: fileUndoTool,
+      file_redo: fileRedoTool,
       web_search: webSearchTool,
       shell: shellTool,
       code_exec: codeExecTool,
@@ -146,7 +170,11 @@ async function main(): Promise<void> {
       stream: true,
       onChunk: (delta) => send({ type: 'chunk', delta }),
       registry,
-      toolContext: { workingDir: Deno.cwd() },
+      toolContext: {
+        workingDir: Deno.cwd(),
+        agentId: config.config.agentId ?? agentConfig.id ?? 'default',
+        workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(config.config.agentId ?? agentConfig.id ?? 'default'),
+      },
       embedder,
     });
 

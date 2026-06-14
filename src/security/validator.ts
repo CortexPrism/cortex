@@ -6,6 +6,12 @@ export interface ValidationResult {
   reason: string;
 }
 
+const FILE_TOOLS = new Set([
+  'file_read', 'file_write', 'file_edit', 'file_patch',
+  'file_delete', 'file_rename', 'file_list', 'file_tree',
+  'file_info', 'file_search',
+]);
+
 export async function validateToolCall(
   toolName: string,
   args: Record<string, unknown>,
@@ -52,6 +58,26 @@ export async function validateToolCall(
       const domainDecision = await checkPolicy('domain', domainMatch[1]);
       if (!domainDecision.allowed) {
         return { allowed: false, reason: domainDecision.reason };
+      }
+    }
+  }
+
+  // Path-based policy check for file tools
+  if (FILE_TOOLS.has(toolName)) {
+    const pathArg = args.path ?? args.source ?? args.pattern ?? '';
+    if (typeof pathArg === 'string' && pathArg) {
+      const pathDecision = await checkPolicy('path', pathArg);
+      if (!pathDecision.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'validator',
+          action: `path:${toolName}`,
+          summary: `Path denied by policy: ${pathArg.slice(0, 200)}`,
+          started_at: new Date().toISOString(),
+          payload: { tool: toolName, path: pathArg.slice(0, 200), rule: pathDecision.rule?.id },
+        });
+        return { allowed: false, reason: pathDecision.reason };
       }
     }
   }

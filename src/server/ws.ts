@@ -13,6 +13,19 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
+import {
+  fileWriteTool,
+  fileEditTool,
+  filePatchTool,
+  fileDeleteTool,
+  fileRenameTool,
+  fileListTool,
+  fileTreeTool,
+  fileInfoTool,
+  fileSearchTool,
+  fileUndoTool,
+  fileRedoTool,
+} from '../tools/builtin/workspace/index.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 type WsMsg =
@@ -159,6 +172,17 @@ export function handleWebSocket(req: Request): Response {
         const registry = new ToolRegistry();
         const allTools: Record<string, Tool> = {
           file_read: fileReadTool,
+          file_write: fileWriteTool,
+          file_edit: fileEditTool,
+          file_patch: filePatchTool,
+          file_delete: fileDeleteTool,
+          file_rename: fileRenameTool,
+          file_list: fileListTool,
+          file_tree: fileTreeTool,
+          file_info: fileInfoTool,
+          file_search: fileSearchTool,
+          file_undo: fileUndoTool,
+          file_redo: fileRedoTool,
           web_search: webSearchTool,
           code_exec: codeExecTool,
           sub_agent: subAgentTool,
@@ -182,7 +206,11 @@ export function handleWebSocket(req: Request): Response {
           stream: true,
           onChunk: (chunk) => send(ws, { type: 'chunk', delta: chunk }),
           registry,
-          toolContext: { workingDir: Deno.cwd() },
+          toolContext: {
+            workingDir: Deno.cwd(),
+            agentId: agent.id,
+            workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(agent.id),
+          },
           embedder,
         });
 

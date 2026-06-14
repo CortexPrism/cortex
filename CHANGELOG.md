@@ -10,6 +10,41 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ## [Unreleased]
 
 ### Added
+- **Workspace infrastructure** (`src/workspace/`) — agent-scoped private workspaces + shared global workspace:
+  - `paths.ts` — `resolveWorkspacePath` with path traversal protection, `ensureAgentWorkspace`, `getAgentWorkspaceDir`, `getGlobalWorkspaceDir`
+  - `git.ts` — `gitInit`, `gitAutoCommit`, `gitEnsureBranch` via `Deno.Command`
+- **`src/db/migrations/011_workspace.sql`** — `workspace_config` and `file_edit_log` tables with agent/session/file tracking
+- **11 file system tools** (`src/tools/builtin/workspace/`):
+  - `file_write` — create/overwrite files with workspace targeting (`agent`|`global`)
+  - `file_edit` — line-based operations (insert/replace/delete) and search-replace blocks
+  - `file_patch` — unified diff patching via git apply or built-in fallback
+  - `file_delete` — delete with recursion support, refuses to delete workspace root
+  - `file_rename` — rename/move files within same workspace
+  - `file_list` — directory listing with type markers and optional recursive mode
+  - `file_tree` — indented tree view with configurable max depth
+  - `file_info` — file/directory metadata (size, type, timestamps, permissions)
+  - `file_search` — regex grep across workspace files with include filter
+  - `file_undo` / `file_redo` — revert/restore edits via `file_edit_log` table
+- **Workspace REST API** (`src/server/router.ts`):
+  - Global workspace file CRUD at `/api/workspace/files/*path`
+  - Per-agent workspace file CRUD at `/api/workspace/agents/:agentId/files/*path`
+  - Undo/redo endpoints for agent workspaces
+  - History query at `/api/workspace/history`
+  - Git log/diff/commit endpoints for agent workspaces
+- **Git-backed workspaces** — every agent edit auto-commits with `workspace/<agent-id>` branch naming
+- **CodeMirror 5 web editor** (`src/server/ui.ts`):
+  - "Editor" tab in sidebar with file tree browser
+  - Per-agent and global workspace tabs
+  - Syntax highlighting for JS, TS, Python, HTML, CSS, Markdown, YAML, SQL
+  - Save (Ctrl+S), undo/redo buttons
+  - File creation, unsaved changes indicator, git status display
+- **Path-based policy checking** (`src/security/validator.ts`, `src/security/policy.ts`) — file tool paths validated against `path` policy rules before execution
+- `ToolContext` extended with `agentId` and `workspaceDir` fields
+- `ToolCapability` extended with `fs:list`, `fs:edit`, `fs:delete`, `fs:search`
+- `PATHS.workspacesDir` config getter
+- Workspace tools registered in WebSocket chat and sub-agent entry point
+
+### Added
 - **`src/agent/sub-agent.ts`** — Sub-agent spawning system: `spawnSubAgent()` spawns a child Deno process, communicates via stdin/stdout JSON-line protocol, streams chunk and done events back as an async iterable
 - **`src/processes/sub-agent-entry.ts`** — Sub-agent process entry point: receives task via stdin, runs `agentTurn` with its own provider/model/tools/identity, streams response chunks and final result to stdout
 - **`src/tools/builtin/sub_agent.ts`** — `sub_agent` tool: agents can delegate independent tasks to sub-agents with configurable agent ID, model, provider, tools, system prompt; runs concurrently and returns full response

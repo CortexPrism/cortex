@@ -56,6 +56,9 @@ export const PATHS = {
   get backupsDir() {
     return join(this.dataDir, 'backups');
   },
+  get workspacesDir() {
+    return join(this.dataDir, 'workspaces');
+  },
 
   sessionDb(sessionId: string): string {
     return join(this.sessionsDir, `${sessionId}.db`);

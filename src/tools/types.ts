@@ -1,6 +1,10 @@
 export type ToolCapability =
   | 'fs:read'
   | 'fs:write'
+  | 'fs:list'
+  | 'fs:edit'
+  | 'fs:delete'
+  | 'fs:search'
   | 'shell:run'
   | 'network:fetch'
   | 'db:read'
@@ -42,5 +46,7 @@ export interface Tool {
 export interface ToolContext {
   sessionId: string;
   workingDir: string;
+  agentId: string;
+  workspaceDir: string;
   approvalGate?: (tool: string, command: string) => Promise<boolean>;
 }

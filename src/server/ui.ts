@@ -13,6 +13,20 @@ const HTML = `<!DOCTYPE html>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/markdown/markdown.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/yaml/yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/search.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -162,6 +176,45 @@ const HTML = `<!DOCTYPE html>
   .page-fade-in { animation: fadeIn 0.2s ease-out; }
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
+  /* ── Editor ──────────────────────────────────── */
+  .editor-tree-item { display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:5px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.12s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; }
+  .editor-tree-item:hover { background:rgba(255,255,255,0.05); color:var(--text); }
+  .editor-tree-item.active { background:rgba(99,102,241,0.12); color:var(--accent2); }
+  .editor-tree-item .icon { width:16px; text-align:center; opacity:0.6; flex-shrink:0; }
+  .editor-tab { padding:6px 12px; border-radius:6px 6px 0 0; font-size:12px; cursor:pointer; background:transparent; color:var(--text3); border:1px solid transparent; border-bottom:none; transition:all 0.12s; white-space:nowrap; }
+  .editor-tab.active { background:var(--bg3); color:var(--text); border-color:var(--border); }
+  .editor-tab:hover:not(.active) { color:var(--text2); }
+  .CodeMirror { height:100% !important; font-size:13px; font-family:'JetBrains Mono',monospace; background:var(--bg3) !important; color:var(--text) !important; }
+  .CodeMirror-gutters { background:var(--bg2) !important; border-right:1px solid var(--border) !important; }
+  .CodeMirror-linenumber { color:var(--text3) !important; }
+  .CodeMirror-cursor { border-left:2px solid var(--accent2) !important; }
+  .cm-s-default .cm-keyword { color:#818cf8; }
+  .cm-s-default .cm-atom { color:#f472b6; }
+  .cm-s-default .cm-number { color:#f472b6; }
+  .cm-s-default .cm-def { color:#a5b4fc; }
+  .cm-s-default .cm-variable { color:var(--text); }
+  .cm-s-default .cm-variable-2 { color:#e2e2ea; }
+  .cm-s-default .cm-variable-3 { color:#34d399; }
+  .cm-s-default .cm-string { color:#34d399; }
+  .cm-s-default .cm-string-2 { color:#34d399; }
+  .cm-s-default .cm-comment { color:#55556a; font-style:italic; }
+  .cm-s-default .cm-tag { color:#f87171; }
+  .cm-s-default .cm-attribute { color:#fbbf24; }
+  .cm-s-default .cm-meta { color:#38bdf8; }
+  .cm-s-default .cm-qualifier { color:#38bdf8; }
+  .cm-s-default .cm-builtin { color:#fb923c; }
+  .cm-s-default .cm-bracket { color:var(--text3); }
+  .cm-s-default .cm-hr { color:var(--text3); }
+  .cm-s-default .cm-link { color:#818cf8; }
+  .cm-s-default .cm-error { color:#f87171; }
+  .cm-s-default .cm-m-markup { color:var(--text2); }
+  .cm-s-default .cm-m-md { color:var(--text2); }
+  .cm-s-default .cm-m-xml { color:#f87171; }
+  .CodeMirror-selected { background:rgba(99,102,241,0.2) !important; }
+  .CodeMirror-focused .CodeMirror-selected { background:rgba(99,102,241,0.25) !important; }
+  .CodeMirror-matchingbracket { outline:1px solid rgba(99,102,241,0.4); color:var(--text) !important; }
+  .CodeMirror-nonmatchingbracket { color:#f87171 !important; }
+
   /* ── Card hover effects ───────────────────────── */
   .card, .card-sm { transition: border-color 0.2s, box-shadow 0.2s; }
   .card:hover, .card-sm:hover { border-color: rgba(255,255,255,0.12); box-shadow:0 0 0 1px rgba(99,102,241,0.1); }
@@ -245,6 +298,12 @@ const HTML = `<!DOCTYPE html>
     </button>
     <button class="nav-item" onclick="showPage('lens');closeMobileSidebar()" id="nav-lens">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></span> Activity
+    </button>
+
+    <!-- Tools -->
+    <div class="nav-section">Tools</div>
+    <button class="nav-item" onclick="showPage('editor');closeMobileSidebar()" id="nav-editor">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Editor
     </button>
 
     <!-- Management -->
@@ -335,6 +394,50 @@ const HTML = `<!DOCTYPE html>
           </div>
           <span style="font-size:12px;color:var(--text3);">Thinking…</span>
           <span id="token-live" style="font-size:11px;color:var(--text3);margin-left:auto;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Editor -->
+  <div id="page-editor" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="display:flex;flex:1;overflow:hidden;">
+      <!-- Editor sidebar: file tree / tabs -->
+      <div style="width:240px;min-width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;">
+          <select id="editor-workspace-select" class="inp" style="flex:1;font-size:12px;padding:5px 8px;" onchange="editorSwitchWorkspace(this.value)">
+            <option value="global">Global</option>
+          </select>
+          <button class="btn btn-ghost" onclick="editorRefreshTree()" style="padding:4px 8px;font-size:12px;" data-tip="Refresh">↻</button>
+        </div>
+        <div style="padding:6px 8px;border-bottom:1px solid var(--border);display:flex;gap:4px;">
+          <button class="btn btn-ghost" onclick="editorNewFile()" style="flex:1;padding:4px 6px;font-size:11px;">+ New File</button>
+          <button class="btn btn-ghost" onclick="editorNewFolder()" style="flex:1;padding:4px 6px;font-size:11px;">+ Folder</button>
+        </div>
+        <div id="editor-tree" style="flex:1;overflow-y:auto;padding:6px 4px;font-size:13px;"></div>
+      </div>
+      <!-- Editor main pane -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <!-- Tabs bar -->
+        <div id="editor-tabs" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;padding:0 8px;flex-shrink:0;"></div>
+        <!-- CodeMirror container -->
+        <div id="editor-container" style="flex:1;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div style="text-align:center;color:var(--text3);">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <p style="font-size:14px;font-weight:500;">File Editor</p>
+            <p style="font-size:12px;margin-top:4px;">Select a file from the tree to start editing</p>
+          </div>
+        </div>
+        <!-- Status bar -->
+        <div id="editor-statusbar" style="display:none;padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;color:var(--text3);justify-content:space-between;align-items:center;flex-shrink:0;">
+          <span id="editor-file-info"></span>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span id="editor-git-status"></span>
+            <button class="btn btn-ghost" onclick="editorUndo()" style="padding:2px 8px;font-size:11px;" data-tip="Undo">↩ Undo</button>
+            <button class="btn btn-ghost" onclick="editorRedo()" style="padding:2px 8px;font-size:11px;" data-tip="Redo">↪ Redo</button>
+            <span id="editor-modified" style="color:#fbbf24;"></span>
+            <button class="btn btn-primary" onclick="editorSave()" style="padding:3px 12px;font-size:11px;">Save</button>
+          </div>
         </div>
       </div>
     </div>
@@ -901,7 +1004,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','analytics','logs'];
+const PAGES = ['chat','editor','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','analytics','logs'];
 function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
@@ -923,7 +1026,7 @@ function showPage(name) {
     status: loadStatus, lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
     sessions: loadSessionsList, settings: loadSettings, plugins: loadPlugins,
-    soul: loadSoulFile, logs: loadLogs,
+    soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
   };
   if (loaders[name]) loaders[name]();
 }
@@ -1941,6 +2044,7 @@ function toggleLogAutoRefresh() {
 // ── Command palette ──────────────────────────
 const CMD_PAGES = [
   { id:'chat', label:'Chat', icon:'💬', desc:'Start a chat session' },
+  { id:'editor', label:'Editor', icon:'✏', desc:'Web file editor (CodeMirror)' },
   { id:'status', label:'Status', icon:'🏠', desc:'System overview and daemon status' },
   { id:'memory', label:'Memory', icon:'📚', desc:'Browse episodic, semantic, and graph memory' },
   { id:'skills', label:'Skills', icon:'⚡', desc:'Procedural memory — learned skill patterns' },
@@ -2052,6 +2156,338 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ── Editor ──────────────────────────────────────────────────
+let editorInstance = null;
+let editorFileTree = [];
+let editorOpenFiles = [];
+let editorCurrentFile = null;
+let editorWorkspace = 'global';
+let editorContentDirty = false;
+
+async function editorLoadWorkspaces() {
+  try {
+    const res = await fetch(BASE + '/api/workspace/agents');
+    if (res.ok) {
+      const agents = await res.json();
+      const sel = document.getElementById('editor-workspace-select');
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="global">Global</option>' +
+        agents.map(a => '<option value="' + esc(a.agentId) + '">' + esc(a.agentName) + ' (agent)</option>').join('');
+      sel.value = currentVal;
+    }
+  } catch {}
+}
+
+async function editorRefreshTree() {
+  const tree = document.getElementById('editor-tree');
+  tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Loading…</div>';
+  try {
+    const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+    const url = agentId
+      ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
+      : BASE + '/api/workspace/files';
+    const res = await fetch(url);
+    if (!res.ok) { tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Failed to load files</div>'; return; }
+    const entries = await res.json();
+    editorFileTree = Array.isArray(entries) ? entries : [];
+    renderEditorTree();
+  } catch (e) {
+    tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderEditorTree() {
+  const tree = document.getElementById('editor-tree');
+  if (!editorFileTree.length) {
+    tree.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">Empty workspace</div>';
+    return;
+  }
+  tree.innerHTML = editorFileTree.map(name => {
+    const isDir = name.endsWith('/');
+    const active = editorCurrentFile === name;
+    const icon = isDir
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    const nameClean = name.replace(/\/$/, '');
+    return '<button class="editor-tree-item' + (active ? ' active' : '') + '" onclick="editorOpenFile(\'' + esc(nameClean) + '\')" title="' + esc(nameClean) + '">' +
+      '<span class="icon">' + icon + '</span>' +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(nameClean) + '</span>' +
+      '</button>';
+  }).join('');
+}
+
+function editorSwitchWorkspace(value) {
+  if (editorInstance && editorContentDirty) {
+    if (!confirm('Unsaved changes will be lost. Switch workspace?')) {
+      document.getElementById('editor-workspace-select').value = editorWorkspace;
+      return;
+    }
+  }
+  editorWorkspace = value;
+  editorCloseAllTabs();
+  editorRefreshTree();
+}
+
+async function editorOpenFile(fileName) {
+  if (editorInstance && editorContentDirty) {
+    if (!confirm('Save changes to ' + editorCurrentFile + '?')) {
+      // Discard
+    } else {
+      await editorSave();
+    }
+  }
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(fileName)
+    : BASE + '/api/workspace/files/' + encodeURIComponent(fileName);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) { toast('Failed to open file', 'error'); return; }
+    const data = await res.json();
+    const content = data.content || '';
+    editorCurrentFile = fileName;
+    editorContentDirty = false;
+    editorAddTab(fileName);
+    editorShowEditor(fileName, content);
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+function editorAddTab(fileName) {
+  if (!editorOpenFiles.includes(fileName)) {
+    editorOpenFiles.push(fileName);
+  }
+  renderEditorTabs();
+}
+
+function renderEditorTabs() {
+  const bar = document.getElementById('editor-tabs');
+  bar.innerHTML = editorOpenFiles.map(f =>
+    '<span class="editor-tab' + (f === editorCurrentFile ? ' active' : '') + '" onclick="editorSwitchTab(\'' + esc(f) + '\')">' +
+    esc(f) +
+    (editorOpenFiles.length > 1 ? '<span style="margin-left:6px;cursor:pointer;opacity:0.5;" onclick="event.stopPropagation();editorCloseTab(\'' + esc(f) + '\')">✕</span>' : '') +
+    '</span>'
+  ).join('');
+  renderEditorTree();
+}
+
+function editorSwitchTab(fileName) {
+  if (editorInstance && editorContentDirty) {
+    // Auto-save on tab switch
+    editorSave();
+  }
+  editorCurrentFile = fileName;
+  renderEditorTabs();
+  // Re-read content from server
+  editorOpenFile(fileName);
+}
+
+function editorCloseTab(fileName) {
+  const idx = editorOpenFiles.indexOf(fileName);
+  if (idx > -1) editorOpenFiles.splice(idx, 1);
+  if (editorCurrentFile === fileName) {
+    editorCurrentFile = editorOpenFiles.length > 0 ? editorOpenFiles[editorOpenFiles.length - 1] : null;
+    if (editorCurrentFile) {
+      editorOpenFile(editorCurrentFile);
+    } else {
+      editorDestroyEditor();
+    }
+  }
+  renderEditorTabs();
+}
+
+function editorCloseAllTabs() {
+  editorOpenFiles = [];
+  editorCurrentFile = null;
+  editorDestroyEditor();
+}
+
+function editorDestroyEditor() {
+  if (editorInstance) {
+    editorInstance.toTextArea();
+    editorInstance = null;
+  }
+  const container = document.getElementById('editor-container');
+  container.innerHTML = '<div style="text-align:center;color:var(--text3);">' +
+    '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+    '<p style="font-size:14px;font-weight:500;">File Editor</p>' +
+    '<p style="font-size:12px;margin-top:4px;">Select a file from the tree to start editing</p></div>';
+  document.getElementById('editor-statusbar').style.display = 'none';
+}
+
+function editorShowEditor(fileName, content) {
+  const container = document.getElementById('editor-container');
+  container.innerHTML = '<textarea id="editor-textarea">' + esc(content) + '</textarea>';
+
+  if (editorInstance) {
+    editorInstance.toTextArea();
+  }
+
+  const mode = editorDetectMode(fileName);
+  editorInstance = CodeMirror.fromTextArea(document.getElementById('editor-textarea'), {
+    lineNumbers: true,
+    mode: mode,
+    theme: 'default',
+    indentUnit: 2,
+    tabSize: 2,
+    lineWrapping: false,
+    extraKeys: {
+      'Ctrl-S': function() { editorSave(); },
+      'Cmd-S': function() { editorSave(); },
+    },
+  });
+
+  editorInstance.on('change', function() {
+    editorContentDirty = true;
+    document.getElementById('editor-modified').textContent = '● unsaved';
+  });
+
+  const statusbar = document.getElementById('editor-statusbar');
+  statusbar.style.display = 'flex';
+  document.getElementById('editor-file-info').textContent = fileName + ' (' + content.length + ' bytes)';
+  document.getElementById('editor-modified').textContent = '';
+  editorLoadGitStatus();
+}
+
+function editorDetectMode(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  const modes = {
+    js: 'javascript', ts: 'javascript', jsx: 'javascript', tsx: 'javascript',
+    py: 'python', rb: 'python', rs: 'rust',
+    html: 'htmlmixed', htm: 'htmlmixed',
+    css: 'css', scss: 'css', less: 'css',
+    md: 'markdown', markdown: 'markdown',
+    json: 'javascript', yaml: 'yaml', yml: 'yaml',
+    sql: 'sql', xml: 'xml', svg: 'xml',
+  };
+  return modes[ext] || 'javascript';
+}
+
+async function editorSave() {
+  if (!editorCurrentFile || !editorInstance) return;
+  const content = editorInstance.getValue();
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(editorCurrentFile)
+    : BASE + '/api/workspace/files/' + encodeURIComponent(editorCurrentFile);
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    if (res.ok) {
+      editorContentDirty = false;
+      document.getElementById('editor-modified').textContent = '';
+      toast('File saved', 'success');
+      document.getElementById('editor-file-info').textContent = editorCurrentFile + ' (' + content.length + ' bytes)';
+    } else {
+      toast('Failed to save file', 'error');
+    }
+  } catch (e) {
+    toast('Error saving: ' + e.message, 'error');
+  }
+}
+
+async function editorUndo() {
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/undo'
+    : BASE + '/api/workspace/history?limit=1';
+  try {
+    const res = await fetch(url, { method: 'POST' });
+    if (res.ok) {
+      toast('Undo applied', 'success');
+      if (editorCurrentFile) editorOpenFile(editorCurrentFile);
+    } else {
+      toast('Nothing to undo', 'warning');
+    }
+  } catch (e) {
+    toast('Undo error: ' + e.message, 'error');
+  }
+}
+
+async function editorRedo() {
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/redo'
+    : BASE + '/api/workspace/history?limit=1';
+  try {
+    const res = await fetch(url, { method: 'POST' });
+    if (res.ok) {
+      toast('Redo applied', 'success');
+      if (editorCurrentFile) editorOpenFile(editorCurrentFile);
+    } else {
+      toast('Nothing to redo', 'warning');
+    }
+  } catch (e) {
+    toast('Redo error: ' + e.message, 'error');
+  }
+}
+
+async function editorLoadGitStatus() {
+  const el = document.getElementById('editor-git-status');
+  if (editorWorkspace === 'global') { el.textContent = ''; return; }
+  try {
+    const res = await fetch(BASE + '/api/workspace/agents/' + encodeURIComponent(editorWorkspace) + '/git/log');
+    if (res.ok) {
+      const data = await res.json();
+      el.textContent = data.log ? data.log.slice(0, 80) : '';
+    }
+  } catch {}
+}
+
+async function editorNewFile() {
+  const name = prompt('File name:');
+  if (!name) return;
+  const content = '';
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(name)
+    : BASE + '/api/workspace/files/' + encodeURIComponent(name);
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    if (res.ok) {
+      toast('File created', 'success');
+      editorRefreshTree();
+      editorOpenFile(name);
+    } else {
+      toast('Failed to create file', 'error');
+    }
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function editorNewFolder() {
+  const name = prompt('Folder name:');
+  if (!name) return;
+  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  const url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(name)
+    : BASE + '/api/workspace/files/' + encodeURIComponent(name);
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: '' }),
+    });
+    if (res.ok) {
+      toast('Folder created (placeholder)', 'success');
+      editorRefreshTree();
+    } else {
+      toast('Failed to create folder', 'error');
+    }
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
 // ── Boot ────────────────────────────────────────────────────
 connect();
 loadSessionsSidebar();
@@ -2060,6 +2496,7 @@ loadAgentSelector();
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);
+setInterval(editorRefreshTree, 30_000);
 showPage('chat');
 </script>
 </body>

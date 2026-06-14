@@ -589,5 +589,216 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(rows);
   }
 
+  // ── Workspace API ────────────────────────────────────────
+
+  // GET /api/workspace/agents — list known agent workspaces
+  if (req.method === 'GET' && path === '/api/workspace/agents') {
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const { listAgents } = await import('../agent/manager.ts');
+    const agents = await listAgents();
+    const workspaces = agents.map((a) => ({
+      agentId: a.id,
+      agentName: a.name,
+      workspaceDir: getAgentWorkspaceDir(a.id),
+    }));
+    return json(workspaces);
+  }
+
+  // Workspace file routes for global workspace
+  const wsGlobalFilesMatch = path.match(/^\/api\/workspace\/files(\/.*)?$/);
+  if (wsGlobalFilesMatch && req.method === 'GET') {
+    const { getGlobalWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const relPath = wsGlobalFilesMatch[1] ?? '';
+    const targetPath = relPath ? resolveWorkspacePath('global', relPath, 'global') : getGlobalWorkspaceDir();
+    try {
+      const stat = await Deno.stat(targetPath);
+      if (stat.isDirectory) {
+        const entries: string[] = [];
+        for await (const entry of Deno.readDir(targetPath)) {
+          entries.push(entry.name);
+        }
+        return json(entries.sort());
+      }
+      const content = await Deno.readTextFile(targetPath);
+      return json({ content, path: targetPath });
+    } catch (e) {
+      return err((e as Error).message, 404);
+    }
+  }
+
+  if (wsGlobalFilesMatch && req.method === 'PUT') {
+    const { resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const relPath = wsGlobalFilesMatch[1] ?? '';
+    const targetPath = resolveWorkspacePath('global', relPath, 'global');
+    const { content } = await req.json() as { content: string };
+    await Deno.writeTextFile(targetPath, content);
+    return json({ ok: true, path: targetPath });
+  }
+
+  if (wsGlobalFilesMatch && req.method === 'DELETE') {
+    const { resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const relPath = wsGlobalFilesMatch[1] ?? '';
+    const targetPath = resolveWorkspacePath('global', relPath, 'global');
+    await Deno.remove(targetPath, { recursive: true });
+    return json({ ok: true });
+  }
+
+  // Workspace file routes for agent workspaces
+  const wsAgentFilesMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/files(\/.*)?$/);
+  if (wsAgentFilesMatch && req.method === 'GET') {
+    const { getAgentWorkspaceDir, resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const agentId = wsAgentFilesMatch[1];
+    const relPath = wsAgentFilesMatch[2] ?? '';
+    const targetPath = relPath ? resolveWorkspacePath(agentId, relPath, 'agent') : getAgentWorkspaceDir(agentId);
+    try {
+      const stat = await Deno.stat(targetPath);
+      if (stat.isDirectory) {
+        const entries: string[] = [];
+        for await (const entry of Deno.readDir(targetPath)) {
+          entries.push(entry.name);
+        }
+        return json(entries.sort());
+      }
+      const content = await Deno.readTextFile(targetPath);
+      return json({ content, path: targetPath });
+    } catch (e) {
+      return err((e as Error).message, 404);
+    }
+  }
+
+  if (wsAgentFilesMatch && req.method === 'PUT') {
+    const { resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const agentId = wsAgentFilesMatch[1];
+    const relPath = wsAgentFilesMatch[2] ?? '';
+    const targetPath = resolveWorkspacePath(agentId, relPath, 'agent');
+    const { content } = await req.json() as { content: string };
+    await Deno.writeTextFile(targetPath, content);
+    return json({ ok: true, path: targetPath });
+  }
+
+  if (wsAgentFilesMatch && req.method === 'DELETE') {
+    const { resolveWorkspacePath } = await import('../workspace/paths.ts');
+    const agentId = wsAgentFilesMatch[1];
+    const relPath = wsAgentFilesMatch[2] ?? '';
+    const targetPath = resolveWorkspacePath(agentId, relPath, 'agent');
+    await Deno.remove(targetPath, { recursive: true });
+    return json({ ok: true });
+  }
+
+  // ── Workspace undo/redo/history endpoints ────────────────
+
+  // POST /api/workspace/agents/:agentId/undo
+  const wsUndoMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/undo$/);
+  if (req.method === 'POST' && wsUndoMatch) {
+    const agentId = wsUndoMatch[1];
+    const db = await (await import('../db/client.ts')).getCoreDb();
+    const row = await db.get<{ before_text: string; file_path: string }>(
+      `SELECT before_text, file_path FROM file_edit_log
+       WHERE agent_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [agentId],
+    );
+    if (!row) return err('No edits to undo', 404);
+    await Deno.writeTextFile(row.file_path, row.before_text);
+    return json({ ok: true, path: row.file_path });
+  }
+
+  // POST /api/workspace/agents/:agentId/redo
+  const wsRedoMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/redo$/);
+  if (req.method === 'POST' && wsRedoMatch) {
+    const agentId = wsRedoMatch[1];
+    const db = await (await import('../db/client.ts')).getCoreDb();
+    const row = await db.get<{ after_text: string; file_path: string }>(
+      `SELECT after_text, file_path FROM file_edit_log
+       WHERE agent_id = ? AND tool = 'file_undo' ORDER BY created_at DESC LIMIT 1`,
+      [agentId],
+    );
+    if (!row) return err('No edits to redo', 404);
+    await Deno.writeTextFile(row.file_path, row.after_text);
+    return json({ ok: true, path: row.file_path });
+  }
+
+  // GET /api/workspace/history?path=&agentId=&limit=
+  if (req.method === 'GET' && path === '/api/workspace/history') {
+    const db = await (await import('../db/client.ts')).getCoreDb();
+    const filePath = url.searchParams.get('path') ?? '';
+    const agentId = url.searchParams.get('agentId') ?? '';
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    let query = `SELECT * FROM file_edit_log WHERE 1=1`;
+    const params: string[] = [];
+    if (filePath) { query += ` AND file_path = ?`; params.push(filePath); }
+    if (agentId) { query += ` AND agent_id = ?`; params.push(agentId); }
+    query += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(String(limit));
+    const rows = await db.all(query, params);
+    return json(rows);
+  }
+
+  // ── Git endpoints ────────────────────────────────────────
+
+  // GET /api/workspace/agents/:agentId/git/log
+  const gitLogMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/git\/log$/);
+  if (req.method === 'GET' && gitLogMatch) {
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = getAgentWorkspaceDir(gitLogMatch[1]);
+    try {
+      const cmd = new Deno.Command('git', {
+        args: ['-C', dir, 'log', '--oneline', '-20'],
+        stdout: 'piped',
+        stderr: 'null',
+      });
+      const result = await cmd.output();
+      const log = new TextDecoder().decode(result.stdout).trim();
+      return json({ log: log || '(no commits)' });
+    } catch {
+      return json({ log: '(git unavailable)' });
+    }
+  }
+
+  // GET /api/workspace/agents/:agentId/git/diff
+  const gitDiffMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/git\/diff$/);
+  if (req.method === 'GET' && gitDiffMatch) {
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = getAgentWorkspaceDir(gitDiffMatch[1]);
+    try {
+      const cmd = new Deno.Command('git', {
+        args: ['-C', dir, 'diff', '--stat'],
+        stdout: 'piped',
+        stderr: 'null',
+      });
+      const result = await cmd.output();
+      const diff = new TextDecoder().decode(result.stdout).trim();
+      return json({ diff: diff || '(clean)' });
+    } catch {
+      return json({ diff: '(git unavailable)' });
+    }
+  }
+
+  // POST /api/workspace/agents/:agentId/git/commit
+  const gitCommitMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/git\/commit$/);
+  if (req.method === 'POST' && gitCommitMatch) {
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = getAgentWorkspaceDir(gitCommitMatch[1]);
+    const body = await req.json().catch(() => ({})) as { message?: string };
+    const msg = body.message ?? 'manual commit';
+    try {
+      const addCmd = new Deno.Command('git', {
+        args: ['-C', dir, 'add', '-A'],
+        stdout: 'null',
+        stderr: 'null',
+      });
+      await addCmd.output();
+      const commitCmd = new Deno.Command('git', {
+        args: ['-C', dir, 'commit', '--no-gpg-sign', '-m', msg, '--allow-empty'],
+        stdout: 'piped',
+        stderr: 'piped',
+      });
+      const result = await commitCmd.output();
+      const out = new TextDecoder().decode(result.stdout).trim();
+      return json({ ok: result.success, output: out });
+    } catch (e) {
+      return err((e as Error).message);
+    }
+  }
+
   return null;
 }

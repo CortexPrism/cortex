@@ -9,14 +9,17 @@
     "jsr:@cliffy/prompt@^1.2.1": "1.2.1",
     "jsr:@cliffy/table@1.2.1": "1.2.1",
     "jsr:@std/assert@^1.0.19": "1.0.19",
+    "jsr:@std/datetime@~0.225.2": "0.225.7",
     "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.3": "1.0.10",
     "jsr:@std/fs@^1.0.6": "1.0.24",
+    "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/io@~0.225.3": "0.225.3",
     "jsr:@std/path@^1.0.8": "1.1.5",
     "jsr:@std/path@^1.1.5": "1.1.5",
+    "jsr:@std/semver@^1.0.8": "1.0.8",
     "jsr:@std/text@^1.0.19": "1.0.19",
     "npm:@anthropic-ai/sdk@0.39": "0.39.0",
     "npm:@libsql/client@~0.15.5": "0.15.15",
@@ -38,6 +41,7 @@
         "jsr:@cliffy/internal",
         "jsr:@cliffy/table",
         "jsr:@std/fmt@^1.0.10",
+        "jsr:@std/semver",
         "jsr:@std/text"
       ]
     },
@@ -74,7 +78,13 @@
       ]
     },
     "@std/assert@1.0.19": {
-      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e"
+      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
+      "dependencies": [
+        "jsr:@std/internal@^1.0.12"
+      ]
+    },
+    "@std/datetime@0.225.7": {
+      "integrity": "e62c6c454a0ecfc2918fe41e7a621e0f334a6f82605e98fd32eb1e6371999328"
     },
     "@std/encoding@1.0.10": {
       "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
@@ -85,7 +95,7 @@
     "@std/fs@1.0.24": {
       "integrity": "f3061b45b81673a2bece689da041df32d174be064c89eb6397fb5718d3fb7877",
       "dependencies": [
-        "jsr:@std/internal",
+        "jsr:@std/internal@^1.0.14",
         "jsr:@std/path@^1.1.5"
       ]
     },
@@ -98,8 +108,11 @@
     "@std/path@1.1.5": {
       "integrity": "ccea00982ea28c36becaf6e62f855406c76a8c32d462f66f415bbb7d83a271bc",
       "dependencies": [
-        "jsr:@std/internal"
+        "jsr:@std/internal@^1.0.14"
       ]
+    },
+    "@std/semver@1.0.8": {
+      "integrity": "dc830e8b8b6a380c895d53fbfd1258dc253704ca57bbe1629ac65fd7830179b7"
     },
     "@std/text@1.0.19": {
       "integrity": "003a0e032d360e8c3a4e0410fb792c77a66bd6553fee9d60c6ec1bce30d29223"
@@ -473,6 +486,7 @@
     "dependencies": [
       "jsr:@cliffy/command@^1.2.1",
       "jsr:@cliffy/prompt@^1.2.1",
+      "jsr:@std/assert@^1.0.19",
       "jsr:@std/datetime@~0.225.2",
       "jsr:@std/fmt@^1.0.3",
       "jsr:@std/fs@^1.0.6",
