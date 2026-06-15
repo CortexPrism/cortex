@@ -66,6 +66,14 @@ export async function closeSession(id: string): Promise<void> {
   );
 }
 
+export async function archiveSession(id: string): Promise<void> {
+  const db = await getCoreDb();
+  await db.run(
+    `UPDATE sessions SET status = 'archived', closed_at = datetime('now') WHERE id = ?`,
+    [id],
+  );
+}
+
 export async function incrementTurn(id: string): Promise<void> {
   const db = await getCoreDb();
   await db.run(
@@ -79,7 +87,7 @@ export async function incrementTurn(id: string): Promise<void> {
 export async function listSessions(limit = 20, agentId?: string): Promise<SessionRow[]> {
   const db = await getCoreDb();
   let query =
-    `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at, parent_session_id FROM sessions`;
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id FROM sessions`;
   const params: string[] = [];
   if (agentId) {
     query += ` WHERE agent_id = ?`;
@@ -97,7 +105,7 @@ export async function listAgentSessions(agentId: string, limit = 20): Promise<Se
 export async function getSession(id: string): Promise<SessionRow | undefined> {
   const db = await getCoreDb();
   return await db.get<SessionRow>(
-    `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at, parent_session_id
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
      FROM sessions WHERE id = ?`,
     [id],
   );
@@ -109,7 +117,7 @@ export async function getSession(id: string): Promise<SessionRow | undefined> {
 export async function getChildSessions(parentId: string): Promise<SessionRow[]> {
   const db = await getCoreDb();
   return await db.all<SessionRow>(
-    `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at, parent_session_id
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
      FROM sessions WHERE parent_session_id = ?
      ORDER BY started_at ASC`,
     [parentId],
@@ -127,7 +135,7 @@ export async function getParentSession(childId: string): Promise<SessionRow | un
   );
   if (!child?.parent_session_id) return undefined;
   return await db.get<SessionRow>(
-    `SELECT id, name, agent_id, channel, status, turn_count, started_at, last_turn_at, closed_at, parent_session_id
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
      FROM sessions WHERE id = ?`,
     [child.parent_session_id],
   );
@@ -143,4 +151,38 @@ export async function countChildSessions(parentId: string): Promise<number> {
     [parentId],
   );
   return row?.count ?? 0;
+}
+
+export interface SessionTreeRow extends SessionRow {
+  children: SessionRow[];
+}
+
+/**
+ * Get a tree of parent sessions with their child sub-agent sessions.
+ * Only returns sessions without a parent (top-level) and nests children.
+ */
+export async function getSessionTree(limit = 30): Promise<SessionTreeRow[]> {
+  const db = await getCoreDb();
+  const parents = await db.all<SessionRow>(
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
+     FROM sessions WHERE parent_session_id IS NULL AND status != 'archived'
+     ORDER BY last_turn_at DESC LIMIT ?`,
+    [limit],
+  );
+  if (parents.length === 0) return [];
+  const parentIds = parents.map((p) => p.id);
+  const placeholders = parentIds.map(() => '?').join(',');
+  const children = await db.all<SessionRow>(
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
+     FROM sessions WHERE parent_session_id IN (${placeholders})
+     ORDER BY started_at ASC`,
+    parentIds,
+  );
+  const childrenByParent = new Map<string, SessionRow[]>();
+  for (const c of children) {
+    const pid = c.parent_session_id!;
+    if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+    childrenByParent.get(pid)!.push(c);
+  }
+  return parents.map((p) => ({ ...p, children: childrenByParent.get(p.id) || [] }));
 }

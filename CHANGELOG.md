@@ -11,162 +11,158 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Structured tool errors** (`src/tools/types.ts`, `src/tools/executor.ts`) —
-  `ToolErrorInfo` with `code`, `message`, `retryable`, `suggestedAction`, and
-  `context` fields. All tool failures now carry machine-readable error metadata.
-  `formatToolResults` renders error codes and suggested actions in tool result
-  XML. Outputs over 8,000 characters are truncated at the presentation layer
-  only — full output preserved in the `ToolCallResult` object with `truncated`
-  and `outputLength` metadata.
+- **Agent panel (right sidebar)** (`src/server/ui.ts`, `src/db/sessions.ts`, `src/server/router.ts`) —
+  Expandable right sidebar in the chat panel showing agent and sub-agent sessions with status dots,
+  channel type badges, turn counts, and last-activity times. Sub-agents are nested under their parent
+  sessions with expand/collapse toggles. Hover action buttons for close, archive, delete, and resume.
+  Clicking a session switches the chat to that session's full message history.
+  New `GET /api/sessions/tree` endpoint returns parent sessions with nested children in a single
+  batch query. New `POST /api/sessions/:id/close` and `POST /api/sessions/:id/archive` endpoints
+  for session lifecycle management. Archived sessions excluded from the tree view.
 
-- **Context compaction middleware** (`src/pipeline/builtin.ts`) —
-  `@cortex/summarization` hook fires at 80K estimated token threshold (priority
-  8 at `pre-reason` stage), summarizes older half of conversation history into a
-  compacted block, retaining recent messages intact. PII redaction applied to
-  summarized content before injection.
+- **Structured tool errors** (`src/tools/types.ts`, `src/tools/executor.ts`) — `ToolErrorInfo` with
+  `code`, `message`, `retryable`, `suggestedAction`, and `context` fields. All tool failures now
+  carry machine-readable error metadata. `formatToolResults` renders error codes and suggested
+  actions in tool result XML. Outputs over 8,000 characters are truncated at the presentation layer
+  only — full output preserved in the `ToolCallResult` object with `truncated` and `outputLength`
+  metadata.
 
-- **Tool output sandboxing** (`src/pipeline/builtin.ts`) —
-  `@cortex/tool-output-sandbox` hook intercepts large tool outputs at
-  `post-tool` stage, stores full output in session-scoped storage for retrieval.
+- **Context compaction middleware** (`src/pipeline/builtin.ts`) — `@cortex/summarization` hook fires
+  at 80K estimated token threshold (priority 8 at `pre-reason` stage), summarizes older half of
+  conversation history into a compacted block, retaining recent messages intact. PII redaction
+  applied to summarized content before injection.
 
-- **Build-Verify-Fix enforcement** (`src/pipeline/builtin.ts`) —
-  `@cortex/pre-completion-checklist` injects a self-check system message when
-  the agent emits exit keywords, forcing verification before claiming completion.
+- **Tool output sandboxing** (`src/pipeline/builtin.ts`) — `@cortex/tool-output-sandbox` hook
+  intercepts large tool outputs at `post-tool` stage, stores full output in session-scoped storage
+  for retrieval.
 
-- **Loop detection** (`src/pipeline/builtin.ts`) —
-  `@cortex/loop-detection` trackes per-file edit counts and injects warnings
-  after 5+ edits to the same file in one turn.
+- **Build-Verify-Fix enforcement** (`src/pipeline/builtin.ts`) — `@cortex/pre-completion-checklist`
+  injects a self-check system message when the agent emits exit keywords, forcing verification
+  before claiming completion.
 
-- **Lazy three-tier skill loading** (`src/memory/skills.ts`,
-  `src/tools/builtin/load_skill.ts`) — Skills now injected as a compact manifest
-  (name + description + trigger) in the system prompt. Full skill instructions
-  loaded on demand via the new `load_skill` tool. `formatSkillDetail()` for
+- **Loop detection** (`src/pipeline/builtin.ts`) — `@cortex/loop-detection` trackes per-file edit
+  counts and injects warnings after 5+ edits to the same file in one turn.
+
+- **Lazy three-tier skill loading** (`src/memory/skills.ts`, `src/tools/builtin/load_skill.ts`) —
+  Skills now injected as a compact manifest (name + description + trigger) in the system prompt.
+  Full skill instructions loaded on demand via the new `load_skill` tool. `formatSkillDetail()` for
   comprehensive skill display.
 
 - **Eval infrastructure** (`src/eval/` — `types.ts`, `scorer.ts`, `runner.ts`,
-  `src/cli/eval-cmd.ts`) — `cortex eval` CLI command with benchmark suite
-  runner, pattern-based scoring (regex/contains/not_contains), file content
-  verification, regression detection against baseline results, per-category
-  pass/fail statistics, and `--save-baseline` / `--baseline` options.
+  `src/cli/eval-cmd.ts`) — `cortex eval` CLI command with benchmark suite runner, pattern-based
+  scoring (regex/contains/not_contains), file content verification, regression detection against
+  baseline results, per-category pass/fail statistics, and `--save-baseline` / `--baseline` options.
 
-- **Sandbox gVisor support** (`src/sandbox/executor.ts`,
-  `src/sandbox/agent-sandbox.ts`) — `gvisor` added as a `SandboxRuntime` option
-  using `--runtime=runsc` for kernel-level syscall filtering. `getAvailableRuntime()`
-  auto-detects gVisor availability and prefers it over plain Docker. Supervisor
-  pattern implemented in `agent-sandbox.ts` for running agent execution isolated
-  from the control plane.
+- **Sandbox gVisor support** (`src/sandbox/executor.ts`, `src/sandbox/agent-sandbox.ts`) — `gvisor`
+  added as a `SandboxRuntime` option using `--runtime=runsc` for kernel-level syscall filtering.
+  `getAvailableRuntime()` auto-detects gVisor availability and prefers it over plain Docker.
+  Supervisor pattern implemented in `agent-sandbox.ts` for running agent execution isolated from the
+  control plane.
 
-- **Tool registry enhancement** (`src/tools/registry.ts`) — `toolNames()`
-  method returning all registered tool names for error suggestions.
+- **Tool registry enhancement** (`src/tools/registry.ts`) — `toolNames()` method returning all
+  registered tool names for error suggestions.
 
 ### Changed
 
-- **Validator fail-closed** (`src/tools/executor.ts`) — When the validator
-  daemon is unreachable, tool calls are now denied with `POLICY_DENIED` error
-  instead of silently auto-approved. Structured error info provides retry
-  guidance.
+- **Validator fail-closed** (`src/tools/executor.ts`) — When the validator daemon is unreachable,
+  tool calls are now denied with `POLICY_DENIED` error instead of silently auto-approved. Structured
+  error info provides retry guidance.
 
-- **Pipeline hook result handling** (`src/pipeline/manager.ts`) —
-  `injectMessages` from hooks now spliced into the message context. `store`
-  side effects now persisted to session-scoped storage with accessor and
-  cleanup functions. `modifyInput` now applies at any pipeline stage (not just
+- **Pipeline hook result handling** (`src/pipeline/manager.ts`) — `injectMessages` from hooks now
+  spliced into the message context. `store` side effects now persisted to session-scoped storage
+  with accessor and cleanup functions. `modifyInput` now applies at any pipeline stage (not just
   pre-assess).
 
-- **Session state cleanup** (`src/pipeline/builtin.ts`, `src/agent/loop.ts`) —
-  Per-session state (`summarizationStates`, `loopStates` Maps) cleaned up at
-  turn end to prevent unbounded memory growth.
+- **Session state cleanup** (`src/pipeline/builtin.ts`, `src/agent/loop.ts`) — Per-session state
+  (`summarizationStates`, `loopStates` Maps) cleaned up at turn end to prevent unbounded memory
+  growth.
 
-- **Pre-completion checklist as system message** (`src/pipeline/builtin.ts`) —
-  Changed from appending to LLM response to injecting a system message, so the
-  LLM actually evaluates the self-check before the next reasoning round.
+- **Pre-completion checklist as system message** (`src/pipeline/builtin.ts`) — Changed from
+  appending to LLM response to injecting a system message, so the LLM actually evaluates the
+  self-check before the next reasoning round.
 
 ### Fixed
 
-- **gVisor detection double-read** (`src/sandbox/executor.ts`) — Fixed
-  `isGVisorAvailable()` calling `proc.output()` twice (second call returning
-  empty data), which silently disabled gVisor sandboxing.
+- **gVisor detection double-read** (`src/sandbox/executor.ts`) — Fixed `isGVisorAvailable()` calling
+  `proc.output()` twice (second call returning empty data), which silently disabled gVisor
+  sandboxing.
 
-- **Eval runner memory DB pollution** (`src/cli/eval-cmd.ts`) — Changed from
-  `getMemoryDb()` to isolated `initSessionDb()` to prevent eval transcripts
-  from polluting the persistent memory store.
+- **Eval runner memory DB pollution** (`src/cli/eval-cmd.ts`) — Changed from `getMemoryDb()` to
+  isolated `initSessionDb()` to prevent eval transcripts from polluting the persistent memory store.
 
-- **Duplicate availability functions** (`src/sandbox/executor.ts`,
-  `src/sandbox/agent-sandbox.ts`) — Consolidated `isGVisorAvailable()` and
-  `isDockerAvailable()` into `executor.ts`, re-exported from `agent-sandbox.ts`.
+- **Duplicate availability functions** (`src/sandbox/executor.ts`, `src/sandbox/agent-sandbox.ts`) —
+  Consolidated `isGVisorAvailable()` and `isDockerAvailable()` into `executor.ts`, re-exported from
+  `agent-sandbox.ts`.
 
 ## [0.24.0] — 2026-06-15
 
 ### Added
 
-- **Web UI authentication** — PBKDF2 password hashing (200K iterations, SHA-256), session
-  management with 7-day cookie expiry, login page (`/login`), onboarding page (`/onboarding`),
-  and `POST /api/auth/login` / `POST /api/auth/logout` / `POST /api/auth/setup-password` /
-  `POST /api/auth/change-password` endpoints. Password complexity enforcement (8+ chars, 2 of
-  4 character classes).
+- **Web UI authentication** — PBKDF2 password hashing (200K iterations, SHA-256), session management
+  with 7-day cookie expiry, login page (`/login`), onboarding page (`/onboarding`), and
+  `POST /api/auth/login` / `POST /api/auth/logout` / `POST /api/auth/setup-password` /
+  `POST /api/auth/change-password` endpoints. Password complexity enforcement (8+ chars, 2 of 4
+  character classes).
 - **WebSocket authentication** — `/ws` endpoint now checks session cookies before upgrading
-  connections; returns 401 when `requireAuth` is enabled and no valid session exists.
-  Public endpoints (`/api/health`, `/api/status`, `/api/system`) bypass auth.
-- **`requireAuth` middleware** (`src/server/auth.ts`): `requireAuth()` function for REST
-  endpoints; `hasPassword()`, `verifyPassword()`, `setupPassword()`, `changePassword()`,
-  session CRUD (`createSession`/`validateSession`/`destroySession`/`getActiveSessions`),
-  cookie parsing and `Set-Cookie` header generation.
-- **Onboarding CLI** (`src/cli/onboarding/`): 6-step animated setup flow with password
-  creation, LLM provider selection (9 providers), AI personalization chat, agent personality
-  picker (professional/friendly/developer), telemetry opt-in, and completion screen. Terminal
-  animations, logo rendering, background effects, and personalization profile saving.
+  connections; returns 401 when `requireAuth` is enabled and no valid session exists. Public
+  endpoints (`/api/health`, `/api/status`, `/api/system`) bypass auth.
+- **`requireAuth` middleware** (`src/server/auth.ts`): `requireAuth()` function for REST endpoints;
+  `hasPassword()`, `verifyPassword()`, `setupPassword()`, `changePassword()`, session CRUD
+  (`createSession`/`validateSession`/`destroySession`/`getActiveSessions`), cookie parsing and
+  `Set-Cookie` header generation.
+- **Onboarding CLI** (`src/cli/onboarding/`): 6-step animated setup flow with password creation, LLM
+  provider selection (9 providers), AI personalization chat, agent personality picker
+  (professional/friendly/developer), telemetry opt-in, and completion screen. Terminal animations,
+  logo rendering, background effects, and personalization profile saving.
 - **Onboarding REST API** — `POST /api/onboarding/provider` (test + save provider config),
   `POST /api/onboarding/profile/answer` (interactive personalization Q&A),
-  `POST /api/onboarding/profile/skip` (skip personalization),
-  `POST /api/onboarding/personality` (set agent personality),
-  `POST /api/onboarding/telemetry` (opt in/out),
-  `POST /api/onboarding/complete` (finalize setup),
-  `GET /api/onboarding/status` (check current state).
-- **Node Dispatch tool** (`src/tools/builtin/node_dispatch.ts`): Delegates work to
-  distributed Cortex Nodes for remote execution. Supports `action="list"` (discovery),
-  `action="shell"`/`"file_read"`/`"file_write"`/`"code_exec"`/`"web_search"` with
-  node selection by `node_id`, `tier`, `group`, or `capability` filters. Integrated
-  into agent loop, sub-agents, service processes, and WebSocket sessions.
-- **Session routing** (`src/hub/session-routing.ts`): Routes node results back to
-  originating sessions via `registerPending` / `routeResult` / `onNodeResult` pub/sub.
-  Lens audit events logged for every routed result.
-- **Node context** (`src/agent/node-context.ts`): Builds a structured "Distributed Nodes"
-  section for agent system prompts showing connected nodes, their capabilities, tiers,
-  and groups. Injects `node_dispatch` usage instructions into the agent context.
+  `POST /api/onboarding/profile/skip` (skip personalization), `POST /api/onboarding/personality`
+  (set agent personality), `POST /api/onboarding/telemetry` (opt in/out),
+  `POST /api/onboarding/complete` (finalize setup), `GET /api/onboarding/status` (check current
+  state).
+- **Node Dispatch tool** (`src/tools/builtin/node_dispatch.ts`): Delegates work to distributed
+  Cortex Nodes for remote execution. Supports `action="list"` (discovery),
+  `action="shell"`/`"file_read"`/`"file_write"`/`"code_exec"`/`"web_search"` with node selection by
+  `node_id`, `tier`, `group`, or `capability` filters. Integrated into agent loop, sub-agents,
+  service processes, and WebSocket sessions.
+- **Session routing** (`src/hub/session-routing.ts`): Routes node results back to originating
+  sessions via `registerPending` / `routeResult` / `onNodeResult` pub/sub. Lens audit events logged
+  for every routed result.
+- **Node context** (`src/agent/node-context.ts`): Builds a structured "Distributed Nodes" section
+  for agent system prompts showing connected nodes, their capabilities, tiers, and groups. Injects
+  `node_dispatch` usage instructions into the agent context.
 - **Plugin developer documentation** — Three new docs:
-  - `docs/plugins/best-practices.md` — single responsibility, error handling, input
-    validation, timeout/cancellation, minimal permissions, per-kind guidance (ESM/MCP/WASM),
-    testing, debugging, and anti-patterns.
-  - `docs/plugins/publishing.md` — marketplace account setup, web UI and API submission,
-    review process, version management, marketplace API reference, and publishing best
-    practices.
-  - `docs/plugins/submission-standards.md` — repository structure, semantic versioning
-    rules, pre-release versioning, AI disclosure requirements (`AI.md` + `aiDisclosure`
-    manifest field), breaking change checklist, dependency versioning, pre-submission
-    checklist (repository/code/versioning/documentation/legal), step-by-step submission
-    guide, CI/CD with GitHub Actions, marketplace review standards, and resubmission
-    guidance.
-- **Plugin docs expansion** — `getting-started.md`: trust levels, plugin statuses table,
-  web UI plugin management, setting field types reference, REST API table. `developing.md`:
-  full lifecycle hook reference (6 hooks + `onConfigChange`), lifecycle sequence diagram,
-  PluginContext API (state store, config store, logger, host API), enum params example.
-  `manifest-reference.md`: plugin kinds (ESM/MCP/WASM) with protocol details, expanded
-  capability descriptions, full `PluginModule` exports table, lifecycle hooks table,
-  `PluginContext` API with type signatures, `Tool` / `ToolDefinition` / `ToolParam` /
-  `ToolCallResult` / `ToolContext` interfaces. `README.md`: architecture diagram, plugin
-  store structure, trust levels table, documentation index.
-- **Plugin extension points** — `onInstall`, `onActivate`, `onDeactivate`, `onUninstall`
-  lifecycle hooks; `state.delete()` and `state.list()` on `PluginStateStore`; MCP tool
-  creation via manifest `tools` declarations; middleware (`pre`/`post`) and event listener
-  capabilities documented and implemented.
+  - `docs/plugins/best-practices.md` — single responsibility, error handling, input validation,
+    timeout/cancellation, minimal permissions, per-kind guidance (ESM/MCP/WASM), testing, debugging,
+    and anti-patterns.
+  - `docs/plugins/publishing.md` — marketplace account setup, web UI and API submission, review
+    process, version management, marketplace API reference, and publishing best practices.
+  - `docs/plugins/submission-standards.md` — repository structure, semantic versioning rules,
+    pre-release versioning, AI disclosure requirements (`AI.md` + `aiDisclosure` manifest field),
+    breaking change checklist, dependency versioning, pre-submission checklist
+    (repository/code/versioning/documentation/legal), step-by-step submission guide, CI/CD with
+    GitHub Actions, marketplace review standards, and resubmission guidance.
+- **Plugin docs expansion** — `getting-started.md`: trust levels, plugin statuses table, web UI
+  plugin management, setting field types reference, REST API table. `developing.md`: full lifecycle
+  hook reference (6 hooks + `onConfigChange`), lifecycle sequence diagram, PluginContext API (state
+  store, config store, logger, host API), enum params example. `manifest-reference.md`: plugin kinds
+  (ESM/MCP/WASM) with protocol details, expanded capability descriptions, full `PluginModule`
+  exports table, lifecycle hooks table, `PluginContext` API with type signatures, `Tool` /
+  `ToolDefinition` / `ToolParam` / `ToolCallResult` / `ToolContext` interfaces. `README.md`:
+  architecture diagram, plugin store structure, trust levels table, documentation index.
+- **Plugin extension points** — `onInstall`, `onActivate`, `onDeactivate`, `onUninstall` lifecycle
+  hooks; `state.delete()` and `state.list()` on `PluginStateStore`; MCP tool creation via manifest
+  `tools` declarations; middleware (`pre`/`post`) and event listener capabilities documented and
+  implemented.
 
 ### Changed
 
-- **Codebase formatting pass** — Widespread `deno fmt` pass across 65+ source files for
-  consistent line wrapping, import ordering, and bracket style per project config
-  (100-char line width, 2-space indent, single quotes, semicolons).
+- **Codebase formatting pass** — Widespread `deno fmt` pass across 65+ source files for consistent
+  line wrapping, import ordering, and bracket style per project config (100-char line width, 2-space
+  indent, single quotes, semicolons).
 - **Plugin CLI enhancements** — `cortex plugins verify`, `cortex plugins permissions`,
-  `cortex plugins update --all`, `cortex plugins permissions --trust` subcommands added.
-  Install from URL supported.
+  `cortex plugins update --all`, `cortex plugins permissions --trust` subcommands added. Install
+  from URL supported.
 - **Settings page** — Web auth section added to Security tab.
 
 ---
@@ -175,32 +171,32 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Settings page overhaul** — Tabbed navigation with 7 organized sections (General,
-  Providers & Models, Model Router, Updates, User Profile, UI & Appearance, Security).
-  All configuration fields from `CortexConfig` are now exposed in the web UI, including
-  previously hidden settings: update channels, auto-update, user profile personalization,
-  UI animations/background effects/color schemes, and web authentication controls.
-- **Password change API** — New `POST /api/auth/change-password` endpoint for changing
-  the web UI password from the settings page. Requires current password verification.
-- **Plugin validation command** — `cortex plugins validate [--fix]` scans installed
-  plugins for invalid entry points and optionally removes them.
+- **Settings page overhaul** — Tabbed navigation with 7 organized sections (General, Providers &
+  Models, Model Router, Updates, User Profile, UI & Appearance, Security). All configuration fields
+  from `CortexConfig` are now exposed in the web UI, including previously hidden settings: update
+  channels, auto-update, user profile personalization, UI animations/background effects/color
+  schemes, and web authentication controls.
+- **Password change API** — New `POST /api/auth/change-password` endpoint for changing the web UI
+  password from the settings page. Requires current password verification.
+- **Plugin validation command** — `cortex plugins validate [--fix]` scans installed plugins for
+  invalid entry points and optionally removes them.
 
 ### Fixed
 
-- **Plugin initialization order** — Plugins now load after database migrations instead of
-  during CLI parsing, preventing errors when the plugins table doesn't exist yet or contains
-  invalid entries. Plugin load failures are now non-fatal with summary reporting.
-- **Plugin entry point validation** — Invalid entry points (relative paths, bare filenames)
-  are rejected with clear error messages before attempting to load.
-- **Daemon mode (`cortex serve -d`)** — Fixed spawn to include `--config` and `cwd`,
-  resolving import map errors that caused silent daemon startup failures.
-- **Daemon restart (`-r` flag)** — Fixed process detection to correctly find and stop
-  existing server instances before restarting.
-- **Public status endpoints** — `/api/health`, `/api/status`, and `/api/system` now
-  accessible without authentication, ensuring the frontend sidebar and status page show
-  correct daemon states instead of silently falling back to "off".
-- **Status page crash** — Added null guards for `disk` and `memory` fields in the system
-  status page to prevent "Cannot read properties of undefined" errors.
+- **Plugin initialization order** — Plugins now load after database migrations instead of during CLI
+  parsing, preventing errors when the plugins table doesn't exist yet or contains invalid entries.
+  Plugin load failures are now non-fatal with summary reporting.
+- **Plugin entry point validation** — Invalid entry points (relative paths, bare filenames) are
+  rejected with clear error messages before attempting to load.
+- **Daemon mode (`cortex serve -d`)** — Fixed spawn to include `--config` and `cwd`, resolving
+  import map errors that caused silent daemon startup failures.
+- **Daemon restart (`-r` flag)** — Fixed process detection to correctly find and stop existing
+  server instances before restarting.
+- **Public status endpoints** — `/api/health`, `/api/status`, and `/api/system` now accessible
+  without authentication, ensuring the frontend sidebar and status page show correct daemon states
+  instead of silently falling back to "off".
+- **Status page crash** — Added null guards for `disk` and `memory` fields in the system status page
+  to prevent "Cannot read properties of undefined" errors.
 
 ---
 

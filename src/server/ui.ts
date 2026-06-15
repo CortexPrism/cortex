@@ -201,7 +201,7 @@ const HTML = `<!DOCTYPE html>
 
   /* ── Tooltip ──────────────────────────────────── */
   [data-tip] { position:relative; }
-  [data-tip]:hover::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#1a1a24; color:var(--text); font-size:11px; padding:4px 10px; border-radius:6px; white-space:nowrap; border:1px solid var(--border); pointer-events:none; z-index:100; }
+  [data-tip]:hover::after { content:attr(data-tip); position:absolute; top:calc(100% + 4px); left:50%; transform:translateX(-50%); background:#1a1a24; color:var(--text); font-size:11px; padding:4px 10px; border-radius:6px; white-space:nowrap; border:1px solid var(--border); pointer-events:none; z-index:100; }
 
   /* ── Code block enhancements ──────────────────── */
   .md pre { position:relative; }
@@ -290,6 +290,59 @@ const HTML = `<!DOCTYPE html>
   #sidebar-search:focus { border-color:rgba(99,102,241,0.4); }
   #sidebar-search::placeholder { color:var(--text3); }
   .nav-hidden { display:none !important; }
+
+  /* ── Agent panel (right sidebar) ──────────────── */
+  #agent-panel-toggle { display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; cursor:pointer; border:1px solid var(--border); background:var(--bg3); color:var(--text2); transition:all 0.15s; flex-shrink:0; font-size:14px; }
+  #agent-panel-toggle:hover { background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:var(--accent2); }
+  #agent-panel-toggle.active { background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:var(--accent2); }
+
+  #agent-panel { display:none; width:280px; min-width:280px; max-width:280px; background:var(--bg2); border-left:1px solid var(--border); flex-direction:column; overflow:hidden; transition:width 0.2s ease; }
+  #agent-panel.open { display:flex; }
+  .agent-panel-header { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .agent-panel-header h2 { font-size:13px; font-weight:600; color:var(--text); }
+  .agent-panel-body { flex:1; overflow-y:auto; padding:8px; }
+  .agent-panel-footer { padding:8px 14px; border-top:1px solid var(--border); font-size:11px; color:var(--text3); display:flex; align-items:center; justify-content:space-between; }
+
+  /* Agent tree items */
+  .agent-section { margin-bottom:4px; }
+  .agent-section-header { display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; cursor:pointer; transition:background 0.12s; font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.05em; }
+  .agent-section-header:hover { background:rgba(255,255,255,0.03); }
+
+  .agent-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background 0.12s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; }
+  .agent-item:hover { background:rgba(255,255,255,0.04); }
+  .agent-item.active { background:rgba(99,102,241,0.1); }
+  .agent-item-child { margin-left:16px; }
+  .agent-item-name { font-size:12px; font-weight:500; color:var(--text2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .agent-item-meta { font-size:11px; color:var(--text3); white-space:nowrap; }
+  .agent-item-toggle { width:14px; height:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text3); font-size:10px; transition:transform 0.15s; }
+  .agent-item-toggle.expanded { transform:rotate(90deg); }
+
+  .agent-item-actions { display:none; gap:2px; align-items:center; margin-left:6px; }
+  .agent-item:hover .agent-item-actions { display:flex; }
+  .agent-item-action { width:22px; height:22px; border-radius:4px; border:none; background:transparent; color:var(--text3); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:11px; transition:all 0.1s; padding:0; }
+  .agent-item-action:hover { background:rgba(255,255,255,0.08); color:var(--text); }
+  .agent-item-action.danger:hover { background:rgba(239,68,68,0.15); color:#f87171; }
+
+  .agent-status { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .agent-status.active { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,0.4); }
+  .agent-status.idle { background:#eab308; }
+  .agent-status.closed { background:var(--text3); }
+  .agent-status.error { background:#ef4444; }
+
+  .agent-type-badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:0.03em; }
+  .agent-type-badge.explore { background:rgba(56,189,248,0.12); color:#38bdf8; }
+  .agent-type-badge.general { background:rgba(168,85,247,0.12); color:#a855f7; }
+  .agent-type-badge.plan { background:rgba(34,197,94,0.12); color:#22c55e; }
+  .agent-type-badge.code { background:rgba(245,158,11,0.12); color:#f59e0b; }
+  .agent-type-badge.research { background:rgba(236,72,153,0.12); color:#ec4899; }
+
+  /* Empty state */
+  .agent-empty { text-align:center; padding:24px 16px; color:var(--text3); font-size:12px; }
+
+  @media (max-width:768px) {
+    #agent-panel { position:fixed; right:-280px; top:0; bottom:0; z-index:50; transition:right 0.25s ease; }
+    #agent-panel.open { right:0; }
+  }
 </style>
 </head>
 <body>
@@ -432,11 +485,13 @@ const HTML = `<!DOCTYPE html>
           New
         </button>
         <button class="btn btn-ghost" onclick="showPage('sessions')" style="font-size:12px;padding:5px 12px;" data-tip="Browse sessions">History</button>
+        <button id="agent-panel-toggle" onclick="toggleAgentPanel()" data-tip="Agent panel">⎇</button>
       </div>
     </div>
 
+    <div style="flex:1;display:flex;overflow:hidden;">
     <!-- Message list -->
-    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
       <div id="chat-log" style="flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:14px;"></div>
 
       <!-- Input bar -->
@@ -453,6 +508,21 @@ const HTML = `<!DOCTYPE html>
           <span id="token-live" style="font-size:11px;color:var(--text3);margin-left:auto;"></span>
         </div>
       </div>
+    </div>
+
+    <!-- Agent panel (right sidebar) -->
+    <div id="agent-panel">
+      <div class="agent-panel-header">
+        <h2>Agents</h2>
+        <button class="btn btn-ghost" onclick="loadAgentPanel()" data-tip="Refresh" style="padding:2px 8px;font-size:11px;">↻</button>
+      </div>
+      <div id="agent-panel-body" class="agent-panel-body">
+        <div class="agent-empty">Loading…</div>
+      </div>
+      <div class="agent-panel-footer">
+        <span id="agent-panel-count"></span>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -1276,6 +1346,7 @@ function connect() {
         }
         saveSession();
         loadSessionsSidebar();
+        loadAgentPanel();
         break;
       case 'agent_selected':
         document.getElementById('chat-agent-name').textContent = msg.agentName;
@@ -1284,6 +1355,7 @@ function connect() {
       case 'session_ended':
         sessionId = null;
         document.getElementById('chat-session-id').textContent = '';
+        loadAgentPanel();
         break;
       case 'start':
         agentRaw = '';
@@ -1303,10 +1375,12 @@ function connect() {
         appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
         saveSession();
         if (currentPage === 'lens') loadLens();
+        loadAgentPanel();
         break;
       case 'error':
         document.getElementById('thinking-bar').style.display = 'none';
         appendBubble('error', msg.error);
+        loadAgentPanel();
         break;
       case 'file_change':
         if (currentPage === 'editor') {
@@ -2340,25 +2414,12 @@ function backToSessions() {
 }
 
 async function continueSession(id) {
-  await fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/resume\`, { method: 'POST' });
+  const resumeRes = await fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/resume\`, { method: 'POST' });
+  if (!resumeRes.ok) { toast('Failed to resume session', 'error'); return; }
   sessionId = id;
   saveSession();
   showPage('chat');
-  const res = await fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/messages\`);
-  if (res.ok) {
-    const msgs = await res.json();
-    chatLog.innerHTML = '';
-    for (const m of msgs) {
-      if (m.role === 'user') {
-        appendBubble('user', m.content);
-      } else if (m.role === 'assistant') {
-        const b = appendBubble('agent', m.content);
-        b.innerHTML = md(m.content);
-        if (m.token_count) appendMeta(0, m.token_count, 0, 0);
-      }
-    }
-    scrollChat();
-  }
+  await loadSessionMessages(id);
   document.getElementById('chat-session-id').textContent = id.slice(-12);
 }
 
@@ -4777,6 +4838,245 @@ function formatUptime(seconds) {
   return m + 'm';
 }
 
+// ── Agent panel (right sidebar) ────────────────────────
+let agentPanelOpen = false;
+let agentPanelInterval = null;
+
+function toggleAgentPanel() {
+  agentPanelOpen = !agentPanelOpen;
+  const panel = document.getElementById('agent-panel');
+  const btn = document.getElementById('agent-panel-toggle');
+  if (agentPanelOpen) {
+    panel.classList.add('open');
+    btn.classList.add('active');
+    loadAgentPanel();
+    agentPanelInterval = setInterval(loadAgentPanel, 10_000);
+  } else {
+    panel.classList.remove('open');
+    btn.classList.remove('active');
+    if (agentPanelInterval) { clearInterval(agentPanelInterval); agentPanelInterval = null; }
+  }
+}
+
+function agentChannelLabel(channel) {
+  if (!channel) return 'chat';
+  if (channel.startsWith('subagent:')) return channel.slice(9);
+  if (channel === 'web') return 'Chat';
+  if (channel === 'cli') return 'CLI';
+  return channel;
+}
+
+function agentStatusClass(status) {
+  if (status === 'active') return 'active';
+  if (status === 'closed') return 'closed';
+  if (status === 'error') return 'error';
+  return 'idle';
+}
+
+function formatTokens(n) {
+  if (n == null) return '';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function renderAgentItem(session, depth) {
+  const isChild = depth > 0;
+  const type = agentChannelLabel(session.channel);
+  const status = session.status === 'active' ? 'active' : session.status === 'closed' ? 'closed' : session.status === 'archived' ? 'closed' : 'idle';
+  const shortId = session.id.slice(-12);
+  const ctx = session.context_size != null ? formatTokens(session.context_size) : (session.turn_count > 0 ? session.turn_count + ' turns' : 'new');
+  const time = session.last_turn_at ? timeAgo(session.last_turn_at) : timeAgo(session.started_at);
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:2px;';
+
+  const item = document.createElement('div');
+  item.className = 'agent-item' + (isChild ? ' agent-item-child' : '') + (session.id === sessionId ? ' active' : '');
+  item.title = session.id;
+
+  const dot = document.createElement('span');
+  dot.className = 'agent-status ' + agentStatusClass(status);
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'agent-item-name';
+  nameEl.textContent = session.name || shortId;
+
+  const badge = document.createElement('span');
+  badge.className = 'agent-type-badge ' + type;
+  badge.textContent = type;
+
+  const meta = document.createElement('span');
+  meta.className = 'agent-item-meta';
+  meta.textContent = ctx;
+
+  const timeEl = document.createElement('span');
+  timeEl.className = 'agent-item-meta';
+  timeEl.style.cssText = 'margin-left:auto;';
+  timeEl.textContent = time;
+
+  const actions = document.createElement('span');
+  actions.className = 'agent-item-actions';
+
+  if (status === 'active') {
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'agent-item-action danger';
+    closeBtn.innerHTML = '⏹';
+    closeBtn.title = 'Close session';
+    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeSessionPanel(session.id); });
+    actions.appendChild(closeBtn);
+  } else if (status === 'closed') {
+    const resumeBtn = document.createElement('button');
+    resumeBtn.className = 'agent-item-action';
+    resumeBtn.innerHTML = '▶';
+    resumeBtn.title = 'Resume session';
+    resumeBtn.addEventListener('click', (e) => { e.stopPropagation(); switchToSession(session.id); });
+    actions.appendChild(resumeBtn);
+  }
+  if (status !== 'closed') {
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'agent-item-action';
+    archiveBtn.innerHTML = '📦';
+    archiveBtn.title = 'Archive session';
+    archiveBtn.addEventListener('click', (e) => { e.stopPropagation(); archiveSessionPanel(session.id); });
+    actions.appendChild(archiveBtn);
+  }
+  const delBtn = document.createElement('button');
+  delBtn.className = 'agent-item-action danger';
+  delBtn.innerHTML = '✕';
+  delBtn.title = 'Delete session';
+  delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteSessionPanel(session.id); });
+  if (session.id === sessionId) { delBtn.style.opacity = '0.3'; delBtn.title = 'Cannot delete active session'; delBtn.style.pointerEvents = 'none'; }
+  actions.appendChild(delBtn);
+
+  item.appendChild(dot);
+  item.appendChild(nameEl);
+  item.appendChild(badge);
+  item.appendChild(meta);
+  item.appendChild(timeEl);
+  item.appendChild(actions);
+
+  wrap.appendChild(item);
+
+  item.addEventListener('click', () => {
+    if (sessionId !== session.id) switchToSession(session.id);
+  });
+
+  return wrap;
+}
+
+async function switchToSession(id) {
+  const resumeRes = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id) + '/resume', { method: 'POST' });
+  if (!resumeRes.ok) { toast('Failed to switch session', 'error'); loadAgentPanel(); return; }
+  sessionId = id;
+  saveSession();
+  document.getElementById('chat-session-id').textContent = id.slice(-12);
+  await loadSessionMessages(id);
+  document.getElementById('agent-panel-toggle')?.classList.remove('active');
+  loadAgentPanel();
+}
+
+async function loadSessionMessages(id) {
+  const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id) + '/messages');
+  if (!res.ok) return;
+  const msgs = await res.json();
+  chatLog.innerHTML = '';
+  for (const m of msgs) {
+    if (m.role === 'user') {
+      appendBubble('user', m.content);
+    } else if (m.role === 'assistant') {
+      const b = appendBubble('agent', m.content);
+      b.innerHTML = md(m.content);
+      if (m.token_count) appendMeta(0, m.token_count, 0, 0);
+    }
+  }
+  scrollChat();
+}
+
+async function closeSessionPanel(id) {
+  const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id) + '/close', { method: 'POST' });
+  if (res.ok) {
+    if (sessionId === id) { sessionId = null; document.getElementById('chat-session-id').textContent = ''; saveSession(); }
+    toast('Session closed', 'success');
+  }
+  loadAgentPanel();
+}
+
+async function archiveSessionPanel(id) {
+  const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id) + '/archive', { method: 'POST' });
+  if (res.ok) toast('Session archived', 'info');
+  loadAgentPanel();
+}
+
+async function deleteSessionPanel(id) {
+  if (!confirm('Delete session ' + id.slice(-12) + '?')) return;
+  const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id), { method: 'DELETE' });
+  if (res.ok) {
+    if (sessionId === id) { sessionId = null; document.getElementById('chat-session-id').textContent = ''; saveSession(); }
+    toast('Session deleted', 'success');
+  }
+  loadAgentPanel();
+}
+
+async function loadAgentPanel() {
+  if (!agentPanelOpen) return;
+  const body = document.getElementById('agent-panel-body');
+  const countEl = document.getElementById('agent-panel-count');
+
+  try {
+    const tree = await fetch(BASE + '/api/sessions/tree?limit=30').then(r => r.json()).catch(() => []);
+    body.innerHTML = '';
+
+    if (!tree.length) {
+      body.innerHTML = '<div class="agent-empty">No active sessions</div>';
+      countEl.textContent = '0 sessions';
+      return;
+    }
+
+    let totalParents = 0;
+    let totalChildren = 0;
+
+    for (const parent of tree) {
+      totalParents++;
+      body.appendChild(renderAgentItem(parent, 0));
+
+      if (parent.children && parent.children.length > 0) {
+        const sectionWrap = document.createElement('div');
+        sectionWrap.className = 'agent-section';
+
+        const header = document.createElement('div');
+        header.className = 'agent-section-header';
+        header.innerHTML = '<span class="agent-item-toggle" id="toggle-' + parent.id + '">▶</span>Sub-agents (' + parent.children.length + ')';
+        header.addEventListener('click', () => {
+          const childrenEl = document.getElementById('children-' + parent.id);
+          const toggleEl = document.getElementById('toggle-' + parent.id);
+          if (childrenEl) {
+            const isHidden = childrenEl.style.display === 'none';
+            childrenEl.style.display = isHidden ? 'block' : 'none';
+            if (toggleEl) toggleEl.classList.toggle('expanded', isHidden);
+          }
+        });
+        sectionWrap.appendChild(header);
+
+        const childrenContainer = document.createElement('div');
+        childrenContainer.id = 'children-' + parent.id;
+        childrenContainer.style.display = 'block';
+        for (const child of parent.children) {
+          totalChildren++;
+          childrenContainer.appendChild(renderAgentItem(child, 1));
+        }
+        sectionWrap.appendChild(childrenContainer);
+        body.appendChild(sectionWrap);
+      }
+    }
+
+    countEl.textContent = totalParents + ' session' + (totalParents !== 1 ? 's' : '') +
+      (totalChildren > 0 ? ' · ' + totalChildren + ' sub-agent' + (totalChildren !== 1 ? 's' : '') : '');
+  } catch (e) {
+    body.innerHTML = '<div class="agent-empty" style="color:#f87171;">Failed to load</div>';
+  }
+}
+
 // ── Boot ────────────────────────────────────────────────────
 connect();
 loadSessionsSidebar();
@@ -4786,6 +5086,7 @@ loadAgentSelector();
 gitLoadAgentSelector();
 ghRefresh();
 loadPluginPanels();
+loadAgentPanel();
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);

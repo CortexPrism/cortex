@@ -1,7 +1,10 @@
 import {
+  archiveSession,
+  closeSession,
   deleteSession as deleteSessionDb,
   getChildSessions,
   getSession,
+  getSessionTree,
   listSessions,
   resumeSession,
 } from '../db/sessions.ts';
@@ -281,6 +284,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(sessions);
   }
 
+  // GET /api/sessions/tree?limit= — parent sessions with nested child sub-agents
+  if (req.method === 'GET' && path === '/api/sessions/tree') {
+    const limit = Number(url.searchParams.get('limit') ?? 30);
+    const tree = await getSessionTree(limit);
+    return json(tree);
+  }
+
   // GET /api/sessions/search?q= (must be before :id wildcard)
   if (req.method === 'GET' && path === '/api/sessions/search') {
     const q = url.searchParams.get('q');
@@ -318,6 +328,24 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const session = await getSession(resumeMatch[1]);
     if (!session) return notFound('Session not found');
     await resumeSession(resumeMatch[1]);
+    return json({ ok: true });
+  }
+
+  // POST /api/sessions/:id/close
+  const closeMatch = path.match(/^\/api\/sessions\/([^/]+)\/close$/);
+  if (req.method === 'POST' && closeMatch) {
+    const session = await getSession(closeMatch[1]);
+    if (!session) return notFound('Session not found');
+    await closeSession(closeMatch[1]);
+    return json({ ok: true });
+  }
+
+  // POST /api/sessions/:id/archive
+  const archiveMatch = path.match(/^\/api\/sessions\/([^/]+)\/archive$/);
+  if (req.method === 'POST' && archiveMatch) {
+    const session = await getSession(archiveMatch[1]);
+    if (!session) return notFound('Session not found');
+    await archiveSession(archiveMatch[1]);
     return json({ ok: true });
   }
 
