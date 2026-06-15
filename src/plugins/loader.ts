@@ -24,10 +24,40 @@ export function unloadPlugin(name: string): void {
   _loaded.delete(name);
 }
 
+function validateEntryPoint(entry: string, pluginName: string): void {
+  // Validate that entry point is an absolute path or URL
+  if (!entry) {
+    throw new Error(`Plugin "${pluginName}" has empty entry point`);
+  }
+
+  // Must be a URL (file://, https://) or absolute path starting with /
+  const isUrl = entry.startsWith('file://') || entry.startsWith('https://') ||
+    entry.startsWith('http://') || entry.startsWith('jsr:') || entry.startsWith('npm:');
+  const isAbsolutePath = entry.startsWith('/');
+
+  if (!isUrl && !isAbsolutePath) {
+    throw new Error(
+      `Plugin "${pluginName}" has invalid entry point "${entry}". ` +
+        `Entry point must be an absolute path (starting with /) or a URL (file://, https://, jsr:, npm:)`,
+    );
+  }
+
+  // Warn about relative-looking paths
+  if (entry.includes('mod.ts') && !isUrl && !entry.includes('/')) {
+    throw new Error(
+      `Plugin "${pluginName}" entry point "${entry}" looks like a relative path. ` +
+        `Use an absolute path like "file:///path/to/plugin/mod.ts" or "/root/plugin/mod.ts"`,
+    );
+  }
+}
+
 export async function loadEsmPlugin(row: PluginRow, ctx: PluginContext): Promise<LoadedPlugin> {
   if (_loaded.has(row.name)) return _loaded.get(row.name)!;
 
   try {
+    // Validate entry point before attempting to load
+    validateEntryPoint(row.entry, row.name);
+
     const mod = await import(row.entry) as PluginModule;
 
     if (mod.onLoad) await mod.onLoad(ctx);
@@ -113,8 +143,22 @@ export async function loadPlugin(row: PluginRow, ctx: PluginContext): Promise<Lo
 export async function loadAllPlugins(
   ctxFactory: (name: string) => Promise<PluginContext>,
 ): Promise<LoadedPlugin[]> {
-  const rows = await getEnabledPlugins();
+  let rows: PluginRow[] = [];
+
+  try {
+    rows = await getEnabledPlugins();
+  } catch (e) {
+    // If plugins table doesn't exist or database is not ready, return empty array
+    console.warn(`[plugins] Could not load plugins: ${(e as Error).message}`);
+    return [];
+  }
+
+  if (rows.length === 0) {
+    return [];
+  }
+
   const results: LoadedPlugin[] = [];
+  const failures: Array<{ name: string; error: string }> = [];
 
   for (const row of rows) {
     if (row.type === 'wasm') {
@@ -126,8 +170,19 @@ export async function loadAllPlugins(
       const loaded = await loadPlugin(row, ctx);
       results.push(loaded);
     } catch (e) {
-      console.error(`[plugins] Failed to load ${row.name}:`, (e as Error).message);
+      const errorMsg = (e as Error).message;
+      failures.push({ name: row.name, error: errorMsg });
+      console.error(`[plugins] Failed to load ${row.name}: ${errorMsg}`);
     }
+  }
+
+  // Summary of plugin loading
+  if (results.length > 0 || failures.length > 0) {
+    const total = results.length + failures.length;
+    console.log(
+      `[plugins] Loaded ${results.length}/${total} plugin(s)` +
+        (failures.length > 0 ? ` (${failures.length} failed)` : ''),
+    );
   }
 
   return results;

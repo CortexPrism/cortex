@@ -1995,13 +1995,15 @@ async function loadStatus() {
     Array(2).fill('<div class="skeleton" style="height:200px;border-radius:10px;"></div>').join('') + '</div>';
   try {
     const st = await fetch(BASE + '/api/system').then(r => r.json());
-    if (!el) return;
+    if (!el || st.error) return;
 
     const fmt = (b) => b >= 1e9 ? (b/1e9).toFixed(1)+'GB' : b >= 1e6 ? (b/1e6).toFixed(0)+'MB' : b+'B';
     const pct = (u,t) => t > 0 ? Math.round(u/t*100) : 0;
-    const memPct = pct(st.memory.used, st.memory.total);
-    const diskPct = pct(st.disk.used, st.disk.total);
-    const upH = Math.floor(st.uptime/3600), upM = Math.floor((st.uptime%3600)/60);
+    const mem = st.memory || { total: 0, used: 0, free: 0 };
+    const disk = st.disk || { total: 0, used: 0, free: 0 };
+    const memPct = pct(mem.used, mem.total);
+    const diskPct = pct(disk.used, disk.total);
+    const upH = Math.floor((st.uptime||0)/3600), upM = Math.floor(((st.uptime||0)%3600)/60);
 
     const daemonIcon = (name) => {
       const svgs = {
@@ -2062,11 +2064,11 @@ async function loadStatus() {
         <!-- Resources -->
         <div class="card">
           <div style="font-size:13px;font-weight:600;margin-bottom:12px;">System Resources</div>
-          \${st.memory.total > 0 ? \`
+          \${mem.total > 0 ? \`
           <div style="margin-bottom:12px;">
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
               <span style="color:var(--text2);">Memory</span>
-              <span style="color:var(--text3);">\${fmt(st.memory.used)} / \${fmt(st.memory.total)}</span>
+              <span style="color:var(--text3);">\${fmt(mem.used)} / \${fmt(mem.total)}</span>
             </div>
             <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
               <div style="height:100%;width:\${memPct}%;background:\${memPct>85?'#f87171':memPct>60?'#fbbf24':'#4ade80'};border-radius:3px;transition:width 0.5s;"></div>
@@ -2075,7 +2077,7 @@ async function loadStatus() {
           <div>
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
               <span style="color:var(--text2);">Disk (home)</span>
-              <span style="color:var(--text3);">\${fmt(st.disk.used)} / \${fmt(st.disk.total)}</span>
+              <span style="color:var(--text3);">\${fmt(disk.used)} / \${fmt(disk.total)}</span>
             </div>
             <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
               <div style="height:100%;width:\${diskPct}%;background:\${diskPct>85?'#f87171':diskPct>60?'#fbbf24':'#4ade80'};border-radius:3px;transition:width 0.5s;"></div>
@@ -2399,6 +2401,8 @@ function providerLabel(kind) {
   return PROVIDER_META[kind]?.label ?? kind;
 }
 
+let settingsActiveTab = 'general';
+
 async function loadSettings() {
   const config = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
   if (!config) return;
@@ -2409,108 +2413,340 @@ async function loadSettings() {
   if (!el) return;
 
   el.innerHTML = \`
-    <!-- General -->
-    <div class="card" style="margin-bottom:14px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">General</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Agent Name</label>
-          <input class="inp" id="cfg-name" value="\${esc(config.agent?.name ?? 'Cortex')}" />
+    <!-- Settings Navigation Tabs -->
+    <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;">
+      <button class="mem-tab \${settingsActiveTab === 'general' ? 'active' : ''}" onclick="switchSettingsTab('general')" id="settings-tab-general">General</button>
+      <button class="mem-tab \${settingsActiveTab === 'providers' ? 'active' : ''}" onclick="switchSettingsTab('providers')" id="settings-tab-providers">Providers & Models</button>
+      <button class="mem-tab \${settingsActiveTab === 'router' ? 'active' : ''}" onclick="switchSettingsTab('router')" id="settings-tab-router">Model Router</button>
+      <button class="mem-tab \${settingsActiveTab === 'updates' ? 'active' : ''}" onclick="switchSettingsTab('updates')" id="settings-tab-updates">Updates</button>
+      <button class="mem-tab \${settingsActiveTab === 'profile' ? 'active' : ''}" onclick="switchSettingsTab('profile')" id="settings-tab-profile">User Profile</button>
+      <button class="mem-tab \${settingsActiveTab === 'ui' ? 'active' : ''}" onclick="switchSettingsTab('ui')" id="settings-tab-ui">UI & Appearance</button>
+      <button class="mem-tab \${settingsActiveTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')" id="settings-tab-security">Security</button>
+    </div>
+
+    <!-- General Settings Tab -->
+    <div id="settings-pane-general" style="display:\${settingsActiveTab === 'general' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Agent Behavior</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Agent Name</label>
+            <input class="inp" id="cfg-name" value="\${esc(config.agent?.name ?? 'Cortex')}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Display name for the default agent</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Default Provider</label>
+            <select class="inp" id="cfg-provider">
+              \${configured.length ? configured.map(k => \`<option value="\${k}" \${config.defaultProvider===k?'selected':''}>\${providerLabel(k)}</option>\`).join('') : '<option>Configure providers first</option>'}
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Primary LLM provider to use</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max Turns per Session</label>
+            <input class="inp" id="cfg-maxturns" type="number" min="1" max="200" value="\${config.agent?.maxTurns ?? 50}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Maximum agent-user interaction turns (1-200)</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Stream Output</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cfg-stream" \${config.agent?.streamOutput?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Enable streaming responses</span>
+            </div>
+            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Show responses as they're generated</p>
+          </div>
         </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Default Provider</label>
-          <select class="inp" id="cfg-provider">
-            \${configured.map(k => \`<option value="\${k}" \${config.defaultProvider===k?'selected':''}>\${providerLabel(k)}</option>\`).join('')}
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveGeneralSettings()">Save General Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Providers & Models Tab -->
+    <div id="settings-pane-providers" style="display:\${settingsActiveTab === 'providers' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Configured Providers</div>
+            <p style="font-size:11px;color:var(--text3);margin-top:2px;">LLM providers with API keys and models configured</p>
+          </div>
+          <button class="btn btn-primary" onclick="showAddModelModal()" style="font-size:12px;">+ Add Provider</button>
+        </div>
+
+        \${configured.length === 0 ? '<div style="padding:40px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m8-7h-6m-6 0H2"/></svg><p style="font-size:12px;color:var(--text3);">No providers configured yet.</p><p style="font-size:11px;color:var(--text3);margin-top:4px;">Click "+ Add Provider" to configure your first LLM provider.</p></div>' : ''}
+        \${configured.map(k => {
+          const p = config.providers[k];
+          const meta = PROVIDER_META[k];
+          return \`<div class="card-sm" style="margin-bottom:10px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                  <span style="font-size:13px;font-weight:500;">\${meta.label}</span>
+                  <span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">● configured</span>
+                  \${config.defaultProvider === k ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">default</span>' : ''}
+                </div>
+                <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);flex-wrap:wrap;">
+                  <span>Model: <span style="color:var(--text);font-family:'JetBrains Mono',monospace;">\${esc(p.model || '—')}</span></span>
+                  \${p.temperature != null ? \`<span>Temp: <span style="color:var(--text);">\${p.temperature}</span></span>\` : ''}
+                  \${p.maxTokens != null ? \`<span>Max tokens: <span style="color:var(--text);">\${p.maxTokens}</span></span>\` : ''}
+                  \${p.topP != null ? \`<span>Top P: <span style="color:var(--text);">\${p.topP}</span></span>\` : ''}
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="showEditModelModal('\${k}')">Edit</button>
+                <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="removeProvider('\${k}')">Remove</button>
+              </div>
+            </div>
+          </div>\`;
+        }).join('')}
+
+        <!-- Unconfigured -->
+        <div style="margin-top:12px;">
+          <details style="font-size:12px;">
+            <summary style="cursor:pointer;color:var(--text3);padding:6px 0;font-weight:500;">Available providers (\${unconfigured.length})</summary>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;">
+              \${unconfigured.map(k => \`<button class="btn btn-ghost" style="font-size:11px;padding:8px;text-align:left;justify-content:flex-start;" onclick="showAddModelModal('\${k}')">
+                + \${PROVIDER_META[k].label}
+              </button>\`).join('')}
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <!-- Router Tab -->
+    <div id="settings-pane-router" style="display:\${settingsActiveTab === 'router' ? 'block' : 'none'};">
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Model Router (RouteLLM)</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Intelligently route queries to strong or weak models based on complexity. Cascade mode tries models in order; Threshold mode uses a scorer to decide.</p>
+        
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
+          <input type="checkbox" id="cfg-router" \${config.router?.enabled?'checked':''} style="width:18px;height:18px;accent-color:var(--accent);" />
+          <label style="font-size:13px;color:var(--text);font-weight:500;">Enable Model Router</label>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Routing Strategy</label>
+            <select class="inp" id="cfg-strategy">
+              <option value="cascade" \${config.router?.strategy==='cascade'?'selected':''}>Cascade (try models in order)</option>
+              <option value="threshold" \${config.router?.strategy==='threshold'?'selected':''}>Threshold (score-based routing)</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How to route queries to models</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confidence Threshold (0–1)</label>
+            <input class="inp" id="cfg-confidence" type="number" step="0.05" min="0" max="1" value="\${config.router?.confidenceThreshold ?? 0.7}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Threshold for routing to strong model (higher = more selective)</p>
+          </div>
+        </div>
+        
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveRouterSettings()">Save Router Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Updates Tab -->
+    <div id="settings-pane-updates" style="display:\${settingsActiveTab === 'updates' ? 'block' : 'none'};">
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Automatic Updates</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs updates from GitHub releases</p>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Update Channel</label>
+            <select class="inp" id="cfg-update-channel">
+              <option value="stable" \${config.update?.channel==='stable'?'selected':''}>Stable (recommended)</option>
+              <option value="pre-release" \${config.update?.channel==='pre-release'?'selected':''}>Pre-release (beta features)</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Which release channel to follow</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
+            <input class="inp" id="cfg-update-interval" type="number" min="1" max="168" value="\${config.update?.checkIntervalHours ?? 24}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for updates (1-168 hours)</p>
+          </div>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">GitHub Token (optional, for rate limits)</label>
+          <input class="inp" id="cfg-update-token" type="password" placeholder="ghp_..." value="\${config.update?.githubToken ?? ''}" />
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Personal access token to avoid GitHub API rate limits</p>
+        </div>
+        
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-update-startup" \${config.update?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Check for updates on startup</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-update-auto" \${config.update?.autoUpdate?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Automatically install updates (requires restart)</label>
+          </div>
+        </div>
+        
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Update Settings</button>
+          <button class="btn btn-ghost" onclick="checkUpdatesNow()">Check Now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Profile Tab -->
+    <div id="settings-pane-profile" style="display:\${settingsActiveTab === 'profile' ? 'block' : 'none'};">
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">User Profile & Personalization</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Help Cortex understand your background and preferences for more relevant assistance</p>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Role / Title</label>
+            <input class="inp" id="cfg-profile-role" placeholder="e.g. Software Engineer, Product Manager" value="\${esc(config.userProfile?.role ?? '')}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Your professional role or title</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Experience Level</label>
+            <select class="inp" id="cfg-profile-experience">
+              <option value="">Not specified</option>
+              <option value="beginner" \${config.userProfile?.experienceLevel==='beginner'?'selected':''}>Beginner</option>
+              <option value="intermediate" \${config.userProfile?.experienceLevel==='intermediate'?'selected':''}>Intermediate</option>
+              <option value="advanced" \${config.userProfile?.experienceLevel==='advanced'?'selected':''}>Advanced</option>
+              <option value="expert" \${config.userProfile?.experienceLevel==='expert'?'selected':''}>Expert</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Your overall experience level</p>
+          </div>
+        </div>
+        
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Primary Use Case</label>
+          <input class="inp" id="cfg-profile-usecase" placeholder="e.g. Full-stack development, Data analysis" value="\${esc(config.userProfile?.primaryUseCase ?? '')}" />
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Main task or domain you'll use Cortex for</p>
+        </div>
+        
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Preferred Workflow</label>
+          <select class="inp" id="cfg-profile-workflow">
+            <option value="">Not specified</option>
+            <option value="cli" \${config.userProfile?.preferredWorkflow==='cli'?'selected':''}>CLI-focused</option>
+            <option value="web" \${config.userProfile?.preferredWorkflow==='web'?'selected':''}>Web UI-focused</option>
+            <option value="hybrid" \${config.userProfile?.preferredWorkflow==='hybrid'?'selected':''}>Hybrid (CLI + Web)</option>
+            <option value="api" \${config.userProfile?.preferredWorkflow==='api'?'selected':''}>API/Integration</option>
           </select>
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">How you prefer to interact with Cortex</p>
         </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max Turns</label>
-          <input class="inp" id="cfg-maxturns" type="number" value="\${config.agent?.maxTurns ?? 50}" />
+        
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Domains & Technologies (comma-separated)</label>
+          <input class="inp" id="cfg-profile-domains" placeholder="e.g. TypeScript, React, AWS, Machine Learning" value="\${(config.userProfile?.domains ?? []).join(', ')}" />
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Technologies and domains you work with</p>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding-top:18px;">
-          <label style="font-size:12px;color:var(--text2);">Stream Output</label>
-          <input type="checkbox" id="cfg-stream" \${config.agent?.streamOutput?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+        
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Additional Context (optional)</label>
+          <textarea class="inp" id="cfg-profile-context" placeholder="Any other context that would help Cortex assist you better..." style="resize:vertical;min-height:80px;font-size:12px;">\${esc(config.userProfile?.additionalContext ?? '')}</textarea>
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Free-form notes about your work, preferences, or needs</p>
         </div>
-      </div>
-      <div style="margin-top:14px;display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+        
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveProfileSettings()">Save User Profile</button>
+        </div>
       </div>
     </div>
 
-    <!-- Models & Providers -->
-    <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;">Models & Providers</div>
-        <button class="btn btn-primary" onclick="showAddModelModal()" style="font-size:12px;">+ Add Model</button>
-      </div>
-
-      <!-- Configured -->
-      \${configured.length === 0 ? '<p style="font-size:12px;color:var(--text3);padding:20px 0;text-align:center;">No providers configured yet. Click "+ Add Model" to get started.</p>' : ''}
-      \${configured.map(k => {
-        const p = config.providers[k];
-        const meta = PROVIDER_META[k];
-        return \`<div class="card-sm" style="margin-bottom:10px;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <span style="font-size:13px;font-weight:500;">\${meta.label}</span>
-                <span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">● configured</span>
-              </div>
-              <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);flex-wrap:wrap;">
-                <span>Model: <span style="color:var(--text);font-family:'JetBrains Mono',monospace;">\${esc(p.model || '—')}</span></span>
-                \${p.temperature != null ? \`<span>Temp: <span style="color:var(--text);">\${p.temperature}</span></span>\` : ''}
-                \${p.maxTokens != null ? \`<span>Max tokens: <span style="color:var(--text);">\${p.maxTokens}</span></span>\` : ''}
-                \${p.topP != null ? \`<span>Top P: <span style="color:var(--text);">\${p.topP}</span></span>\` : ''}
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
-              <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="showEditModelModal('\${k}')">Edit</button>
-              <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="removeProvider('\${k}')">Remove</button>
-            </div>
+    <!-- UI & Appearance Tab -->
+    <div id="settings-pane-ui" style="display:\${settingsActiveTab === 'ui' ? 'block' : 'none'};">
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">UI & Appearance</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Customize the visual appearance and animations of the web interface</p>
+        
+        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-ui-enabled" \${config.ui?.enabled !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
+            <label style="font-size:13px;color:var(--text);font-weight:500;">Enable UI animations and effects</label>
           </div>
-        </div>\`;
-      }).join('')}
-
-      <!-- Unconfigured -->
-      <div style="margin-top:4px;">
-        <details style="font-size:12px;">
-          <summary style="cursor:pointer;color:var(--text3);padding:6px 0;">Available providers (\${unconfigured.length})</summary>
-          <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
-            \${unconfigured.map(k => \`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:6px;background:var(--bg);">
-              <span style="font-size:12px;">\${PROVIDER_META[k].label}</span>
-              <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;" onclick="showAddModelModal('\${k}')">Configure</button>
-            </div>\`).join('')}
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Background Effect</label>
+            <select class="inp" id="cfg-ui-background">
+              <option value="none" \${config.ui?.backgroundEffect==='none'?'selected':''}>None</option>
+              <option value="matrix" \${config.ui?.backgroundEffect==='matrix'?'selected':''}>Matrix</option>
+              <option value="particles" \${config.ui?.backgroundEffect==='particles'?'selected':''}>Particles</option>
+              <option value="neural" \${config.ui?.backgroundEffect==='neural'?'selected':''}>Neural Network</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Animated background effect (may impact performance)</p>
           </div>
-        </details>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Color Scheme</label>
+            <select class="inp" id="cfg-ui-colors">
+              <option value="vibrant" \${config.ui?.colorScheme==='vibrant'?'selected':''}>Vibrant</option>
+              <option value="subtle" \${config.ui?.colorScheme==='subtle'?'selected':''}>Subtle</option>
+              <option value="monochrome" \${config.ui?.colorScheme==='monochrome'?'selected':''}>Monochrome</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Color palette for UI elements</p>
+          </div>
+        </div>
+        
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveUISettings()">Save UI Settings</button>
+        </div>
       </div>
     </div>
 
-    <!-- Router -->
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Model Router (RouteLLM)</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-        <label style="font-size:12px;color:var(--text2);">Enable router</label>
-        <input type="checkbox" id="cfg-router" \${config.router?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-      </div>
-      <div style="margin-bottom:10px;">
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Strategy</label>
-        <select class="inp" id="cfg-strategy" style="width:140px;">
-          <option value="cascade" \${config.router?.strategy==='cascade'?'selected':''}>Cascade</option>
-          <option value="threshold" \${config.router?.strategy==='threshold'?'selected':''}>Threshold</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confidence threshold (0–1)</label>
-        <input class="inp" id="cfg-confidence" type="number" step="0.05" min="0" max="1" value="\${config.router?.confidenceThreshold ?? 0.7}" style="width:120px;" />
-      </div>
-      <div style="margin-top:14px;">
-        <button class="btn btn-primary" onclick="saveSettings()">Save Router</button>
+    <!-- Security Tab -->
+    <div id="settings-pane-security" style="display:\${settingsActiveTab === 'security' ? 'block' : 'none'};">
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Web Authentication</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure password protection for the web interface</p>
+        
+        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-auth-require" \${config.webAuth?.requireAuth !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
+            <label style="font-size:13px;color:var(--text);font-weight:500;">Require authentication for web UI</label>
+          </div>
+          <p style="font-size:10px;color:var(--text3);margin-top:4px;margin-left:28px;">When enabled, users must log in with password to access the web interface</p>
+        </div>
+        
+        <div style="margin-top:16px;">
+          <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Change Password</div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Current Password</label>
+            <input class="inp" id="cfg-auth-oldpass" type="password" placeholder="Enter current password" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">New Password</label>
+              <input class="inp" id="cfg-auth-newpass" type="password" placeholder="Enter new password" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confirm New Password</label>
+              <input class="inp" id="cfg-auth-confirmpass" type="password" placeholder="Confirm new password" />
+            </div>
+          </div>
+          <p style="font-size:10px;color:var(--text3);margin-top:4px;">Leave blank to keep current password unchanged</p>
+        </div>
+        
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveSecuritySettings()">Save Security Settings</button>
+        </div>
       </div>
     </div>
   \`;
 }
 
-async function saveSettings() {
+function switchSettingsTab(tabName) {
+  settingsActiveTab = tabName;
+  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security'];
+  tabs.forEach(t => {
+    const tabBtn = document.getElementById('settings-tab-' + t);
+    const pane = document.getElementById('settings-pane-' + t);
+    if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
+    if (pane) pane.style.display = t === tabName ? 'block' : 'none';
+  });
+}
+
+async function saveGeneralSettings() {
   const current = await (await fetch(BASE + '/api/config')).json();
   const body = {
     defaultProvider: document.getElementById('cfg-provider')?.value,
@@ -2519,6 +2755,19 @@ async function saveSettings() {
       maxTurns: Number(document.getElementById('cfg-maxturns')?.value),
       streamOutput: document.getElementById('cfg-stream')?.checked,
     },
+  };
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { 
+    toast('General settings saved', 'success'); 
+    loadDaemonStatus();
+  } else { 
+    toast('Failed to save settings', 'error'); 
+  }
+}
+
+async function saveRouterSettings() {
+  const current = await (await fetch(BASE + '/api/config')).json();
+  const body = {
     router: {
       enabled: document.getElementById('cfg-router')?.checked,
       strategy: document.getElementById('cfg-strategy')?.value ?? 'cascade',
@@ -2528,7 +2777,124 @@ async function saveSettings() {
     },
   };
   const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (res.ok) { toast('Settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
+  if (res.ok) { toast('Router settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
+}
+
+async function saveUpdateSettings() {
+  const body = {
+    update: {
+      channel: document.getElementById('cfg-update-channel')?.value ?? 'stable',
+      checkOnStartup: document.getElementById('cfg-update-startup')?.checked ?? true,
+      autoUpdate: document.getElementById('cfg-update-auto')?.checked ?? false,
+      checkIntervalHours: Number(document.getElementById('cfg-update-interval')?.value) || 24,
+      githubToken: document.getElementById('cfg-update-token')?.value?.trim() || null,
+      gpgKeyPath: null,
+    },
+  };
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { toast('Update settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
+}
+
+async function saveProfileSettings() {
+  const domains = document.getElementById('cfg-profile-domains')?.value?.trim();
+  const body = {
+    userProfile: {
+      role: document.getElementById('cfg-profile-role')?.value?.trim() || undefined,
+      primaryUseCase: document.getElementById('cfg-profile-usecase')?.value?.trim() || undefined,
+      experienceLevel: document.getElementById('cfg-profile-experience')?.value || undefined,
+      preferredWorkflow: document.getElementById('cfg-profile-workflow')?.value || undefined,
+      domains: domains ? domains.split(',').map(d => d.trim()).filter(Boolean) : [],
+      additionalContext: document.getElementById('cfg-profile-context')?.value?.trim() || undefined,
+      completed: true,
+      timestamp: new Date().toISOString(),
+    },
+  };
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { toast('User profile saved', 'success'); } else { toast('Failed to save profile', 'error'); }
+}
+
+async function saveUISettings() {
+  const body = {
+    ui: {
+      enabled: document.getElementById('cfg-ui-enabled')?.checked ?? true,
+      backgroundEffect: document.getElementById('cfg-ui-background')?.value ?? 'neural',
+      colorScheme: document.getElementById('cfg-ui-colors')?.value ?? 'vibrant',
+    },
+  };
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { 
+    toast('UI settings saved — refresh page to see changes', 'success'); 
+  } else { 
+    toast('Failed to save UI settings', 'error'); 
+  }
+}
+
+async function saveSecuritySettings() {
+  const body = {
+    webAuth: {
+      requireAuth: document.getElementById('cfg-auth-require')?.checked ?? true,
+    },
+  };
+  
+  const oldPass = document.getElementById('cfg-auth-oldpass')?.value;
+  const newPass = document.getElementById('cfg-auth-newpass')?.value;
+  const confirmPass = document.getElementById('cfg-auth-confirmpass')?.value;
+  
+  if (newPass && newPass !== confirmPass) {
+    toast('Passwords do not match', 'error');
+    return;
+  }
+  
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!res.ok) { 
+    toast('Failed to save security settings', 'error'); 
+    return;
+  }
+  
+  // Change password if provided
+  if (newPass && newPass.length >= 8) {
+    if (!oldPass) {
+      toast('Current password is required to change password', 'error');
+      return;
+    }
+    const passRes = await fetch(BASE + '/api/auth/change-password', { 
+      method: 'POST', 
+      headers: {'Content-Type':'application/json'}, 
+      body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass }) 
+    });
+    if (passRes.ok) {
+      toast('Security settings and password updated', 'success');
+      document.getElementById('cfg-auth-oldpass').value = '';
+      document.getElementById('cfg-auth-newpass').value = '';
+      document.getElementById('cfg-auth-confirmpass').value = '';
+    } else {
+      const data = await passRes.json();
+      toast(data.error || 'Password change failed', 'error');
+    }
+  } else if (newPass) {
+    toast('Password must be at least 8 characters', 'error');
+  } else {
+    toast('Security settings saved', 'success');
+  }
+}
+
+async function checkUpdatesNow() {
+  toast('Checking for updates...', 'info');
+  try {
+    const res = await fetch(BASE + '/api/updates/check', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.updateAvailable) {
+        toast(\`Update available: \${data.latestVersion}\`, 'success');
+      } else {
+        toast('You are running the latest version', 'success');
+      }
+    } else {
+      toast('Update checking not yet implemented in this build', 'info');
+    }
+  } catch (e) {
+    toast('Update checking not yet implemented in this build', 'info');
+  }
 }
 
 async function removeProvider(kind) {

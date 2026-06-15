@@ -13,17 +13,40 @@ import { searchEntities, traverseGraph } from '../memory/graph.ts';
 import { listReflections } from '../agent/reflect.ts';
 import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
-import type { AgentConfig, CortexConfig, ProviderKind } from '../config/config.ts';
+import type {
+  AgentConfig,
+  CortexConfig,
+  ProviderConfig,
+  ProviderKind,
+  UserProfile,
+} from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
-import { deleteSkill, getSkillByName, getSkillStats, listSkills, loadHumanSkills, storeSkill } from '../memory/skills.ts';
+import {
+  deleteSkill,
+  getSkillByName,
+  getSkillStats,
+  listSkills,
+  loadHumanSkills,
+  storeSkill,
+} from '../memory/skills.ts';
 import { listPolicies } from '../security/policy.ts';
 import { getMemoryDb } from '../db/client.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import {
-  installPlugin,
-  listPlugins,
-  removePlugin,
-} from '../plugins/registry.ts';
+  changePassword,
+  clearSessionCookie,
+  createSession,
+  destroySession,
+  hasPassword,
+  parseCookies,
+  requireAuth,
+  setSessionCookie,
+  setupPassword,
+  validateSession,
+  verifyPassword,
+} from './auth.ts';
+import { runMigrations } from '../db/migrate.ts';
+import { installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts';
 import { pluginManager } from '../plugins/manager.ts';
 import type { PluginManifest } from '../plugins/types.ts';
 import { extractSettingsSchema } from '../plugins/extensions/config.ts';
@@ -51,14 +74,15 @@ import {
   updateService,
 } from '../services/manager.ts';
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
+function json(data: unknown, status = 200, extraCookie?: string): Response {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  };
+  if (extraCookie) {
+    headers['Set-Cookie'] = extraCookie;
+  }
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 function notFound(msg = 'Not found'): Response {
@@ -81,6 +105,172 @@ export async function handleApi(req: Request): Promise<Response | null> {
         'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
+  }
+
+  // ── Public auth & onboarding routes (no auth required) ──
+
+  // GET /api/auth/status
+  if (req.method === 'GET' && path === '/api/auth/status') {
+    const pwSet = await hasPassword();
+    const config = await loadConfig();
+    return json({
+      authenticated: false,
+      hasPassword: pwSet,
+      requireAuth: config.webAuth?.requireAuth !== false,
+    });
+  }
+
+  // POST /api/auth/setup-password (first-time only)
+  if (req.method === 'POST' && path === '/api/auth/setup-password') {
+    const already = await hasPassword();
+    if (already) return json({ error: 'Password already set' }, 400);
+    const { password } = await req.json() as { password: string };
+    try {
+      await setupPassword(password);
+      const session = createSession();
+      return json({ success: true, sessionId: session.id }, 201, setSessionCookie(session.id));
+    } catch (e) {
+      return json({ error: (e as Error).message }, 400);
+    }
+  }
+
+  // POST /api/auth/login
+  if (req.method === 'POST' && path === '/api/auth/login') {
+    const { password } = await req.json() as { password: string };
+    const valid = await verifyPassword(password);
+    if (!valid) return json({ error: 'Invalid password' }, 401);
+    const session = createSession();
+    return json({ success: true, sessionId: session.id }, 200, setSessionCookie(session.id));
+  }
+
+  // POST /api/auth/logout
+  if (req.method === 'POST' && path === '/api/auth/logout') {
+    const cookies = parseCookies(req.headers.get('cookie') || '');
+    const sessionId = cookies['cortex_session'];
+    if (sessionId) destroySession(sessionId);
+    return json({ success: true }, 200, clearSessionCookie());
+  }
+
+  // GET /api/auth/check — check current session validity
+  if (req.method === 'GET' && path === '/api/auth/check') {
+    const cookies = parseCookies(req.headers.get('cookie') || '');
+    const sessionId = cookies['cortex_session'];
+    const valid = sessionId ? validateSession(sessionId) : false;
+    return json({ authenticated: valid });
+  }
+
+  // POST /api/auth/change-password (authenticated only)
+  if (req.method === 'POST' && path === '/api/auth/change-password') {
+    const cookies = parseCookies(req.headers.get('cookie') || '');
+    const sessionId = cookies['cortex_session'];
+    if (!sessionId || !validateSession(sessionId)) {
+      return json({ error: 'Unauthorized' }, 401);
+    }
+    const { oldPassword, newPassword } = await req.json() as {
+      oldPassword: string;
+      newPassword: string;
+    };
+    try {
+      const success = await changePassword(oldPassword, newPassword);
+      if (!success) {
+        return json({ error: 'Current password is incorrect' }, 401);
+      }
+      return json({ success: true });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 400);
+    }
+  }
+
+  // GET /api/onboarding/status
+  if (req.method === 'GET' && path === '/api/onboarding/status') {
+    const config = await loadConfig();
+    const onboarding =
+      (config as unknown as Record<string, unknown>).onboarding as Record<string, unknown> || {};
+    const steps = (onboarding.steps as Record<string, boolean>) || {};
+    const userProfile =
+      ((config as unknown as Record<string, unknown>).userProfile as Record<string, unknown>) || {};
+    return json({
+      completed: onboarding.completed === true,
+      currentStep: onboarding.currentStep ?? null,
+      hasPassword: await hasPassword(),
+      hasProvider: !!config.providers[config.defaultProvider],
+      hasProfile: !!((userProfile as Record<string, unknown>)?.completed),
+      hasSoul: !!((userProfile as Record<string, unknown>)?.completed),
+      steps,
+    });
+  }
+
+  // GET /api/health — no auth required (used by daemon health checks)
+  if (req.method === 'GET' && path === '/api/health') {
+    return json({ status: 'ok', ts: new Date().toISOString() });
+  }
+
+  // GET /api/status — daemon health (no auth, used by frontend sidebar)
+  if (req.method === 'GET' && path === '/api/status') {
+    const [validator, executor, scheduler] = await Promise.all([
+      pingProcess(VALIDATOR_SOCK),
+      pingProcess(EXECUTOR_SOCK),
+      pingProcess(SCHEDULER_SOCK),
+    ]);
+    const config = await loadConfig();
+    return json({
+      provider: config.defaultProvider,
+      model: config.providers[config.defaultProvider]?.model ?? 'unknown',
+      daemons: { validator, executor, scheduler },
+      ts: new Date().toISOString(),
+    });
+  }
+
+  // GET /api/system — system info (no auth, used by status page)
+  if (req.method === 'GET' && path === '/api/system') {
+    const config = await loadConfig();
+    const sessions = await listSessions(5);
+    const activeSessions = sessions.filter((s) => s.status === 'active').length;
+    const [validator, executor, scheduler] = await Promise.all([
+      pingProcess(VALIDATOR_SOCK),
+      pingProcess(EXECUTOR_SOCK),
+      pingProcess(SCHEDULER_SOCK),
+    ]);
+    let memInfo = { total: 0, used: 0, free: 0 };
+    let diskInfo = { total: 0, used: 0, free: 0 };
+    try {
+      const memRaw = await new Deno.Command('free', { args: ['-b'], stdout: 'piped' }).output();
+      const memText = new TextDecoder().decode(memRaw.stdout);
+      const memLine = memText.split('\n')[1]?.split(/\s+/);
+      if (memLine) {
+        memInfo = { total: Number(memLine[1]), used: Number(memLine[2]), free: Number(memLine[3]) };
+      }
+    } catch { /* non-linux */ }
+    try {
+      const dfRaw = await new Deno.Command('df', {
+        args: ['-B1', Deno.env.get('HOME') ?? '/'],
+        stdout: 'piped',
+      }).output();
+      const dfText = new TextDecoder().decode(dfRaw.stdout);
+      const dfLine = dfText.split('\n')[1]?.split(/\s+/);
+      if (dfLine) {
+        diskInfo = { total: Number(dfLine[1]), used: Number(dfLine[2]), free: Number(dfLine[3]) };
+      }
+    } catch { /* ignore */ }
+    const { getVersion } = await import('../config/version.ts');
+    return json({
+      version: await getVersion(),
+      provider: config.defaultProvider,
+      model: config.providers[config.defaultProvider]?.model ?? 'unknown',
+      activeSessions,
+      recentSessions: sessions,
+      daemons: { validator, executor, scheduler },
+      memory: memInfo,
+      disk: diskInfo,
+      uptime: Math.floor(performance.now() / 1000),
+      ts: new Date().toISOString(),
+    });
+  }
+
+  // ── Auth middleware: all remaining /api/* routes require auth ──
+  const authResult = await requireAuth(req);
+  if (!authResult.authenticated) {
+    return authResult.response!;
   }
 
   // GET /api/sessions?limit=&agentId=
@@ -179,27 +369,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
-  // GET /api/health
-  if (req.method === 'GET' && path === '/api/health') {
-    return json({ status: 'ok', ts: new Date().toISOString() });
-  }
-
-  // GET /api/status — daemon health
-  if (req.method === 'GET' && path === '/api/status') {
-    const [validator, executor, scheduler] = await Promise.all([
-      pingProcess(VALIDATOR_SOCK),
-      pingProcess(EXECUTOR_SOCK),
-      pingProcess(SCHEDULER_SOCK),
-    ]);
-    const config = await loadConfig();
-    return json({
-      provider: config.defaultProvider,
-      model: config.providers[config.defaultProvider]?.model ?? 'unknown',
-      daemons: { validator, executor, scheduler },
-      ts: new Date().toISOString(),
-    });
-  }
-
   // GET /api/lens/recent?limit=50
   if (req.method === 'GET' && path === '/api/lens/recent') {
     const limit = Number(url.searchParams.get('limit') ?? 50);
@@ -263,7 +432,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       description?: string;
       triggerPattern?: string;
       content?: string;
-      steps?: Array<{ step: number; action: string; tool?: string; params?: Record<string, unknown> }>;
+      steps?: Array<
+        { step: number; action: string; tool?: string; params?: Record<string, unknown> }
+      >;
     };
     if (!body.name?.trim()) return err('Missing name', 400);
     const id = await storeSkill({
@@ -271,8 +442,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
       description: body.description,
       triggerPattern: body.triggerPattern,
       steps: body.steps
-        ? body.steps.map((s) => ({ step: s.step, action: s.action, description: s.action, tool: s.tool, params: s.params }))
-        : [{ step: 1, action: body.content ?? body.description ?? '', description: body.content ?? body.description ?? '' }],
+        ? body.steps.map((s) => ({
+          step: s.step,
+          action: s.action,
+          description: s.action,
+          tool: s.tool,
+          params: s.params,
+        }))
+        : [{
+          step: 1,
+          action: body.content ?? body.description ?? '',
+          description: body.content ?? body.description ?? '',
+        }],
       origin: 'human',
       content: body.content ?? undefined,
     });
@@ -499,52 +680,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ daily, models, totals, perAgent });
   }
 
-  // GET /api/system
-  if (req.method === 'GET' && path === '/api/system') {
-    const config = await loadConfig();
-    const sessions = await listSessions(5);
-    const activeSessions = sessions.filter((s) => s.status === 'active').length;
-    const [validator, executor, scheduler] = await Promise.all([
-      pingProcess(VALIDATOR_SOCK),
-      pingProcess(EXECUTOR_SOCK),
-      pingProcess(SCHEDULER_SOCK),
-    ]);
-    let memInfo = { total: 0, used: 0, free: 0 };
-    let diskInfo = { total: 0, used: 0, free: 0 };
-    try {
-      const memRaw = await new Deno.Command('free', { args: ['-b'], stdout: 'piped' }).output();
-      const memText = new TextDecoder().decode(memRaw.stdout);
-      const memLine = memText.split('\n')[1]?.split(/\s+/);
-      if (memLine) {
-        memInfo = { total: Number(memLine[1]), used: Number(memLine[2]), free: Number(memLine[3]) };
-      }
-    } catch { /* non-linux */ }
-    try {
-      const dfRaw = await new Deno.Command('df', {
-        args: ['-B1', Deno.env.get('HOME') ?? '/'],
-        stdout: 'piped',
-      }).output();
-      const dfText = new TextDecoder().decode(dfRaw.stdout);
-      const dfLine = dfText.split('\n')[1]?.split(/\s+/);
-      if (dfLine) {
-        diskInfo = { total: Number(dfLine[1]), used: Number(dfLine[2]), free: Number(dfLine[3]) };
-      }
-    } catch { /* ignore */ }
-    const { getVersion } = await import('../config/version.ts');
-    return json({
-      version: await getVersion(),
-      provider: config.defaultProvider,
-      model: config.providers[config.defaultProvider]?.model ?? 'unknown',
-      activeSessions,
-      recentSessions: sessions,
-      daemons: { validator, executor, scheduler },
-      memory: memInfo,
-      disk: diskInfo,
-      uptime: Math.floor(performance.now() / 1000),
-      ts: new Date().toISOString(),
-    });
-  }
-
   // DELETE /api/sessions/:id
   const delSessionMatch = path.match(/^\/api\/sessions\/([^/]+)$/);
   if (req.method === 'DELETE' && delSessionMatch) {
@@ -559,15 +694,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/hooks
   if (req.method === 'GET' && path === '/api/hooks') {
     const { listHooks } = await import('../pipeline/manager.ts');
-    return json(listHooks().map((r) => ({
-      name: r.hook.name,
-      stages: r.hook.stages,
-      priority: r.hook.priority,
-      async: r.hook.async,
-      disableable: r.hook.disableable,
-      source: r.source,
-      pluginName: r.pluginName ?? null,
-    })));
+    return json(
+      listHooks().map((r) => ({
+        name: r.hook.name,
+        stages: r.hook.stages,
+        priority: r.hook.priority,
+        async: r.hook.async,
+        disableable: r.hook.disableable,
+        source: r.source,
+        pluginName: r.pluginName ?? null,
+      })),
+    );
   }
 
   // POST /api/hooks/:name/disable
@@ -592,7 +729,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       .filter((p) => p.enabled === 1 && p.status === 'active')
       .map((p) => {
         let manifest: PluginManifest | null = null;
-        try { manifest = JSON.parse(p.manifest_json) as PluginManifest; } catch { /* skip */ }
+        try {
+          manifest = JSON.parse(p.manifest_json) as PluginManifest;
+        } catch { /* skip */ }
         if (!manifest?.ui?.panels) return null;
         return manifest.ui.panels.map((panel) => ({
           pluginId: p.name,
@@ -646,7 +785,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const pluginConfigGetMatch = path.match(/^\/api\/plugins\/([^/]+)\/config$/);
   if (req.method === 'GET' && pluginConfigGetMatch) {
     const config = await loadConfig();
-    const plugins = (config as unknown as Record<string, unknown>).plugins as Record<string, Record<string, unknown>> | undefined;
+    const plugins = (config as unknown as Record<string, unknown>).plugins as
+      | Record<string, Record<string, unknown>>
+      | undefined;
     return json(plugins?.[pluginConfigGetMatch[1]] ?? {});
   }
 
@@ -1298,7 +1439,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const token = await getGitHubToken();
     if (!token) return err('GitHub token not configured', 401);
     const state = (url.searchParams.get('state') ?? 'open') as 'open' | 'closed' | 'all';
-    const issues = await listIssues(`${ghIssueMatch[1]}/${ghIssueMatch[2]}`, token, { state, limit: 30 });
+    const issues = await listIssues(`${ghIssueMatch[1]}/${ghIssueMatch[2]}`, token, {
+      state,
+      limit: 30,
+    });
     return json(issues);
   }
 
@@ -1337,7 +1481,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/workspace/git/push — push to remote
   if (req.method === 'POST' && path === '/api/workspace/git/push') {
-    const body = await req.json().catch(() => ({})) as { agentId?: string; remote?: string; branch?: string };
+    const body = await req.json().catch(() => ({})) as {
+      agentId?: string;
+      remote?: string;
+      branch?: string;
+    };
     const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
     const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
     const { gitPush } = await import('../workspace/git.ts');
@@ -1347,7 +1495,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/workspace/git/pull — pull from remote
   if (req.method === 'POST' && path === '/api/workspace/git/pull') {
-    const body = await req.json().catch(() => ({})) as { agentId?: string; remote?: string; branch?: string };
+    const body = await req.json().catch(() => ({})) as {
+      agentId?: string;
+      remote?: string;
+      branch?: string;
+    };
     const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
     const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
     const { gitPull } = await import('../workspace/git.ts');
@@ -1381,7 +1533,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
     const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
     const { gitCreateBranch, gitCheckout } = await import('../workspace/git.ts');
-    const ok = body.create ? await gitCreateBranch(dir, body.name) : await gitCheckout(dir, body.name);
+    const ok = body.create
+      ? await gitCreateBranch(dir, body.name)
+      : await gitCheckout(dir, body.name);
     return json({ ok });
   }
 
@@ -1562,5 +1716,178 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(rows);
   }
 
+  // ── Onboarding API Endpoints ──────────────────────────────
+
+  // POST /api/onboarding/provider
+  if (req.method === 'POST' && path === '/api/onboarding/provider') {
+    const body = await req.json() as {
+      kind: string;
+      apiKey?: string;
+      model: string;
+      baseUrl?: string;
+    };
+    const config = await loadConfig();
+    const kind = body.kind as ProviderKind;
+    config.defaultProvider = kind;
+    config.providers[kind] = {
+      kind,
+      model: body.model,
+      apiKey: body.apiKey,
+      baseUrl: body.baseUrl,
+    } as ProviderConfig;
+    await saveConfig(config);
+    return json({ success: true, connected: true });
+  }
+
+  // POST /api/onboarding/personality
+  if (req.method === 'POST' && path === '/api/onboarding/personality') {
+    const body = await req.json() as { personality: string; customSoul?: string };
+    const { PATHS } = await import('../config/paths.ts');
+    const { ensureDir } = await import('@std/fs');
+    if (body.personality !== 'custom') {
+      const PERSONALITY_TEMPLATES: Record<string, string> = {
+        professional:
+          `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a professional AI assistant. You are precise, thorough, and business-appropriate.\n\n## Tone\n- Concise and direct. Get to the point.\n- Avoid casual language, slang, or excessive enthusiasm.\n- Default to structured responses: headers, bullet points, code blocks.\n\n## Behavior\n- When uncertain, ask clarifying questions rather than guessing.\n- Provide references and citations when possible.\n- Respect confidentiality — never repeat what you've read in memory unless explicitly asked.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, and manage git repositories.\n- Use tools proactively when they would improve your answer.\n`,
+        friendly:
+          `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a friendly and helpful AI assistant. You're warm, approachable, and always happy to help.\n\n## Tone\n- Warm and conversational. Use friendly language.\n- Celebrate wins and be encouraging.\n- Keep things light — you can use gentle humor.\n\n## Behavior\n- Ask follow-up questions to understand what the user really needs.\n- Offer alternatives and suggestions proactively.\n- Remember context from earlier in the conversation.\n- If something goes wrong, be reassuring and help fix it.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, and manage git repositories.\n- Use these capabilities to go above and beyond when helping.\n`,
+        developer:
+          `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a technical AI assistant built for developers. You think in code, architecture, and systems.\n\n## Tone\n- Technical, direct, and precise.\n- Prefer code examples over prose explanations.\n- Use correct technical terminology. No hand-waving.\n\n## Behavior\n- When given a coding task, write complete, production-quality solutions.\n- Test your code before presenting it.\n- Explain architectural decisions and tradeoffs.\n- Error messages are data — read them carefully and fix the root cause.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, manage git repositories, and run code in sandboxes.\n- Use shell for testing, git for versioning, and the file system for project structure.\n- Prefer concrete actions over theoretical discussion.\n`,
+      };
+      const soul = PERSONALITY_TEMPLATES[body.personality] ?? PERSONALITY_TEMPLATES.developer;
+      await ensureDir(PATHS.configDir);
+      await Deno.writeTextFile(PATHS.soulFile, soul);
+    } else if (body.customSoul) {
+      await ensureDir(PATHS.configDir);
+      await Deno.writeTextFile(PATHS.soulFile, body.customSoul);
+    }
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/channels
+  if (req.method === 'POST' && path === '/api/onboarding/channels') {
+    const body = await req.json() as { channels: string[] };
+    const config = await loadConfig();
+    config.providers ??= {} as CortexConfig['providers'];
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/telemetry
+  if (req.method === 'POST' && path === '/api/onboarding/telemetry') {
+    const body = await req.json() as { enabled: boolean };
+    const config = await loadConfig();
+    config.update = config.update ||
+      {
+        channel: 'stable',
+        checkOnStartup: true,
+        autoUpdate: false,
+        checkIntervalHours: 24,
+        githubToken: null,
+        gpgKeyPath: null,
+      };
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/complete
+  if (req.method === 'POST' && path === '/api/onboarding/complete') {
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    cfg.onboarding = {
+      completed: true,
+      completedAt: new Date().toISOString(),
+      version: '1.0',
+      skippedSteps: [],
+    };
+    await saveConfig(config);
+    await runMigrations();
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/progress — save partial progress
+  if (req.method === 'POST' && path === '/api/onboarding/progress') {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    cfg.onboarding = {
+      ...(cfg.onboarding as Record<string, unknown> || {}),
+      ...body,
+      startedAt: (cfg.onboarding as Record<string, unknown>)?.startedAt || new Date().toISOString(),
+    };
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/auth/password/change
+  if (req.method === 'POST' && path === '/api/auth/password/change') {
+    const body = await req.json() as { oldPassword: string; newPassword: string };
+    const ok = await changePassword(body.oldPassword, body.newPassword);
+    if (!ok) return json({ error: 'Current password is incorrect' }, 401);
+    return json({ success: true });
+  }
+
+  // ── AI Personalization API Endpoints ─────────────────────
+
+  // POST /api/onboarding/profile/start
+  if (req.method === 'POST' && path === '/api/onboarding/profile/start') {
+    const config = await loadConfig();
+    const providerKind = config.defaultProvider;
+    const providerCfg = config.providers[providerKind];
+    if (!providerCfg) {
+      return json({
+        question: 'What do you do? (work, study, hobby projects, etc.)',
+        questionId: 'intro_1',
+        questionNumber: 1,
+      });
+    }
+    return json({
+      question: 'What do you do? (work, study, hobby projects, etc.)',
+      questionId: 'intro_1',
+      questionNumber: 1,
+    });
+  }
+
+  // POST /api/onboarding/profile/answer
+  if (req.method === 'POST' && path === '/api/onboarding/profile/answer') {
+    const body = await req.json() as { questionId: string; answer: string };
+    try {
+      const profile = await savePartialProfile(body.answer);
+      return json({ done: true, profile });
+    } catch {
+      return json({ done: true });
+    }
+  }
+
+  // POST /api/onboarding/profile/skip
+  if (req.method === 'POST' && path === '/api/onboarding/profile/skip') {
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    const onboarding = (cfg.onboarding as Record<string, unknown>) || {};
+    (onboarding as Record<string, unknown>).skippedSteps = [
+      ...((onboarding as Record<string, unknown>).skippedSteps as string[] || []),
+      'personalization',
+    ];
+    cfg.onboarding = onboarding;
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
   return null;
+}
+
+async function savePartialProfile(answer: string): Promise<Record<string, unknown>> {
+  const { loadConfig, saveConfig } = await import('../config/config.ts');
+  const config = await loadConfig();
+  const cfg = config as unknown as Record<string, unknown>;
+  const existing = (cfg.userProfile as Record<string, unknown>) || {};
+  const profile = {
+    ...existing,
+    additionalContext: ((existing.additionalContext as string) || '') +
+      (existing.additionalContext ? '\n' : '') + answer,
+    timestamp: new Date().toISOString(),
+    completed: true,
+  };
+  cfg.userProfile = profile;
+  await saveConfig(config);
+  return profile;
 }
