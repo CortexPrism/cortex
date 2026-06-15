@@ -240,6 +240,7 @@ export class TerminalUI {
 
 function wrapLine(text: string, width: number): string {
   if (text.length <= width) return text;
+  // deno-lint-ignore no-control-regex
   const visible = text.replace(/\x1b\[[0-9;]*m/g, '');
   if (visible.length <= width) return text;
   return visible.slice(0, width);
