@@ -8,6 +8,27 @@ import { verifyEntryPointIntegrity } from '../plugins/integrity.ts';
 import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
 import { applyPluginUpdate, checkAllUpdates, checkPluginUpdate } from '../plugins/update.ts';
 import type { PluginCapability, PluginKind } from '../plugins/types.ts';
+import { resolve } from '@std/path';
+
+/**
+ * Resolve a plugin entryPoint against the source directory.
+ * If the entryPoint is already an absolute URL or path, return it unchanged.
+ * Otherwise, resolve the relative path against sourceDir and prefix with file://
+ * so Deno's dynamic import() can locate the module regardless of CWD.
+ */
+function resolveEntryPoint(entryPoint: string, sourceDir: string): string {
+  if (
+    entryPoint.startsWith('file://') ||
+    entryPoint.startsWith('https://') ||
+    entryPoint.startsWith('http://') ||
+    entryPoint.startsWith('jsr:') ||
+    entryPoint.startsWith('npm:') ||
+    entryPoint.startsWith('/')
+  ) {
+    return entryPoint;
+  }
+  return `file://${resolve(sourceDir, entryPoint)}`;
+}
 
 export const pluginsCommand = new Command()
   .name('plugins')
@@ -46,6 +67,7 @@ export const pluginsCommand = new Command()
       .action(async (_: void, source: string) => {
         await runMigrations();
         let manifest: unknown;
+        let sourceDir: string | undefined;
         if (source.startsWith('marketplace:')) {
           const rest = source.slice('marketplace:'.length);
           const match = rest.match(/^([^/]+)\/plugins\/(.+)$/);
@@ -72,7 +94,19 @@ export const pluginsCommand = new Command()
           }
           manifest = await res.json();
         } else {
-          manifest = JSON.parse(await Deno.readTextFile(source));
+          // Detect the directory containing cortex.json so relative
+          // entry points (e.g. "mod.ts") can be resolved to absolute paths.
+          const sourceStat = await Deno.stat(source).catch(() => null);
+          if (sourceStat?.isDirectory) {
+            sourceDir = await Deno.realPath(source);
+            manifest = JSON.parse(await Deno.readTextFile(`${sourceDir}/cortex.json`));
+          } else {
+            const lastSlash = source.lastIndexOf('/');
+            sourceDir = await Deno.realPath(
+              lastSlash !== -1 ? source.substring(0, lastSlash) : '.',
+            );
+            manifest = JSON.parse(await Deno.readTextFile(source));
+          }
         }
         const m = manifest as {
           name: string;
@@ -91,7 +125,7 @@ export const pluginsCommand = new Command()
           version: m.version,
           description: m.description ?? '',
           kind: (m.kind as PluginKind) || 'esm',
-          entryPoint: m.entryPoint,
+          entryPoint: sourceDir ? resolveEntryPoint(m.entryPoint, sourceDir) : m.entryPoint,
           runtime: (m.runtime as 'deno' | 'wasm') || 'deno',
           capabilities: (m.capabilities ?? []) as never[],
           author: m.author,
