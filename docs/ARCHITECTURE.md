@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.20.0.
+This document describes the implemented architecture of CortexPrism as of v0.21.0.
 
 ---
 
@@ -726,3 +726,85 @@ processes/sub-agent-entry.ts
   ▼
 Parent receives streamed chunks → tool result
 ```
+
+---
+
+## Pipeline Hooks (`src/pipeline/`)
+
+The pipeline hooks system provides a 10-stage middleware architecture for the agent loop.
+
+```
+INPUT → pre-assess → ASSESS → post-assess → pre-reason → REASON → post-reason
+  → pre-tool → TOOL EXECUTE → post-tool → pre-reflect → REFLECT → post-reflect
+  → pre-output → OUTPUT → post-output
+```
+
+### Built-in Hooks
+
+| Hook | Stage | Priority | Purpose |
+|---|---|---|---|
+| `@cortex/injection-guard` | pre-reason | 5 | Detects prompt injection |
+| `@cortex/content-safety` | pre-output | 10 | Blocks/redacts sensitive output |
+| `@cortex/audit-log` | post-output | 150 | Logs turn metrics |
+| `@cortex/cost-tracker` | post-tool | 200 | Emits token/cost metrics |
+
+### Abort Semantics
+Any hook can return `{ abort }` to stop the pipeline immediately. The abort message is delivered to the user and logged to Lens. The LLM is not called for the aborted stage.
+
+---
+
+## Event Triggers (`src/triggers/`)
+
+Converts external events into agent turns via the scheduler.
+
+- **Webhook Receiver**: `POST /api/webhooks/:name` — HMAC SHA-256 verification, IP allowlisting, event type matching
+- **Filesystem Watcher**: `Deno.watchFs()` with configurable debounce and pattern matching
+- **Git Hook Installer**: Auto-places `post-receive`/`post-commit` scripts in `.git/hooks/`
+
+---
+
+## Observability (`src/observability/`)
+
+Prometheus-compatible metrics at `GET /metrics` with 15 metric families. OpenTelemetry-compatible trace spans with OTLP export support.
+
+---
+
+## Channel Plugin API (`src/channels/`)
+
+`ChannelPlugin` interface: `connect()`, `disconnect()`, `onEvent()`, `send()`, `edit()`, `react()`, `delete()`. Canonical types for cross-platform events, targets, users, and rich embeds. Channel manager handles registration, lifecycle, and agent binding.
+
+---
+
+## MCP Server (`src/mcp/server.ts`)
+
+Cortex operates as a Model Context Protocol server. JSON-RPC 2.0 protocol (`initialize`, `tools/list`, `tools/call`). Dual transport: stdio (Claude Desktop/VS Code) and HTTP (`GET/POST /mcp`).
+
+---
+
+## Remote Agent (`src/remote/`)
+
+Headless agents connect via WebSocket. Primary handles reasoning/memory/credentials; remote handles local execution only.
+
+---
+
+## Terminal UI (`src/tui/terminal.ts`)
+
+Full-screen interactive terminal interface with split-pane layout (chat left, tools right), command history, and status bar.
+
+---
+
+## Workflow Engine (`src/workflow/engine.ts`)
+
+Deterministic workflow DSL: `.step()`, `.branch()`, `.parallel()`, `.goto()`, `.waitForApproval()`. DAG execution with context passthrough.
+
+---
+
+## Desktop Automation (`src/desktop/automation.ts`)
+
+Docker XFCE+noVNC container with 11 desktop action types via `xdotool`/`scrot`/`xclip`.
+
+---
+
+## Desktop App (`desktop/src-tauri/`)
+
+Tauri v2 native desktop wrapper with system tray, global shortcuts, and native notifications.

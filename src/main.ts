@@ -20,6 +20,16 @@ import { agentCommand } from './cli/agent-cmd.ts';
 import { serviceCommand } from './cli/service-cmd.ts';
 import { stopCommand } from './cli/stop.ts';
 import { updateCommand } from './cli/update-cmd.ts';
+import { hooksCommand } from './cli/hooks-cmd.ts';
+import { triggersCommand } from './cli/triggers-cmd.ts';
+import { channelsCommand } from './cli/channels-cmd.ts';
+import { mcpCommand } from './cli/mcp-cmd.ts';
+import { remoteCommand } from './cli/remote-cmd.ts';
+import { tuiCommand } from './cli/tui-cmd.ts';
+import { projectsCommand } from './cli/projects-cmd.ts';
+import { workflowCommand } from './cli/workflow-cmd.ts';
+import { desktopCommand } from './cli/desktop-cmd.ts';
+import { runMcpServerStdio } from './mcp/server.ts';
 import { gitCommand } from './cli/git-cmd.ts';
 import { githubCommand } from './cli/github-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
@@ -45,6 +55,10 @@ if (subprocessIdx !== -1 && Deno.args[subprocessIdx + 1]) {
       break;
     case 'supervisor':
       await runSupervisor();
+      Deno.exit(0);
+      break;
+    case 'mcp-stdio':
+      await runMcpServerStdio();
       Deno.exit(0);
       break;
     default:
@@ -81,7 +95,16 @@ const program = new Command()
   .command('stop', stopCommand)
   .command('update', updateCommand)
   .command('git', gitCommand)
-  .command('github', githubCommand);
+  .command('github', githubCommand)
+  .command('hooks', hooksCommand)
+  .command('triggers', triggersCommand)
+  .command('channels', channelsCommand)
+  .command('mcp', mcpCommand)
+  .command('remote', remoteCommand)
+  .command('tui', tuiCommand)
+  .command('projects', projectsCommand)
+  .command('workflow', workflowCommand)
+  .command('desktop', desktopCommand);
 
 // Dynamically register plugin CLI commands
 try {

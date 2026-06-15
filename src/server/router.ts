@@ -152,6 +152,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(hits);
   }
 
+  // POST /api/webhooks/:name — Event trigger webhook receiver
+  if (req.method === 'POST' && path.startsWith('/api/webhooks/')) {
+    const { handleWebhookRequest } = await import('../triggers/webhook.ts');
+    const result = await handleWebhookRequest(req);
+    if (result) return result;
+  }
+
+  // MCP server endpoint (GET /mcp, POST /mcp)
+  if (path.startsWith('/mcp')) {
+    const { handleMcpHttpRequest } = await import('../mcp/server.ts');
+    const result = await handleMcpHttpRequest(req);
+    if (result) return result;
+  }
+
+  // GET /metrics — Prometheus metrics endpoint
+  if (req.method === 'GET' && path === '/metrics') {
+    const { renderPrometheus } = await import('../observability/metrics.ts');
+    const text = renderPrometheus();
+    return new Response(text, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; version=0.0.4' },
+    });
+  }
+
   // GET /api/health
   if (req.method === 'GET' && path === '/api/health') {
     return json({ status: 'ok', ts: new Date().toISOString() });
@@ -442,6 +466,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!session) return notFound('Session not found');
     await deleteSessionDb(delSessionMatch[1]);
     return json({ ok: true });
+  }
+
+  // ── Pipeline Hooks ───────────────────────────────────────
+
+  // GET /api/hooks
+  if (req.method === 'GET' && path === '/api/hooks') {
+    const { listHooks } = await import('../pipeline/manager.ts');
+    return json(listHooks().map((r) => ({
+      name: r.hook.name,
+      stages: r.hook.stages,
+      priority: r.hook.priority,
+      async: r.hook.async,
+      disableable: r.hook.disableable,
+      source: r.source,
+      pluginName: r.pluginName ?? null,
+    })));
+  }
+
+  // POST /api/hooks/:name/disable
+  const hookDisableMatch = path.match(/^\/api\/hooks\/([^/]+)\/disable$/);
+  if (req.method === 'POST' && hookDisableMatch) {
+    const { unregisterHook } = await import('../pipeline/manager.ts');
+    const ok = unregisterHook(hookDisableMatch[1]);
+    return ok ? json({ ok: true }) : notFound('Hook not found');
   }
 
   // ── Plugins ──────────────────────────────────────────────
