@@ -2081,7 +2081,7 @@ async function loadSkills() {
   for (const s of skills) {
     let metadata = {};
     try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
-    const tags = metadata.tags as string[] || [];
+    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
     tags.forEach(t => allTags.add(t));
   }
 
@@ -2125,7 +2125,7 @@ function renderSkillsList() {
     if (!skillTagFilter) return true;
     let metadata = {};
     try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
-    const tags = metadata.tags as string[] || [];
+    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
     return tags.includes(skillTagFilter);
   });
 
@@ -2154,9 +2154,10 @@ function renderSkillsList() {
     const descTrunc = (s.description ?? '').slice(0, 80);
     let metadata = {};
     try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
-    const tags = (metadata.tags as string[] || []).slice(0, 3);
-    const difficulty = metadata.difficulty as string || '';
-    const needsExpand = (s.description ?? '').length > 80 || steps.length > 0 || s.content || tags.length > 0 || (metadata.examples as string[]|undefined)?.length;
+    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []).slice(0, 3);
+    const difficulty = typeof metadata.difficulty === 'string' ? metadata.difficulty : '';
+    const examplesLen = Array.isArray(metadata.examples) ? metadata.examples.length : 0;
+    const needsExpand = (s.description ?? '').length > 80 || steps.length > 0 || s.content || tags.length > 0 || examplesLen > 0;
     
     d.innerHTML = 
       // Header row: name, origin badge, stats, delete button
@@ -2201,9 +2202,9 @@ function renderSkillsList() {
       (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
         (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:JetBrains Mono,monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
-        ((metadata.prerequisites as string[]|undefined) && (metadata.prerequisites as string[]).length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc((metadata.prerequisites as string[]).join(', ')) + '</span></div>' : '') +
-        ((metadata.examples as string[]|undefined) && (metadata.examples as string[]).length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
-          (metadata.examples as string[]).slice(0, 3).map(function(ex) {
+        (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
+        (Array.isArray(metadata.examples) && metadata.examples.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
+          metadata.examples.slice(0, 3).map(function(ex) {
             return '<div style="font-size:10px;color:var(--text2);padding:2px 0;margin-left:12px;">• ' + esc(ex.slice(0, 80)) + '</div>';
           }).join('') : '') +
         (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;margin-bottom:6px;" onclick="event.stopPropagation();openSkillDesigner(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
