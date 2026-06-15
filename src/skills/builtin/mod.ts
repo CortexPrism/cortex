@@ -2,6 +2,10 @@ export interface BuiltinSkill {
   name: string;
   description: string;
   content: string;
+  tags?: string[];
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  examples?: string[];
+  prerequisites?: string[];
 }
 
 import { cortexDevSkill } from './cortex-dev.ts';

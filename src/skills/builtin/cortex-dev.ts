@@ -3,6 +3,14 @@ import type { BuiltinSkill } from './mod.ts';
 export const cortexDevSkill: BuiltinSkill = {
   name: 'cortex-dev',
   description: 'Project-wide development guidelines for CortexPrism — architecture, conventions, workflow',
+  tags: ['development', 'backend', 'architecture', 'conventions'],
+  difficulty: 'intermediate',
+  examples: [
+    'Adding a new CLI command to the system',
+    'Creating a new LLM provider integration',
+    'Implementing a database migration',
+    'Building a new agent subsystem'
+  ],
   content: `# CortexPrism Development Guidelines
 
 ## Stack
@@ -88,5 +96,113 @@ Changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) forma
 ## Available Cortex Commands
 
 - \`/commit\` — Stage, update changelog + version, commit, push
-- \`/dev\` — Run check, lint, fmt, test, serve tasks`,
+- \`/dev\` — Run check, lint, fmt, test, serve tasks
+
+## Practical Workflows
+
+### Adding a New CLI Command
+
+1. Create \`src/cli/<feature>.ts\` with a \`Command\` definition
+2. Export the command class
+3. Import and register in \`src/main.ts\` main command
+4. Test with \`deno task check\` and manual testing
+5. Update \`CHANGELOG.md\` and version in \`deno.json\`
+
+Example structure:
+\`\`\`ts
+import { Command } from '@cliffy/command';
+
+export class MyCommand extends Command {
+  constructor() {
+    super();
+    this.name('mycommand')
+      .description('Does something useful')
+      .option('--flag', 'Enable feature')
+      .action(async (options) => {
+        // Implementation
+      });
+  }
+}
+\`\`\`
+
+### Adding a New REST Endpoint
+
+1. Define route handler in \`src/server/router.ts\`
+2. Use \`POST\`, \`GET\`, \`PATCH\`, or \`DELETE\` methods
+3. Return JSON responses with appropriate HTTP status codes
+4. Include error handling and validation
+5. Test with curl or a REST client
+
+Pattern:
+\`\`\`ts
+router.post('/api/myfeature', async (req, res) => {
+  try {
+    const body = await req.json();
+    // Validate body
+    if (!body.required_field) return res.json({ error: 'Missing field' }, 400);
+    // Process
+    const result = await processFeature(body);
+    return res.json(result);
+  } catch (e) {
+    return res.json({ error: e.message }, 500);
+  }
+});
+\`\`\`
+
+### Creating a Database Migration
+
+1. Create \`src/db/migrations/NNN_<description>.sql\` (increment NNN)
+2. Write idempotent SQL (use \`IF NOT EXISTS\`, etc.)
+3. Register migration in \`src/db/migrate.ts\`
+4. Run \`deno task check\` to verify
+5. Test migration with \`sqlite3\` CLI if needed
+
+Example:
+\`\`\`sql
+-- 001_create_users_table.sql
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  created_at TEXT NOT NULL
+);
+\`\`\`
+
+### Adding a New LLM Provider
+
+1. Create \`src/llm/<provider>.ts\` implementing \`LLMProvider\` interface
+2. Implement required methods: \`complete()\`, \`chat()\`, pricing logic
+3. Register in \`src/llm/router.ts\`
+4. Add to CLI setup wizard in \`src/cli/setup.ts\`
+5. Add UI configuration in \`src/server/ui.ts\`
+
+Required interface:
+\`\`\`ts
+export interface LLMProvider {
+  complete(prompt: string, opts: CompleteOpts): Promise<string>;
+  chat(messages: Message[], opts: ChatOpts): Promise<string>;
+  getTokenCount(text: string): number;
+}
+\`\`\`
+
+## Common Pitfalls
+
+- **Hardcoded paths**: Always use \`PATHS\` from \`src/config/paths.ts\`
+- **Blocking responses**: Use \`.catch(() => {})\` for fire-and-forget tasks
+- **Type errors**: Enable strict TypeScript; avoid \`any\` types
+- **SQL injection**: Always use parameterized queries with \`@libsql/client\`
+- **Missing error handling**: Catch errors at boundaries, return useful messages
+- **Subprocess spawning**: Use \`Deno.Command\`, never \`Deno.run\`
+
+## Testing Checklist
+
+Before committing:
+- [ ] \`deno task check\` passes (no type errors)
+- [ ] \`deno task lint\` passes (no style issues)
+- [ ] \`deno task fmt\` applied (code formatted)
+- [ ] \`deno task test\` passes (all tests green)
+- [ ] Manual testing in dev mode (\`deno task serve\`)
+- [ ] CHANGELOG.md updated with feature/fix
+- [ ] Version bumped in deno.json (SemVer)`,
+  prerequisites: ['TypeScript knowledge', 'Deno familiarity'],
 };

@@ -8,6 +8,13 @@ function skillId(): string {
   return `skill_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+export interface SkillMetadata {
+  tags?: string[];
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  examples?: string[];
+  prerequisites?: string[];
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -21,6 +28,7 @@ export interface Skill {
   origin: 'human' | 'llm';
   content: string | null;
   created_at: string;
+  metadata?: SkillMetadata | null;
 }
 
 export interface SkillStep {
@@ -39,6 +47,7 @@ export async function storeSkill(opts: {
   sessionId?: string;
   origin?: 'human' | 'llm';
   content?: string;
+  metadata?: SkillMetadata;
 }): Promise<string> {
   const db = await getMemoryDb();
   const now = new Date().toISOString();
@@ -55,6 +64,7 @@ export async function storeSkill(opts: {
            trigger_pattern = COALESCE(?, trigger_pattern),
            content = COALESCE(?, content),
            origin = COALESCE(?, origin),
+           metadata = COALESCE(?, metadata),
            version = CASE WHEN steps != ? OR COALESCE(description,'') != COALESCE(?,'') OR COALESCE(content,'') != COALESCE(?,'')
                     THEN version + 1 ELSE version END,
            updated_at = ?
@@ -65,6 +75,7 @@ export async function storeSkill(opts: {
         opts.triggerPattern ?? null,
         opts.content ?? null,
         opts.origin ?? 'llm',
+        opts.metadata ? JSON.stringify(opts.metadata) : null,
         JSON.stringify(opts.steps),
         opts.description ?? '',
         opts.content ?? '',
@@ -78,8 +89,8 @@ export async function storeSkill(opts: {
   const id = skillId();
   await db.run(
     `INSERT INTO procedural_memory
-       (id, name, description, trigger_pattern, steps, origin, content, source_session, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, description, trigger_pattern, steps, origin, content, source_session, metadata, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       opts.name,
@@ -89,6 +100,7 @@ export async function storeSkill(opts: {
       opts.origin ?? 'llm',
       opts.content ?? null,
       opts.sessionId ?? null,
+      opts.metadata ? JSON.stringify(opts.metadata) : null,
       now,
       now,
     ] as InValue[],
@@ -139,45 +151,62 @@ export async function findMatchingSkills(description: string, limit = 5): Promis
   const db = await getMemoryDb();
   const words = description.toLowerCase().split(/\s+/).filter((w) => w.length >= 4);
 
+  let skills: Skill[];
   if (words.length === 0) {
-    return await db.all<Skill>(
+    skills = await db.all<Skill>(
       `SELECT * FROM procedural_memory ORDER BY success_rate DESC, invocation_count DESC LIMIT ?`,
       [limit],
     );
+  } else {
+    const conditions = words.slice(0, 5).map(() =>
+      `(name LIKE ? OR description LIKE ? OR trigger_pattern LIKE ?)`
+    ).join(' OR ');
+    const args = words.slice(0, 5).flatMap((w) => [`%${w}%`, `%${w}%`, `%${w}%`]);
+
+    skills = await db.all<Skill>(
+      `SELECT * FROM procedural_memory WHERE ${conditions}
+       ORDER BY success_rate DESC, invocation_count DESC LIMIT ?`,
+      [...args, limit] as InValue[],
+    );
   }
+  return skills.map(parseSkill);
+}
 
-  const conditions = words.slice(0, 5).map(() =>
-    `(name LIKE ? OR description LIKE ? OR trigger_pattern LIKE ?)`
-  ).join(' OR ');
-  const args = words.slice(0, 5).flatMap((w) => [`%${w}%`, `%${w}%`, `%${w}%`]);
-
-  return await db.all<Skill>(
-    `SELECT * FROM procedural_memory WHERE ${conditions}
-     ORDER BY success_rate DESC, invocation_count DESC LIMIT ?`,
-    [...args, limit] as InValue[],
-  );
+function parseSkill(skill: Skill): Skill {
+  if (skill.metadata && typeof skill.metadata === 'string') {
+    try {
+      skill.metadata = JSON.parse(skill.metadata) as SkillMetadata;
+    } catch {
+      skill.metadata = undefined;
+    }
+  }
+  return skill;
 }
 
 export async function listSkills(limit = 20, origin?: 'human' | 'llm'): Promise<Skill[]> {
   const db = await getMemoryDb();
+  let skills: Skill[];
   if (origin) {
-    return await db.all<Skill>(
+    skills = await db.all<Skill>(
       `SELECT * FROM procedural_memory WHERE origin = ? ORDER BY success_rate DESC, updated_at DESC LIMIT ?`,
       [origin, limit],
     );
+  } else {
+    skills = await db.all<Skill>(
+      `SELECT * FROM procedural_memory ORDER BY success_rate DESC, updated_at DESC LIMIT ?`,
+      [limit],
+    );
   }
-  return await db.all<Skill>(
-    `SELECT * FROM procedural_memory ORDER BY success_rate DESC, updated_at DESC LIMIT ?`,
-    [limit],
-  );
+  return skills.map(parseSkill);
 }
 
 export async function getSkillByName(name: string): Promise<Skill | undefined> {
   const db = await getMemoryDb();
-  return await db.get<Skill>(
+  const skill = await db.get<Skill>(
     `SELECT * FROM procedural_memory WHERE name = ? LIMIT 1`,
     [name],
   );
+  return skill ? parseSkill(skill) : undefined;
 }
 
 export async function getSkillStats(): Promise<{
@@ -404,9 +433,10 @@ ${skill.content ? `**Full instructions**:\n${skill.content}` : ''}`;
 
 export async function getAllHumanSkills(): Promise<Skill[]> {
   const db = await getMemoryDb();
-  return await db.all<Skill>(
+  const skills = await db.all<Skill>(
     `SELECT * FROM procedural_memory WHERE origin = 'human' ORDER BY name ASC`,
   );
+  return skills.map(parseSkill);
 }
 
 export function formatSkillsAsAvailableList(skills: Skill[]): string {
@@ -433,6 +463,12 @@ export async function registerBuiltinSkills(skillsDir?: string): Promise<number>
         steps: [{ step: 1, action: skill.content, description: skill.content }],
         origin: 'human',
         content: skill.content,
+        metadata: {
+          tags: skill.tags,
+          difficulty: skill.difficulty,
+          examples: skill.examples,
+          prerequisites: skill.prerequisites,
+        },
       });
       count++;
     }

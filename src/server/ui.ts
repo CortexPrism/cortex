@@ -111,7 +111,8 @@ const HTML = `<!DOCTYPE html>
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
   /* Card */
-  .card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px; transition:all 0.2s ease; }
+  .card:hover { border-color:var(--accent2); background:var(--bg2); }
   .card-sm { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
 
   /* Memory tabs */
@@ -2040,8 +2041,14 @@ function deleteSkill(name) {
 
 function toggleSkillDetail(card) {
   const detail = card.querySelector('.skill-detail');
+  const chevron = card.querySelector('.skill-expand-chevron');
   if (detail) {
-    detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+    const isHidden = detail.style.display === 'none';
+    detail.style.display = isHidden ? 'block' : 'none';
+    if (chevron) {
+      chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    card.style.background = isHidden ? 'var(--bg1)' : 'var(--bg0)';
   }
 }
 
@@ -2087,38 +2094,70 @@ async function loadSkills() {
     d.className = 'card';
     d.style.cursor = 'pointer';
     d.onclick = function() { toggleSkillDetail(d); };
+    d.style.transition = 'all 0.2s ease';
 
-    d.innerHTML = '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">' +
-      '<div>' +
-        '<span style="font-size:14px;font-weight:500;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span> ' + originBadge +
-        '<p style="font-size:12px;color:var(--text2);margin-top:3px;">' + esc(s.description ?? '') + '</p>' +
-      '</div>' +
-      '<div style="display:flex;align-items:center;gap:12px;">' +
-        '<div style="text-align:right;min-width:80px;">' +
-          '<div style="font-size:15px;font-weight:600;color:' + rateColor + ';">' + rate + '%</div>' +
-          '<div style="font-size:11px;color:var(--text3);">v' + (s.version ?? 1) + ' · ' + (s.invocation_count ?? 0) + ' uses</div>' +
+    const descTrunc = (s.description ?? '').slice(0, 80);
+    let metadata = {};
+    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+    const tags = (metadata.tags as string[] || []).slice(0, 3);
+    const difficulty = metadata.difficulty as string || '';
+    const needsExpand = (s.description ?? '').length > 80 || steps.length > 0 || s.content || tags.length > 0 || (metadata.examples as string[]|undefined)?.length;
+    
+    d.innerHTML = 
+      // Header row: name, origin badge, stats, delete button
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex:1;">' +
+          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+          originBadge +
+          (difficulty ? '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#a855f7;">' + esc(difficulty) + '</span>' : '') +
         '</div>' +
-        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;" onclick="event.stopPropagation();deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div style="text-align:right;">' +
+            '<div style="font-size:14px;font-weight:600;color:' + rateColor + ';">' + rate + '%</div>' +
+            '<div style="font-size:10px;color:var(--text3);">v' + (s.version ?? 1) + ' · ' + (s.invocation_count ?? 0) + ' uses</div>' +
+          '</div>' +
+          '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;margin-left:4px;" onclick="event.stopPropagation();deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
+        '</div>' +
       '</div>' +
-    '</div>' +
-    (s.trigger_pattern ? '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);">' + esc(s.trigger_pattern) + '</span></div>' : '') +
-    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;">' +
-      steps.slice(0, 5).map(function(step, i) {
-        return '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 40)) + '</span>';
-      }).join('') +
-      (steps.length > 5 ? '<span class="badge" style="background:rgba(99,102,241,0.05);color:var(--text3);">+' + (steps.length - 5) + ' more</span>' : '') +
-    '</div>' +
-    // Expandable detail
-    '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
-      (s.source_session ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Source session: <span style="color:var(--text2);">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
-      '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Created: ' + new Date(s.created_at).toLocaleString() + '</div>' +
-      (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-bottom:4px;" onclick="event.stopPropagation();openSkillDesigner(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
-      (s.content ? '<div style="margin-top:6px;font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--bg2);padding:8px;border-radius:4px;">' + esc(s.content.slice(0, 2000)) + '</div>' : '') +
-      (steps.length > 0 ? '<div style="margin-top:6px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">All steps:</div>' +
-        steps.map(function(step, i) {
-          return '<div style="font-size:11px;color:var(--text2);padding:2px 0;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '')) + (step.tool ? ' <span style="color:var(--accent2);">[' + esc(step.tool) + ']</span>' : '') + '</div>';
-        }).join('') + '</div>' : '') +
-    '</div>';
+      // Description
+      '<p style="font-size:12px;color:var(--text2);margin:0 0 8px 0;line-height:1.4;">' + esc(descTrunc) + (descTrunc.length > 0 && (s.description ?? '').length > 80 ? '…' : '') + '</p>' +
+      // Tags
+      (tags.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">' +
+        tags.map(function(tag) {
+          return '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(tag) + '</span>';
+        }).join('') +
+      '</div>' : '') +
+      // Steps badges or trigger
+      (steps.length > 0 
+        ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">' +
+            steps.slice(0, 4).map(function(step, i) {
+              return '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);font-size:10px;padding:2px 6px;border-radius:3px;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 28)) + '</span>';
+            }).join('') +
+            (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
+          '</div>'
+        : '') +
+      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Trigger: <span style="color:var(--accent2);font-family:JetBrains Mono,monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
+      // Expandable indicator
+      (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
+        '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
+        '<span>View details</span>' +
+      '</div>' : '') +
+      // Expandable detail section
+      (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
+        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:JetBrains Mono,monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
+        '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
+        ((metadata.prerequisites as string[]|undefined) && (metadata.prerequisites as string[]).length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc((metadata.prerequisites as string[]).join(', ')) + '</span></div>' : '') +
+        ((metadata.examples as string[]|undefined) && (metadata.examples as string[]).length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
+          (metadata.examples as string[]).slice(0, 3).map(function(ex) {
+            return '<div style="font-size:10px;color:var(--text2);padding:2px 0;margin-left:12px;">• ' + esc(ex.slice(0, 80)) + '</div>';
+          }).join('') : '') +
+        (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;margin-bottom:6px;" onclick="event.stopPropagation();openSkillDesigner(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
+        (s.content ? '<div style="margin-top:6px;font-size:10px;color:var(--text2);white-space:pre-wrap;max-height:150px;overflow-y:auto;background:var(--bg2);padding:8px;border-radius:4px;border:1px solid var(--border);">' + esc(s.content.slice(0, 1500)) + '</div>' : '') +
+        (steps.length > 0 ? '<div style="margin-top:6px;"><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">All steps:</div>' +
+          steps.map(function(step, i) {
+            return '<div style="font-size:10px;color:var(--text2);padding:3px 0;line-height:1.4;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 100)) + (step.tool ? ' <span style="color:var(--accent2);font-size:9px;">[' + esc(step.tool) + ']</span>' : '') + '</div>';
+          }).join('') + '</div>' : '') +
+      '</div>' : '');
 
     el.appendChild(d);
   }
