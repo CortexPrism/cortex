@@ -16,13 +16,13 @@ import { listPolicies } from '../security/policy.ts';
 import { getMemoryDb } from '../db/client.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import {
-  disablePlugin,
-  enablePlugin,
   installPlugin,
   listPlugins,
   removePlugin,
 } from '../plugins/registry.ts';
-import type { PluginManifest } from '../plugins/registry.ts';
+import { pluginManager } from '../plugins/manager.ts';
+import type { PluginManifest } from '../plugins/types.ts';
+import { extractSettingsSchema } from '../plugins/extensions/config.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
@@ -440,32 +440,95 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(await listPlugins());
   }
 
+  // GET /api/plugins/panels
+  if (req.method === 'GET' && path === '/api/plugins/panels') {
+    const plugins = await listPlugins();
+    const panels = plugins
+      .filter((p) => p.enabled === 1 && p.status === 'active')
+      .map((p) => {
+        let manifest: PluginManifest | null = null;
+        try { manifest = JSON.parse(p.manifest_json) as PluginManifest; } catch { /* skip */ }
+        if (!manifest?.ui?.panels) return null;
+        return manifest.ui.panels.map((panel) => ({
+          pluginId: p.name,
+          panelId: panel.id,
+          title: panel.title,
+          icon: panel.icon ?? null,
+        }));
+      })
+      .filter(Boolean)
+      .flat();
+    return json(panels);
+  }
+
+  // GET /api/plugins/:name
+  const pluginGetMatch = path.match(/^\/api\/plugins\/([^/]+)$/);
+  if (req.method === 'GET' && pluginGetMatch) {
+    const plugin = await pluginManager.get(pluginGetMatch[1]);
+    if (!plugin) return notFound('Plugin not found');
+    return json(plugin);
+  }
+
   // POST /api/plugins/install
   if (req.method === 'POST' && path === '/api/plugins/install') {
     const body = await req.json() as PluginManifest;
-    await installPlugin(body);
+    await pluginManager.install(body);
     return json({ ok: true });
   }
 
-  // POST /api/plugins/:id/enable
+  // POST /api/plugins/:name/enable
   const pluginEnableMatch = path.match(/^\/api\/plugins\/([^/]+)\/enable$/);
   if (req.method === 'POST' && pluginEnableMatch) {
-    await enablePlugin(pluginEnableMatch[1]);
+    await pluginManager.enable(pluginEnableMatch[1]);
     return json({ ok: true });
   }
 
-  // POST /api/plugins/:id/disable
+  // POST /api/plugins/:name/disable
   const pluginDisableMatch = path.match(/^\/api\/plugins\/([^/]+)\/disable$/);
   if (req.method === 'POST' && pluginDisableMatch) {
-    await disablePlugin(pluginDisableMatch[1]);
+    await pluginManager.disable(pluginDisableMatch[1]);
     return json({ ok: true });
   }
 
-  // DELETE /api/plugins/:id
+  // DELETE /api/plugins/:name
   const pluginDeleteMatch = path.match(/^\/api\/plugins\/([^/]+)$/);
   if (req.method === 'DELETE' && pluginDeleteMatch) {
-    await removePlugin(pluginDeleteMatch[1]);
+    await pluginManager.remove(pluginDeleteMatch[1]);
     return json({ ok: true });
+  }
+
+  // GET /api/plugins/:name/config
+  const pluginConfigGetMatch = path.match(/^\/api\/plugins\/([^/]+)\/config$/);
+  if (req.method === 'GET' && pluginConfigGetMatch) {
+    const config = await loadConfig();
+    const plugins = (config as unknown as Record<string, unknown>).plugins as Record<string, Record<string, unknown>> | undefined;
+    return json(plugins?.[pluginConfigGetMatch[1]] ?? {});
+  }
+
+  // PUT /api/plugins/:name/config
+  const pluginConfigPutMatch = path.match(/^\/api\/plugins\/([^/]+)\/config$/);
+  if (req.method === 'PUT' && pluginConfigPutMatch) {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.plugins) cfg.plugins = {};
+    const plugins = cfg.plugins as Record<string, Record<string, unknown>>;
+    plugins[pluginConfigPutMatch[1]] = body;
+    await saveConfig(config);
+    return json({ ok: true });
+  }
+
+  // GET /api/plugins/:name/settings
+  const pluginSettingsMatch = path.match(/^\/api\/plugins\/([^/]+)\/settings$/);
+  if (req.method === 'GET' && pluginSettingsMatch) {
+    const plugin = await pluginManager.get(pluginSettingsMatch[1]);
+    if (!plugin) return notFound('Plugin not found');
+    try {
+      const manifest = JSON.parse(plugin.manifest_json) as PluginManifest;
+      return json(extractSettingsSchema(manifest));
+    } catch {
+      return json({ pluginName: pluginSettingsMatch[1], sections: [] });
+    }
   }
 
   // ── Jobs CRUD ────────────────────────────────────────────
@@ -925,7 +988,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins/${slug}/download`);
     if (!dlRes.ok) return json({ error: `Plugin "${slug}" not found` }, 404);
     const manifest = await dlRes.json() as {
-      id?: string;
       name: string;
       version: string;
       description?: string;
@@ -934,19 +996,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
       capabilities?: string[];
       author?: string;
       homepage?: string;
+      runtime?: string;
+      license?: string;
     };
     const { installPlugin } = await import('../plugins/registry.ts');
     try {
       await installPlugin({
-        id: manifest.id ?? '',
         name: manifest.name,
         version: manifest.version,
         description: manifest.description ?? '',
-        kind: manifest.kind as 'esm' | 'mcp' | 'wasm',
+        kind: (manifest.kind as 'esm' | 'mcp' | 'wasm') || 'esm',
         entryPoint: manifest.entryPoint,
-        capabilities: manifest.capabilities ?? [],
+        runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
+        capabilities: (manifest.capabilities ?? []) as never[],
         author: manifest.author,
         homepage: manifest.homepage,
+        license: manifest.license,
       });
       return json({ ok: true, name: manifest.name });
     } catch (e) {

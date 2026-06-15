@@ -7,7 +7,7 @@ import { buildProvider, buildRouter } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
-import { ToolRegistry } from '../tools/registry.ts';
+import { globalRegistry } from '../tools/registry.ts';
 import type { Tool } from '../tools/types.ts';
 import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
@@ -204,7 +204,7 @@ export function handleWebSocket(req: Request): Response {
         );
 
         // Build tool registry respecting agent's tool allow-list
-        const registry = new ToolRegistry();
+        const registry = globalRegistry;
         const allTools: Record<string, Tool> = {
           file_read: fileReadTool,
           file_write: fileWriteTool,
@@ -231,6 +231,12 @@ export function handleWebSocket(req: Request): Response {
         for (const name of allowedTools) {
           if (allTools[name]) registry.register(allTools[name]);
         }
+
+        // Load active plugin tools
+        const { pluginManager } = await import('../plugins/manager.ts');
+        await pluginManager.loadAll().catch((e) => {
+          console.error(`[ws] Plugin load warning: ${(e as Error).message}`);
+        });
 
         send(ws, { type: 'start' });
 

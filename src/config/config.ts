@@ -102,6 +102,8 @@ export interface CortexConfig {
   /** Currently selected/default agent ID */
   defaultAgent: string;
   update: UpdateConfig;
+  /** Plugin-scoped configuration keyed by plugin name */
+  plugins?: Record<string, Record<string, unknown>>;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -143,6 +145,7 @@ const DEFAULT_CONFIG: CortexConfig = {
     githubToken: null,
     gpgKeyPath: null,
   },
+  plugins: {},
 };
 
 let _config: CortexConfig | null = null;

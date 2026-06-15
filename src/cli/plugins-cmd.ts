@@ -1,14 +1,9 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
-import {
-  disablePlugin,
-  enablePlugin,
-  installPlugin,
-  listPlugins,
-  removePlugin,
-} from '../plugins/registry.ts';
-import type { PluginKind } from '../plugins/registry.ts';
+import { installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts';
+import { pluginManager } from '../plugins/manager.ts';
+import type { PluginKind } from '../plugins/types.ts';
 
 export const pluginsCommand = new Command()
   .name('plugins')
@@ -28,11 +23,11 @@ export const pluginsCommand = new Command()
         console.log(dim('  ' + '─'.repeat(60)));
         for (const p of plugins) {
           const status = p.enabled ? green('● enabled') : dim('○ disabled');
-          const kind = cyan(p.kind.padEnd(5));
+          const kind = cyan(p.type.padEnd(5));
+          const state = p.status !== 'unloaded' ? yellow(` [${p.status}]`) : '';
           console.log(
-            `  ${status}  ${kind}  ${bold(p.name)}@${p.version}  ${dim(p.description ?? '')}`,
+            `  ${status}  ${kind}  ${bold(p.name)}@${p.version}${state}  ${dim(p.description ?? '')}`,
           );
-          console.log(dim(`           id: ${p.id}`));
         }
         console.log('');
       }),
@@ -74,26 +69,28 @@ export const pluginsCommand = new Command()
           manifest = JSON.parse(await Deno.readTextFile(source));
         }
         const m = manifest as {
-          id?: string;
           name: string;
           version: string;
           description?: string;
           kind: string;
           entryPoint: string;
+          runtime?: string;
           capabilities?: string[];
           author?: string;
           homepage?: string;
+          license?: string;
         };
         await installPlugin({
-          id: m.id ?? '',
           name: m.name,
           version: m.version,
           description: m.description ?? '',
-          kind: m.kind as PluginKind,
+          kind: (m.kind as PluginKind) || 'esm',
           entryPoint: m.entryPoint,
-          capabilities: m.capabilities ?? [],
+          runtime: (m.runtime as 'deno' | 'wasm') || 'deno',
+          capabilities: (m.capabilities ?? []) as never[],
           author: m.author,
           homepage: m.homepage,
+          license: m.license,
         });
         console.log(green(`  ✓ Installed: ${m.name}@${m.version}`));
       }),
@@ -101,33 +98,33 @@ export const pluginsCommand = new Command()
   .command(
     'enable',
     new Command()
-      .description('Enable a plugin by ID')
-      .arguments('<id:string>')
-      .action(async (_: void, id: string) => {
+      .description('Enable a plugin by name')
+      .arguments('<name:string>')
+      .action(async (_: void, name: string) => {
         await runMigrations();
-        await enablePlugin(id);
-        console.log(green(`  ✓ Enabled: ${id}`));
+        await pluginManager.enable(name);
+        console.log(green(`  ✓ Enabled: ${name}`));
       }),
   )
   .command(
     'disable',
     new Command()
-      .description('Disable a plugin by ID')
-      .arguments('<id:string>')
-      .action(async (_: void, id: string) => {
+      .description('Disable a plugin by name')
+      .arguments('<name:string>')
+      .action(async (_: void, name: string) => {
         await runMigrations();
-        await disablePlugin(id);
-        console.log(yellow(`  ○ Disabled: ${id}`));
+        await pluginManager.disable(name);
+        console.log(yellow(`  ○ Disabled: ${name}`));
       }),
   )
   .command(
     'remove',
     new Command()
-      .description('Remove a plugin by ID')
-      .arguments('<id:string>')
-      .action(async (_: void, id: string) => {
+      .description('Remove a plugin by name')
+      .arguments('<name:string>')
+      .action(async (_: void, name: string) => {
         await runMigrations();
-        await removePlugin(id);
-        console.log(red(`  ✗ Removed: ${id}`));
+        await pluginManager.remove(name);
+        console.log(red(`  ✗ Removed: ${name}`));
       }),
   );

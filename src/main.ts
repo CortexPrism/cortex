@@ -83,6 +83,26 @@ const program = new Command()
   .command('git', gitCommand)
   .command('github', githubCommand);
 
+// Dynamically register plugin CLI commands
+try {
+  const { pluginManager } = await import('./plugins/manager.ts');
+  const { buildCliffyCommand } = await import('./plugins/extensions/cli.ts');
+  await pluginManager.loadAll();
+  const activeCliCommands = pluginManager.getActiveCliCommands();
+  for (const { pluginName, module, manifest } of activeCliCommands) {
+    for (const cmdDecl of manifest.cliCommands ?? []) {
+      try {
+        const cmd = buildCliffyCommand(cmdDecl, module as Record<string, unknown>);
+        program.command(cmdDecl.name, cmd);
+      } catch (e) {
+        console.error(`[plugins] Failed to register CLI command from ${pluginName}: ${(e as Error).message}`);
+      }
+    }
+  }
+} catch (e) {
+  console.error(`[plugins] Failed to load plugin CLI commands: ${(e as Error).message}`);
+}
+
 await program.parse(Deno.args);
 
 async function getVersion(): Promise<string> {

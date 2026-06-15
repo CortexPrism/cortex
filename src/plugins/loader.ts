@@ -1,38 +1,55 @@
 import { getEnabledPlugins } from './registry.ts';
-import type { PluginRow } from './registry.ts';
+import type { PluginRow } from './types.ts';
+import type { LoadedPlugin, PluginContext, PluginModule } from './types.ts';
 import type { Tool, ToolContext } from '../tools/types.ts';
-
-export interface LoadedPlugin {
-  manifest: PluginRow;
-  tools: Tool[];
-}
-
-export interface PluginModule {
-  tools?: Tool[];
-  onLoad?: () => Promise<void>;
-  onUnload?: () => Promise<void>;
-}
+import { globalRegistry } from '../tools/registry.ts';
 
 const _loaded = new Map<string, LoadedPlugin>();
 
-export async function loadEsmPlugin(row: PluginRow): Promise<LoadedPlugin> {
-  if (_loaded.has(row.id)) return _loaded.get(row.id)!;
+export function isLoaded(name: string): boolean {
+  return _loaded.has(name);
+}
+
+export function getLoaded(name: string): LoadedPlugin | undefined {
+  return _loaded.get(name);
+}
+
+export function unloadPlugin(name: string): void {
+  const loaded = _loaded.get(name);
+  if (!loaded) return;
+
+  for (const tool of loaded.tools) {
+    globalRegistry.unregister(tool.definition.name);
+  }
+  _loaded.delete(name);
+}
+
+export async function loadEsmPlugin(row: PluginRow, ctx: PluginContext): Promise<LoadedPlugin> {
+  if (_loaded.has(row.name)) return _loaded.get(row.name)!;
 
   try {
-    const mod = await import(row.entry_point) as PluginModule;
-    if (mod.onLoad) await mod.onLoad();
+    const mod = await import(row.entry) as PluginModule;
+
+    if (mod.onLoad) await mod.onLoad(ctx);
+
     const tools = mod.tools ?? [];
-    const loaded: LoadedPlugin = { manifest: row, tools };
-    _loaded.set(row.id, loaded);
+    for (const tool of tools) {
+      globalRegistry.register(tool);
+    }
+
+    const loaded: LoadedPlugin = { row, tools, module: mod };
+    _loaded.set(row.name, loaded);
+    ctx.logger.info(`Loaded with ${tools.length} tool(s)`);
     return loaded;
   } catch (e) {
     throw new Error(`Failed to load ESM plugin ${row.name}: ${(e as Error).message}`);
   }
 }
 
-export async function loadMcpPlugin(row: PluginRow): Promise<LoadedPlugin> {
-  const url = row.entry_point;
+export async function loadMcpPlugin(row: PluginRow, ctx: PluginContext): Promise<LoadedPlugin> {
+  if (_loaded.has(row.name)) return _loaded.get(row.name)!;
 
+  const url = row.entry;
   const mcpTool: Tool = {
     definition: {
       name: `mcp_${row.name}`,
@@ -43,7 +60,7 @@ export async function loadMcpPlugin(row: PluginRow): Promise<LoadedPlugin> {
       ],
       capabilities: ['network:fetch'],
     },
-    execute: async (args: Record<string, unknown>, _ctx: ToolContext) => {
+    execute: async (args: Record<string, unknown>, _toolCtx: ToolContext) => {
       const t0 = Date.now();
       try {
         const res = await fetch(url, {
@@ -76,28 +93,37 @@ export async function loadMcpPlugin(row: PluginRow): Promise<LoadedPlugin> {
     },
   };
 
-  const tools: Tool[] = [mcpTool];
-
-  const loaded: LoadedPlugin = { manifest: row, tools };
-  _loaded.set(row.id, loaded);
+  globalRegistry.register(mcpTool);
+  const loaded: LoadedPlugin = { row, tools: [mcpTool] };
+  _loaded.set(row.name, loaded);
+  ctx.logger.info(`Loaded MCP plugin at ${url}`);
   return loaded;
 }
 
-export async function loadAllPlugins(): Promise<LoadedPlugin[]> {
+export async function loadPlugin(row: PluginRow, ctx: PluginContext): Promise<LoadedPlugin> {
+  if (row.type === 'mcp') {
+    return await loadMcpPlugin(row, ctx);
+  } else if (row.type === 'esm') {
+    return await loadEsmPlugin(row, ctx);
+  } else {
+    throw new Error(`Unsupported plugin type: ${row.type}`);
+  }
+}
+
+export async function loadAllPlugins(
+  ctxFactory: (name: string) => Promise<PluginContext>,
+): Promise<LoadedPlugin[]> {
   const rows = await getEnabledPlugins();
   const results: LoadedPlugin[] = [];
 
   for (const row of rows) {
+    if (row.type === 'wasm') {
+      console.warn(`[plugins] WASM plugins not yet supported: ${row.name}`);
+      continue;
+    }
     try {
-      let loaded: LoadedPlugin;
-      if (row.kind === 'mcp') {
-        loaded = await loadMcpPlugin(row);
-      } else if (row.kind === 'esm') {
-        loaded = await loadEsmPlugin(row);
-      } else {
-        console.warn(`[plugins] WASM plugins not yet supported: ${row.name}`);
-        continue;
-      }
+      const ctx = await ctxFactory(row.name);
+      const loaded = await loadPlugin(row, ctx);
       results.push(loaded);
     } catch (e) {
       console.error(`[plugins] Failed to load ${row.name}:`, (e as Error).message);
