@@ -5386,10 +5386,10 @@ function sdUpdateFrontmatter() {
   const name = document.getElementById('sd-name').value.trim();
   const desc = document.getElementById('sd-desc').value.trim();
   const trigger = document.getElementById('sd-trigger').value.trim();
-  let fm = '---\nname: ' + (name || 'my-skill') + '\ndescription: ';
-  fm += desc ? (desc.length > 80 ? '>-\n  ' + desc : desc) : '...';
-  if (trigger) fm += '\ntrigger_pattern: ' + trigger;
-  fm += '\n---';
+  let fm = '---\\nname: ' + (name || 'my-skill') + '\\ndescription: ';
+  fm += desc ? (desc.length > 80 ? '>-\\n  ' + desc : desc) : '...';
+  if (trigger) fm += '\\ntrigger_pattern: ' + trigger;
+  fm += '\\n---';
   document.getElementById('sd-frontmatter-preview').textContent = fm;
 }
 
