@@ -1468,5 +1468,99 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
+  // ── Node Registry ─────────────────────────────────────
+
+  // POST /api/nodes — register a new Node
+  if (req.method === 'POST' && path === '/api/nodes') {
+    const body = await req.json() as {
+      name: string;
+      endpoint: string;
+      tier?: string;
+      capabilities?: string[];
+      group?: string;
+    };
+    if (!body.name?.trim()) return err('Missing name', 400);
+    if (!body.endpoint?.trim()) return err('Missing endpoint', 400);
+    const { registerNode } = await import('../hub/node-registry.ts');
+    const result = await registerNode({
+      name: body.name,
+      endpoint: body.endpoint,
+      tier: (body.tier as 'root' | 'sudo' | 'unprivileged') ?? 'unprivileged',
+      capabilities: body.capabilities,
+      group: body.group,
+    });
+    return json({ node: result.node, token: result.token }, 201);
+  }
+
+  // GET /api/nodes/groups
+  if (req.method === 'GET' && path === '/api/nodes/groups') {
+    const { nodeGroups } = await import('../hub/node-registry.ts');
+    return json(await nodeGroups());
+  }
+
+  // GET /api/nodes — list all Nodes
+  if (req.method === 'GET' && path === '/api/nodes') {
+    const group = url.searchParams.get('group') ?? undefined;
+    const tier = url.searchParams.get('tier') ?? undefined;
+    const status = url.searchParams.get('status') ?? undefined;
+    const { listNodes } = await import('../hub/node-registry.ts');
+    const nodes = await listNodes({
+      group,
+      tier: tier as never,
+      status: status as never,
+    });
+    return json(nodes);
+  }
+
+  // GET /api/nodes/:id — Node detail
+  const nodeGetMatch = path.match(/^\/api\/nodes\/([^/]+)$/);
+  if (req.method === 'GET' && nodeGetMatch) {
+    const { getNode } = await import('../hub/node-registry.ts');
+    const node = await getNode(nodeGetMatch[1]);
+    if (!node) return notFound('Node not found');
+    return json(node);
+  }
+
+  // DELETE /api/nodes/:id — deregister Node
+  if (req.method === 'DELETE' && nodeGetMatch) {
+    const { deregisterNode } = await import('../hub/node-registry.ts');
+    const ok = await deregisterNode(nodeGetMatch[1]);
+    if (!ok) return notFound('Node not found');
+    return json({ ok: true });
+  }
+
+  // POST /api/nodes/:id/rekey — rotate Node token
+  const nodeRekeyMatch = path.match(/^\/api\/nodes\/([^/]+)\/rekey$/);
+  if (req.method === 'POST' && nodeRekeyMatch) {
+    const { rotateNodeToken } = await import('../hub/node-registry.ts');
+    const token = await rotateNodeToken(nodeRekeyMatch[1]);
+    if (!token) return notFound('Node not found');
+    return json({ token });
+  }
+
+  // GET /api/nodes/:id/metrics — historical metrics from lens_events
+  const nodeMetricsMatch = path.match(/^\/api\/nodes\/([^/]+)\/metrics$/);
+  if (req.method === 'GET' && nodeMetricsMatch) {
+    const db = await getLensDb();
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const rows = await db.all(
+      `SELECT * FROM lens_events WHERE actor = ? AND event_type = 'node_heartbeat' ORDER BY started_at DESC LIMIT ?`,
+      [nodeMetricsMatch[1], limit],
+    );
+    return json(rows);
+  }
+
+  // GET /api/nodes/:id/directives — directive history
+  const nodeDirectivesMatch = path.match(/^\/api\/nodes\/([^/]+)\/directives$/);
+  if (req.method === 'GET' && nodeDirectivesMatch) {
+    const db = await getLensDb();
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const rows = await db.all(
+      `SELECT * FROM lens_events WHERE actor = ? AND event_type = 'node_directive' ORDER BY started_at DESC LIMIT ?`,
+      [nodeDirectivesMatch[1], limit],
+    );
+    return json(rows);
+  }
+
   return null;
 }

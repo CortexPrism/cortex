@@ -30,6 +30,7 @@ import { tuiCommand } from './cli/tui-cmd.ts';
 import { projectsCommand } from './cli/projects-cmd.ts';
 import { workflowCommand } from './cli/workflow-cmd.ts';
 import { desktopCommand } from './cli/desktop-cmd.ts';
+import { nodeCommand } from './cli/node.ts';
 import { runMcpServerStdio } from './mcp/server.ts';
 import { gitCommand } from './cli/git-cmd.ts';
 import { githubCommand } from './cli/github-cmd.ts';
@@ -105,7 +106,8 @@ const program = new Command()
   .command('tui', tuiCommand)
   .command('projects', projectsCommand)
   .command('workflow', workflowCommand)
-  .command('desktop', desktopCommand);
+  .command('desktop', desktopCommand)
+  .command('node', nodeCommand);
 
 // Dynamically register plugin CLI commands
 try {

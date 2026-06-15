@@ -253,3 +253,40 @@ registerMetric({
   type: 'gauge',
   labelNames: [],
 });
+
+// ── Node metrics ────────────────────────────────────────
+
+registerMetric({
+  name: 'cortex_node_directives_dispatched_total',
+  help: 'Total directives dispatched to nodes',
+  type: 'counter',
+  labelNames: ['node_id', 'tier'],
+});
+
+registerMetric({
+  name: 'cortex_node_directives_completed_total',
+  help: 'Total directives completed by nodes',
+  type: 'counter',
+  labelNames: ['node_id', 'tier', 'status'],
+});
+
+registerMetric({
+  name: 'cortex_node_directives_failed_total',
+  help: 'Total directives that failed on nodes',
+  type: 'counter',
+  labelNames: ['node_id', 'tier', 'error_type'],
+});
+
+registerMetric({
+  name: 'cortex_node_connections',
+  help: 'Current number of connected nodes',
+  type: 'gauge',
+  labelNames: [],
+});
+
+registerMetric({
+  name: 'cortex_node_heartbeat_age_seconds',
+  help: 'Seconds since last heartbeat per node',
+  type: 'gauge',
+  labelNames: ['node_id'],
+});

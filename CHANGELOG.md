@@ -7,6 +7,70 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.23.0] — 2026-06-15
+
+### Added
+
+- **Distributed agent architecture** — Cortex Hub coordinates remote Cortex Nodes over secure
+  WebSocket connections, replacing SSH-based remote control with a structured protocol:
+  - **Node Registry** (`src/hub/node-registry.ts`): DB-backed CRUD for Node records with vault-stored
+    capability tokens. Nodes table (migration 015) tracks identity, tier, status, heartbeat, group,
+    and directive history.
+  - **Secure Node WebSocket endpoint** (`src/hub/ws-node.ts`): `/ws/node` handler on the Hub with
+    token-based registration, heartbeat/ACK protocol with metrics payload (CPU%, memory, disk),
+    3-missed-ACK disconnect detection, streaming output via `stream_chunk`, directive cancel support,
+    config push, and token rotation (`rekey`).
+  - **Node event system**: `onNodeEvent()` / `emitNodeEvent()` fire `node.connected`,
+    `node.disconnected`, and `node.error` events for plugin/pipeline integration.
+  - **Message protocol** (`src/remote/types.ts`): Extended `NodeMessage` type with 14 message types
+    including `stream_chunk`, `heartbeat_ack`, `cancel`, `config_update`, `rekey`, `NodeMetrics`
+    interface, and backward-compatible `RemoteMessage` alias.
+- **Capability tiers** (`src/hub/capability-tiers.ts`): Three deployment profiles constraining Node
+  privileges — `root` (all tools/paths/commands), `sudo` (scoped commands via sudoers patterns,
+  restricted paths), `unprivileged` (read-only + home-directory writes, no shell execution).
+  Tier-aware policy enforcement at the Hub before dispatch and local defense-in-depth on the Node.
+- **Enhanced Node agent** (`src/remote/agent.ts`): Streaming output for long-running directives,
+  local tier policy checks before execution, directive timeout enforcement (default 5 min) via
+  `AbortController`, exponential backoff reconnection (1s → 30s cap), heartbeat ACK tracking,
+  system metrics collection from `/proc` and `df`, cancel/config_update/rekey directive handling.
+  `runNodeAgent()` replaces `runRemoteAgent()` with backward-compatible wrapper.
+- **Tier-directed validation** (`src/security/validator.ts`): `validateNodeDirective()` enforces
+  a 4-layer defense model — tier tool allow-list, tier command restrictions, tier path restrictions,
+  and cross-cutting policy rules with per-node filtering.
+- **Per-node policy profiles**: Migration 016 adds `node_id` column to `policy_rules` enabling
+  node-specific policy overrides. `checkPolicy()` and `addPolicy()` accept optional `nodeId` parameter.
+- **CLI — `cortex node`** (`src/cli/node.ts`): 6 subcommands: `register` (generates token, stores
+  in vault), `list`, `show`, `deregister`, `rekey` (token rotation), `connect` (run as a Node with
+  configurable tier/endpoint/timeouts).
+- **REST API — Node endpoints**: `POST /api/nodes` (register), `GET /api/nodes` (list with
+  tier/status/group filters), `GET /api/nodes/:id`, `DELETE /api/nodes/:id` (deregister),
+  `POST /api/nodes/:id/rekey`, `GET /api/nodes/:id/metrics`, `GET /api/nodes/:id/directives`,
+  `GET /api/nodes/groups`.
+- **Web UI — Nodes page**: Real-time node monitoring dashboard with summary stat cards, tier/status/
+  group filter bar, per-node cards with expandable metrics (recent heartbeats: CPU%, memory, disk,
+  active directives, uptime) and directive history tables. 10-second auto-refresh.
+- **Prometheus metrics for nodes**: 5 new metric families — `cortex_node_directives_dispatched_total`,
+  `cortex_node_directives_completed_total`, `cortex_node_directives_failed_total`,
+  `cortex_node_connections`, `cortex_node_heartbeat_age_seconds`.
+- **Systemd unit template** — `deploy/cortex-node@.service` for running Cortex Nodes as systemd
+  services with environment variable configuration (`CORTEX_NODE_TOKEN`, `CORTEX_HUB_ENDPOINT`,
+  `CORTEX_NODE_TIER`).
+
+### Changed
+
+- `src/server/server.ts` now routes `/ws/node` to the new Node WebSocket handler alongside the
+  existing `/ws` UI WebSocket handler.
+- `src/db/lens.ts` `EventType` union expanded with 7 node event types: `node_connected`,
+  `node_disconnected`, `node_heartbeat`, `node_directive`, `node_directive_dispatched`,
+  `node_stream_chunk`.
+- `RemoteAgentInfo`, `RemoteDirective`, `RemoteResult` types in `src/remote/types.ts` extended
+  with `stream`, `timeoutMs`, `NodeMetrics`, `StreamChunk` fields; `RemoteMessage` renamed to
+  `NodeMessage` with backward-compatible alias.
+- `dispatchDirective()` in ws-node.ts returns `DispatchResult` (`{dispatched, reason}`) instead of
+  boolean, with policy validation before dispatch.
+
+---
+
 ## [0.22.0] — 2026-06-15
 
 ### Added

@@ -1,5 +1,11 @@
 import { checkPolicy, type PolicyDecision } from './policy.ts';
 import { logEvent } from '../db/lens.ts';
+import {
+  isToolAllowedByTier,
+  isPathAllowedByTier,
+  isCommandAllowedByTier,
+} from '../hub/capability-tiers.ts';
+import type { NodeTier } from '../hub/node-registry.ts';
 
 export interface ValidationResult {
   allowed: boolean;
@@ -109,4 +115,108 @@ export async function validateShellCommand(
   });
 
   return { allowed: decision.allowed, reason: decision.reason };
+}
+
+export async function validateNodeDirective(
+  nodeId: string,
+  tier: NodeTier,
+  toolName: string,
+  args: Record<string, unknown>,
+  sessionId: string,
+): Promise<ValidationResult> {
+  // Layer 1: Tier-based tool allow-list
+  if (!isToolAllowedByTier(tier, toolName)) {
+    const reason = `Tool "${toolName}" not allowed for tier "${tier}"`;
+    await logEvent({
+      event_type: 'policy_check',
+      session_id: sessionId,
+      actor: 'hub',
+      action: `node_directive:${toolName}`,
+      summary: reason,
+      started_at: new Date().toISOString(),
+      payload: { nodeId, tier, tool: toolName, args },
+    });
+    return { allowed: false, reason };
+  }
+
+  // Layer 2: Tier-based command restrictions (for shell/code_exec)
+  if (toolName === 'shell' || toolName === 'code_exec') {
+    const command = String(args.command ?? args.code ?? '');
+    if (command) {
+      const cmdCheck = isCommandAllowedByTier(tier, command);
+      if (!cmdCheck.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'hub',
+          action: `node_directive:${toolName}:command`,
+          summary: cmdCheck.reason,
+          started_at: new Date().toISOString(),
+          payload: { nodeId, tier, tool: toolName, command: command.slice(0, 200) },
+        });
+        return { allowed: false, reason: cmdCheck.reason };
+      }
+    }
+  }
+
+  // Layer 3: Tier-based path restrictions (for file tools)
+  const FILE_TOOLS = new Set([
+    'file_read', 'file_write', 'file_edit', 'file_patch',
+    'file_delete', 'file_rename', 'file_list', 'file_tree',
+    'file_info', 'file_search',
+  ]);
+  if (FILE_TOOLS.has(toolName)) {
+    const pathArg = args.path ?? args.source ?? args.pattern ?? '';
+    if (typeof pathArg === 'string' && pathArg) {
+      const pathCheck = isPathAllowedByTier(tier, pathArg);
+      if (!pathCheck.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'hub',
+          action: `node_directive:${toolName}:path`,
+          summary: pathCheck.reason,
+          started_at: new Date().toISOString(),
+          payload: { nodeId, tier, tool: toolName, path: pathArg.slice(0, 200) },
+        });
+        return { allowed: false, reason: pathCheck.reason };
+      }
+    }
+  }
+
+  // Layer 4: Cross-cutting policy rules (policy_rules table)
+  const toolDecision = await checkPolicy('tool', toolName, nodeId);
+  if (!toolDecision.allowed) {
+    await logEvent({
+      event_type: 'policy_check',
+      session_id: sessionId,
+      actor: 'hub',
+      action: `node_directive:${toolName}:policy`,
+      summary: `Tool blocked by policy: ${toolDecision.reason}`,
+      started_at: new Date().toISOString(),
+      payload: { nodeId, tier, tool: toolName, rule: toolDecision.rule?.id },
+    });
+    return { allowed: false, reason: toolDecision.reason };
+  }
+
+  if (toolName === 'shell' || toolName === 'code_exec') {
+    const command = String(args.command ?? args.code ?? '');
+    if (command) {
+      const shellDecision = await checkPolicy('shell', command, nodeId);
+      if (!shellDecision.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'hub',
+          action: `node_directive:${toolName}:shell_policy`,
+          summary: `Shell blocked by policy: ${shellDecision.reason}`,
+          started_at: new Date().toISOString(),
+          payload: { nodeId, tier, command: command.slice(0, 200), rule: shellDecision.rule?.id },
+        });
+        return { allowed: false, reason: shellDecision.reason };
+      }
+    }
+  }
+
+  return { allowed: true, reason: 'Passed all tier and policy checks' };
 }
