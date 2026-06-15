@@ -1218,6 +1218,80 @@ const HTML = `<!DOCTYPE html>
   </div>
 </div>
 
+  <!-- Skill Designer (full-screen overlay) -->
+  <div id="skill-designer" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:120;flex-direction:column;">
+    <!-- Toolbar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg2);min-height:44px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeSkillDesigner()" style="font-size:11px;" title="Back to skills (Esc)">← Back</button>
+        <span style="font-size:12px;color:var(--text3);">|</span>
+        <span style="font-size:13px;font-weight:600;" id="sd-title">New Skill</span>
+        <span style="font-size:10px;color:var(--accent2);display:none;" id="sd-dirty">(unsaved)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span id="sd-status" style="font-size:11px;color:var(--text3);margin-right:4px;"></span>
+        <button class="btn btn-ghost" onclick="skillDesignerExport()" style="font-size:10px;" title="Export to .cortex/skills/<name>/SKILL.md">📤 Export</button>
+        <button class="btn btn-primary" onclick="skillDesignerSave()" style="font-size:11px;" id="sd-save-btn">💾 Save</button>
+      </div>
+    </div>
+    <!-- Body: Split pane -->
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <!-- Left: Editor -->
+      <div style="width:55%;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;min-width:400px;">
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);">
+          <button class="sd-tab active" onclick="sdSwitchTab('content')" data-sd-tab="content">📝 Content</button>
+          <button class="sd-tab" onclick="sdSwitchTab('meta')" data-sd-tab="meta">⚙️ Metadata</button>
+          <button class="sd-tab" onclick="sdSwitchTab('steps')" data-sd-tab="steps">🔢 Steps</button>
+        </div>
+        <!-- Tab: Content -->
+        <div id="sd-tab-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:6px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
+            <span>Markdown instructions</span>
+            <span>Ctrl+S to save</span>
+          </div>
+          <textarea id="sd-editor" class="inp" style="flex:1;resize:none;border:none;border-radius:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;padding:12px;background:var(--bg);color:var(--text);" placeholder="Write skill instructions in Markdown..."></textarea>
+        </div>
+        <!-- Tab: Metadata -->
+        <div id="sd-tab-meta" style="flex:1;overflow-y:auto;padding:16px;display:none;">
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique, no spaces)</span></label>
+              <input class="inp" id="sd-name" placeholder="my-skill-name" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label>
+              <input class="inp" id="sd-desc" placeholder="What this skill does and when to use it" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label>
+              <input class="inp" id="sd-trigger" placeholder="Phrase that triggers this skill (optional)" />
+            </div>
+            <div style="font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+              <b>Frontmatter preview:</b>
+              <pre id="sd-frontmatter-preview" style="background:var(--bg2);padding:10px;border-radius:4px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;"></pre>
+            </div>
+          </div>
+        </div>
+        <!-- Tab: Steps -->
+        <div id="sd-tab-steps" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+          <div style="padding:6px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;color:var(--text3);">Define ordered steps (drag ⠿ to reorder)</span>
+            <button class="btn btn-ghost" onclick="sdAddStep()" style="font-size:10px;padding:2px 8px;">+ Add Step</button>
+          </div>
+          <div id="sd-steps-list" style="flex:1;overflow-y:auto;padding:8px;"></div>
+        </div>
+      </div>
+      <!-- Right: Preview -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:6px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;">Live Preview</div>
+        <div id="sd-preview" style="flex:1;overflow-y:auto;padding:20px;font-size:13px;line-height:1.7;"></div>
+      </div>
+    </div>
+    <!-- Resize handle -->
+    <div id="sd-resize-handle" style="position:absolute;top:45px;bottom:0;left:55%;width:4px;cursor:col-resize;z-index:10;background:transparent;" onmousedown="sdStartResize(event)"></div>
+  </div>
+
 <script>
 const BASE = window.location.origin;
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws';
@@ -5490,79 +5564,6 @@ setInterval(loadAgentSelector, 30_000);
 setInterval(editorRefreshTree, 30_000);
 showPage('chat');
 </script>
-  <!-- Skill Designer (full-screen overlay) -->
-  <div id="skill-designer" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:120;flex-direction:column;">
-    <!-- Toolbar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg2);min-height:44px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button class="btn btn-ghost" onclick="closeSkillDesigner()" style="font-size:11px;" title="Back to skills (Esc)">← Back</button>
-        <span style="font-size:12px;color:var(--text3);">|</span>
-        <span style="font-size:13px;font-weight:600;" id="sd-title">New Skill</span>
-        <span style="font-size:10px;color:var(--accent2);display:none;" id="sd-dirty">(unsaved)</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span id="sd-status" style="font-size:11px;color:var(--text3);margin-right:4px;"></span>
-        <button class="btn btn-ghost" onclick="skillDesignerExport()" style="font-size:10px;" title="Export to .cortex/skills/<name>/SKILL.md">📤 Export</button>
-        <button class="btn btn-primary" onclick="skillDesignerSave()" style="font-size:11px;" id="sd-save-btn">💾 Save</button>
-      </div>
-    </div>
-    <!-- Body: Split pane -->
-    <div style="flex:1;display:flex;overflow:hidden;">
-      <!-- Left: Editor -->
-      <div style="width:55%;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;min-width:400px;">
-        <!-- Tabs -->
-        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);">
-          <button class="sd-tab active" onclick="sdSwitchTab('content')" data-sd-tab="content">📝 Content</button>
-          <button class="sd-tab" onclick="sdSwitchTab('meta')" data-sd-tab="meta">⚙️ Metadata</button>
-          <button class="sd-tab" onclick="sdSwitchTab('steps')" data-sd-tab="steps">🔢 Steps</button>
-        </div>
-        <!-- Tab: Content -->
-        <div id="sd-tab-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="padding:6px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
-            <span>Markdown instructions</span>
-            <span>Ctrl+S to save</span>
-          </div>
-          <textarea id="sd-editor" class="inp" style="flex:1;resize:none;border:none;border-radius:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;padding:12px;background:var(--bg);color:var(--text);" placeholder="Write skill instructions in Markdown..."></textarea>
-        </div>
-        <!-- Tab: Metadata -->
-        <div id="sd-tab-meta" style="flex:1;overflow-y:auto;padding:16px;display:none;">
-          <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique, no spaces)</span></label>
-              <input class="inp" id="sd-name" placeholder="my-skill-name" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label>
-              <input class="inp" id="sd-desc" placeholder="What this skill does and when to use it" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label>
-              <input class="inp" id="sd-trigger" placeholder="Phrase that triggers this skill (optional)" />
-            </div>
-            <div style="font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
-              <b>Frontmatter preview:</b>
-              <pre id="sd-frontmatter-preview" style="background:var(--bg2);padding:10px;border-radius:4px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;"></pre>
-            </div>
-          </div>
-        </div>
-        <!-- Tab: Steps -->
-        <div id="sd-tab-steps" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
-          <div style="padding:6px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:10px;color:var(--text3);">Define ordered steps (drag ⠿ to reorder)</span>
-            <button class="btn btn-ghost" onclick="sdAddStep()" style="font-size:10px;padding:2px 8px;">+ Add Step</button>
-          </div>
-          <div id="sd-steps-list" style="flex:1;overflow-y:auto;padding:8px;"></div>
-        </div>
-      </div>
-      <!-- Right: Preview -->
-      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
-        <div style="padding:6px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;">Live Preview</div>
-        <div id="sd-preview" style="flex:1;overflow-y:auto;padding:20px;font-size:13px;line-height:1.7;"></div>
-      </div>
-    </div>
-    <!-- Resize handle -->
-    <div id="sd-resize-handle" style="position:absolute;top:45px;bottom:0;left:55%;width:4px;cursor:col-resize;z-index:10;background:transparent;" onmousedown="sdStartResize(event)"></div>
-  </div>
 
 </body>
 </html>`;
