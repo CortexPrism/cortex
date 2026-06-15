@@ -1963,11 +1963,19 @@ async function loadJobs() {
 
 // ── Skills ──────────────────────────────────────────────────
 let skillFilter = 'all';
+let skillTagFilter = null;
+let allSkills = [];
 
 function setSkillFilter(filter) {
   skillFilter = filter;
   document.querySelectorAll('.skill-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === filter));
-  loadSkills();
+  renderSkillsList();
+}
+
+function setSkillTagFilter(tag) {
+  skillTagFilter = skillTagFilter === tag ? null : tag;
+  document.querySelectorAll('.skill-tag-btn').forEach(t => t.classList.toggle('active', t.dataset.tag === skillTagFilter));
+  renderSkillsList();
 }
 
 async function loadHumanSkills() {
@@ -2058,7 +2066,7 @@ async function loadSkills() {
     fetch(url).then(r => r.json()).catch(() => []),
     fetch(BASE + '/api/skills/stats').then(r => r.json()).catch(() => ({ total: 0, human: 0, llm: 0, avgSuccessRate: 0 })),
   ]);
-  const el = document.getElementById('skills-list');
+  allSkills = skills;
 
   // Stats bar
   const statsEl = document.getElementById('skills-stats');
@@ -2068,7 +2076,41 @@ async function loadSkills() {
     '<span>🧠 Learned: <b>' + stats.llm + '</b></span>' +
     (stats.total > 0 ? '<span>Avg success: <b>' + avgPct + '%</b></span>' : '');
 
-  if (!skills.length) {
+  // Collect all unique tags for filter
+  const allTags = new Set();
+  for (const s of skills) {
+    let metadata = {};
+    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+    const tags = metadata.tags as string[] || [];
+    tags.forEach(t => allTags.add(t));
+  }
+
+  // Render tag filters
+  const tagsContainer = document.getElementById('skills-tag-filters') || (() => {
+    const div = document.createElement('div');
+    div.id = 'skills-tag-filters';
+    div.style.display = 'flex';
+    div.style.flexWrap = 'wrap';
+    div.style.gap = '6px';
+    div.style.marginTop = '8px';
+    document.getElementById('skills-tabs').parentElement.insertBefore(div, document.getElementById('skills-tabs').nextSibling);
+    return div;
+  })();
+  
+  tagsContainer.innerHTML = Array.from(allTags).sort().map(tag => 
+    '<button class="skill-tag-btn' + (skillTagFilter === tag ? ' active' : '') + '" ' +
+    'data-tag="' + esc(tag) + '" ' +
+    'onclick="setSkillTagFilter(\\'' + esc(tag) + '\\')" ' +
+    'style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:' + (skillTagFilter === tag ? 'var(--accent2)' : 'transparent') + ';color:' + (skillTagFilter === tag ? 'var(--bg)' : 'var(--text3)') + ';cursor:pointer;transition:all 0.2s;">' + esc(tag) + '</button>'
+  ).join('');
+
+  renderSkillsList();
+}
+
+function renderSkillsList() {
+  const el = document.getElementById('skills-list');
+
+  if (!allSkills.length) {
     el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">' +
       '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' +
       '<p style="color:var(--text3);font-size:13px;">No skills yet.</p>' +
@@ -2078,8 +2120,21 @@ async function loadSkills() {
     return;
   }
 
-  el.innerHTML = '';
-  for (const s of skills) {
+  // Filter skills by tag
+  const filteredSkills = allSkills.filter(s => {
+    if (!skillTagFilter) return true;
+    let metadata = {};
+    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+    const tags = metadata.tags as string[] || [];
+    return tags.includes(skillTagFilter);
+  });
+
+  if (!filteredSkills.length) {
+    el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:13px;">No skills match the selected tag.</div>';
+    return;
+  }
+
+  for (const s of filteredSkills) {
     const rate = Math.round((s.success_rate ?? 0) * 100);
     const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
     const isHuman = s.origin === 'human';
