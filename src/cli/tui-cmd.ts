@@ -13,6 +13,7 @@ const tuiCommand = new Command()
     const config = await loadConfig();
     const provider = buildProvider(config);
     const model = config.providers[config.defaultProvider]?.model ?? 'unknown';
+    const reasoningEffort = config.providers[config.defaultProvider]?.reasoningEffort;
 
     const sessionId = `tui_${Date.now().toString(36)}`;
     await createSession(sessionId, 'tui');
@@ -34,6 +35,7 @@ const tuiCommand = new Command()
           sessionDb,
           sessionId,
           stream: true,
+          reasoningEffort,
           onChunk: (chunk: string) => {
             currentResponse += chunk;
             tui.updateLastMessage(currentResponse);

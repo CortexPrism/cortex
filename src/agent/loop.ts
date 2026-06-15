@@ -47,6 +47,7 @@ export interface AgentTurnOptions {
   toolContext?: Omit<ToolContext, 'sessionId'>;
   embedder?: EmbeddingProvider;
   enableReflection?: boolean;
+  reasoningEffort?: string;
 }
 
 export interface AgentTurnResult {
@@ -299,6 +300,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
             messages: currentMessages,
             model,
             systemPrompt: nodeAwareSystemPrompt,
+            reasoningEffort: options.reasoningEffort,
           })
         ) {
           if (!chunk.done) {
@@ -315,6 +317,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           messages: currentMessages,
           model,
           systemPrompt: nodeAwareSystemPrompt,
+          reasoningEffort: options.reasoningEffort,
         });
         roundResponse = r.content;
         tokensIn += r.tokensIn;
@@ -459,7 +462,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }).catch(() => {}),
       extractAndStoreEntities(`${userMessage} ${response}`, sessionId).catch(() => {}),
       options.enableReflection && response
-        ? reflectOnTurn(userMessage, response, provider, model)
+        ? reflectOnTurn(userMessage, response, provider, model, options.reasoningEffort)
           .then((r) => storeReflection(sessionId, r))
           .catch(() => {})
         : Promise.resolve(),

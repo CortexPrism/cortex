@@ -30,6 +30,7 @@ export async function reflectOnTurn(
   agentResponse: string,
   provider: LLMProvider,
   model: string,
+  reasoningEffort?: string,
 ): Promise<ReflectionResult> {
   const prompt = `User: ${userMessage.slice(0, 400)}\n\nAgent: ${
     agentResponse.slice(0, 600)
@@ -40,6 +41,7 @@ export async function reflectOnTurn(
       messages: [{ role: 'user', content: prompt }],
       model,
       systemPrompt: REFLECT_SYSTEM,
+      reasoningEffort,
     });
 
     const json = result.content.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
@@ -104,6 +106,7 @@ export async function listReflections(
 export async function consolidateReflections(
   provider: LLMProvider,
   model: string,
+  reasoningEffort?: string,
 ): Promise<number> {
   const db = await getMemoryDb();
 
@@ -129,6 +132,7 @@ export async function consolidateReflections(
       model,
       systemPrompt:
         'You consolidate observed patterns into high-level meta-patterns. Return only a JSON array of strings.',
+      reasoningEffort,
     });
 
     const json = result.content.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();

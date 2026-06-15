@@ -10,6 +10,12 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'claude-haiku-4': { in: 0.8, out: 4.0 },
 };
 
+const REASONING_BUDGET: Record<string, number> = {
+  low: 1024,
+  medium: 4096,
+  high: 16384,
+};
+
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
   readonly defaultModel = 'claude-sonnet-4-5';
@@ -28,11 +34,19 @@ export class AnthropicProvider implements LLMProvider {
     const systemMsg = options.systemPrompt ??
       options.messages.find((m) => m.role === 'system')?.content;
 
+    const thinking = options.reasoningEffort
+      ? {
+        type: 'enabled' as const,
+        budget_tokens: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
+      }
+      : undefined;
+
     const response = await this.client.messages.create({
       model: options.model,
       max_tokens: options.maxTokens ?? 4096,
       system: systemMsg,
       messages,
+      ...(thinking ? { thinking } : {}),
     });
 
     const content = response.content
@@ -56,11 +70,19 @@ export class AnthropicProvider implements LLMProvider {
     const systemMsg = options.systemPrompt ??
       options.messages.find((m) => m.role === 'system')?.content;
 
+    const thinking = options.reasoningEffort
+      ? {
+        type: 'enabled' as const,
+        budget_tokens: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
+      }
+      : undefined;
+
     const stream = this.client.messages.stream({
       model: options.model,
       max_tokens: options.maxTokens ?? 4096,
       system: systemMsg,
       messages,
+      ...(thinking ? { thinking } : {}),
     });
 
     let tokensIn = 0;

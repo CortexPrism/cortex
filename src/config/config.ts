@@ -27,6 +27,10 @@ export interface ProviderConfig {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  /** Reasoning effort level — 'low' | 'medium' | 'high' (Anthropic extended thinking, OpenAI o-series, Google thinking) */
+  reasoningEffort?: string;
+  /** Max context window size in tokens (informational, not enforced at API level) */
+  contextWindow?: number;
 }
 
 export interface RouterThresholdConfig {

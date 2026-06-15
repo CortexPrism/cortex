@@ -57,7 +57,11 @@ export const reflectCommand = new Command()
         const activeConfig = config.providers[config.defaultProvider]!;
 
         console.log(dim('\n  Running reflection consolidation…'));
-        const count = await consolidateReflections(provider!, activeConfig.model);
+        const count = await consolidateReflections(
+          provider!,
+          activeConfig.model,
+          activeConfig.reasoningEffort,
+        );
 
         if (count > 0) {
           console.log(green(`  ✓ Extracted ${count} meta-pattern(s)`));
