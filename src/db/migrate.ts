@@ -90,6 +90,7 @@ export async function runMigrations(): Promise<void> {
     { db: coreDb, sqlFile: '011_workspace.sql', label: 'cortex.db (workspace)' },
     { db: await getPluginsDb(), sqlFile: '012_plugins_enhanced.sql', label: 'plugins.db (enhanced)' },
     { db: coreDb, sqlFile: '013_sessions_parent.sql', label: 'cortex.db (sessions parent)' },
+    { db: await getMemoryDb(), sqlFile: '014_skills_origin.sql', label: 'memory.db (skills origin)' },
   ];
 
   for (const { db, sqlFile, label } of targets) {

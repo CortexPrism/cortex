@@ -1,6 +1,7 @@
 import { getMemoryDb } from '../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 import type { LLMProvider } from '../llm/types.ts';
+import { join } from '@std/path';
 
 function skillId(): string {
   return `skill_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -16,6 +17,8 @@ export interface Skill {
   invocation_count: number;
   version: number;
   source_session: string | null;
+  origin: 'human' | 'llm';
+  content: string | null;
   created_at: string;
 }
 
@@ -33,6 +36,8 @@ export async function storeSkill(opts: {
   triggerPattern?: string;
   steps: SkillStep[];
   sessionId?: string;
+  origin?: 'human' | 'llm';
+  content?: string;
 }): Promise<string> {
   const db = await getMemoryDb();
   const now = new Date().toISOString();
@@ -47,12 +52,21 @@ export async function storeSkill(opts: {
       `UPDATE procedural_memory
        SET steps = ?, description = COALESCE(?, description),
            trigger_pattern = COALESCE(?, trigger_pattern),
-           version = version + 1, updated_at = ?
+           content = COALESCE(?, content),
+           origin = COALESCE(?, origin),
+           version = CASE WHEN steps != ? OR COALESCE(description,'') != COALESCE(?,'') OR COALESCE(content,'') != COALESCE(?,'')
+                    THEN version + 1 ELSE version END,
+           updated_at = ?
        WHERE id = ?`,
       [
         JSON.stringify(opts.steps),
         opts.description ?? null,
         opts.triggerPattern ?? null,
+        opts.content ?? null,
+        opts.origin ?? 'llm',
+        JSON.stringify(opts.steps),
+        opts.description ?? '',
+        opts.content ?? '',
         now,
         existing.id,
       ] as InValue[],
@@ -63,14 +77,16 @@ export async function storeSkill(opts: {
   const id = skillId();
   await db.run(
     `INSERT INTO procedural_memory
-       (id, name, description, trigger_pattern, steps, source_session, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, description, trigger_pattern, steps, origin, content, source_session, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       opts.name,
       opts.description ?? null,
       opts.triggerPattern ?? null,
       JSON.stringify(opts.steps),
+      opts.origin ?? 'llm',
+      opts.content ?? null,
       opts.sessionId ?? null,
       now,
       now,
@@ -78,6 +94,20 @@ export async function storeSkill(opts: {
   );
 
   return id;
+}
+
+export async function deleteSkill(name: string): Promise<boolean> {
+  const db = await getMemoryDb();
+  const existing = await db.get<{ id: string }>(
+    `SELECT id FROM procedural_memory WHERE name = ? LIMIT 1`,
+    [name],
+  );
+  if (!existing) return false;
+  await db.run(
+    `DELETE FROM procedural_memory WHERE name = ?`,
+    [name],
+  );
+  return true;
 }
 
 export async function recordSkillSuccess(name: string): Promise<void> {
@@ -127,12 +157,123 @@ export async function findMatchingSkills(description: string, limit = 5): Promis
   );
 }
 
-export async function listSkills(limit = 20): Promise<Skill[]> {
+export async function listSkills(limit = 20, origin?: 'human' | 'llm'): Promise<Skill[]> {
   const db = await getMemoryDb();
+  if (origin) {
+    return await db.all<Skill>(
+      `SELECT * FROM procedural_memory WHERE origin = ? ORDER BY success_rate DESC, updated_at DESC LIMIT ?`,
+      [origin, limit],
+    );
+  }
   return await db.all<Skill>(
     `SELECT * FROM procedural_memory ORDER BY success_rate DESC, updated_at DESC LIMIT ?`,
     [limit],
   );
+}
+
+export async function getSkillByName(name: string): Promise<Skill | undefined> {
+  const db = await getMemoryDb();
+  return await db.get<Skill>(
+    `SELECT * FROM procedural_memory WHERE name = ? LIMIT 1`,
+    [name],
+  );
+}
+
+export async function getSkillStats(): Promise<{
+  total: number;
+  human: number;
+  llm: number;
+  avgSuccessRate: number;
+}> {
+  const db = await getMemoryDb();
+  const [total, human, llm, avg] = await Promise.all([
+    db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory`),
+    db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory WHERE origin = 'human'`),
+    db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory WHERE origin = 'llm'`),
+    db.get<{ avg: number }>(`SELECT AVG(success_rate) as avg FROM procedural_memory WHERE invocation_count > 0`),
+  ]);
+  return {
+    total: total?.count ?? 0,
+    human: human?.count ?? 0,
+    llm: llm?.count ?? 0,
+    avgSuccessRate: avg?.avg ?? 0,
+  };
+}
+
+interface SkillFrontmatter {
+  name: string;
+  description: string;
+  triggerPattern?: string;
+}
+
+function parseSkillMd(content: string): { frontmatter: SkillFrontmatter; body: string } | null {
+  const lines = content.split('\n');
+  if (lines[0]?.trim() !== '---') return null;
+
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1) return null;
+
+  const frontmatterRaw = lines.slice(1, endIdx).join('\n');
+  const body = lines.slice(endIdx + 1).join('\n').trim();
+  if (!body) return null;
+
+  const fm: SkillFrontmatter = { name: '', description: '' };
+  for (const line of frontmatterRaw.split('\n')) {
+    const m = line.match(/^(\w[\w\s]*):\s*(.*)/);
+    if (m) {
+      const key = m[1].trim();
+      const val = m[2].trim();
+      if (key === 'name') fm.name = val;
+      else if (key === 'description') fm.description = val;
+      else if (key === 'trigger_pattern' || key === 'triggerPattern') fm.triggerPattern = val;
+    }
+  }
+
+  if (!fm.name) return null;
+  return { frontmatter: fm, body };
+}
+
+export async function loadHumanSkills(skillsDir?: string): Promise<number> {
+  const dir = skillsDir ?? join(Deno.cwd(), '.cortex', 'skills');
+  let loaded = 0;
+
+  try {
+    const entries: Deno.DirEntry[] = [];
+    for await (const entry of Deno.readDir(dir)) {
+      if (entry.isDirectory) entries.push(entry);
+    }
+
+    for (const entry of entries) {
+      const skillMdPath = join(dir, entry.name, 'SKILL.md');
+      try {
+        const raw = await Deno.readTextFile(skillMdPath);
+        const parsed = parseSkillMd(raw);
+        if (!parsed) continue;
+
+        await storeSkill({
+          name: parsed.frontmatter.name,
+          description: parsed.frontmatter.description,
+          triggerPattern: parsed.frontmatter.triggerPattern,
+          steps: [{ step: 1, action: parsed.body, description: parsed.body }],
+          origin: 'human',
+          content: raw,
+        });
+        loaded++;
+      } catch {
+        // skill file doesn't exist in this subdirectory, skip
+      }
+    }
+  } catch {
+    // skills directory doesn't exist yet, that's fine
+  }
+
+  return loaded;
 }
 
 export async function extractSkillFromSession(
@@ -200,20 +341,31 @@ If this is not a reusable pattern, respond: {"skip": true}`;
       triggerPattern: parsed.triggerPattern,
       steps,
       sessionId,
+      origin: 'llm',
     });
   } catch {
     return null;
   }
 }
 
-export async function maybeExtractSkill(
-  sessionId: string,
-  taskDescription: string,
-  toolCalls: Array<{ tool: string; params: Record<string, unknown>; result: string }>,
-  provider: LLMProvider,
-  model: string,
-  turnCount: number,
-): Promise<void> {
-  if (turnCount % 5 !== 0) return;
-  await extractSkillFromSession(sessionId, taskDescription, toolCalls, provider, model);
+export function formatSkillsForPrompt(skills: Skill[]): string {
+  if (skills.length === 0) return '';
+
+  const entries = skills.map((s) => {
+    const steps = (() => {
+      try { return JSON.parse(s.steps); } catch { return []; }
+    })() as SkillStep[];
+    const stepText = steps.slice(0, 3).map((st: SkillStep) =>
+      `${st.step}. ${st.action}${st.tool ? ` [tool: ${st.tool}]` : ''}`
+    ).join('\n');
+
+    const originLabel = s.origin === 'human' ? '[human-authored]' : '[learned]';
+    return `### ${s.name} ${originLabel} (${Math.round(s.success_rate * 100)}% success)
+${s.description ?? ''}
+Trigger: ${s.trigger_pattern ?? '(any)'}
+Steps:
+${stepText}`;
+  });
+
+  return `\n\n## Available Skills\n${entries.join('\n\n')}`;
 }

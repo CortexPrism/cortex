@@ -23,6 +23,7 @@ import {
 } from '../pipeline/manager.ts';
 import { registerBuiltinHooks } from '../pipeline/builtin.ts';
 import type { AgentState } from '../pipeline/types.ts';
+import { extractSkillFromSession, findMatchingSkills, formatSkillsForPrompt } from '../memory/skills.ts';
 
 let builtinHooksRegistered = false;
 
@@ -230,11 +231,31 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   )
     .catch(() => systemPrompt);
 
-  const metaCogPrompt = applyMetaCogPrefix(metaAssessment, memoryEnrichedPrompt);
+  let skillEnrichedPrompt = memoryEnrichedPrompt;
+  try {
+    const skills = await findMatchingSkills(effectiveInput, 3);
+    const reliable = skills.filter((s) => s.origin === 'human' || s.success_rate >= 0.3);
+    if (reliable.length > 0) {
+      skillEnrichedPrompt = memoryEnrichedPrompt + formatSkillsForPrompt(reliable);
+    }
+  } catch { /* skills query may fail */ }
+
+  const metaCogPrompt = applyMetaCogPrefix(metaAssessment, skillEnrichedPrompt);
 
   const effectiveSystemPrompt = registry && toolCtx
     ? injectToolsIntoPrompt(metaCogPrompt, registry.definitions())
     : metaCogPrompt;
+
+  const collectedToolCalls: Array<{ tool: string; params: Record<string, unknown>; result: string }> = [];
+
+  const SENSITIVE_KEYS = /^(api_?key|token|secret|password|auth|credential|private_?key)$/i;
+  function redactParams(params: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(params)) {
+      out[k] = SENSITIVE_KEYS.test(k) ? '[REDACTED]' : v;
+    }
+    return out;
+  }
 
   try {
     let round = 0;
@@ -359,6 +380,11 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         await runHooksForStage('post-tool', postToolCtx);
 
         toolResults.push(result);
+        collectedToolCalls.push({
+          tool: tc.toolName,
+          params: redactParams(tc.args),
+          result: result.output || result.error || '',
+        });
       }
 
       const resultText = formatToolResults(toolResults);
@@ -433,6 +459,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         error: errorMsg,
       }),
     ]);
+
+    if (collectedToolCalls.length >= 2) {
+      extractSkillFromSession(
+        sessionId,
+        userMessage.slice(0, 300),
+        collectedToolCalls,
+        provider,
+        model,
+      ).catch(() => {});
+    }
 
     await runHooksForStage('post-output', createPipelineContext({
       stage: 'post-output',

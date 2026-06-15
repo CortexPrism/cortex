@@ -142,6 +142,11 @@ const HTML = `<!DOCTYPE html>
   .btn-ghost { background:rgba(255,255,255,0.05); color:var(--text2); }
   .btn-ghost:hover { background:rgba(255,255,255,0.1); color:var(--text); }
 
+  /* Skill filter tabs */
+  .skill-tab { padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; color:var(--text3); border:1px solid var(--border); background:transparent; }
+  .skill-tab:hover { background:rgba(255,255,255,0.05); color:var(--text2); }
+  .skill-tab.active { background:rgba(99,102,241,0.15); color:var(--accent2); border-color:rgba(99,102,241,0.3); }
+
   /* Lens event row */
   .lens-row { display:flex; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); align-items:flex-start; font-size:12px; }
   .lens-row:last-child { border-bottom:none; }
@@ -695,8 +700,24 @@ const HTML = `<!DOCTYPE html>
   <!-- Page: Skills -->
   <div id="page-skills" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);">
-      <h1 style="font-size:15px;font-weight:600;">Procedural Memory — Skills</h1>
-      <p style="font-size:12px;color:var(--text3);margin-top:2px;">Learned reusable skill patterns extracted from sessions</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h1 style="font-size:15px;font-weight:600;">Skills</h1>
+          <p style="font-size:12px;color:var(--text3);margin-top:2px;">Skills are codified expertise — reusable patterns that bridge reasoning and action. Human-authored skills provide domain knowledge; learned skills capture emerging patterns from agent experience.</p>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" onclick="loadHumanSkills()" style="font-size:11px;">📥 Load .cortex/skills</button>
+          <button class="btn btn-ghost" onclick="showSkillModal()" style="font-size:11px;">+ New Skill</button>
+        </div>
+      </div>
+      <!-- Stats bar -->
+      <div id="skills-stats" style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--text3);"></div>
+      <!-- Filter tabs -->
+      <div id="skills-tabs" style="display:flex;gap:4px;margin-top:10px;">
+        <button class="skill-tab active" onclick="setSkillFilter('all')" data-filter="all">All</button>
+        <button class="skill-tab" onclick="setSkillFilter('human')" data-filter="human">✍️ Human</button>
+        <button class="skill-tab" onclick="setSkillFilter('llm')" data-filter="llm">🧠 Learned</button>
+      </div>
     </div>
     <div id="skills-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
   </div>
@@ -995,6 +1016,25 @@ const HTML = `<!DOCTYPE html>
         <button class="btn btn-ghost" onclick="hideCronModal()">Cancel</button>
         <span id="cj-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create/Edit Skill -->
+  <div id="skill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:620px;max-height:90vh;overflow-y:auto;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:14px;" id="skill-modal-title">Create Skill</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique)</span></label><input class="inp" id="sk-name" placeholder="my-skill" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="sk-desc" placeholder="What this skill does" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label><input class="inp" id="sk-trigger" placeholder="Phrase that triggers this skill (optional)" /></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Content / Instructions <span style="color:var(--text3);">(Markdown)</span></label><textarea class="inp" id="sk-content" placeholder="Write the skill body in Markdown..." style="resize:vertical;min-height:200px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="submitSkillForm()" id="skill-submit-btn">Create Skill</button>
+        <button class="btn btn-ghost" onclick="hideSkillModal()">Cancel</button>
+        <span id="sk-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+      </div>
+      <input type="hidden" id="sk-edit-name" value="" />
     </div>
   </div>
 
@@ -1703,35 +1743,165 @@ async function loadJobs() {
 }
 
 // ── Skills ──────────────────────────────────────────────────
+let skillFilter = 'all';
+
+function setSkillFilter(filter) {
+  skillFilter = filter;
+  document.querySelectorAll('.skill-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === filter));
+  loadSkills();
+}
+
+async function loadHumanSkills() {
+  try {
+    const r = await fetch(BASE + '/api/skills/load-human', { method: 'POST' }).then(r => r.json());
+    alert('Loaded ' + (r.loaded ?? 0) + ' skill(s) from .cortex/skills/');
+    loadSkills();
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+function showSkillModal(editName) {
+  document.getElementById('sk-status').textContent = '';
+  document.getElementById('sk-edit-name').value = '';
+  if (editName) {
+    document.getElementById('skill-modal-title').textContent = 'Edit Skill';
+    document.getElementById('skill-submit-btn').textContent = 'Save Changes';
+    document.getElementById('sk-edit-name').value = editName;
+    fetch(BASE + '/api/skills/detail?name=' + encodeURIComponent(editName))
+      .then(r => r.json()).then(s => {
+        document.getElementById('sk-name').value = s.name || '';
+        document.getElementById('sk-desc').value = s.description || '';
+        document.getElementById('sk-trigger').value = s.trigger_pattern || '';
+        document.getElementById('sk-content').value = s.content || '';
+        document.getElementById('skill-modal').style.display = 'flex';
+      }).catch(e => alert('Failed to load skill: ' + e.message));
+  } else {
+    document.getElementById('skill-modal-title').textContent = 'Create Skill';
+    document.getElementById('skill-submit-btn').textContent = 'Create Skill';
+    document.getElementById('sk-name').value = '';
+    document.getElementById('sk-desc').value = '';
+    document.getElementById('sk-trigger').value = '';
+    document.getElementById('sk-content').value = '';
+    document.getElementById('skill-modal').style.display = 'flex';
+  }
+}
+
+function hideSkillModal() {
+  document.getElementById('skill-modal').style.display = 'none';
+}
+
+async function submitSkillForm() {
+  const name = document.getElementById('sk-name').value.trim();
+  if (!name) { document.getElementById('sk-status').textContent = 'Name is required.'; return; }
+  const editName = document.getElementById('sk-edit-name').value;
+  const body = {
+    name,
+    description: document.getElementById('sk-desc').value.trim() || undefined,
+    triggerPattern: document.getElementById('sk-trigger').value.trim() || undefined,
+    content: document.getElementById('sk-content').value || undefined,
+  };
+  const res = await fetch(BASE + '/api/skills', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (res.ok) {
+    hideSkillModal();
+    toast(editName ? 'Skill updated' : 'Skill created', 'success');
+    loadSkills();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    document.getElementById('sk-status').textContent = data.error || 'Save failed.';
+  }
+}
+
+function deleteSkill(name) {
+  if (!confirm('Delete skill "' + name + '"?')) return;
+  fetch(BASE + '/api/skills?name=' + encodeURIComponent(name), { method: 'DELETE' })
+    .then(r => r.json()).then(() => loadSkills()).catch(e => alert('Failed: ' + e.message));
+}
+
+function toggleSkillDetail(card) {
+  const detail = card.querySelector('.skill-detail');
+  if (detail) {
+    detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
 async function loadSkills() {
-  const skills = await fetch(BASE + '/api/skills').then(r => r.json()).catch(() => []);
+  const url = skillFilter === 'all' ? (BASE + '/api/skills') : (BASE + '/api/skills?origin=' + skillFilter);
+  const [skills, stats] = await Promise.all([
+    fetch(url).then(r => r.json()).catch(() => []),
+    fetch(BASE + '/api/skills/stats').then(r => r.json()).catch(() => ({ total: 0, human: 0, llm: 0, avgSuccessRate: 0 })),
+  ]);
   const el = document.getElementById('skills-list');
-  if (!skills.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><p style="color:var(--text3);font-size:13px;">No procedural skills yet.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Skills are learned automatically from multi-step tasks.</p></div>'; return; }
+
+  // Stats bar
+  const statsEl = document.getElementById('skills-stats');
+  const avgPct = Math.round((stats.avgSuccessRate ?? 0) * 100);
+  statsEl.innerHTML = '<span>Total: <b>' + stats.total + '</b></span>' +
+    '<span>✍️ Human: <b>' + stats.human + '</b></span>' +
+    '<span>🧠 Learned: <b>' + stats.llm + '</b></span>' +
+    (stats.total > 0 ? '<span>Avg success: <b>' + avgPct + '%</b></span>' : '');
+
+  if (!skills.length) {
+    el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">' +
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' +
+      '<p style="color:var(--text3);font-size:13px;">No skills yet.</p>' +
+      '<p style="color:var(--text3);font-size:11px;margin-top:4px;">Skills come from two sources: <b>human-authored</b> (.cortex/skills/*/SKILL.md files) and <b>learned</b> (extracted automatically from agent sessions).</p>' +
+      '<p style="color:var(--text3);font-size:11px;margin-top:2px;">Use the "Load .cortex/skills" button above to import human-authored skills, or run sessions to generate learned skills.</p>' +
+      '</div>';
+    return;
+  }
 
   el.innerHTML = '';
   for (const s of skills) {
     const rate = Math.round((s.success_rate ?? 0) * 100);
     const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
+    const isHuman = s.origin === 'human';
+    const originBadge = isHuman
+      ? '<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:3px;">✍️ human</span>'
+      : '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 6px;border-radius:3px;">🧠 learned</span>';
+
+    let steps = [];
+    try { steps = JSON.parse(s.steps || '[]'); } catch(e) {}
+
     const d = document.createElement('div');
     d.className = 'card';
-    d.innerHTML = \`
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-        <div>
-          <span style="font-size:14px;font-weight:500;color:var(--text);font-family:'JetBrains Mono',monospace;">\${esc(s.name)}</span>
-          <p style="font-size:12px;color:var(--text2);margin-top:3px;">\${esc(s.description ?? '')}</p>
-        </div>
-        <div style="text-align:right;min-width:80px;">
-          <div style="font-size:15px;font-weight:600;color:\${rateColor};">\${rate}%</div>
-          <div style="font-size:11px;color:var(--text3);">\${s.invocation_count} uses</div>
-        </div>
-      </div>
-      \${s.trigger_pattern ? \`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);">\${esc(s.trigger_pattern)}</span></div>\` : ''}
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        \${(JSON.parse(s.steps || '[]')).slice(0,5).map((step, i) =>
-          \`<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${i+1}. \${esc(String(step.action ?? step.description ?? '').slice(0,40))}</span>\`
-        ).join('')}
-      </div>
-    \`;
+    d.style.cursor = 'pointer';
+    d.onclick = function() { toggleSkillDetail(d); };
+
+    d.innerHTML = '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">' +
+      '<div>' +
+        '<span style="font-size:14px;font-weight:500;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span> ' + originBadge +
+        '<p style="font-size:12px;color:var(--text2);margin-top:3px;">' + esc(s.description ?? '') + '</p>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<div style="text-align:right;min-width:80px;">' +
+          '<div style="font-size:15px;font-weight:600;color:' + rateColor + ';">' + rate + '%</div>' +
+          '<div style="font-size:11px;color:var(--text3);">v' + (s.version ?? 1) + ' · ' + (s.invocation_count ?? 0) + ' uses</div>' +
+        '</div>' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;" onclick="event.stopPropagation();deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
+      '</div>' +
+    '</div>' +
+    (s.trigger_pattern ? '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);">' + esc(s.trigger_pattern) + '</span></div>' : '') +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;">' +
+      steps.slice(0, 5).map(function(step, i) {
+        return '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 40)) + '</span>';
+      }).join('') +
+      (steps.length > 5 ? '<span class="badge" style="background:rgba(99,102,241,0.05);color:var(--text3);">+' + (steps.length - 5) + ' more</span>' : '') +
+    '</div>' +
+    // Expandable detail
+    '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
+      (s.source_session ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Source session: <span style="color:var(--text2);">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
+      '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Created: ' + new Date(s.created_at).toLocaleString() + '</div>' +
+      (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-bottom:4px;" onclick="event.stopPropagation();showSkillModal(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
+      (s.content ? '<div style="margin-top:6px;font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--bg2);padding:8px;border-radius:4px;">' + esc(s.content.slice(0, 2000)) + '</div>' : '') +
+      (steps.length > 0 ? '<div style="margin-top:6px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">All steps:</div>' +
+        steps.map(function(step, i) {
+          return '<div style="font-size:11px;color:var(--text2);padding:2px 0;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '')) + (step.tool ? ' <span style="color:var(--accent2);">[' + esc(step.tool) + ']</span>' : '') + '</div>';
+        }).join('') + '</div>' : '') +
+    '</div>';
+
     el.appendChild(d);
   }
 }
@@ -2766,6 +2936,7 @@ async function loadServices() {
         isRunning
           ? '<button class="btn btn-ghost" style="font-size:12px;padding:4px 12px;" onclick="serviceAction(\\'' + s.id + '\\',\\'stop\\')">Stop</button>'
           : '<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="serviceAction(\\'' + s.id + '\\',\\'start\\')">Start</button>',
+        '<button class="btn" style="font-size:12px;padding:4px 12px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="serviceAction(\\'' + s.id + '\\',\\'delete\\')">Delete</button>',
         '</div>',
         '</div>',
         '</div>',
@@ -2777,6 +2948,17 @@ async function loadServices() {
 }
 
 async function serviceAction(id, action) {
+  if (action === 'delete') {
+    if (!confirm('Delete this service? This cannot be undone.')) return;
+    const res = await fetch(BASE + '/api/services/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (res.ok) {
+      toast('Service deleted', 'success');
+      loadServices();
+    } else {
+      toast('Failed to delete service', 'error');
+    }
+    return;
+  }
   const res = await fetch(BASE + '/api/services/' + encodeURIComponent(id) + '/' + action, { method: 'POST' });
   if (res.ok) {
     toast('Service ' + action + 'ed', 'success');

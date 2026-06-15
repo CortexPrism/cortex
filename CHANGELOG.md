@@ -7,6 +7,54 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.22.0] — 2026-06-15
+
+### Added
+
+- **Unified skills model** — skills now track `origin` (`human` | `llm`) and support full
+  Markdown `content` storage. Human-authored skills provide domain knowledge and conventions;
+  LLM-extracted skills capture emerging patterns from agent tool sequences.
+- **Human-authored skill loading** — skills can be loaded from `.cortex/skills/<name>/SKILL.md`
+  files with YAML frontmatter (`name`, `description`, `trigger_pattern`). API endpoint
+  `POST /api/skills/load-human` and "Load .cortex/skills" button in the Web UI.
+- **Skill CRUD API** — new endpoints for creating (`POST /api/skills`), reading
+  (`GET /api/skills/detail?name=`), and deleting (`DELETE /api/skills?name=`) skills.
+  `GET /api/skills` now supports `?origin=human|llm` filtering.
+- **Skill stats endpoint** — `GET /api/skills/stats` returns total/human/llm counts and
+  average success rate.
+- **Skill injection into agent context** — `findMatchingSkills()` and
+  `formatSkillsForPrompt()` now inject relevant skills into the agent's system prompt before
+  each reasoning turn. Skills with `origin='human'` are always eligible; learned skills
+  require `success_rate >= 0.3` to avoid steering the agent toward unproven patterns.
+- **Skill extraction from agent turns** — `extractSkillFromSession()` runs as a fire-and-forget
+  background LLM call whenever 2+ tool calls are made in a turn, analyzing tool sequences to
+  extract reusable skill patterns. Tool parameters are redacted for sensitive keys
+  (`api_key`, `token`, `password`, etc.) before being sent to the extraction LLM.
+- **Redesigned skills Web UI** — filter tabs (All / Human / Learned), stats summary bar,
+  click-to-expand skill detail with full content and step listing, and a full modal form
+  for creating/editing human-authored skills with name, description, trigger pattern, and
+  Markdown content fields. Edit buttons on human-authored skill cards load data into the
+  modal pre-filled.
+- **Migration 014** — adds `origin` and `content` columns to the `procedural_memory` table
+  in `memory.db`.
+
+### Changed
+
+- `storeSkill()` UPDATE now handles `origin` and `content` columns, uses conditional
+  version bumping (only increments when steps/description/content actually change), and
+  properly preserves `origin` on upsert so human-authored skills don't revert to `'llm'`.
+- `listSkills()` supports optional `origin` parameter for filtering.
+- Removed orphaned `maybeExtractSkill()` function (replaced by direct `extractSkillFromSession`
+  calls in the agent loop).
+
+### Fixed
+
+- Unescaped single quotes in CSS `font-family` values inside JavaScript string literals
+  caused browser syntax errors on the skills page. Fixed by removing unnecessary font quotes
+  and using proper `\\'` escaping in onclick handlers per existing codebase patterns.
+
+---
+
 ## [0.21.0] — 2026-06-15
 
 ### Added

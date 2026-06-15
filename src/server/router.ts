@@ -15,7 +15,7 @@ import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import type { AgentConfig, CortexConfig, ProviderKind } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
-import { listSkills } from '../memory/skills.ts';
+import { deleteSkill, getSkillByName, getSkillStats, listSkills, loadHumanSkills, storeSkill } from '../memory/skills.ts';
 import { listPolicies } from '../security/policy.ts';
 import { getMemoryDb } from '../db/client.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
@@ -236,8 +236,62 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/skills
   if (req.method === 'GET' && path === '/api/skills') {
-    const skills = await listSkills(50);
+    const origin = url.searchParams.get('origin') as 'human' | 'llm' | null;
+    const skills = await listSkills(50, origin ?? undefined);
     return json(skills);
+  }
+
+  // GET /api/skills/stats
+  if (req.method === 'GET' && path === '/api/skills/stats') {
+    const stats = await getSkillStats();
+    return json(stats);
+  }
+
+  // GET /api/skills/detail?name=...
+  if (req.method === 'GET' && path === '/api/skills/detail') {
+    const name = url.searchParams.get('name');
+    if (!name) return err('Missing skill name', 400);
+    const skill = await getSkillByName(name);
+    if (!skill) return err('Skill not found', 404);
+    return json(skill);
+  }
+
+  // POST /api/skills (create human-authored skill)
+  if (req.method === 'POST' && path === '/api/skills') {
+    const body = await req.json() as {
+      name: string;
+      description?: string;
+      triggerPattern?: string;
+      content?: string;
+      steps?: Array<{ step: number; action: string; tool?: string; params?: Record<string, unknown> }>;
+    };
+    if (!body.name?.trim()) return err('Missing name', 400);
+    const id = await storeSkill({
+      name: body.name,
+      description: body.description,
+      triggerPattern: body.triggerPattern,
+      steps: body.steps
+        ? body.steps.map((s) => ({ step: s.step, action: s.action, description: s.action, tool: s.tool, params: s.params }))
+        : [{ step: 1, action: body.content ?? body.description ?? '', description: body.content ?? body.description ?? '' }],
+      origin: 'human',
+      content: body.content ?? undefined,
+    });
+    return json({ ok: true, id });
+  }
+
+  // DELETE /api/skills?name=...
+  if (req.method === 'DELETE' && path === '/api/skills') {
+    const name = url.searchParams.get('name');
+    if (!name) return err('Missing skill name', 400);
+    const deleted = await deleteSkill(name);
+    if (!deleted) return err('Skill not found', 404);
+    return json({ ok: true });
+  }
+
+  // POST /api/skills/load-human (load skills from .cortex/skills/)
+  if (req.method === 'POST' && path === '/api/skills/load-human') {
+    const loaded = await loadHumanSkills();
+    return json({ ok: true, loaded });
   }
 
   // GET /api/policies
