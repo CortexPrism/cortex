@@ -1,5 +1,6 @@
 import {
   deleteSession as deleteSessionDb,
+  getChildSessions,
   getSession,
   listSessions,
   resumeSession,
@@ -23,6 +24,7 @@ import {
 import { pluginManager } from '../plugins/manager.ts';
 import type { PluginManifest } from '../plugins/types.ts';
 import { extractSettingsSchema } from '../plugins/extensions/config.ts';
+import { generatePanelHtml, generatePanelJs } from '../plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
@@ -98,6 +100,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const ids = rows.map((r: Record<string, unknown>) => r.session_id as string).filter(Boolean);
     const sessions = await Promise.all(ids.map((id) => getSession(id)));
     return json(sessions.filter(Boolean));
+  }
+
+  // GET /api/sessions/:id/children — sub-agent sessions spawned from a parent
+  const childrenMatch = path.match(/^\/api\/sessions\/([^/]+)\/children$/);
+  if (req.method === 'GET' && childrenMatch) {
+    const session = await getSession(childrenMatch[1]);
+    if (!session) return notFound('Session not found');
+    const children = await getChildSessions(childrenMatch[1]);
+    return json(children);
   }
 
   // GET /api/sessions/:id
@@ -528,6 +539,35 @@ export async function handleApi(req: Request): Promise<Response | null> {
       return json(extractSettingsSchema(manifest));
     } catch {
       return json({ pluginName: pluginSettingsMatch[1], sections: [] });
+    }
+  }
+
+  // GET /api/plugins/:name/panel.js
+  const pluginPanelJsMatch = path.match(/^\/api\/plugins\/([^/]+)\/panel\.js$/);
+  if (req.method === 'GET' && pluginPanelJsMatch) {
+    return new Response(generatePanelJs(pluginPanelJsMatch[1]), {
+      headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
+    });
+  }
+
+  // GET /api/plugins/:name/panel
+  const pluginPanelMatch = path.match(/^\/api\/plugins\/([^/]+)\/panel$/);
+  if (req.method === 'GET' && pluginPanelMatch) {
+    const plugin = await pluginManager.get(pluginPanelMatch[1]);
+    if (!plugin) return notFound('Plugin not found');
+    try {
+      const manifest = JSON.parse(plugin.manifest_json) as PluginManifest;
+      const panel = manifest.ui?.panels?.[0];
+      const title = panel?.title ?? pluginPanelMatch[1];
+      const jsUrl = `/api/plugins/${pluginPanelMatch[1]}/panel.js`;
+      const html = generatePanelHtml(pluginPanelMatch[1], title, '', jsUrl);
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    } catch {
+      return new Response(generatePanelHtml(pluginPanelMatch[1], pluginPanelMatch[1], '', ''), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
     }
   }
 

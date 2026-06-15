@@ -368,6 +368,10 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Marketplace
     </button>
 
+    <!-- Plugin Panels (dynamic) -->
+    <div class="nav-section">Plugin Panels</div>
+    <div id="plugin-panels-nav"></div>
+
     <!-- Monitoring -->
     <div class="nav-section">Monitoring</div>
     <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
@@ -750,9 +754,11 @@ const HTML = `<!DOCTYPE html>
     </div>
     <!-- Detail view -->
     <div id="sessions-detail-view" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-ghost" onclick="backToSessions()" style="padding:5px 10px;">← Back</button>
         <span id="session-detail-title" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);"></span>
+        <span id="session-detail-meta" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;"></span>
+        <span id="session-detail-children" style="font-size:11px;display:flex;align-items:center;gap:6px;"></span>
         <button class="btn" style="margin-left:auto;font-size:12px;background:rgba(99,102,241,0.15);color:var(--accent2);" onclick="continueSession(document.getElementById('session-detail-title').textContent)">▶ Continue</button>
         <button class="btn btn-ghost" style="font-size:12px;" onclick="exportSession(document.getElementById('session-detail-title').textContent)">⬇ Export JSON</button>
       </div>
@@ -888,6 +894,15 @@ const HTML = `<!DOCTYPE html>
       <button id="mp-tab-agents" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;" onclick="switchMarketplaceTab('agents')">Agents</button>
     </div>
     <div id="mp-content" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+
+  <!-- Page: Plugin Panels -->
+  <div id="page-pluginpanels" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div><h1 style="font-size:15px;font-weight:600;">Plugin Panels</h1><p style="font-size:12px;color:var(--text3);margin-top:2px;">Active plugin UI panels</p></div>
+    </div>
+    <div id="plugin-panels-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;"></div>
+    <div id="plugin-panels-content" style="flex:1;overflow:hidden;"></div>
   </div>
 
   <!-- Page: Soul -->
@@ -1242,7 +1257,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs'];
+const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels'];
 function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
@@ -1265,6 +1280,7 @@ function showPage(name) {
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings, plugins: loadPlugins,
     marketplace: loadMarketplace, soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
+    pluginpanels: () => { loadPluginPanelsTabs(); },
   };
   if (loaders[name]) loaders[name]();
 }
@@ -1703,16 +1719,47 @@ async function loadSessionAgentFilter() {
   } catch {}
 }
 
+function channelLabel(ch) {
+  if (!ch || ch === 'cli') return '';
+  if (ch.startsWith('subagent:')) return ch.replace('subagent:', '');
+  if (ch === 'subagent') return 'sub';
+  if (ch === 'web') return 'web';
+  if (ch === 'discord') return 'discord';
+  if (ch === 'service') return 'service';
+  return ch;
+}
+
+function channelColor(ch) {
+  if (ch?.startsWith('subagent')) return 'rgba(245,158,11,0.1)';
+  if (ch === 'web') return 'rgba(59,130,246,0.1)';
+  if (ch === 'discord') return 'rgba(139,92,246,0.1)';
+  return 'rgba(255,255,255,0.06)';
+}
+
+function channelTextColor(ch) {
+  if (ch?.startsWith('subagent')) return '#fbbf24';
+  if (ch === 'web') return '#60a5fa';
+  if (ch === 'discord') return '#a78bfa';
+  return 'var(--text3)';
+}
+
 function renderSessionsList(sessions) {
   const el = document.getElementById('sessions-table');
   if (!el) return;
   if (!sessions.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="color:var(--text3);font-size:13px;">No sessions found.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Start a chat session to see it here.</p></div>'; return; }
-  el.innerHTML = sessions.map(s => \`
+  el.innerHTML = sessions.map(s => {
+    const ch = channelLabel(s.channel);
+    const chBg = channelColor(s.channel);
+    const chTc = channelTextColor(s.channel);
+    const hasParent = !!s.parent_session_id;
+    return \`
     <div class="card-sm" style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:6px;" onclick="openSession('\${s.id}')">
       <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
           \${s.agent_id && s.agent_id !== 'default' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
+          \${ch ? '<span class="badge" style="background:' + chBg + ';color:' + chTc + ';font-size:10px;">' + esc(ch) + '</span>' : ''}
+          \${hasParent ? '<span class="badge" style="background:rgba(245,158,11,0.08);color:#fbbf24;font-size:10px;">⤷ child</span>' : ''}
           <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':'var(--text3)'};">\${s.status}</span>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${new Date(s.started_at).toLocaleString()}</div>
@@ -1723,8 +1770,7 @@ function renderSessionsList(sessions) {
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
       </div>
     </div>
-  \`).join('');
-}
+  \`}).join('
 
 async function searchSessions() {
   const q = document.getElementById('sess-search').value.trim();
@@ -1738,13 +1784,37 @@ async function openSession(id) {
   document.getElementById('sessions-list-view').style.display = 'none';
   document.getElementById('sessions-detail-view').style.display = 'flex';
 
-  const [msgs, events] = await Promise.all([
+  const [session, msgs, events, children] = await Promise.all([
+    fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}\`).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/messages\`).then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(\`\${BASE}/api/sessions/\${id}/events\`).then(r => r.json()).catch(() => []),
+    fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/children\`).then(r => r.ok ? r.json() : []).catch(() => []),
   ]);
   const el = document.getElementById('session-detail-log');
   const title = document.getElementById('session-detail-title');
+  const meta = document.getElementById('session-detail-meta');
+  const ctn = document.getElementById('session-detail-children');
   title.textContent = id;
+
+  // Show parent link if this session has a parent
+  if (session && session.parent_session_id) {
+    meta.innerHTML = \`<span style="color:var(--text3);">← parent:</span> <a href="#" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;" onclick="event.preventDefault();openSession('\${session.parent_session_id}')">\${session.parent_session_id.slice(-20)}</a>\`;
+  } else {
+    meta.innerHTML = '';
+  }
+
+  // Show child sessions if any
+  if (children.length > 0) {
+    const ch = channelLabel(session?.channel);
+    ctn.innerHTML = '<span style="color:var(--text3);">sub-agents:</span> ' + children.map(c => \`
+      <a href="#" style="color:#fbbf24;font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.08);" onclick="event.preventDefault();openSession('\${c.id}')">
+        \${c.channel?.startsWith('subagent:') ? c.channel.replace('subagent:','') : 'sub'}
+      </a>\`).join(' ');
+  } else if (session && !session.channel?.startsWith('subagent')) {
+    ctn.innerHTML = '<span style="color:var(--text3);font-size:10px;">(no sub-agents)</span>';
+  } else {
+    ctn.innerHTML = '';
+  }
 
   if (msgs.length > 0) {
     el.innerHTML = msgs.map(m => {
@@ -2501,16 +2571,94 @@ async function submitInstallPlugin() {
   if (res.ok) { hideInstallModal(); toast('Plugin installed', 'success'); loadPlugins(); }
   else { document.getElementById('pm-status').textContent = 'Install failed.'; }
 }
-async function togglePlugin(id, enable) {
-  await fetch(\`\${BASE}/api/plugins/\${id}/\${enable?'enable':'disable'}\`, { method: 'POST' });
+async function togglePlugin(name, enable) {
+  await fetch(\`\${BASE}/api/plugins/\${name}/\${enable?'enable':'disable'}\`, { method: 'POST' });
   loadPlugins();
+  loadPluginPanels();
 }
-async function deletePlugin(id) {
+async function deletePlugin(name) {
   if (!confirm('Remove this plugin?')) return;
-  const res = await fetch(\`\${BASE}/api/plugins/\${id}\`, { method: 'DELETE' });
+  const res = await fetch(\`\${BASE}/api/plugins/\${name}\`, { method: 'DELETE' });
   if (res.ok) toast('Plugin removed', 'success');
   loadPlugins();
+  loadPluginPanels();
 }
+
+// ── Plugin Panels (dynamic) ─────────────────────────────────
+
+let pluginPanels = [];
+let activePluginPanel = null;
+
+async function loadPluginPanels() {
+  try {
+    const res = await fetch(BASE + '/api/plugins/panels');
+    pluginPanels = await res.json();
+  } catch { pluginPanels = []; }
+  loadPluginPanelsNav();
+  loadPluginPanelsTabs();
+}
+
+function loadPluginPanelsNav() {
+  const nav = document.getElementById('plugin-panels-nav');
+  if (!nav) return;
+  nav.innerHTML = pluginPanels.map(p => {
+    const id = 'nav-pp-' + p.pluginId + '-' + p.panelId;
+    return \`<button class="nav-item" onclick="showPage('pluginpanels');selectPluginPanel('\${p.pluginId}','\${p.panelId}')" id="\${id}">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span> \${p.title}
+    </button>\`;
+  }).join('');
+}
+
+function loadPluginPanelsTabs() {
+  const tabs = document.getElementById('plugin-panels-tabs');
+  if (!tabs) return;
+  tabs.innerHTML = pluginPanels.map(p =>
+    \`<button id="ppt-\${p.pluginId}-\${p.panelId}" class="btn" style="flex:0;border-radius:0;padding:10px 16px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;"
+      onclick="selectPluginPanel('\${p.pluginId}','\${p.panelId}')">\${p.title}</button>\`
+  ).join('');
+}
+
+function selectPluginPanel(pluginId, panelId) {
+  activePluginPanel = { pluginId, panelId };
+
+  // Update tab styling
+  document.querySelectorAll('[id^="ppt-"]').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.color = 'var(--text2)';
+    b.style.borderBottomColor = 'transparent';
+  });
+  const tab = document.getElementById('ppt-' + pluginId + '-' + panelId);
+  if (tab) {
+    tab.style.background = 'rgba(99,102,241,0.1)';
+    tab.style.color = 'var(--accent2)';
+    tab.style.borderBottomColor = 'var(--accent)';
+  }
+
+  // Update nav highlighting
+  document.querySelectorAll('[id^="nav-pp-"]').forEach(b => b.classList.remove('active'));
+  const navItem = document.getElementById('nav-pp-' + pluginId + '-' + panelId);
+  if (navItem) navItem.classList.add('active');
+
+  renderPluginPanel(pluginId, panelId);
+}
+
+function renderPluginPanel(pluginId, panelId) {
+  const content = document.getElementById('plugin-panels-content');
+  if (!content) return;
+  content.innerHTML = \`<iframe id="plugin-iframe"
+    src="/api/plugins/\${encodeURIComponent(pluginId)}/panel"
+    style="width:100%;height:100%;border:none;"
+    sandbox="allow-scripts"
+  ></iframe>\`;
+}
+
+// Handle postMessage from plugin iframes
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'cortex-notification') {
+    var n = e.data.notification;
+    if (n && n.msg) toast(n.msg, n.type || 'info');
+  }
+});
 
 // ── Marketplace ────────────────────────────────────────────────
 let marketplaceTab = 'plugins';
@@ -3490,7 +3638,7 @@ async function ghShowTab(tab) {
         contentEl.innerHTML += '<div style="color:var(--text3);padding:20px 0;text-align:center;">No open pull requests.</div>';
       } else {
         for (const pr of prs) {
-          contentEl.innerHTML += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="window.open(\'' + pr.html_url + '\',\'_blank\')">' +
+          contentEl.innerHTML += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="window.open(\\'' + pr.html_url + '\\',\\'_blank\\')">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
             '<span><strong>#' + pr.number + '</strong> ' + pr.title + '</span>' +
             '<span style="font-size:11px;color:var(--text3);">@' + pr.user.login + '</span>' +
@@ -3508,7 +3656,7 @@ async function ghShowTab(tab) {
       } else {
         for (const issue of issues) {
           const labels = issue.labels.map(l => '<span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);font-size:10px;">' + l.name + '</span>').join(' ');
-          contentEl.innerHTML += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="window.open(\'' + issue.html_url + '\',\'_blank\')">' +
+          contentEl.innerHTML += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="window.open(\\'' + issue.html_url + '\\',\\'_blank\\')">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
             '<span><strong>#' + issue.number + '</strong> ' + issue.title + '</span>' +
             '<span style="font-size:11px;color:var(--text3);">@' + issue.user.login + '</span>' +
@@ -3588,6 +3736,7 @@ restoreSession();
 loadAgentSelector();
 gitLoadAgentSelector();
 ghRefresh();
+loadPluginPanels();
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);

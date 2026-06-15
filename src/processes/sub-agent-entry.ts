@@ -53,6 +53,7 @@ interface InitMessage {
     id: string;
     parentSessionId: string;
     instruction: string;
+    subAgentType?: string;
     config: {
       agentId?: string;
       name?: string;
@@ -167,8 +168,11 @@ async function main(): Promise<void> {
 
     // Create a session for this sub-task
     const sessionId = `sub_${taskId}_${Date.now().toString(36)}`;
+    const sessionType = config.subAgentType
+      ? `subagent:${config.subAgentType}`
+      : 'subagent';
     const sessionDb = await initSessionDb(sessionId);
-    await createSession(sessionId, 'subagent');
+    await createSession(sessionId, sessionType, undefined, undefined, config.parentSessionId);
 
     // Signal ready
     send({ type: 'ready' });
@@ -188,7 +192,7 @@ async function main(): Promise<void> {
         workingDir: Deno.cwd(),
         agentId: config.config.agentId ?? agentConfig.id ?? 'default',
         workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(
-          config.config.agentId ?? agentConfig.id ?? 'default',
+          config.config.agentId ?? config.subAgentType ?? agentConfig.id ?? 'default',
         ),
       },
       embedder,
