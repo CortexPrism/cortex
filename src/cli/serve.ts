@@ -96,18 +96,22 @@ export const serveCommand = new Command()
           }
         }
 
-        const entryPath = new URL('../main.ts', import.meta.url).pathname;
+        const projectRoot = new URL('../../', import.meta.url).pathname;
+        const configPath = `${projectRoot}deno.json`;
+        const mainPath = `${projectRoot}src/main.ts`;
         const cmd = new Deno.Command(Deno.execPath(), {
           args: [
             'run',
             '--allow-all',
-            entryPath,
+            `--config=${configPath}`,
+            mainPath,
             'serve',
             '--port',
             String(opts.port),
             '--host',
             opts.host,
           ],
+          cwd: projectRoot,
           stdout: 'null',
           stderr: 'null',
           stdin: 'null',

@@ -7,19 +7,52 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.23.1] — 2026-06-15
+
+### Added
+
+- **Settings page overhaul** — Tabbed navigation with 7 organized sections (General,
+  Providers & Models, Model Router, Updates, User Profile, UI & Appearance, Security).
+  All configuration fields from `CortexConfig` are now exposed in the web UI, including
+  previously hidden settings: update channels, auto-update, user profile personalization,
+  UI animations/background effects/color schemes, and web authentication controls.
+- **Password change API** — New `POST /api/auth/change-password` endpoint for changing
+  the web UI password from the settings page. Requires current password verification.
+- **Plugin validation command** — `cortex plugins validate [--fix]` scans installed
+  plugins for invalid entry points and optionally removes them.
+
+### Fixed
+
+- **Plugin initialization order** — Plugins now load after database migrations instead of
+  during CLI parsing, preventing errors when the plugins table doesn't exist yet or contains
+  invalid entries. Plugin load failures are now non-fatal with summary reporting.
+- **Plugin entry point validation** — Invalid entry points (relative paths, bare filenames)
+  are rejected with clear error messages before attempting to load.
+- **Daemon mode (`cortex serve -d`)** — Fixed spawn to include `--config` and `cwd`,
+  resolving import map errors that caused silent daemon startup failures.
+- **Daemon restart (`-r` flag)** — Fixed process detection to correctly find and stop
+  existing server instances before restarting.
+- **Public status endpoints** — `/api/health`, `/api/status`, and `/api/system` now
+  accessible without authentication, ensuring the frontend sidebar and status page show
+  correct daemon states instead of silently falling back to "off".
+- **Status page crash** — Added null guards for `disk` and `memory` fields in the system
+  status page to prevent "Cannot read properties of undefined" errors.
+
+---
+
 ## [0.23.0] — 2026-06-15
 
 ### Added
 
 - **Distributed agent architecture** — Cortex Hub coordinates remote Cortex Nodes over secure
   WebSocket connections, replacing SSH-based remote control with a structured protocol:
-  - **Node Registry** (`src/hub/node-registry.ts`): DB-backed CRUD for Node records with vault-stored
-    capability tokens. Nodes table (migration 015) tracks identity, tier, status, heartbeat, group,
-    and directive history.
+  - **Node Registry** (`src/hub/node-registry.ts`): DB-backed CRUD for Node records with
+    vault-stored capability tokens. Nodes table (migration 015) tracks identity, tier, status,
+    heartbeat, group, and directive history.
   - **Secure Node WebSocket endpoint** (`src/hub/ws-node.ts`): `/ws/node` handler on the Hub with
     token-based registration, heartbeat/ACK protocol with metrics payload (CPU%, memory, disk),
-    3-missed-ACK disconnect detection, streaming output via `stream_chunk`, directive cancel support,
-    config push, and token rotation (`rekey`).
+    3-missed-ACK disconnect detection, streaming output via `stream_chunk`, directive cancel
+    support, config push, and token rotation (`rekey`).
   - **Node event system**: `onNodeEvent()` / `emitNodeEvent()` fire `node.connected`,
     `node.disconnected`, and `node.error` events for plugin/pipeline integration.
   - **Message protocol** (`src/remote/types.ts`): Extended `NodeMessage` type with 14 message types
@@ -31,16 +64,17 @@ Versioning: [Semantic Versioning](https://semver.org/)
   Tier-aware policy enforcement at the Hub before dispatch and local defense-in-depth on the Node.
 - **Enhanced Node agent** (`src/remote/agent.ts`): Streaming output for long-running directives,
   local tier policy checks before execution, directive timeout enforcement (default 5 min) via
-  `AbortController`, exponential backoff reconnection (1s → 30s cap), heartbeat ACK tracking,
-  system metrics collection from `/proc` and `df`, cancel/config_update/rekey directive handling.
+  `AbortController`, exponential backoff reconnection (1s → 30s cap), heartbeat ACK tracking, system
+  metrics collection from `/proc` and `df`, cancel/config_update/rekey directive handling.
   `runNodeAgent()` replaces `runRemoteAgent()` with backward-compatible wrapper.
-- **Tier-directed validation** (`src/security/validator.ts`): `validateNodeDirective()` enforces
-  a 4-layer defense model — tier tool allow-list, tier command restrictions, tier path restrictions,
+- **Tier-directed validation** (`src/security/validator.ts`): `validateNodeDirective()` enforces a
+  4-layer defense model — tier tool allow-list, tier command restrictions, tier path restrictions,
   and cross-cutting policy rules with per-node filtering.
 - **Per-node policy profiles**: Migration 016 adds `node_id` column to `policy_rules` enabling
-  node-specific policy overrides. `checkPolicy()` and `addPolicy()` accept optional `nodeId` parameter.
-- **CLI — `cortex node`** (`src/cli/node.ts`): 6 subcommands: `register` (generates token, stores
-  in vault), `list`, `show`, `deregister`, `rekey` (token rotation), `connect` (run as a Node with
+  node-specific policy overrides. `checkPolicy()` and `addPolicy()` accept optional `nodeId`
+  parameter.
+- **CLI — `cortex node`** (`src/cli/node.ts`): 6 subcommands: `register` (generates token, stores in
+  vault), `list`, `show`, `deregister`, `rekey` (token rotation), `connect` (run as a Node with
   configurable tier/endpoint/timeouts).
 - **REST API — Node endpoints**: `POST /api/nodes` (register), `GET /api/nodes` (list with
   tier/status/group filters), `GET /api/nodes/:id`, `DELETE /api/nodes/:id` (deregister),
@@ -49,9 +83,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Web UI — Nodes page**: Real-time node monitoring dashboard with summary stat cards, tier/status/
   group filter bar, per-node cards with expandable metrics (recent heartbeats: CPU%, memory, disk,
   active directives, uptime) and directive history tables. 10-second auto-refresh.
-- **Prometheus metrics for nodes**: 5 new metric families — `cortex_node_directives_dispatched_total`,
-  `cortex_node_directives_completed_total`, `cortex_node_directives_failed_total`,
-  `cortex_node_connections`, `cortex_node_heartbeat_age_seconds`.
+- **Prometheus metrics for nodes**: 5 new metric families —
+  `cortex_node_directives_dispatched_total`, `cortex_node_directives_completed_total`,
+  `cortex_node_directives_failed_total`, `cortex_node_connections`,
+  `cortex_node_heartbeat_age_seconds`.
 - **Systemd unit template** — `deploy/cortex-node@.service` for running Cortex Nodes as systemd
   services with environment variable configuration (`CORTEX_NODE_TOKEN`, `CORTEX_HUB_ENDPOINT`,
   `CORTEX_NODE_TIER`).
@@ -63,8 +98,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - `src/db/lens.ts` `EventType` union expanded with 7 node event types: `node_connected`,
   `node_disconnected`, `node_heartbeat`, `node_directive`, `node_directive_dispatched`,
   `node_stream_chunk`.
-- `RemoteAgentInfo`, `RemoteDirective`, `RemoteResult` types in `src/remote/types.ts` extended
-  with `stream`, `timeoutMs`, `NodeMetrics`, `StreamChunk` fields; `RemoteMessage` renamed to
+- `RemoteAgentInfo`, `RemoteDirective`, `RemoteResult` types in `src/remote/types.ts` extended with
+  `stream`, `timeoutMs`, `NodeMetrics`, `StreamChunk` fields; `RemoteMessage` renamed to
   `NodeMessage` with backward-compatible alias.
 - `dispatchDirective()` in ws-node.ts returns `DispatchResult` (`{dispatched, reason}`) instead of
   boolean, with policy validation before dispatch.
@@ -75,47 +110,46 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Unified skills model** — skills now track `origin` (`human` | `llm`) and support full
-  Markdown `content` storage. Human-authored skills provide domain knowledge and conventions;
-  LLM-extracted skills capture emerging patterns from agent tool sequences.
+- **Unified skills model** — skills now track `origin` (`human` | `llm`) and support full Markdown
+  `content` storage. Human-authored skills provide domain knowledge and conventions; LLM-extracted
+  skills capture emerging patterns from agent tool sequences.
 - **Human-authored skill loading** — skills can be loaded from `.cortex/skills/<name>/SKILL.md`
   files with YAML frontmatter (`name`, `description`, `trigger_pattern`). API endpoint
   `POST /api/skills/load-human` and "Load .cortex/skills" button in the Web UI.
 - **Skill CRUD API** — new endpoints for creating (`POST /api/skills`), reading
   (`GET /api/skills/detail?name=`), and deleting (`DELETE /api/skills?name=`) skills.
   `GET /api/skills` now supports `?origin=human|llm` filtering.
-- **Skill stats endpoint** — `GET /api/skills/stats` returns total/human/llm counts and
-  average success rate.
-- **Skill injection into agent context** — `findMatchingSkills()` and
-  `formatSkillsForPrompt()` now inject relevant skills into the agent's system prompt before
-  each reasoning turn. Skills with `origin='human'` are always eligible; learned skills
-  require `success_rate >= 0.3` to avoid steering the agent toward unproven patterns.
+- **Skill stats endpoint** — `GET /api/skills/stats` returns total/human/llm counts and average
+  success rate.
+- **Skill injection into agent context** — `findMatchingSkills()` and `formatSkillsForPrompt()` now
+  inject relevant skills into the agent's system prompt before each reasoning turn. Skills with
+  `origin='human'` are always eligible; learned skills require `success_rate >= 0.3` to avoid
+  steering the agent toward unproven patterns.
 - **Skill extraction from agent turns** — `extractSkillFromSession()` runs as a fire-and-forget
-  background LLM call whenever 2+ tool calls are made in a turn, analyzing tool sequences to
-  extract reusable skill patterns. Tool parameters are redacted for sensitive keys
-  (`api_key`, `token`, `password`, etc.) before being sent to the extraction LLM.
+  background LLM call whenever 2+ tool calls are made in a turn, analyzing tool sequences to extract
+  reusable skill patterns. Tool parameters are redacted for sensitive keys (`api_key`, `token`,
+  `password`, etc.) before being sent to the extraction LLM.
 - **Redesigned skills Web UI** — filter tabs (All / Human / Learned), stats summary bar,
-  click-to-expand skill detail with full content and step listing, and a full modal form
-  for creating/editing human-authored skills with name, description, trigger pattern, and
-  Markdown content fields. Edit buttons on human-authored skill cards load data into the
-  modal pre-filled.
-- **Migration 014** — adds `origin` and `content` columns to the `procedural_memory` table
-  in `memory.db`.
+  click-to-expand skill detail with full content and step listing, and a full modal form for
+  creating/editing human-authored skills with name, description, trigger pattern, and Markdown
+  content fields. Edit buttons on human-authored skill cards load data into the modal pre-filled.
+- **Migration 014** — adds `origin` and `content` columns to the `procedural_memory` table in
+  `memory.db`.
 
 ### Changed
 
-- `storeSkill()` UPDATE now handles `origin` and `content` columns, uses conditional
-  version bumping (only increments when steps/description/content actually change), and
-  properly preserves `origin` on upsert so human-authored skills don't revert to `'llm'`.
+- `storeSkill()` UPDATE now handles `origin` and `content` columns, uses conditional version bumping
+  (only increments when steps/description/content actually change), and properly preserves `origin`
+  on upsert so human-authored skills don't revert to `'llm'`.
 - `listSkills()` supports optional `origin` parameter for filtering.
 - Removed orphaned `maybeExtractSkill()` function (replaced by direct `extractSkillFromSession`
   calls in the agent loop).
 
 ### Fixed
 
-- Unescaped single quotes in CSS `font-family` values inside JavaScript string literals
-  caused browser syntax errors on the skills page. Fixed by removing unnecessary font quotes
-  and using proper `\\'` escaping in onclick handlers per existing codebase patterns.
+- Unescaped single quotes in CSS `font-family` values inside JavaScript string literals caused
+  browser syntax errors on the skills page. Fixed by removing unnecessary font quotes and using
+  proper `\\'` escaping in onclick handlers per existing codebase patterns.
 
 ---
 
@@ -126,125 +160,207 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Memory heuristic learning** — AI-driven memory self-improvement that runs daily
   - Access tracking: records every retrieval to `access_count` and `last_accessed`, enabling
     usage-based reinforcement
-  - Importance boosting: heavily-accessed memories (10+ hits) get +0.15 importance bump,
-    moderate (5+) get +0.05, with `access_count` reset after each boost cycle
+  - Importance boosting: heavily-accessed memories (10+ hits) get +0.15 importance bump, moderate
+    (5+) get +0.05, with `access_count` reset after each boost cycle
   - Decay slowing: frequently-accessed memories receive a one-time 1.3× half-life extension
     (episodic 14→18.2 days, semantic 30→39 days), capped at 90/180 days respectively
-  - Co-occurrence learning: analyzes entity pairs across episodic memories, creates or
-    strengthens `related_to` graph relations when entities co-occur 3+ times
-  - Auto-categorization: 12 pattern-based rules auto-tag untagged semantic memories with
-    categories (api, database, frontend, debugging, security, devops, etc.) and tags
-  - Memory health dashboard: aggregated metrics for active/stale counts, average decay,
-    importance, access frequency, graph entity/relation counts, and reflection confidence
+  - Co-occurrence learning: analyzes entity pairs across episodic memories, creates or strengthens
+    `related_to` graph relations when entities co-occur 3+ times
+  - Auto-categorization: 12 pattern-based rules auto-tag untagged semantic memories with categories
+    (api, database, frontend, debugging, security, devops, etc.) and tags
+  - Memory health dashboard: aggregated metrics for active/stale counts, average decay, importance,
+    access frequency, graph entity/relation counts, and reflection confidence
   - All heuristic jobs run via `runHeuristicCycle()` in the daily consolidation cycle
-- **Richer memory search** — search results now include entities, topics, tags, category,
-  decay score with visual bar, and access count
+- **Richer memory search** — search results now include entities, topics, tags, category, decay
+  score with visual bar, and access count
 - **Memory page tabs** — rebuilt Web UI with Search, Graph, Reflections, and Health tabs
-  - Graph tab: entity browser with type badges, click-through traversal showing grouped
-    relations with strength bars, and breadcrumb navigation
+  - Graph tab: entity browser with type badges, click-through traversal showing grouped relations
+    with strength bars, and breadcrumb navigation
   - Reflections tab: confidence-ranked pattern list with category badges and confidence bars
-  - Health tab: per-tier cards with total/active/stale counts, decay distribution bars,
-    average metrics, and graph/reflection overview
+  - Health tab: per-tier cards with total/active/stale counts, decay distribution bars, average
+    metrics, and graph/reflection overview
 - **New API endpoints** — `GET /api/memory/health`, `GET /api/memory/reflections`,
   `GET /api/memory/graph/entities?q=`, `GET /api/memory/graph?entity=&depth=`
-- **Centralized version module** — extracted `getVersion()` into `src/config/version.ts`,
-  reused by main entrypoint, status API, and update installer
+- **Centralized version module** — extracted `getVersion()` into `src/config/version.ts`, reused by
+  main entrypoint, status API, and update installer
 
 ### Fixed
 
-- Heuristic learning column mismatches: `last_accessed_at` removed from episodic
-  (column didn't exist), fixed to `last_accessed` on semantic, `context` replaced with
-  `metadata` (JSON) on graph_relations INSERT
+- Heuristic learning column mismatches: `last_accessed_at` removed from episodic (column didn't
+  exist), fixed to `last_accessed` on semantic, `context` replaced with `metadata` (JSON) on
+  graph_relations INSERT
 - `slowDecayForFrequentAccess` now guarded against daily compounding (only applies when
   `half_life_days` is at default)
-- `boostImportanceFromAccess` now resets `access_count` after each boost to prevent
-  qualifying set from growing unbounded
+- `boostImportanceFromAccess` now resets `access_count` after each boost to prevent qualifying set
+  from growing unbounded
 - Escaped single quotes in `esc()` to prevent XSS via entity names in onclick handlers
 - Replaced dynamic `import('./heuristics.ts')` with static import in `retrieve()` hot path
 - `getMemoryHealth()` now uses 60s in-memory cache to avoid full table scans per request
-- Removed duplicate `ageStr()` function in favor of existing `timeAgo()` for consistent
-  relative time formatting
-- **Pipeline hooks system** (`src/pipeline/`): 10-stage middleware architecture (pre/post-assess, pre/post-reason, pre/post-tool, pre/post-reflect, pre/post-output). Priority-ordered hook execution within each stage with abort support. Built-in hooks: content safety filter (`@cortex/content-safety`), prompt injection detector (`@cortex/injection-guard`), cost tracker (`@cortex/cost-tracker`), audit logger (`@cortex/audit-log`). Sync hooks block the pipeline; async hooks fire-and-forget. Timeout enforcement per hook (5s sync, 15s async). CLI: `cortex hooks` (list/init/disable). API: `GET /api/hooks`, `POST /api/hooks/:name/disable`.
-- **Enhanced onboarding wizard** (`src/cli/setup.ts`): 4-step first-run wizard (model provider → personality → channels → telemetry). Personality templates generate SOUL.md (professional/friendly/developer/custom). Channel selection (CLI only / CLI+Web / CLI+Discord / all). Connection test validates API key before saving. Post-install summary with next-step commands.
-- **Event triggers system** (`src/triggers/`): Webhook receiver with HMAC signature verification (GitHub, GitLab, generic providers). Filesystem watcher using `Deno.watchFs` with configurable debounce and pattern matching. Git hook installer auto-places `post-receive`/`post-commit` scripts. Rate limiting with sliding windows and cooldown periods. IP allowlisting for webhook endpoints. Jinja2-style prompt template rendering. Trigger-to-job mapping creates immediate agent turns. CLI: `cortex triggers` (list/add/remove/install-hooks/uninstall-hooks). API: `POST /api/webhooks/:name`.
-- **Observability** (`src/observability/`): Prometheus-compatible metrics (counter, gauge, histogram) with labels. 15 pre-registered metric families: agent turns/tokens/cost/errors, validator intents approved/rejected, executor actions/duration, scheduler jobs, memory consolidations, system CPU/memory/uptime. Prometheus `/metrics` endpoint on port 3000. OpenTelemetry-compatible trace spans with OTLP export support. `registerMetric()`, `counterInc()`, `gaugeSet()`, `histogramObserve()` API.
-- **Channel plugin API** (`src/channels/`): `ChannelPlugin` interface with connect/disconnect/onEvent/send/edit/react/delete/typing/upload. Canonical types for cross-platform events, targets, users, attachments, rich embeds. Channel manager handles registration, start/stop lifecycle, and agent binding. Event handler routing from platform events to agent turns. CLI: `cortex channels` (list/start/stop).
-- **MCP server** (`src/mcp/server.ts`): Cortex operates as a Model Context Protocol server. JSON-RPC 2.0 protocol support (`initialize`, `tools/list`, `tools/call`, `resources/list`, `prompts/list`). Dual transport: stdio mode (for Claude Desktop, VS Code) and HTTP mode (GET/POST `/mcp`). All Cortex tools exposed as `cortex.*` namespaced MCP tools. Built-in MCP tools: `cortex.search_memory`, `cortex.list_sessions`, `cortex.health`. CLI: `cortex mcp` (serve/stdio).
-- **Remote agent protocol** (`src/remote/`): Headless remote agents connect via WebSocket to a Cortex primary. Primary handles reasoning/memory/credentials; remote handles local filesystem/tools/execution. Registration flow with token authentication. Heartbeat-based health monitoring with automatic reconnection. Directive/result message protocol. Remote agent manager tracks connected agents and routes delegation. CLI: `cortex remote` (add/connect/remove).
-- **Terminal UI** (`src/tui/terminal.ts`): Full-screen interactive terminal interface with split-pane layout (70/30 chat/tools). Raw terminal input handling with ANSI escape codes. Scrollable message pane with user/assistant messages. Tool call status panel showing running/success/error with durations. Input line with command history (up/down navigation). Key bindings: Ctrl+C cancel, Ctrl+L clear, Up/Down history, Enter send. Status bar showing agent state, message count, token usage. CLI: `cortex tui`.
-- **Workflow engine** (`src/workflow/engine.ts`): Deterministic workflow DSL with `.step()`, `.branch()`/`.if()`, `.parallel()`, `.goto()`, `.waitForApproval()`. DAG execution with context passthrough between steps. Parallel step execution with `Promise.all` error isolation. Human-in-the-loop approval via `workflow.approve()`. Built-in `health-check` workflow. CLI: `cortex workflow` (list/run/approve).
-- **Project workspaces** (`src/projects/manager.ts`): Per-project isolated directories under `~/.cortex/data/projects/`. Project config stores agent binding, tool allow-lists, and description. Auto-initialized directory structure. CLI: `cortex projects` (list/create/delete).
-- **Plugin namespace isolation** (`src/plugins/namespace.ts`): `@author/plugin-name` identity model with key-based author verification. Tool names auto-prefixed to `@author/plugin-name/tool`. Short-name aliases with `setToolAlias()`/`resolveAlias()`. Collision detection: same author prefix → error, different authors → no collision.
-- **UI plugin slots** (`src/plugins/ui-slots.ts`): 5 slot types (sidebar, panel, modal, timeline-item, widget). Web component-based plugin registration with HTML/JS URL serving. Slot-specific HTML generation for dashboard injection. Message bus API with permission-limited commands (navigate, notification, config, query).
-- **Desktop automation** (`src/desktop/automation.ts`): 11 desktop actions (screenshot, click, dblclick, type, keypress, drag, clipboard get/set, wait, move, scroll). `xdotool`/`scrot`/`xclip` wrapper via `Deno.Command`. Docker XFCE+noVNC container template with entrypoint script. CLI: `cortex desktop` (dockerfile/entrypoint/screenshot/click/type/clipboard).
-- **Desktop app scaffold** (`desktop/src-tauri/`): Tauri v2 project with system tray, global shortcuts, native notifications. Cargo.toml with tray-icon/notification/global-shortcut features. Main window with hide-to-tray behavior. Quick-ask event bridge. Platform bundle targets (deb, AppImage, dmg, msi).
-- **Memory backends interface** (`src/memory/backends.ts`): Pluggable `MemoryBackend` interface with `retrieve()`/`write()`. Backend registration via `registerMemoryBackend()`. Default SQLite backend. Extensible for Postgres, Chroma, Redis.
-- **Memory privacy controls** (`src/memory/privacy.ts`): Per-agent `MemoryPrivacyPolicy` with tier filtering, PII redaction (email, IP, SSN, card, API key patterns), and configurable retention periods. `enforceMemoryRetention()` for automatic expiry.
-- **OpenClaw migration tool** (`src/cli/openclaw-migrate.ts`): Imports SOUL.md, USER.md, MEMORY.md, AGENTS.md, TOOLS.md, and memory markdown files from `~/.openclaw/` into Cortex data directory. Memory content chunked and imported as session messages. Dry-run mode.
+- Removed duplicate `ageStr()` function in favor of existing `timeAgo()` for consistent relative
+  time formatting
+- **Pipeline hooks system** (`src/pipeline/`): 10-stage middleware architecture (pre/post-assess,
+  pre/post-reason, pre/post-tool, pre/post-reflect, pre/post-output). Priority-ordered hook
+  execution within each stage with abort support. Built-in hooks: content safety filter
+  (`@cortex/content-safety`), prompt injection detector (`@cortex/injection-guard`), cost tracker
+  (`@cortex/cost-tracker`), audit logger (`@cortex/audit-log`). Sync hooks block the pipeline; async
+  hooks fire-and-forget. Timeout enforcement per hook (5s sync, 15s async). CLI: `cortex hooks`
+  (list/init/disable). API: `GET /api/hooks`, `POST /api/hooks/:name/disable`.
+- **Enhanced onboarding wizard** (`src/cli/setup.ts`): 4-step first-run wizard (model provider →
+  personality → channels → telemetry). Personality templates generate SOUL.md
+  (professional/friendly/developer/custom). Channel selection (CLI only / CLI+Web / CLI+Discord /
+  all). Connection test validates API key before saving. Post-install summary with next-step
+  commands.
+- **Event triggers system** (`src/triggers/`): Webhook receiver with HMAC signature verification
+  (GitHub, GitLab, generic providers). Filesystem watcher using `Deno.watchFs` with configurable
+  debounce and pattern matching. Git hook installer auto-places `post-receive`/`post-commit`
+  scripts. Rate limiting with sliding windows and cooldown periods. IP allowlisting for webhook
+  endpoints. Jinja2-style prompt template rendering. Trigger-to-job mapping creates immediate agent
+  turns. CLI: `cortex triggers` (list/add/remove/install-hooks/uninstall-hooks). API:
+  `POST /api/webhooks/:name`.
+- **Observability** (`src/observability/`): Prometheus-compatible metrics (counter, gauge,
+  histogram) with labels. 15 pre-registered metric families: agent turns/tokens/cost/errors,
+  validator intents approved/rejected, executor actions/duration, scheduler jobs, memory
+  consolidations, system CPU/memory/uptime. Prometheus `/metrics` endpoint on port 3000.
+  OpenTelemetry-compatible trace spans with OTLP export support. `registerMetric()`, `counterInc()`,
+  `gaugeSet()`, `histogramObserve()` API.
+- **Channel plugin API** (`src/channels/`): `ChannelPlugin` interface with
+  connect/disconnect/onEvent/send/edit/react/delete/typing/upload. Canonical types for
+  cross-platform events, targets, users, attachments, rich embeds. Channel manager handles
+  registration, start/stop lifecycle, and agent binding. Event handler routing from platform events
+  to agent turns. CLI: `cortex channels` (list/start/stop).
+- **MCP server** (`src/mcp/server.ts`): Cortex operates as a Model Context Protocol server. JSON-RPC
+  2.0 protocol support (`initialize`, `tools/list`, `tools/call`, `resources/list`, `prompts/list`).
+  Dual transport: stdio mode (for Claude Desktop, VS Code) and HTTP mode (GET/POST `/mcp`). All
+  Cortex tools exposed as `cortex.*` namespaced MCP tools. Built-in MCP tools:
+  `cortex.search_memory`, `cortex.list_sessions`, `cortex.health`. CLI: `cortex mcp` (serve/stdio).
+- **Remote agent protocol** (`src/remote/`): Headless remote agents connect via WebSocket to a
+  Cortex primary. Primary handles reasoning/memory/credentials; remote handles local
+  filesystem/tools/execution. Registration flow with token authentication. Heartbeat-based health
+  monitoring with automatic reconnection. Directive/result message protocol. Remote agent manager
+  tracks connected agents and routes delegation. CLI: `cortex remote` (add/connect/remove).
+- **Terminal UI** (`src/tui/terminal.ts`): Full-screen interactive terminal interface with
+  split-pane layout (70/30 chat/tools). Raw terminal input handling with ANSI escape codes.
+  Scrollable message pane with user/assistant messages. Tool call status panel showing
+  running/success/error with durations. Input line with command history (up/down navigation). Key
+  bindings: Ctrl+C cancel, Ctrl+L clear, Up/Down history, Enter send. Status bar showing agent
+  state, message count, token usage. CLI: `cortex tui`.
+- **Workflow engine** (`src/workflow/engine.ts`): Deterministic workflow DSL with `.step()`,
+  `.branch()`/`.if()`, `.parallel()`, `.goto()`, `.waitForApproval()`. DAG execution with context
+  passthrough between steps. Parallel step execution with `Promise.all` error isolation.
+  Human-in-the-loop approval via `workflow.approve()`. Built-in `health-check` workflow. CLI:
+  `cortex workflow` (list/run/approve).
+- **Project workspaces** (`src/projects/manager.ts`): Per-project isolated directories under
+  `~/.cortex/data/projects/`. Project config stores agent binding, tool allow-lists, and
+  description. Auto-initialized directory structure. CLI: `cortex projects` (list/create/delete).
+- **Plugin namespace isolation** (`src/plugins/namespace.ts`): `@author/plugin-name` identity model
+  with key-based author verification. Tool names auto-prefixed to `@author/plugin-name/tool`.
+  Short-name aliases with `setToolAlias()`/`resolveAlias()`. Collision detection: same author prefix
+  → error, different authors → no collision.
+- **UI plugin slots** (`src/plugins/ui-slots.ts`): 5 slot types (sidebar, panel, modal,
+  timeline-item, widget). Web component-based plugin registration with HTML/JS URL serving.
+  Slot-specific HTML generation for dashboard injection. Message bus API with permission-limited
+  commands (navigate, notification, config, query).
+- **Desktop automation** (`src/desktop/automation.ts`): 11 desktop actions (screenshot, click,
+  dblclick, type, keypress, drag, clipboard get/set, wait, move, scroll). `xdotool`/`scrot`/`xclip`
+  wrapper via `Deno.Command`. Docker XFCE+noVNC container template with entrypoint script. CLI:
+  `cortex desktop` (dockerfile/entrypoint/screenshot/click/type/clipboard).
+- **Desktop app scaffold** (`desktop/src-tauri/`): Tauri v2 project with system tray, global
+  shortcuts, native notifications. Cargo.toml with tray-icon/notification/global-shortcut features.
+  Main window with hide-to-tray behavior. Quick-ask event bridge. Platform bundle targets (deb,
+  AppImage, dmg, msi).
+- **Memory backends interface** (`src/memory/backends.ts`): Pluggable `MemoryBackend` interface with
+  `retrieve()`/`write()`. Backend registration via `registerMemoryBackend()`. Default SQLite
+  backend. Extensible for Postgres, Chroma, Redis.
+- **Memory privacy controls** (`src/memory/privacy.ts`): Per-agent `MemoryPrivacyPolicy` with tier
+  filtering, PII redaction (email, IP, SSN, card, API key patterns), and configurable retention
+  periods. `enforceMemoryRetention()` for automatic expiry.
+- **OpenClaw migration tool** (`src/cli/openclaw-migrate.ts`): Imports SOUL.md, USER.md, MEMORY.md,
+  AGENTS.md, TOOLS.md, and memory markdown files from `~/.openclaw/` into Cortex data directory.
+  Memory content chunked and imported as session messages. Dry-run mode.
 
 ### Changed
 
-- **Agent loop refactored** with pipeline hooks integration at all 10 stages. Built-in hooks auto-registered on first turn.
-- **Setup wizard** enhanced from single provider selection to full 4-step onboarding with personality templates, channel selection, connection testing, and telemetry consent.
-
-
+- **Agent loop refactored** with pipeline hooks integration at all 10 stages. Built-in hooks
+  auto-registered on first turn.
+- **Setup wizard** enhanced from single provider selection to full 4-step onboarding with
+  personality templates, channel selection, connection testing, and telemetry consent.
 
 - **Sub-agent type system** (`src/agent/sub-agent-types.ts`):
-  - Five specialized sub-agent types: `explore` (codebase search, read-only), `general` (full tool access, multi-step), `plan` (execution plans, read-only), `code` (file write/edit/shell), `research` (web search, read-only)
+  - Five specialized sub-agent types: `explore` (codebase search, read-only), `general` (full tool
+    access, multi-step), `plan` (execution plans, read-only), `code` (file write/edit/shell),
+    `research` (web search, read-only)
   - Each type has its own system prompt, tool allow-list, and max turn limit
   - Type selection via `type` parameter on the `sub_agent` tool with enum validation
   - Type overrides flow through: tool → `spawnSubAgent()` → child process → session creation
 - **Enhanced sub_agent tool** (`src/tools/builtin/sub_agent.ts`):
   - New `type` parameter with enum (`explore`, `general`, `plan`, `code`, `research`)
-  - Comprehensive tool description with guidance on **when** to use sub-agents (parallel work, specialization, deep investigation), **when not** to use them, what each type does, and parallel usage instructions
+  - Comprehensive tool description with guidance on **when** to use sub-agents (parallel work,
+    specialization, deep investigation), **when not** to use them, what each type does, and parallel
+    usage instructions
   - Type-based configuration automatically sets tool allow-lists and turn limits
 - **Intelligent delegation detection** (`src/agent/metacog.ts`):
   - New task signals: `isExploratory`, `isCodeTask`, `isPlanningTask`, `isComplex`
   - `suggestedSubAgents` output field on `MetaAssessment` recommending specific sub-agent types
-  - Enhanced detection: complex code+exploration → delegate to explorer, research+independent → parallelize with sub-agent types, pure exploration → delegate to explorer, destructive multi-step → suggest plan sub-agent
+  - Enhanced detection: complex code+exploration → delegate to explorer, research+independent →
+    parallelize with sub-agent types, pure exploration → delegate to explorer, destructive
+    multi-step → suggest plan sub-agent
   - Meta-cog guidance now includes concrete sub-agent type recommendations in system prompt
 - **Sub-agent guidance in agent soul** (`src/agent/soul.ts`):
   - Default SOUL.md now includes a "Sub-Agents" section with clear usage guidelines
   - Documents all five sub-agent types, when to use each, and when NOT to use sub-agents
 - **Session parent-child tracking**:
-  - Migration 013 adds `parent_session_id` column and index to `sessions` table (`src/db/migrations/013_sessions_parent.sql`)
+  - Migration 013 adds `parent_session_id` column and index to `sessions` table
+    (`src/db/migrations/013_sessions_parent.sql`)
   - `createSession()` now accepts optional `parentSessionId` parameter
   - Sub-agent entry point persists parent session ID on session creation
   - New DB functions: `getChildSessions()`, `getParentSession()`, `countChildSessions()`
   - `deleteSession()` clears parent references on orphaned children
   - API endpoint `GET /api/sessions/:id/children` returns all sub-agent sessions for a parent
 - **Session parent-child visibility**:
-  - Web UI session list shows channel type badges (explore, code, web, etc.) color-coded by type and `⤷ child` badge for sub-agent sessions
-  - Session detail view shows `← parent` link to navigate up to parent session, and lists sub-agents as clickable links to navigate down into child sessions
-  - CLI `cortex sessions` shows `[channel-type]` badges, `⤷ N sub-agents` for parents, and `⤣ child of <id>` for sub-agent sessions
+  - Web UI session list shows channel type badges (explore, code, web, etc.) color-coded by type and
+    `⤷ child` badge for sub-agent sessions
+  - Session detail view shows `← parent` link to navigate up to parent session, and lists sub-agents
+    as clickable links to navigate down into child sessions
+  - CLI `cortex sessions` shows `[channel-type]` badges, `⤷ N sub-agents` for parents, and
+    `⤣ child of <id>` for sub-agent sessions
 
 ### Changed
 
-- `sub_agent` tool definition rewritten with comprehensive context for the LLM about delegation strategy, type selection, and parallel usage patterns
+- `sub_agent` tool definition rewritten with comprehensive context for the LLM about delegation
+  strategy, type selection, and parallel usage patterns
 - `SubAgentTask` interface gained `subAgentType` field for type-based specialization
 - `spawnSubAgent()` applies type-based overrides (system prompt, tools, max turns) before spawning
-- `sub-agent-entry.ts` creates sessions with typed channel labels (`subagent:explore`, `subagent:code`, etc.)
+- `sub-agent-entry.ts` creates sessions with typed channel labels (`subagent:explore`,
+  `subagent:code`, etc.)
 
 - **Plugin system Phase 3 — Web UI extension** (`src/plugins/extensions/ui.ts`, `src/server/ui.ts`):
   - Dynamic plugin panel tabs in the Web UI sidebar under "Plugin Panels" section
   - Plugin panels render in sandboxed iframes with `postMessage` bridge (`window.Cortex` API)
-  - `CortexUiApi` provides plugin panels with `fetch`, `getConfig`, `setConfig`, `notify`, `onEvent`, `emit`
+  - `CortexUiApi` provides plugin panels with `fetch`, `getConfig`, `setConfig`, `notify`,
+    `onEvent`, `emit`
   - `GET /api/plugins/:name/panel` and `GET /api/plugins/:name/panel.js` routes serve plugin UI
   - Host-side `message` event listener receives plugin notifications as toast messages
   - `GET /api/plugins/panels` returns active plugin panels with metadata
 - **Plugin system Phase 4 — Security & WASM**:
-  - Permission resolution engine (`resolvePermissions()`) merges declared capabilities with user overrides from `plugin_permission_overrides` table
-  - `deriveDenoWorkerPermissions()` maps `PluginCapability[]` to `Deno.PermissionOptions` for Worker sandboxing
+  - Permission resolution engine (`resolvePermissions()`) merges declared capabilities with user
+    overrides from `plugin_permission_overrides` table
+  - `deriveDenoWorkerPermissions()` maps `PluginCapability[]` to `Deno.PermissionOptions` for Worker
+    sandboxing
   - SHA-256 integrity verification (`computeSha256()`, `verifyEntryPointIntegrity()`)
   - Worker-based sandbox (`loadSandboxedEsmPlugin()`) with JSON-RPC protocol, 30s init timeout
-  - WASM plugin loader (`loadWasmPlugin()`) with host ABI (`log`, `http_request`, `get_config`, `set_state`, `get_state`)
-  - CLI: `cortex plugins verify <name>` (integrity check), `cortex plugins permissions <name> [--set cap=grant|deny]` (permission management)
+  - WASM plugin loader (`loadWasmPlugin()`) with host ABI (`log`, `http_request`, `get_config`,
+    `set_state`, `get_state`)
+  - CLI: `cortex plugins verify <name>` (integrity check),
+    `cortex plugins permissions <name> [--set cap=grant|deny]` (permission management)
 - **Plugin system Phase 5 — Marketplace integration & updates**:
-  - Plugin update checker (`checkPluginUpdate()`, `applyPluginUpdate()`) queries marketplace/source for newer versions
+  - Plugin update checker (`checkPluginUpdate()`, `applyPluginUpdate()`) queries marketplace/source
+    for newer versions
   - `cortex plugins update [name] [--all] [--check]` — check and apply plugin updates
-  - `cortex marketplace install <slug> [--yes]` — install from marketplace with permission preview (highlights sensitive permissions)
+  - `cortex marketplace install <slug> [--yes]` — install from marketplace with permission preview
+    (highlights sensitive permissions)
   - Semver-aware version comparison and disable-update-re-enable update flow
-- **UI bug fix**: Fixed JavaScript parsing error in GitHub PR/Issue rendering (`\'` → `\\'` escaping in template literal) that prevented the entire UI script from executing
+- **UI bug fix**: Fixed JavaScript parsing error in GitHub PR/Issue rendering (`\'` → `\\'` escaping
+  in template literal) that prevented the entire UI script from executing
 
 ### Changed
 
@@ -255,28 +371,37 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ---
 
 ## [0.19.0] — 2026-06-15
-  - Unified type system with `PluginCapability`, `PluginManifest`, `PluginRow` (aligned with migration 005 canonical schema)
-  - `PluginManager` singleton orchestrating full install/enable/disable/remove lifecycle
-  - `PluginContext` factory with scoped state store (`plugin_state` table), config store (`config.json` / `plugins.<name>`), and namespaced logger
-  - `EventBus` with plugin-scoped event filtering by manifest-declared event types
-  - Tool auto-registration into `globalRegistry` on plugin load, deregistration on unload
-  - Lifecycle hooks: `onInstall`, `onLoad`, `onActivate`, `onDeactivate`, `onUnload`, `onUninstall`, `onConfigChange`
-  - Schema migration 012 — added `dependencies_json`, `trust_level`, `error_message`, `load_attempts`, `config_schema_json` columns
+
+- Unified type system with `PluginCapability`, `PluginManifest`, `PluginRow` (aligned with migration
+  005 canonical schema)
+- `PluginManager` singleton orchestrating full install/enable/disable/remove lifecycle
+- `PluginContext` factory with scoped state store (`plugin_state` table), config store
+  (`config.json` / `plugins.<name>`), and namespaced logger
+- `EventBus` with plugin-scoped event filtering by manifest-declared event types
+- Tool auto-registration into `globalRegistry` on plugin load, deregistration on unload
+- Lifecycle hooks: `onInstall`, `onLoad`, `onActivate`, `onDeactivate`, `onUnload`, `onUninstall`,
+  `onConfigChange`
+- Schema migration 012 — added `dependencies_json`, `trust_level`, `error_message`, `load_attempts`,
+  `config_schema_json` columns
 - **Plugin system Phase 2 — Extension points (CLI, Config, Providers)**
   - Dynamic CLI command registration from active plugins via `buildCliffyCommand()` bridge
   - Plugin-provided LLM provider registration and factory retrieval
-  - Settings schema extraction from manifest `ui.settings` with REST endpoint `GET /api/plugins/:name/settings`
+  - Settings schema extraction from manifest `ui.settings` with REST endpoint
+    `GET /api/plugins/:name/settings`
   - `plugins` namespace on `CortexConfig` for per-plugin scoped configuration
   - `GET/PUT /api/plugins/:name/config` endpoints for Web UI plugin settings
   - `GET /api/plugins/panels` endpoint returning active plugin UI panels
-- Plugin system docs: `docs/plugins/README.md`, `getting-started.md`, `developing.md`, `manifest-reference.md`
+- Plugin system docs: `docs/plugins/README.md`, `getting-started.md`, `developing.md`,
+  `manifest-reference.md`
 
 ### Changed
 
-- **Breaking**: Plugin identifiers changed from auto-generated `id` to plugin `name` (PK). API routes `/api/plugins/:id` → `/api/plugins/:name`. CLI commands use name instead of id.
+- **Breaking**: Plugin identifiers changed from auto-generated `id` to plugin `name` (PK). API
+  routes `/api/plugins/:id` → `/api/plugins/:name`. CLI commands use name instead of id.
 - `registry.ts` rewritten to align with migration 005 canonical schema (24 columns)
 - `loader.ts` rewritten with PluginContext injection and tool auto-registration
-- `chat.ts` and `ws.ts` use `globalRegistry` with automatic plugin tool loading via `pluginManager.loadAll()`
+- `chat.ts` and `ws.ts` use `globalRegistry` with automatic plugin tool loading via
+  `pluginManager.loadAll()`
 - `ToolRegistry` gained `unregister()` method
 - `CortexConfig` gained optional `plugins` field
 

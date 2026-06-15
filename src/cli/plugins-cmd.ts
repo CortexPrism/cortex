@@ -1,13 +1,13 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
-import { installPlugin, listPlugins, removePlugin, getPlugin } from '../plugins/registry.ts';
+import { getPlugin, installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts';
 import { pluginManager } from '../plugins/manager.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
 import { verifyEntryPointIntegrity } from '../plugins/integrity.ts';
-import { resolvePermissions, getPluginPermissionOverrides } from '../plugins/permissions.ts';
-import { checkPluginUpdate, checkAllUpdates, applyPluginUpdate } from '../plugins/update.ts';
-import type { PluginKind, PluginCapability } from '../plugins/types.ts';
+import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
+import { applyPluginUpdate, checkAllUpdates, checkPluginUpdate } from '../plugins/update.ts';
+import type { PluginCapability, PluginKind } from '../plugins/types.ts';
 
 export const pluginsCommand = new Command()
   .name('plugins')
@@ -30,7 +30,9 @@ export const pluginsCommand = new Command()
           const kind = cyan(p.type.padEnd(5));
           const state = p.status !== 'unloaded' ? yellow(` [${p.status}]`) : '';
           console.log(
-            `  ${status}  ${kind}  ${bold(p.name)}@${p.version}${state}  ${dim(p.description ?? '')}`,
+            `  ${status}  ${kind}  ${bold(p.name)}@${p.version}${state}  ${
+              dim(p.description ?? '')
+            }`,
           );
         }
         console.log('');
@@ -167,7 +169,10 @@ export const pluginsCommand = new Command()
     new Command()
       .description('Show effective permissions for a plugin')
       .arguments('<name:string>')
-      .option('-s, --set <perm:string>', 'Set a permission override (format: capability=grant|deny)')
+      .option(
+        '-s, --set <perm:string>',
+        'Set a permission override (format: capability=grant|deny)',
+      )
       .action(async ({ set }: { set?: string }, name: string) => {
         await runMigrations();
         const plugin = await getPlugin(name);
@@ -230,9 +235,7 @@ export const pluginsCommand = new Command()
         await runMigrations();
 
         if (check) {
-          const results = name
-            ? [await checkPluginUpdate(name)]
-            : await checkAllUpdates();
+          const results = name ? [await checkPluginUpdate(name)] : await checkAllUpdates();
           console.log(bold('\n  Update Check'));
           console.log(dim('  ' + '─'.repeat(60)));
           let available = 0;
@@ -290,6 +293,83 @@ export const pluginsCommand = new Command()
           );
         } catch (e) {
           console.log(red(`  ✗ ${(e as Error).message}`));
+        }
+      }),
+  )
+  .command(
+    'validate',
+    new Command()
+      .description('Validate installed plugins and remove invalid ones')
+      .option('--fix', 'Automatically remove invalid plugins')
+      .action(async (opts: { fix?: boolean }) => {
+        await runMigrations();
+        const plugins = await listPlugins();
+
+        if (!plugins.length) {
+          console.log(dim('\n  No plugins to validate.\n'));
+          return;
+        }
+
+        console.log(bold('\n  Validating Plugins'));
+        console.log(dim('  ' + '─'.repeat(60)));
+
+        const invalid: Array<{ name: string; reason: string }> = [];
+
+        for (const plugin of plugins) {
+          // Check for invalid entry points
+          const entry = plugin.entry;
+          const isValid = entry && (
+            entry.startsWith('file://') ||
+            entry.startsWith('https://') ||
+            entry.startsWith('http://') ||
+            entry.startsWith('jsr:') ||
+            entry.startsWith('npm:') ||
+            entry.startsWith('/')
+          );
+
+          const looksRelative = entry && entry.includes('mod.ts') && !entry.includes('/') &&
+            !entry.includes(':');
+
+          if (!isValid || looksRelative) {
+            const reason = !entry
+              ? 'Empty entry point'
+              : looksRelative
+              ? `Relative path "${entry}" (must be absolute or URL)`
+              : `Invalid entry point "${entry}"`;
+
+            invalid.push({ name: plugin.name, reason });
+            console.log(`  ${red('✗')} ${bold(plugin.name)}: ${yellow(reason)}`);
+          } else {
+            console.log(`  ${green('✓')} ${bold(plugin.name)}: ${dim('Valid')}`);
+          }
+        }
+
+        if (invalid.length === 0) {
+          console.log(green('\n  ✓ All plugins are valid.\n'));
+          return;
+        }
+
+        console.log(
+          yellow(
+            `\n  Found ${invalid.length} invalid plugin(s).`,
+          ),
+        );
+
+        if (opts.fix) {
+          console.log(dim('\n  Removing invalid plugins...\n'));
+          for (const { name, reason } of invalid) {
+            try {
+              await removePlugin(name);
+              console.log(`  ${green('✓')} Removed ${bold(name)}: ${dim(reason)}`);
+            } catch (e) {
+              console.log(`  ${red('✗')} Failed to remove ${bold(name)}: ${(e as Error).message}`);
+            }
+          }
+          console.log(green('\n  ✓ Cleanup complete.\n'));
+        } else {
+          console.log(
+            dim('\n  Run with --fix to automatically remove invalid plugins.\n'),
+          );
         }
       }),
   );

@@ -2,8 +2,11 @@ import { handleApi } from './router.ts';
 import { handleWebSocket } from './ws.ts';
 import { handleNodeWebSocket } from '../hub/ws-node.ts';
 import { serveUi } from './ui.ts';
+import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { ensureDaemons } from '../cli/daemon.ts';
+import { loadConfig } from '../config/config.ts';
+import { hasPassword, parseCookies, requireAuth } from './auth.ts';
 
 export interface ServeOptions {
   port: number;
@@ -13,7 +16,14 @@ export interface ServeOptions {
 export async function startServer(opts: ServeOptions): Promise<void> {
   await runMigrations();
 
-  // Ensure background daemons are running
+  // Load plugins after migrations to ensure database is ready
+  try {
+    const { pluginManager } = await import('../plugins/manager.ts');
+    await pluginManager.loadAll();
+  } catch (e) {
+    console.error(`[plugins] Failed to load plugins: ${(e as Error).message}`);
+  }
+
   ensureDaemons().catch(() => {});
 
   const { port, host } = opts;
@@ -32,7 +42,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       if (upgrade.toLowerCase() !== 'websocket') {
         return new Response('Expected WebSocket upgrade', { status: 426 });
       }
-      return handleWebSocket(req);
+      return await handleWebSocket(req);
     }
 
     if (url.pathname === '/ws/node') {
@@ -49,6 +59,32 @@ export async function startServer(opts: ServeOptions): Promise<void> {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    // Login page (no auth required)
+    if (url.pathname === '/login') {
+      return serveLoginPage();
+    }
+
+    // Onboarding page (no auth required)
+    if (url.pathname === '/onboarding') {
+      return serveOnboardingPage();
+    }
+
+    // All other UI routes require auth (if password is set)
+    const config = await loadConfig();
+    const webAuth = config.webAuth || {};
+    if (webAuth.requireAuth !== false) {
+      const pwExists = await hasPassword();
+      if (pwExists) {
+        const auth = await requireAuth(req);
+        if (!auth.authenticated) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: '/login' },
+          });
+        }
+      }
     }
 
     return serveUi();
