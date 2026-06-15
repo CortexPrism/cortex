@@ -2134,6 +2134,7 @@ function renderSkillsList() {
     return;
   }
 
+  el.innerHTML = '';
   for (const s of filteredSkills) {
     const rate = Math.round((s.success_rate ?? 0) * 100);
     const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
