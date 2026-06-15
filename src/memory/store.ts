@@ -3,9 +3,19 @@ import type { EmbeddingProvider, EmbeddingVector } from './embeddings.ts';
 import { blobToVector, vectorToBlob } from './embeddings.ts';
 import type { InValue } from 'npm:@libsql/client';
 import { searchEntities, traverseGraph } from './graph.ts';
+import { recordBatchAccess } from './heuristics.ts';
 
 function memId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function safeJsonParse(raw: string | null): string[] | undefined {
+  if (!raw || raw === '[]') return undefined;
+  try {
+    return JSON.parse(raw) as string[];
+  } catch {
+    return undefined;
+  }
 }
 
 export interface EpisodicEntry {
@@ -147,6 +157,12 @@ export interface MemoryHit {
   text: string;
   score: number;
   created_at: string;
+  entities?: string[];
+  topics?: string[];
+  tags?: string[];
+  category?: string;
+  decayScore?: number;
+  accessCount?: number;
 }
 
 export async function searchEpisodic(
@@ -154,8 +170,18 @@ export async function searchEpisodic(
   limit = 5,
 ): Promise<MemoryHit[]> {
   const db = await getMemoryDb();
-  const rows = await db.all<{ id: string; summary: string; created_at: string; rank: number }>(
-    `SELECT em.id, em.summary, em.created_at, fts.rank
+  const rows = await db.all<{
+    id: string;
+    summary: string;
+    created_at: string;
+    rank: number;
+    entities: string | null;
+    topics: string | null;
+    decay_score: number | null;
+    access_count: number | null;
+  }>(
+    `SELECT em.id, em.summary, em.created_at, em.entities, em.topics,
+            fts.rank, em.decay_score, em.access_count
      FROM episodic_fts fts
      JOIN episodic_memory em ON fts.rowid = em.rowid
      WHERE episodic_fts MATCH ?
@@ -169,6 +195,10 @@ export async function searchEpisodic(
     text: r.summary,
     score: Math.max(0, 1 + (r.rank ?? -1)),
     created_at: r.created_at,
+    entities: safeJsonParse(r.entities),
+    topics: safeJsonParse(r.topics),
+    decayScore: r.decay_score ?? undefined,
+    accessCount: r.access_count ?? undefined,
   }));
 }
 
@@ -177,8 +207,18 @@ export async function searchSemantic(
   limit = 5,
 ): Promise<MemoryHit[]> {
   const db = await getMemoryDb();
-  const rows = await db.all<{ id: string; content: string; created_at: string; rank: number }>(
-    `SELECT sm.id, sm.content, sm.created_at, fts.rank
+  const rows = await db.all<{
+    id: string;
+    content: string;
+    created_at: string;
+    rank: number;
+    tags: string | null;
+    category: string | null;
+    decay_score: number | null;
+    access_count: number | null;
+  }>(
+    `SELECT sm.id, sm.content, sm.created_at, sm.tags, sm.category,
+            fts.rank, sm.decay_score, sm.access_count
      FROM semantic_fts fts
      JOIN semantic_memory sm ON fts.rowid = sm.rowid
      WHERE semantic_fts MATCH ?
@@ -192,6 +232,10 @@ export async function searchSemantic(
     text: r.content,
     score: Math.max(0, 1 + (r.rank ?? -1)),
     created_at: r.created_at,
+    tags: safeJsonParse(r.tags),
+    category: r.category ?? undefined,
+    decayScore: r.decay_score ?? undefined,
+    accessCount: r.access_count ?? undefined,
   }));
 }
 
@@ -210,8 +254,19 @@ export async function searchByVector(
     embedding: Uint8Array | null;
     created_at: string;
     decay_score: number;
+    entities?: string | null;
+    topics?: string | null;
+    tags?: string | null;
+    category?: string | null;
+    access_count?: number | null;
   }>(
-    `SELECT id, ${textCol} as text, embedding, created_at, COALESCE(decay_score, 1.0) as decay_score
+    `SELECT id, ${textCol} as text, embedding, created_at, COALESCE(decay_score, 1.0) as decay_score,
+            ${
+      type === 'episodic'
+        ? 'entities, topics, NULL as tags, NULL as category'
+        : 'NULL as entities, NULL as topics, tags, category'
+    },
+            access_count
      FROM ${table}
      WHERE embedding IS NOT NULL
        AND COALESCE(decay_score, 1.0) > 0.01
@@ -236,6 +291,12 @@ export async function searchByVector(
     text: r.text,
     score: r.score,
     created_at: r.created_at,
+    entities: type === 'episodic' ? safeJsonParse(r.entities as string | null) : undefined,
+    topics: type === 'episodic' ? safeJsonParse(r.topics as string | null) : undefined,
+    tags: type === 'semantic' ? safeJsonParse(r.tags as string | null) : undefined,
+    category: type === 'semantic' ? (r.category ?? undefined) : undefined,
+    decayScore: r.decay_score,
+    accessCount: r.access_count ?? undefined,
   }));
 }
 
@@ -251,7 +312,7 @@ function cosineSim(a: EmbeddingVector, b: EmbeddingVector): number {
   return d === 0 ? 0 : dot / d;
 }
 
-function decayScore(createdAt: string, halfLifeDays: number): number {
+export function decayScore(createdAt: string, halfLifeDays: number): number {
   const ageDays = (Date.now() - new Date(createdAt).getTime()) / 86_400_000;
   return Math.pow(2, -ageDays / halfLifeDays);
 }
@@ -317,8 +378,12 @@ export async function retrieve(
     seen.add(hit.id);
     const hl = hit.type === 'episodic' ? episodicHL : semanticHL;
     const decay = decayScore(hit.created_at, hl);
-    merged.push({ ...hit, score: hit.score * decay });
+    merged.push({ ...hit, score: hit.score * decay, decayScore: decay });
   }
 
-  return merged.sort((a, b) => b.score - a.score).slice(0, limit);
+  const ranked = merged.sort((a, b) => b.score - a.score).slice(0, limit);
+
+  recordBatchAccess(ranked.map((h) => ({ id: h.id, type: h.type }))).catch(() => {});
+
+  return ranked;
 }

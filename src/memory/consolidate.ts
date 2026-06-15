@@ -3,6 +3,7 @@ import { getMemoryDb } from '../db/client.ts';
 import { buildProvider } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import { consolidateReflections } from '../agent/reflect.ts';
+import { runHeuristicCycle } from './heuristics.ts';
 
 const CONSOLIDATION_JOBS = [
   {
@@ -109,6 +110,8 @@ export async function runDailyConsolidation(): Promise<void> {
      WHERE decay_score < 0.05
        AND created_at < datetime('now', '-30 days')`,
   );
+
+  await runHeuristicCycle().catch(() => {});
 }
 
 export async function runWeeklyConsolidation(): Promise<void> {

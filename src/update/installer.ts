@@ -32,6 +32,9 @@ function getCurrentPlatformAssetName(): string | null {
 }
 
 async function detectInstallType(): Promise<InstallManifest> {
+  const { getVersion } = await import('../config/version.ts');
+  const currentVersion = await getVersion();
+
   const execPath = Deno.execPath();
   const isBinary = !execPath.endsWith('deno') && !execPath.endsWith('deno.exe') &&
     !execPath.endsWith('.ts');
@@ -40,7 +43,7 @@ async function detectInstallType(): Promise<InstallManifest> {
     const binaryPath = await Deno.realPath(execPath);
     return {
       type: 'binary',
-      version: '0.1.0',
+      version: currentVersion,
       installPath: dirname(binaryPath),
       binaryPath,
     };
@@ -56,7 +59,7 @@ async function detectInstallType(): Promise<InstallManifest> {
 
   return {
     type: 'source',
-    version: '0.1.0',
+    version: currentVersion,
     installPath,
     binaryPath: '',
   };
