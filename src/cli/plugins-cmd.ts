@@ -125,9 +125,7 @@ export const pluginsCommand = new Command()
           version: m.version,
           description: m.description ?? '',
           kind: (m.kind as PluginKind) || 'esm',
-          entryPoint: sourceDir
-            ? resolveEntryPoint(m.entryPoint, sourceDir)
-            : m.entryPoint,
+          entryPoint: sourceDir ? resolveEntryPoint(m.entryPoint, sourceDir) : m.entryPoint,
           runtime: (m.runtime as 'deno' | 'wasm') || 'deno',
           capabilities: (m.capabilities ?? []) as never[],
           author: m.author,
