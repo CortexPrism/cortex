@@ -2037,6 +2037,7 @@ function renderSessionsList(sessions) {
       </div>
     </div>
   \`}).join('')
+}
 
 async function searchSessions() {
   const q = document.getElementById('sess-search').value.trim();
