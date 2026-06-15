@@ -11,14 +11,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Agent panel (right sidebar)** (`src/server/ui.ts`, `src/db/sessions.ts`, `src/server/router.ts`) —
-  Expandable right sidebar in the chat panel showing agent and sub-agent sessions with status dots,
-  channel type badges, turn counts, and last-activity times. Sub-agents are nested under their parent
-  sessions with expand/collapse toggles. Hover action buttons for close, archive, delete, and resume.
-  Clicking a session switches the chat to that session's full message history.
-  New `GET /api/sessions/tree` endpoint returns parent sessions with nested children in a single
-  batch query. New `POST /api/sessions/:id/close` and `POST /api/sessions/:id/archive` endpoints
-  for session lifecycle management. Archived sessions excluded from the tree view.
+- **Agent panel (right sidebar)** (`src/server/ui.ts`, `src/db/sessions.ts`, `src/server/router.ts`)
+  — Expandable right sidebar in the chat panel showing agent and sub-agent sessions with status
+  dots, channel type badges, turn counts, and last-activity times. Sub-agents are nested under their
+  parent sessions with expand/collapse toggles. Hover action buttons for close, archive, delete, and
+  resume. Clicking a session switches the chat to that session's full message history. New
+  `GET /api/sessions/tree` endpoint returns parent sessions with nested children in a single batch
+  query. New `POST /api/sessions/:id/close` and `POST /api/sessions/:id/archive` endpoints for
+  session lifecycle management. Archived sessions excluded from the tree view.
 
 - **Structured tool errors** (`src/tools/types.ts`, `src/tools/executor.ts`) — `ToolErrorInfo` with
   `code`, `message`, `retryable`, `suggestedAction`, and `context` fields. All tool failures now
