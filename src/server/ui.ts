@@ -5263,57 +5263,122 @@ function sdUpdatePreview() {
 }
 
 function sdRenderMarkdown(text) {
-  let html = esc(text);
-  // Code blocks (triple backtick) — use escaped backticks for template literal safety
-  html = html.replace(/\`\`\`(\w*)\n([\s\S]*?)\`\`\`/g, function(_, lang, code) {
-    return '<pre><code>' + esc(code) + '</code></pre>';
-  });
-  // Inline code (single backtick)
-  html = html.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
-  // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Italic
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  // Headings
-  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-  // Horizontal rules
-  html = html.replace(/^---$/gm, '<hr>');
-  // Blockquotes
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
-  // Unordered lists
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-  // Ordered lists
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-  // Paragraphs (blank-line separated)
-  const lines = html.split('\n');
-  let result = '';
-  let inParagraph = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) {
-      if (inParagraph) { result += '</p>'; inParagraph = false; }
+  var out = '';
+  var i = 0;
+  var lines = text.split('\\n');
+  var inCodeBlock = false;
+  var codeBuf = [];
+  var inParagraph = false;
+
+  function flushPara() {
+    if (inParagraph) { out += '</p>'; inParagraph = false; }
+  }
+
+  while (i < lines.length) {
+    var line = lines[i];
+
+    if (inCodeBlock) {
+      if (/^\\x60\\x60\\x60/.test(line)) {
+        out += '<pre><code>' + codeBuf.join('\\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</code></pre>';
+        codeBuf = [];
+        inCodeBlock = false;
+      } else {
+        codeBuf.push(line);
+      }
+      i++;
       continue;
     }
-    if (line.startsWith('<h') || line.startsWith('<ul') || line.startsWith('<ol') ||
-        line.startsWith('</ul') || line.startsWith('</ol') || line.startsWith('<li') ||
-        line.startsWith('<pre') || line.startsWith('</pre') || line.startsWith('<hr') ||
-        line.startsWith('<blockquote') || line.startsWith('</blockquote')) {
-      if (inParagraph) { result += '</p>'; inParagraph = false; }
-      result += line;
-    } else {
-      if (!inParagraph) { result += '<p>'; inParagraph = true; }
-      else { result += ' '; }
-      result += line;
+
+    if (/^\\x60\\x60\\x60/.test(line)) {
+      flushPara();
+      inCodeBlock = true;
+      codeBuf = [];
+      i++;
+      continue;
     }
+
+    var trimmed = line.trim();
+
+    if (!trimmed) {
+      flushPara();
+      i++;
+      continue;
+    }
+
+    if (/^#{1,4} /.test(trimmed)) {
+      flushPara();
+      var m = trimmed.match(/^(#{1,4}) (.+)/);
+      var level = m[1].length;
+      var htext = m[2];
+      htext = htext.replace(/\\x60([^\\x60]+)\\x60/g, '<code>$1</code>');
+      htext = htext.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+      htext = htext.replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
+      htext = htext.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
+      out += '<h' + level + '>' + htext + '</h' + level + '>';
+      i++;
+      continue;
+    }
+
+    if (/^---$/.test(trimmed)) {
+      flushPara();
+      out += '<hr>';
+      i++;
+      continue;
+    }
+
+    if (/^&gt; /.test(line)) {
+      flushPara();
+      out += '<blockquote>' + esc(trimmed.replace(/^&gt; /, '')) + '</blockquote>';
+      i++;
+      continue;
+    }
+
+    if (/^- /.test(trimmed)) {
+      flushPara();
+      out += '<ul>';
+      while (i < lines.length && /^- /.test((lines[i] || '').trim())) {
+        var li = lines[i].trim().replace(/^- /, '');
+        li = li.replace(/\\x60([^\\x60]+)\\x60/g, '<code>$1</code>');
+        li = li.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+        li = li.replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
+        li = li.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
+        out += '<li>' + li + '</li>';
+        i++;
+      }
+      out += '</ul>';
+      continue;
+    }
+
+    if (/^\\d+\\. /.test(trimmed)) {
+      flushPara();
+      out += '<ol>';
+      while (i < lines.length && /^\\d+\\. /.test((lines[i] || '').trim())) {
+        var li2 = lines[i].trim().replace(/^\\d+\\. /, '');
+        li2 = li2.replace(/\\x60([^\\x60]+)\\x60/g, '<code>$1</code>');
+        li2 = li2.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+        li2 = li2.replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
+        li2 = li2.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
+        out += '<li>' + li2 + '</li>';
+        i++;
+      }
+      out += '</ol>';
+      continue;
+    }
+
+    var ptext = esc(line);
+    ptext = ptext.replace(/\\x60([^\\x60]+)\\x60/g, '<code>$1</code>');
+    ptext = ptext.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+    ptext = ptext.replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
+    ptext = ptext.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
+
+    if (!inParagraph) { out += '<p>'; inParagraph = true; }
+    else { out += ' '; }
+    out += ptext;
+    i++;
   }
-  if (inParagraph) result += '</p>';
-  return result;
+
+  flushPara();
+  return out;
 }
 
 // ── Frontmatter ──
