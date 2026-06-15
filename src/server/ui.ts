@@ -2036,7 +2036,7 @@ function renderSessionsList(sessions) {
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
       </div>
     </div>
-  \`}).join('
+  \`}).join('')
 
 async function searchSessions() {
   const q = document.getElementById('sess-search').value.trim();
