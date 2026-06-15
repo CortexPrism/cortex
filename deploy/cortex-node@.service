@@ -1,0 +1,30 @@
+[Unit]
+Description=Cortex Node (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+Environment="CORTEX_VAULT_KEY="
+ExecStart=/usr/local/bin/cortex node connect \
+  --id %i \
+  --token ${CORTEX_NODE_TOKEN} \
+  --endpoint ${CORTEX_HUB_ENDPOINT} \
+  --tier ${CORTEX_NODE_TIER:-unprivileged} \
+  --name ${CORTEX_NODE_NAME:-%i} \
+  --group ${CORTEX_NODE_GROUP:-default} \
+  --reconnect-ms 5000 \
+  --heartbeat-ms 30000 \
+  --timeout-ms 300000
+User=cortex
+Group=cortex
+WorkingDirectory=/var/lib/cortex
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cortex-node@%i
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

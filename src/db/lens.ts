@@ -35,6 +35,12 @@ export type EventType =
   | 'job_failed'
   | 'process_started'
   | 'process_stopped'
+  | 'node_connected'
+  | 'node_disconnected'
+  | 'node_heartbeat'
+  | 'node_directive'
+  | 'node_directive_dispatched'
+  | 'node_stream_chunk'
   | 'error'
   | 'warning';
 

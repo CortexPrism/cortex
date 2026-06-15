@@ -11,6 +11,7 @@ export interface PolicyRule {
   pattern: string;
   reason: string | null;
   priority: number;
+  node_id: string | null;
   created_at: string;
 }
 
@@ -27,12 +28,23 @@ function policyId(): string {
 export async function checkPolicy(
   kind: PolicyKind,
   value: string,
+  nodeId?: string,
 ): Promise<PolicyDecision> {
   const db = await getCoreDb();
-  const rules = await db.all<PolicyRule>(
-    `SELECT * FROM policy_rules WHERE kind = ? ORDER BY priority ASC`,
-    [kind],
-  );
+  let query = `SELECT * FROM policy_rules WHERE kind = ?`;
+  const params: InValue[] = [kind];
+
+  // Filter: node-specific rules (applied to this node) OR global rules (node_id IS NULL)
+  if (nodeId) {
+    query += ` AND (node_id = ? OR node_id IS NULL)`;
+    params.push(nodeId);
+  } else {
+    query += ` AND node_id IS NULL`;
+  }
+
+  query += ` ORDER BY priority ASC`;
+
+  const rules = await db.all<PolicyRule>(query, params);
 
   for (const rule of rules) {
     try {
@@ -59,12 +71,13 @@ export async function addPolicy(opts: {
   pattern: string;
   reason?: string;
   priority?: number;
+  nodeId?: string;
 }): Promise<string> {
   const db = await getCoreDb();
   const id = policyId();
   await db.run(
-    `INSERT INTO policy_rules (id, kind, effect, pattern, reason, priority, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+    `INSERT INTO policy_rules (id, kind, effect, pattern, reason, priority, node_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     [
       id,
       opts.kind,
@@ -72,6 +85,7 @@ export async function addPolicy(opts: {
       opts.pattern,
       opts.reason ?? null,
       opts.priority ?? 100,
+      opts.nodeId ?? null,
     ] as InValue[],
   );
   return id;

@@ -1,5 +1,6 @@
 import { handleApi } from './router.ts';
 import { handleWebSocket } from './ws.ts';
+import { handleNodeWebSocket } from '../hub/ws-node.ts';
 import { serveUi } from './ui.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { ensureDaemons } from '../cli/daemon.ts';
@@ -19,7 +20,8 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   console.log('');
   console.log(`  Cortex server starting on http://${host}:${port}`);
-  console.log(`  WebSocket: ws://${host}:${port}/ws`);
+  console.log(`  WebSocket:    ws://${host}:${port}/ws`);
+  console.log(`  Node WS:      ws://${host}:${port}/ws/node`);
   console.log(`  Press Ctrl+C to stop\n`);
 
   Deno.serve({ port, hostname: host }, async (req: Request): Promise<Response> => {
@@ -31,6 +33,14 @@ export async function startServer(opts: ServeOptions): Promise<void> {
         return new Response('Expected WebSocket upgrade', { status: 426 });
       }
       return handleWebSocket(req);
+    }
+
+    if (url.pathname === '/ws/node') {
+      const upgrade = req.headers.get('upgrade') ?? '';
+      if (upgrade.toLowerCase() !== 'websocket') {
+        return new Response('Expected WebSocket upgrade', { status: 426 });
+      }
+      return handleNodeWebSocket(req);
     }
 
     if (url.pathname.startsWith('/api/')) {
