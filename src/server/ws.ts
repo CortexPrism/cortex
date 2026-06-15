@@ -194,6 +194,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         const router = buildRouter(config);
         const effectiveProvider = router ?? provider;
         const model = agent.model || config.providers[providerKind]?.model || 'unknown';
+        const reasoningEffort = config.providers[providerKind]?.reasoningEffort;
         const embedder = buildEmbedder(config);
 
         if (!sessionId) {
@@ -272,6 +273,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           sessionId,
           systemPrompt,
           stream: true,
+          reasoningEffort,
           onChunk: (chunk) => send(ws, { type: 'chunk', delta: chunk }),
           registry,
           toolContext: {

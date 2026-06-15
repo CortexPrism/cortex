@@ -32,6 +32,7 @@ import { workflowCommand } from './cli/workflow-cmd.ts';
 import { desktopCommand } from './cli/desktop-cmd.ts';
 import { nodeCommand } from './cli/node.ts';
 import { evalCmd as evalCommand } from './cli/eval-cmd.ts';
+import { modelsCommand } from './cli/models-cmd.ts';
 import { runMcpServerStdio } from './mcp/server.ts';
 import { gitCommand } from './cli/git-cmd.ts';
 import { githubCommand } from './cli/github-cmd.ts';
@@ -109,6 +110,7 @@ const program = new Command()
   .command('workflow', workflowCommand)
   .command('desktop', desktopCommand)
   .command('node', nodeCommand)
-  .command('eval', evalCommand);
+  .command('eval', evalCommand)
+  .command('models', modelsCommand);
 
 await program.parse(Deno.args);

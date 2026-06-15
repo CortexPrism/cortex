@@ -114,6 +114,7 @@ async function main(): Promise<void> {
       cortexConfig.defaultProvider;
     const model = config.config.model || agentConfig.model ||
       cortexConfig.providers[providerKind]?.model || 'unknown';
+    const reasoningEffort = cortexConfig.providers[providerKind]?.reasoningEffort;
 
     // Build provider
     const provider = buildProvider({
@@ -186,6 +187,7 @@ async function main(): Promise<void> {
       sessionId,
       systemPrompt,
       stream: true,
+      reasoningEffort,
       onChunk: (delta) => send({ type: 'chunk', delta }),
       registry,
       toolContext: {

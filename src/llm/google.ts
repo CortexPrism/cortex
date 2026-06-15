@@ -9,6 +9,12 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'gemini-1.5-flash-8b': { in: 0.0375, out: 0.15 },
 };
 
+const REASONING_BUDGET: Record<string, number> = {
+  low: 1024,
+  medium: 4096,
+  high: 16384,
+};
+
 function toGoogleRole(role: string): 'user' | 'model' {
   if (role === 'assistant') return 'model';
   return 'user';
@@ -25,10 +31,20 @@ export class GoogleProvider implements LLMProvider {
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
-    const model = this.genAI.getGenerativeModel({
+    const modelConfig: Record<string, unknown> = {
       model: options.model,
       systemInstruction: options.systemPrompt,
-    });
+    };
+
+    if (options.reasoningEffort) {
+      modelConfig.thinkingConfig = {
+        thinkingBudget: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
+      };
+    }
+
+    const model = this.genAI.getGenerativeModel(
+      modelConfig as unknown as Parameters<GoogleGenerativeAI['getGenerativeModel']>[0],
+    );
 
     const contents = options.messages
       .filter((m) => m.role !== 'system')
@@ -50,10 +66,20 @@ export class GoogleProvider implements LLMProvider {
   }
 
   async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
-    const model = this.genAI.getGenerativeModel({
+    const modelConfig: Record<string, unknown> = {
       model: options.model,
       systemInstruction: options.systemPrompt,
-    });
+    };
+
+    if (options.reasoningEffort) {
+      modelConfig.thinkingConfig = {
+        thinkingBudget: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
+      };
+    }
+
+    const model = this.genAI.getGenerativeModel(
+      modelConfig as unknown as Parameters<GoogleGenerativeAI['getGenerativeModel']>[0],
+    );
 
     const contents = options.messages
       .filter((m) => m.role !== 'system')

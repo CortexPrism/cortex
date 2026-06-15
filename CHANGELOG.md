@@ -7,6 +7,42 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.25.0] — 2026-06-15
+
+### Added
+
+- **Model configuration CLI** (`src/cli/models-cmd.ts`) — `cortex models` command with four
+  subcommands:
+  - `list` — display all configured providers with model, reasoning effort, context window,
+    temperature, and max tokens
+  - `show <provider>` — detailed view of a single provider's settings including API key status and
+    base URL
+  - `set <provider> <key> [value]` — set model, reasoningEffort (low/medium/high), contextWindow
+    (tokens), temperature, maxTokens, or topP. Omitting the value unsets the field
+  - `available [provider]` — fetch available models from a provider's API with the currently
+    configured model marked
+
+- **Reasoning effort / extended thinking** — new `reasoningEffort` field on `ProviderConfig` and
+  `CompletionOptions`, mapped to provider-specific APIs:
+  - **Anthropic** (`src/llm/anthropic.ts`) — `thinking.budget_tokens` with budget tiers: low=1024,
+    medium=4096, high=16384
+  - **Google** (`src/llm/google.ts`) — `thinkingConfig.thinkingBudget` with same tier mapping
+  - **OpenAI** (`src/llm/openai.ts`) — `reasoning_effort` parameter (o-series models)
+  - **OpenAI-compatible** (`src/llm/openai-compatible.ts`) — `reasoning_effort` parameter (DeepSeek
+    R1, Grok-3, etc.)
+
+- **Context window display** — new `contextWindow` field on `ProviderConfig` (informational, shown in
+  `models list` and `models show`, not enforced at API level)
+
+### Changed
+
+- Reasoning effort threads through the entire stack: `AgentTurnOptions`, `AutofixOptions`,
+  `reflectOnTurn`, `consolidateReflections`, and all 8+ callers (chat, TUI, WebSocket, sub-agents,
+  services, Discord, run, eval) read `reasoningEffort` from the provider config and pass it to LLM
+  calls
+
+---
+
 ## [0.24.1] — 2026-06-15
 
 ### Added

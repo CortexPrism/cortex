@@ -10,6 +10,8 @@ export interface CompletionOptions {
   maxTokens?: number;
   temperature?: number;
   systemPrompt?: string;
+  /** Reasoning effort — 'low' | 'medium' | 'high'. Maps to extended thinking budget (Anthropic), thinkingConfig (Google), or reasoning_effort (OpenAI/o-series). */
+  reasoningEffort?: string;
 }
 
 export interface CompletionChunk {

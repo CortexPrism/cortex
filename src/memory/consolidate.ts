@@ -119,16 +119,18 @@ export async function runWeeklyConsolidation(): Promise<void> {
 
   let provider;
   let model: string;
+  let reasoningEffort: string | undefined;
   try {
     const config = await loadConfig();
     provider = buildProvider(config);
     model = config.providers[config.defaultProvider]?.model ?? '';
+    reasoningEffort = config.providers[config.defaultProvider]?.reasoningEffort;
   } catch {
     return;
   }
 
   if (!provider || !model) return;
-  await consolidateReflections(provider, model);
+  await consolidateReflections(provider, model, reasoningEffort);
 }
 
 export async function runConsolidation(kind: 'hourly' | 'daily' | 'weekly'): Promise<void> {

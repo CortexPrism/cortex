@@ -15,6 +15,7 @@ export interface AutofixOptions {
   model: string;
   systemPrompt?: string;
   maxRounds?: number;
+  reasoningEffort?: string;
   onProgress?: (round: number, result: SandboxResult, fixed?: string) => void;
 }
 
@@ -60,6 +61,7 @@ export async function autofix(opts: AutofixOptions): Promise<AutofixResult> {
         messages: [{ role: 'user', content: fixRequest }],
         model: opts.model,
         systemPrompt: opts.systemPrompt ?? FIX_SYSTEM,
+        reasoningEffort: opts.reasoningEffort,
       });
       code = llmResult.content.trim();
       const fence = code.match(/^```[a-z]*\n?([\s\S]*?)```$/);

@@ -69,6 +69,7 @@ export const runCommand = new Command()
       provider: provider!,
       model: activeConfig.model,
       maxRounds: opts.maxFix,
+      reasoningEffort: activeConfig.reasoningEffort,
       onProgress: (round, runResult, fixedCode) => {
         const status = runResult.exitCode === 0 && !runResult.timedOut ? green('✓') : red('✗');
         console.log(

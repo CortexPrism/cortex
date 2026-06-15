@@ -30,13 +30,19 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
-    const response = await this.client.chat.completions.create({
+    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: options.model,
       messages,
       max_tokens: options.maxTokens,
       temperature: options.temperature,
       stream: false,
-    });
+    };
+
+    if (options.reasoningEffort) {
+      (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
+    }
+
+    const response = await this.client.chat.completions.create(params);
 
     const content = response.choices[0]?.message?.content ?? '';
     const tokensIn = response.usage?.prompt_tokens ?? 0;
@@ -57,12 +63,18 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
-    const stream = await this.client.chat.completions.create({
+    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
       model: options.model,
       messages,
       stream: true,
       stream_options: { include_usage: true },
-    });
+    };
+
+    if (options.reasoningEffort) {
+      (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
+    }
+
+    const stream = await this.client.chat.completions.create(params);
 
     let tokensIn = 0;
     let tokensOut = 0;

@@ -119,6 +119,8 @@ export const chatCommand = new Command()
       const model = options.model ?? agent.model ??
         config.providers[config.defaultProvider]?.model ?? 'unknown';
 
+      const reasoningEffort = config.providers[config.defaultProvider]?.reasoningEffort;
+
       const router = buildRouter(config);
       const effectiveProvider = router ?? activeProvider;
       const sid = options.resume ?? makeSessionId();
@@ -234,6 +236,7 @@ export const chatCommand = new Command()
             sessionId: sid,
             systemPrompt,
             stream: useStream,
+            reasoningEffort,
             onChunk: useStream
               ? (chunk) => {
                 Deno.stdout.write(enc.encode(chunk));

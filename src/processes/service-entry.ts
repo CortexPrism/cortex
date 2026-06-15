@@ -60,6 +60,7 @@ async function main(): Promise<void> {
     defaultProvider: providerKind as never,
   });
   const model = def.model || cortexConfig.providers[providerKind]?.model || 'unknown';
+  const reasoningEffort = cortexConfig.providers[providerKind]?.reasoningEffort;
 
   // Load agent identity
   let agent: AgentConfig;
@@ -120,6 +121,7 @@ async function main(): Promise<void> {
             sessionId,
             systemPrompt,
             stream: false,
+            reasoningEffort,
             registry,
             toolContext: { workingDir: Deno.cwd() },
             embedder,

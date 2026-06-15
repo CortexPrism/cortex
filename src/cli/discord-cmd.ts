@@ -79,6 +79,7 @@ export const discordCommand = new Command()
           sessionId: session.sessionId,
           systemPrompt,
           stream: false,
+          reasoningEffort: activeConfig.reasoningEffort,
           embedder: embedder ?? undefined,
         });
 
