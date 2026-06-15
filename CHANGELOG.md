@@ -47,6 +47,33 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - `spawnSubAgent()` applies type-based overrides (system prompt, tools, max turns) before spawning
 - `sub-agent-entry.ts` creates sessions with typed channel labels (`subagent:explore`, `subagent:code`, etc.)
 
+- **Plugin system Phase 3 — Web UI extension** (`src/plugins/extensions/ui.ts`, `src/server/ui.ts`):
+  - Dynamic plugin panel tabs in the Web UI sidebar under "Plugin Panels" section
+  - Plugin panels render in sandboxed iframes with `postMessage` bridge (`window.Cortex` API)
+  - `CortexUiApi` provides plugin panels with `fetch`, `getConfig`, `setConfig`, `notify`, `onEvent`, `emit`
+  - `GET /api/plugins/:name/panel` and `GET /api/plugins/:name/panel.js` routes serve plugin UI
+  - Host-side `message` event listener receives plugin notifications as toast messages
+  - `GET /api/plugins/panels` returns active plugin panels with metadata
+- **Plugin system Phase 4 — Security & WASM**:
+  - Permission resolution engine (`resolvePermissions()`) merges declared capabilities with user overrides from `plugin_permission_overrides` table
+  - `deriveDenoWorkerPermissions()` maps `PluginCapability[]` to `Deno.PermissionOptions` for Worker sandboxing
+  - SHA-256 integrity verification (`computeSha256()`, `verifyEntryPointIntegrity()`)
+  - Worker-based sandbox (`loadSandboxedEsmPlugin()`) with JSON-RPC protocol, 30s init timeout
+  - WASM plugin loader (`loadWasmPlugin()`) with host ABI (`log`, `http_request`, `get_config`, `set_state`, `get_state`)
+  - CLI: `cortex plugins verify <name>` (integrity check), `cortex plugins permissions <name> [--set cap=grant|deny]` (permission management)
+- **Plugin system Phase 5 — Marketplace integration & updates**:
+  - Plugin update checker (`checkPluginUpdate()`, `applyPluginUpdate()`) queries marketplace/source for newer versions
+  - `cortex plugins update [name] [--all] [--check]` — check and apply plugin updates
+  - `cortex marketplace install <slug> [--yes]` — install from marketplace with permission preview (highlights sensitive permissions)
+  - Semver-aware version comparison and disable-update-re-enable update flow
+- **UI bug fix**: Fixed JavaScript parsing error in GitHub PR/Issue rendering (`\'` → `\\'` escaping in template literal) that prevented the entire UI script from executing
+
+### Changed
+
+- `plugins-cmd.ts` gained `update`, `verify`, `permissions` subcommands
+- `marketplace-cmd.ts` gained `install` subcommand with permission preview
+- Plugin list/enable/disable in Web UI uses `name` instead of `id` (matches Phase 1 breaking change)
+
 ---
 
 ## [0.19.0] — 2026-06-15
