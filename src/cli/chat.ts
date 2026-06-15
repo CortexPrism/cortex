@@ -21,6 +21,13 @@ import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
 import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 import { loadSkillTool } from '../tools/builtin/load_skill.ts';
+import { skillWriteTool } from '../tools/builtin/skill_write.ts';
+import { skillReadTool } from '../tools/builtin/skill_read.ts';
+import {
+  formatSkillsAsAvailableList,
+  getAllHumanSkills,
+  registerBuiltinSkills,
+} from '../memory/skills.ts';
 import { getDefaultAgent, listAgents, loadAgentIdentity } from '../agent/manager.ts';
 
 function makeSessionId(): string {
@@ -128,12 +135,20 @@ export const chatCommand = new Command()
 
       // Load agent identity
       const identity = await loadAgentIdentity(agent);
-      const systemPrompt = buildSystemPrompt(
+      let systemPrompt = buildSystemPrompt(
         identity.soul,
         agent.systemPrompt,
         identity.user,
         identity.memory,
       );
+
+      // Register built-in skills and load filesystem skills at startup
+      await registerBuiltinSkills().catch(() => {});
+      // Inject all human-authored skills into the system prompt
+      const humanSkills = await getAllHumanSkills().catch(() => []);
+      if (humanSkills.length > 0) {
+        systemPrompt += formatSkillsAsAvailableList(humanSkills);
+      }
 
       if (options.resume) {
         const existing = await getSession(sid);
@@ -167,6 +182,8 @@ export const chatCommand = new Command()
         sub_agent: subAgentTool,
         node_dispatch: nodeDispatchTool,
         load_skill: loadSkillTool,
+        skill_write: skillWriteTool,
+        skill_read: skillReadTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {

@@ -2,6 +2,7 @@ import { getMemoryDb } from '../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 import type { LLMProvider } from '../llm/types.ts';
 import { join } from '@std/path';
+import { BUILTIN_SKILLS } from '../skills/builtin/mod.ts';
 
 function skillId(): string {
   return `skill_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -245,10 +246,8 @@ function parseSkillMd(content: string): { frontmatter: SkillFrontmatter; body: s
   return { frontmatter: fm, body };
 }
 
-export async function loadHumanSkills(skillsDir?: string): Promise<number> {
-  const dir = skillsDir ?? join(Deno.cwd(), '.cortex', 'skills');
+async function loadSkillsFromDir(dir: string): Promise<number> {
   let loaded = 0;
-
   try {
     const entries: Deno.DirEntry[] = [];
     for await (const entry of Deno.readDir(dir)) {
@@ -278,7 +277,16 @@ export async function loadHumanSkills(skillsDir?: string): Promise<number> {
   } catch {
     // skills directory doesn't exist yet, that's fine
   }
+  return loaded;
+}
 
+export async function loadHumanSkills(skillsDir?: string): Promise<number> {
+  if (skillsDir) {
+    return await loadSkillsFromDir(skillsDir);
+  }
+
+  let loaded = 0;
+  loaded += await loadSkillsFromDir(join(Deno.cwd(), '.cortex', 'skills'));
   return loaded;
 }
 
@@ -392,4 +400,47 @@ export function formatSkillDetail(skill: Skill): string {
 ${stepText}
 
 ${skill.content ? `**Full instructions**:\n${skill.content}` : ''}`;
+}
+
+export async function getAllHumanSkills(): Promise<Skill[]> {
+  const db = await getMemoryDb();
+  return await db.all<Skill>(
+    `SELECT * FROM procedural_memory WHERE origin = 'human' ORDER BY name ASC`,
+  );
+}
+
+export function formatSkillsAsAvailableList(skills: Skill[]): string {
+  if (skills.length === 0) return '';
+
+  const entries = skills.map((s) =>
+    `  <skill>\n    <name>${s.name}</name>\n    <description>${
+      (s.description ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }</description>\n  </skill>`
+  );
+
+  return `\n\n## Available Skills\n\n<available_skills>\n${entries.join('\n')}\n</available_skills>\n\nUse the \`load_skill\` tool to load a skill's full instructions before using it.`;
+}
+
+export async function registerBuiltinSkills(skillsDir?: string): Promise<number> {
+  let count = 0;
+
+  for (const skill of BUILTIN_SKILLS) {
+    const existing = await getSkillByName(skill.name);
+    if (!existing || existing.content !== skill.content) {
+      await storeSkill({
+        name: skill.name,
+        description: skill.description,
+        steps: [{ step: 1, action: skill.content, description: skill.content }],
+        origin: 'human',
+        content: skill.content,
+      });
+      count++;
+    }
+  }
+
+  // Also load filesystem skills (from .cortex/skills/)
+  const fsLoaded = await loadHumanSkills(skillsDir);
+  count += fsLoaded;
+
+  return count;
 }

@@ -34,12 +34,44 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Context window display** — new `contextWindow` field on `ProviderConfig` (informational, shown in
   `models list` and `models show`, not enforced at API level)
 
+- **Built-in skills system** (`src/skills/builtin/`, `src/memory/skills.ts`) — Skills now ship with
+  the application as embedded TypeScript modules. `registerBuiltinSkills()` auto-loads built-in
+  skills (`cortex-dev`, `frontend-design`) and filesystem skills from `.cortex/skills/` into the
+  database at startup. Skills are injected into the system prompt at session start as an
+  `<available_skills>` XML block, rather than only appearing reactively per-turn. CLI chat and server
+  both call `registerBuiltinSkills()` on startup.
+
+- **Skill designer** (`src/server/ui.ts`) — Full-screen split-pane skill editor replacing the basic
+  modal. Three tabbed panels: Content (Markdown editor with live preview), Metadata (name,
+  description, trigger pattern with YAML frontmatter preview), and Steps (visual step editor with
+  add/remove/reorder, tool + params fields). Draggable resize between editor and live markdown
+  preview panels. Keyboard shortcuts: `Ctrl+S` save, `Esc` close. Export to
+  `.cortex/skills/<name>/SKILL.md` via user-requested endpoint.
+
+- **`skill_write` tool** (`src/tools/builtin/skill_write.ts`) — Agent tool to create, update, or
+  delete skills programmatically. Supports name, description, content, trigger_pattern, and ordered
+  steps with tool/params. Registered in CLI (`src/cli/chat.ts`) and WebSocket (`src/server/ws.ts`).
+
+- **`skill_read` tool** (`src/tools/builtin/skill_read.ts`) — Agent tool to inspect specific skills
+  by name or list all skills with origin filtering. Registered in CLI and WebSocket.
+
+- **`POST /api/skills/export`** (`src/server/router.ts`) — Exports a skill to
+  `.cortex/skills/<name>/SKILL.md` with YAML frontmatter.
+
 ### Changed
 
 - Reasoning effort threads through the entire stack: `AgentTurnOptions`, `AutofixOptions`,
   `reflectOnTurn`, `consolidateReflections`, and all 8+ callers (chat, TUI, WebSocket, sub-agents,
   services, Discord, run, eval) read `reasoningEffort` from the provider config and pass it to LLM
   calls
+
+- `loadHumanSkills()` now scans `.cortex/skills/` for SKILL.md files. `.kilo/` path references
+  removed — `.kilo/` is reserved for the Kilo IDE.
+
+### Fixed
+
+- Skills directory path: `.kilo/skills/` references removed from the Cortex skills system. All
+  skill loading and export now use `.cortex/skills/`.
 
 ---
 

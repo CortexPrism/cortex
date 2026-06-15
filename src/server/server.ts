@@ -16,6 +16,17 @@ export interface ServeOptions {
 export async function startServer(opts: ServeOptions): Promise<void> {
   await runMigrations();
 
+  // Register built-in skills and load filesystem skills
+  try {
+    const { registerBuiltinSkills: registerSkills } = await import('../memory/skills.ts');
+    const loaded = await registerSkills();
+    if (loaded > 0) {
+      console.log(`  Skills: loaded ${loaded} skill(s)`);
+    }
+  } catch {
+    // non-fatal
+  }
+
   // Load plugins after migrations to ensure database is ready
   try {
     const { pluginManager } = await import('../plugins/manager.ts');

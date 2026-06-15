@@ -146,6 +146,28 @@ const HTML = `<!DOCTYPE html>
   .skill-tab { padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; color:var(--text3); border:1px solid var(--border); background:transparent; }
   .skill-tab:hover { background:rgba(255,255,255,0.05); color:var(--text2); }
   .skill-tab.active { background:rgba(99,102,241,0.15); color:var(--accent2); border-color:rgba(99,102,241,0.3); }
+  /* Skill Designer */
+  .sd-tab { padding:8px 16px; cursor:pointer; font-size:11px; color:var(--text3); background:transparent; border:none; border-bottom:2px solid transparent; }
+  .sd-tab:hover { color:var(--text2); background:rgba(255,255,255,0.03); }
+  .sd-tab.active { color:var(--accent2); border-bottom-color:var(--accent2); }
+  .sd-step { display:flex; gap:8px; align-items:flex-start; padding:8px; border:1px solid var(--border); border-radius:6px; margin-bottom:6px; background:var(--bg2); cursor:default; }
+  .sd-step:hover { border-color:var(--accent2); }
+  .sd-step-drag { cursor:grab; padding:4px 2px; color:var(--text3); font-size:14px; user-select:none; }
+  .sd-step-drag:active { cursor:grabbing; }
+  .sd-preview h1 { font-size:18px; font-weight:700; margin:16px 0 8px; color:var(--text); }
+  .sd-preview h2 { font-size:15px; font-weight:600; margin:14px 0 6px; color:var(--text); }
+  .sd-preview h3 { font-size:13px; font-weight:600; margin:12px 0 4px; color:var(--text2); }
+  .sd-preview p { margin:6px 0; }
+  .sd-preview ul, .sd-preview ol { padding-left:20px; margin:6px 0; }
+  .sd-preview li { margin:2px 0; }
+  .sd-preview code { background:var(--bg2); padding:1px 4px; border-radius:3px; font-size:12px; font-family:'JetBrains Mono',monospace; }
+  .sd-preview pre { background:var(--bg2); padding:12px; border-radius:6px; overflow-x:auto; font-size:12px; line-height:1.5; margin:8px 0; }
+  .sd-preview pre code { background:none; padding:0; }
+  .sd-preview strong { font-weight:600; color:var(--text); }
+  .sd-preview em { font-style:italic; color:var(--text2); }
+  .sd-preview blockquote { border-left:3px solid var(--accent2); padding-left:12px; margin:8px 0; color:var(--text2); }
+  .sd-preview hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+  .sd-preview a { color:var(--accent); text-decoration:underline; }
 
   /* Lens event row */
   .lens-row { display:flex; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); align-items:flex-start; font-size:12px; }
@@ -824,7 +846,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-ghost" onclick="loadHumanSkills()" style="font-size:11px;">📥 Load .cortex/skills</button>
-          <button class="btn btn-ghost" onclick="showSkillModal()" style="font-size:11px;">+ New Skill</button>
+          <button class="btn btn-ghost" onclick="openSkillDesigner()" style="font-size:11px;">+ New Skill</button>
         </div>
       </div>
       <!-- Stats bar -->
@@ -2016,7 +2038,7 @@ async function loadSkills() {
     '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
       (s.source_session ? '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Source session: <span style="color:var(--text2);">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
       '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Created: ' + new Date(s.created_at).toLocaleString() + '</div>' +
-      (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-bottom:4px;" onclick="event.stopPropagation();showSkillModal(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
+      (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-bottom:4px;" onclick="event.stopPropagation();openSkillDesigner(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
       (s.content ? '<div style="margin-top:6px;font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--bg2);padding:8px;border-radius:4px;">' + esc(s.content.slice(0, 2000)) + '</div>' : '') +
       (steps.length > 0 ? '<div style="margin-top:6px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">All steps:</div>' +
         steps.map(function(step, i) {
@@ -5087,11 +5109,395 @@ gitLoadAgentSelector();
 ghRefresh();
 loadPluginPanels();
 loadAgentPanel();
+// ── Skill Designer ───────────────────────────────────────────
+let sdEditName = '';
+let sdSteps = [];
+let sdDirty = false;
+
+function openSkillDesigner(editName) {
+  sdEditName = editName || '';
+  sdSteps = [];
+  sdDirty = false;
+  document.getElementById('sd-title').textContent = editName ? 'Edit: ' + editName : 'New Skill';
+  document.getElementById('sd-save-btn').textContent = editName ? '💾 Update' : '💾 Create';
+  document.getElementById('sd-status').textContent = '';
+  document.getElementById('sd-dirty').style.display = 'none';
+
+  if (editName) {
+    fetch(BASE + '/api/skills/detail?name=' + encodeURIComponent(editName))
+      .then(r => r.json()).then(s => {
+        document.getElementById('sd-name').value = s.name || '';
+        document.getElementById('sd-desc').value = s.description || '';
+        document.getElementById('sd-trigger').value = s.trigger_pattern || '';
+        document.getElementById('sd-editor').value = s.content || '';
+        try { sdSteps = JSON.parse(s.steps || '[]'); } catch(e) { sdSteps = []; }
+        sdRenderSteps();
+        sdUpdatePreview();
+        sdUpdateFrontmatter();
+        sdDirty = false;
+        document.getElementById('sd-dirty').style.display = 'none';
+      }).catch(e => alert('Failed to load skill: ' + e.message));
+  } else {
+    document.getElementById('sd-name').value = '';
+    document.getElementById('sd-desc').value = '';
+    document.getElementById('sd-trigger').value = '';
+    document.getElementById('sd-editor').value = '';
+    sdSteps = [];
+    sdRenderSteps();
+    sdUpdatePreview();
+    sdUpdateFrontmatter();
+  }
+
+  document.getElementById('skill-designer').style.display = 'flex';
+  sdSwitchTab('content');
+  setTimeout(() => document.getElementById('sd-editor').focus(), 100);
+}
+
+function closeSkillDesigner() {
+  if (sdDirty) {
+    if (!confirm('You have unsaved changes. Discard?')) return;
+  }
+  document.getElementById('skill-designer').style.display = 'none';
+  loadSkills();
+}
+
+function sdMarkDirty() {
+  sdDirty = true;
+  document.getElementById('sd-dirty').style.display = 'inline';
+}
+
+function sdSwitchTab(tab) {
+  document.querySelectorAll('.sd-tab').forEach(t => t.classList.toggle('active', t.dataset.sdTab === tab));
+  ['content','meta','steps'].forEach(t => {
+    const el = document.getElementById('sd-tab-' + t);
+    if (el) el.style.display = t === tab ? (t === 'steps' ? 'flex' : 'block') : 'none';
+  });
+}
+
+// ── Resize handle ──
+let sdResizing = false;
+function sdStartResize(e) {
+  sdResizing = true;
+  e.preventDefault();
+}
+document.addEventListener('mousemove', function(e) {
+  if (!sdResizing) return;
+  const designer = document.getElementById('skill-designer');
+  if (!designer || designer.style.display === 'none') return;
+  const rect = designer.getBoundingClientRect();
+  const pct = ((e.clientX - rect.left) / rect.width) * 100;
+  if (pct < 25 || pct > 80) return;
+  const leftPanel = designer.children[1].children[0];
+  leftPanel.style.width = pct + '%';
+  document.getElementById('sd-resize-handle').style.left = pct + '%';
+});
+document.addEventListener('mouseup', function() { sdResizing = false; });
+
+// ── Steps ──
+function sdAddStep(stepData) {
+  const step = stepData || { step: sdSteps.length + 1, action: '', tool: '', params: {} };
+  if (!step.step) step.step = sdSteps.length + 1;
+  sdSteps.push(step);
+  sdRenderSteps();
+  sdMarkDirty();
+}
+
+function sdRemoveStep(idx) {
+  sdSteps.splice(idx, 1);
+  sdSteps.forEach((s, i) => s.step = i + 1);
+  sdRenderSteps();
+  sdMarkDirty();
+}
+
+function sdMoveStep(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= sdSteps.length) return;
+  [sdSteps[idx], sdSteps[newIdx]] = [sdSteps[newIdx], sdSteps[idx]];
+  sdSteps.forEach((s, i) => s.step = i + 1);
+  sdRenderSteps();
+  sdMarkDirty();
+}
+
+function sdRenderSteps() {
+  const el = document.getElementById('sd-steps-list');
+  if (!sdSteps.length) {
+    el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3);font-size:12px;">No steps defined.<br><span style="font-size:10px;">Steps help structure the skill as an ordered sequence of actions.</span></div>';
+    return;
+  }
+  el.innerHTML = sdSteps.map((s, i) => '<div class="sd-step">' +
+    '<span class="sd-step-drag" title="Drag to reorder">⠿</span>' +
+    '<div style="flex:1;display:flex;flex-direction:column;gap:4px;">' +
+      '<div style="display:flex;gap:6px;align-items:center;">' +
+        '<span style="font-size:11px;font-weight:600;color:var(--accent2);min-width:20px;">' + (i+1) + '.</span>' +
+        '<input class="inp" style="flex:1;font-size:11px;padding:4px 8px;" value="' + esc(s.action || '') + '" onchange="sdSteps[' + i + '].action=this.value;sdMarkDirty();" placeholder="Step action description" />' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;padding-left:26px;">' +
+        '<input class="inp" style="width:40%;font-size:10px;padding:2px 6px;" value="' + esc(s.tool || '') + '" onchange="sdSteps[' + i + '].tool=this.value;sdMarkDirty();" placeholder="Tool (optional)" />' +
+        '<input class="inp" style="width:60%;font-size:10px;padding:2px 6px;" value="' + esc(s.params ? JSON.stringify(s.params) : '') + '" onchange="try{sdSteps[' + i + '].params=JSON.parse(this.value);sdMarkDirty();}catch(e){}" placeholder="Params JSON (optional)" />' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:2px;">' +
+      (i > 0 ? '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;" onclick="sdMoveStep(' + i + ',-1)">▲</button>' : '<span style="width:20px;"></span>') +
+      (i < sdSteps.length - 1 ? '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;" onclick="sdMoveStep(' + i + ',1)">▼</button>' : '<span style="width:20px;"></span>') +
+      '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;color:#f87171;" onclick="sdRemoveStep(' + i + ')">✕</button>' +
+    '</div>' +
+  '</div>').join('');
+}
+
+function sdCollectSteps() {
+  return sdSteps.map((s, i) => ({
+    step: i + 1,
+    action: s.action || '',
+    description: s.action || '',
+    tool: s.tool || undefined,
+    params: s.params || undefined,
+  }));
+}
+
+// ── Preview ──
+function sdUpdatePreview() {
+  const text = document.getElementById('sd-editor').value;
+  const preview = document.getElementById('sd-preview');
+  preview.className = 'sd-preview';
+  preview.innerHTML = sdRenderMarkdown(text);
+}
+
+function sdRenderMarkdown(text) {
+  let html = esc(text);
+  // Code blocks (triple backtick)
+  html = html.replace(/\x60\x60\x60(\w*)\n([\s\S]*?)\x60\x60\x60/g, function(_, lang, code) {
+    return '<pre><code>' + esc(code) + '</code></pre>';
+  });
+  // Inline code (single backtick)
+  html = html.replace(/\x60([^\x60]+)\x60/g, '<code>$1</code>');
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Headings
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr>');
+  // Blockquotes
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  // Paragraphs (blank-line separated)
+  const lines = html.split('\n');
+  let result = '';
+  let inParagraph = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) {
+      if (inParagraph) { result += '</p>'; inParagraph = false; }
+      continue;
+    }
+    if (line.startsWith('<h') || line.startsWith('<ul') || line.startsWith('<ol') ||
+        line.startsWith('</ul') || line.startsWith('</ol') || line.startsWith('<li') ||
+        line.startsWith('<pre') || line.startsWith('</pre') || line.startsWith('<hr') ||
+        line.startsWith('<blockquote') || line.startsWith('</blockquote')) {
+      if (inParagraph) { result += '</p>'; inParagraph = false; }
+      result += line;
+    } else {
+      if (!inParagraph) { result += '<p>'; inParagraph = true; }
+      else { result += ' '; }
+      result += line;
+    }
+  }
+  if (inParagraph) result += '</p>';
+  return result;
+}
+
+// ── Frontmatter ──
+function sdUpdateFrontmatter() {
+  const name = document.getElementById('sd-name').value.trim();
+  const desc = document.getElementById('sd-desc').value.trim();
+  const trigger = document.getElementById('sd-trigger').value.trim();
+  let fm = '---\nname: ' + (name || 'my-skill') + '\ndescription: ';
+  fm += desc ? (desc.length > 80 ? '>-\n  ' + desc : desc) : '...';
+  if (trigger) fm += '\ntrigger_pattern: ' + trigger;
+  fm += '\n---';
+  document.getElementById('sd-frontmatter-preview').textContent = fm;
+}
+
+// ── Save / Export ──
+async function skillDesignerSave() {
+  const name = document.getElementById('sd-name').value.trim();
+  if (!name) {
+    document.getElementById('sd-status').textContent = 'Name is required.';
+    return;
+  }
+  document.getElementById('sd-status').textContent = 'Saving...';
+  const body = {
+    name: name,
+    description: document.getElementById('sd-desc').value.trim() || undefined,
+    triggerPattern: document.getElementById('sd-trigger').value.trim() || undefined,
+    content: document.getElementById('sd-editor').value || undefined,
+    steps: sdCollectSteps(),
+  };
+  const res = await fetch(BASE + '/api/skills', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (res.ok) {
+    sdEditName = name;
+    sdDirty = false;
+    document.getElementById('sd-dirty').style.display = 'none';
+    document.getElementById('sd-title').textContent = 'Edit: ' + name;
+    document.getElementById('sd-save-btn').textContent = '💾 Update';
+    document.getElementById('sd-status').textContent = 'Saved ✓';
+    setTimeout(() => document.getElementById('sd-status').textContent = '', 2000);
+  } else {
+    const data = await res.json().catch(() => ({}));
+    document.getElementById('sd-status').textContent = data.error || 'Save failed.';
+  }
+}
+
+async function skillDesignerExport() {
+  const name = document.getElementById('sd-name').value.trim();
+  if (!name) {
+    document.getElementById('sd-status').textContent = 'Name is required for export.';
+    return;
+  }
+  const content = document.getElementById('sd-editor').value;
+  document.getElementById('sd-status').textContent = 'Exporting...';
+  const body = { name, description: document.getElementById('sd-desc').value.trim(), triggerPattern: document.getElementById('sd-trigger').value.trim(), content };
+  const res = await fetch(BASE + '/api/skills/export', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (res.ok) {
+    const data = await res.json();
+    document.getElementById('sd-status').textContent = 'Exported to ' + data.path;
+    setTimeout(() => document.getElementById('sd-status').textContent = '', 3000);
+  } else {
+    const data = await res.json().catch(() => ({}));
+    document.getElementById('sd-status').textContent = data.error || 'Export failed.';
+  }
+}
+
+// Live preview on typing
+let sdPreviewTimer;
+document.getElementById('sd-editor').addEventListener('input', function() {
+  sdMarkDirty();
+  clearTimeout(sdPreviewTimer);
+  sdPreviewTimer = setTimeout(sdUpdatePreview, 200);
+});
+
+// Ctrl+S
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    const designer = document.getElementById('skill-designer');
+    if (designer && designer.style.display === 'flex') {
+      e.preventDefault();
+      skillDesignerSave();
+    }
+  }
+  if (e.key === 'Escape') {
+    const designer = document.getElementById('skill-designer');
+    if (designer && designer.style.display === 'flex') {
+      closeSkillDesigner();
+    }
+  }
+});
+
+// Metadata live update
+['sd-name','sd-desc','sd-trigger'].forEach(function(id) {
+  document.getElementById(id).addEventListener('input', function() {
+    sdMarkDirty();
+    sdUpdateFrontmatter();
+  });
+});
+
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);
 setInterval(editorRefreshTree, 30_000);
 showPage('chat');
 </script>
+  <!-- Skill Designer (full-screen overlay) -->
+  <div id="skill-designer" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:120;flex-direction:column;">
+    <!-- Toolbar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg2);min-height:44px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeSkillDesigner()" style="font-size:11px;" title="Back to skills (Esc)">← Back</button>
+        <span style="font-size:12px;color:var(--text3);">|</span>
+        <span style="font-size:13px;font-weight:600;" id="sd-title">New Skill</span>
+        <span style="font-size:10px;color:var(--accent2);display:none;" id="sd-dirty">(unsaved)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span id="sd-status" style="font-size:11px;color:var(--text3);margin-right:4px;"></span>
+        <button class="btn btn-ghost" onclick="skillDesignerExport()" style="font-size:10px;" title="Export to .cortex/skills/<name>/SKILL.md">📤 Export</button>
+        <button class="btn btn-primary" onclick="skillDesignerSave()" style="font-size:11px;" id="sd-save-btn">💾 Save</button>
+      </div>
+    </div>
+    <!-- Body: Split pane -->
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <!-- Left: Editor -->
+      <div style="width:55%;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;min-width:400px;">
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);">
+          <button class="sd-tab active" onclick="sdSwitchTab('content')" data-sd-tab="content">📝 Content</button>
+          <button class="sd-tab" onclick="sdSwitchTab('meta')" data-sd-tab="meta">⚙️ Metadata</button>
+          <button class="sd-tab" onclick="sdSwitchTab('steps')" data-sd-tab="steps">🔢 Steps</button>
+        </div>
+        <!-- Tab: Content -->
+        <div id="sd-tab-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:6px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
+            <span>Markdown instructions</span>
+            <span>Ctrl+S to save</span>
+          </div>
+          <textarea id="sd-editor" class="inp" style="flex:1;resize:none;border:none;border-radius:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;padding:12px;background:var(--bg);color:var(--text);" placeholder="Write skill instructions in Markdown..."></textarea>
+        </div>
+        <!-- Tab: Metadata -->
+        <div id="sd-tab-meta" style="flex:1;overflow-y:auto;padding:16px;display:none;">
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique, no spaces)</span></label>
+              <input class="inp" id="sd-name" placeholder="my-skill-name" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label>
+              <input class="inp" id="sd-desc" placeholder="What this skill does and when to use it" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label>
+              <input class="inp" id="sd-trigger" placeholder="Phrase that triggers this skill (optional)" />
+            </div>
+            <div style="font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+              <b>Frontmatter preview:</b>
+              <pre id="sd-frontmatter-preview" style="background:var(--bg2);padding:10px;border-radius:4px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;"></pre>
+            </div>
+          </div>
+        </div>
+        <!-- Tab: Steps -->
+        <div id="sd-tab-steps" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+          <div style="padding:6px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;color:var(--text3);">Define ordered steps (drag ⠿ to reorder)</span>
+            <button class="btn btn-ghost" onclick="sdAddStep()" style="font-size:10px;padding:2px 8px;">+ Add Step</button>
+          </div>
+          <div id="sd-steps-list" style="flex:1;overflow-y:auto;padding:8px;"></div>
+        </div>
+      </div>
+      <!-- Right: Preview -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:6px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;">Live Preview</div>
+        <div id="sd-preview" style="flex:1;overflow-y:auto;padding:20px;font-size:13px;line-height:1.7;"></div>
+      </div>
+    </div>
+    <!-- Resize handle -->
+    <div id="sd-resize-handle" style="position:absolute;top:45px;bottom:0;left:55%;width:4px;cursor:col-resize;z-index:10;background:transparent;" onmousedown="sdStartResize(event)"></div>
+  </div>
+
 </body>
 </html>`;

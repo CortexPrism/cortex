@@ -503,6 +503,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true, loaded });
   }
 
+  // POST /api/skills/export (export skill to .cortex/skills/<name>/SKILL.md)
+  if (req.method === 'POST' && path === '/api/skills/export') {
+    const { join } = await import('@std/path');
+    const { ensureDir } = await import('@std/fs');
+    const body = await req.json() as {
+      name: string;
+      description?: string;
+      triggerPattern?: string;
+      content?: string;
+    };
+    if (!body.name?.trim()) return err('Missing name', 400);
+    const name = body.name.trim();
+    const desc = body.description?.trim() ?? '';
+    const trigger = body.triggerPattern?.trim();
+    const content = body.content ?? '';
+    let frontmatter = '---\nname: ' + name + '\ndescription: ' + (desc.length > 80 ? '>-\n  ' + desc : desc || '...');
+    if (trigger) frontmatter += '\ntrigger_pattern: ' + trigger;
+    frontmatter += '\n---\n\n';
+    const dir = join(Deno.cwd(), '.cortex', 'skills', name);
+    await ensureDir(dir);
+    await Deno.writeTextFile(join(dir, 'SKILL.md'), frontmatter + content);
+    return json({ ok: true, path: '.cortex/skills/' + name + '/SKILL.md' });
+  }
+
   // GET /api/policies
   if (req.method === 'GET' && path === '/api/policies') {
     const policies = await listPolicies();
