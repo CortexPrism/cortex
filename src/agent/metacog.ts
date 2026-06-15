@@ -212,7 +212,8 @@ export function assessTask(message: string): MetaAssessment {
     const types = suggestSubAgentTypes(signals);
     return {
       decision: 'delegate',
-      reason: 'Complex code task requiring exploration — delegating exploration to specialized sub-agent',
+      reason:
+        'Complex code task requiring exploration — delegating exploration to specialized sub-agent',
       suggestedPrefix:
         "This involves both exploration and implementation. I'll research the codebase first, then act.\n\n",
       suggestedSubAgents: types,

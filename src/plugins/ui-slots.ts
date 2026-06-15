@@ -33,7 +33,9 @@ export interface UIPluginRegistration {
 const registrations: UIPluginRegistration[] = [];
 
 export function registerUIPlugin(reg: UIPluginRegistration): void {
-  const existing = registrations.findIndex((r) => r.pluginName === reg.pluginName && r.slot === reg.slot);
+  const existing = registrations.findIndex((r) =>
+    r.pluginName === reg.pluginName && r.slot === reg.slot
+  );
   if (existing !== -1) registrations.splice(existing, 1);
   registrations.push(reg);
 }
@@ -61,19 +63,23 @@ export function generateSlotHTML(): string {
   return `
 <!-- UI Plugin Slots -->
 <div id="cortex-plugin-sidebar" style="display:none">
-  ${sidebarPlugins.map((p) => `
+  ${
+    sidebarPlugins.map((p) => `
   <div class="plugin-sidebar-item" data-plugin="${p.pluginName}" title="${p.label}">
     ${p.icon ?? '📦'} ${p.label}
   </div>
-  `).join('')}
+  `).join('')
+  }
 </div>
 <div id="cortex-plugin-widgets" style="display:none">
-  ${widgetPlugins.map((p) => `
+  ${
+    widgetPlugins.map((p) => `
   <div class="plugin-widget" data-plugin="${p.pluginName}" title="${p.label}">
     <h4>${p.label}</h4>
     <iframe src="${p.htmlUrl}" sandbox="allow-scripts" style="width:100%;height:200px;border:none"></iframe>
   </div>
-  `).join('')}
+  `).join('')
+  }
 </div>
 <script>
 (function() {

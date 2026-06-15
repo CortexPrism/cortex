@@ -26,6 +26,7 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
+import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 const flags = parse(Deno.args, {
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
     web_search: webSearchTool,
     shell: shellTool,
     code_exec: codeExecTool,
+    node_dispatch: nodeDispatchTool,
   };
   const toolList = def.tools
     ? def.tools.split(',').map((s) => s.trim()).filter(Boolean)

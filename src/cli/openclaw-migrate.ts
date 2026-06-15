@@ -1,7 +1,7 @@
 import { exists } from '@std/fs';
 import { join } from '@std/path';
-import { green, yellow, dim } from '@std/fmt/colors';
-import { createSession, closeSession } from '../db/sessions.ts';
+import { dim, green, yellow } from '@std/fmt/colors';
+import { closeSession, createSession } from '../db/sessions.ts';
 import { getSessionDb } from '../db/client.ts';
 import type { Db } from '../db/client.ts';
 

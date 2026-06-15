@@ -10,7 +10,11 @@ const mcpCommand = new Command()
     console.log('');
     console.log('Modes:');
     console.log(`  ${cyan('cortex mcp serve')}     — Start MCP server via HTTP (port 9187)`);
-    console.log(`  ${cyan('cortex mcp stdio')}     — Start MCP server via stdio (for Claude Desktop, VS Code)`);
+    console.log(
+      `  ${
+        cyan('cortex mcp stdio')
+      }     — Start MCP server via stdio (for Claude Desktop, VS Code)`,
+    );
     console.log('');
   });
 

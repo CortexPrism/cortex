@@ -1,9 +1,9 @@
 import { checkPolicy, type PolicyDecision } from './policy.ts';
 import { logEvent } from '../db/lens.ts';
 import {
-  isToolAllowedByTier,
-  isPathAllowedByTier,
   isCommandAllowedByTier,
+  isPathAllowedByTier,
+  isToolAllowedByTier,
 } from '../hub/capability-tiers.ts';
 import type { NodeTier } from '../hub/node-registry.ts';
 
@@ -161,9 +161,16 @@ export async function validateNodeDirective(
 
   // Layer 3: Tier-based path restrictions (for file tools)
   const FILE_TOOLS = new Set([
-    'file_read', 'file_write', 'file_edit', 'file_patch',
-    'file_delete', 'file_rename', 'file_list', 'file_tree',
-    'file_info', 'file_search',
+    'file_read',
+    'file_write',
+    'file_edit',
+    'file_patch',
+    'file_delete',
+    'file_rename',
+    'file_list',
+    'file_tree',
+    'file_info',
+    'file_search',
   ]);
   if (FILE_TOOLS.has(toolName)) {
     const pathArg = args.path ?? args.source ?? args.pattern ?? '';

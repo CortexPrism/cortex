@@ -43,7 +43,9 @@ export function resolvePermissions(
   };
 }
 
-export async function getPluginPermissionOverrides(pluginName: string): Promise<PermissionOverride[]> {
+export async function getPluginPermissionOverrides(
+  pluginName: string,
+): Promise<PermissionOverride[]> {
   const db = await getPluginsDb();
   return await db.all<PermissionOverride>(
     'SELECT permission_path, action, value FROM plugin_permission_overrides WHERE plugin_name = ?',
@@ -64,7 +66,10 @@ export async function setPermissionOverride(
   );
 }
 
-export async function deletePermissionOverride(pluginName: string, permissionPath: string): Promise<void> {
+export async function deletePermissionOverride(
+  pluginName: string,
+  permissionPath: string,
+): Promise<void> {
   const db = await getPluginsDb();
   await db.run(
     'DELETE FROM plugin_permission_overrides WHERE plugin_name = ? AND permission_path = ?',
@@ -72,13 +77,18 @@ export async function deletePermissionOverride(pluginName: string, permissionPat
   );
 }
 
-export function deriveDenoWorkerPermissions(capabilities: PluginCapability[]): Deno.PermissionOptions {
+export function deriveDenoWorkerPermissions(
+  capabilities: PluginCapability[],
+): Deno.PermissionOptions {
   const perms: Deno.PermissionOptions = {};
 
   if (capabilities.includes('fs:read') || capabilities.includes('fs:list')) {
     perms.read = true;
   }
-  if (capabilities.includes('fs:write') || capabilities.includes('fs:edit') || capabilities.includes('fs:delete')) {
+  if (
+    capabilities.includes('fs:write') || capabilities.includes('fs:edit') ||
+    capabilities.includes('fs:delete')
+  ) {
     perms.write = true;
   }
   if (capabilities.includes('shell:run')) {

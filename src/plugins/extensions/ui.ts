@@ -16,14 +16,16 @@ export function createUiApi(pluginName: string): CortexUiApi {
       return await fetch(url, init);
     },
     onEvent(_event: string, _handler: (data: unknown) => void) {
-      (window as unknown as { addEventListener: (t: string, h: (e: MessageEvent) => void) => void }).addEventListener('message', (msg: MessageEvent) => {
-        if (msg.data?.type === 'cortex-event') {
-          _handler(msg.data.payload);
-        }
-      });
+      (window as unknown as { addEventListener: (t: string, h: (e: MessageEvent) => void) => void })
+        .addEventListener('message', (msg: MessageEvent) => {
+          if (msg.data?.type === 'cortex-event') {
+            _handler(msg.data.payload);
+          }
+        });
     },
     emit(event: string, data: unknown) {
-      (window as unknown as { parent: { postMessage: (m: unknown, o: string) => void } }).parent.postMessage({ type: 'cortex-event', event, data }, '*');
+      (window as unknown as { parent: { postMessage: (m: unknown, o: string) => void } }).parent
+        .postMessage({ type: 'cortex-event', event, data }, '*');
     },
     async getConfig(key: string): Promise<unknown> {
       const res = await fetch(BASE + '/config');
@@ -40,11 +42,12 @@ export function createUiApi(pluginName: string): CortexUiApi {
       });
     },
     showNotification(msg: string, type: 'info' | 'warn' | 'error') {
-      (window as unknown as { parent: { postMessage: (m: unknown, o: string) => void } }).parent.postMessage({
-        type: 'cortex-notification',
-        pluginName,
-        notification: { msg, type },
-      }, '*');
+      (window as unknown as { parent: { postMessage: (m: unknown, o: string) => void } }).parent
+        .postMessage({
+          type: 'cortex-notification',
+          pluginName,
+          notification: { msg, type },
+        }, '*');
     },
   };
 }
@@ -94,7 +97,12 @@ export function generatePanelJs(pluginName: string): string {
 `.trim();
 }
 
-export function generatePanelHtml(pluginName: string, panelTitle: string, htmlContent: string, jsUrl: string): string {
+export function generatePanelHtml(
+  pluginName: string,
+  panelTitle: string,
+  htmlContent: string,
+  jsUrl: string,
+): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

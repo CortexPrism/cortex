@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
-import { listWorkflows, getWorkflow } from '../workflow/engine.ts';
-import { bold, green, red, dim } from '@std/fmt/colors';
+import { getWorkflow, listWorkflows } from '../workflow/engine.ts';
+import { bold, dim, green, red } from '@std/fmt/colors';
 
 const workflowCommand = new Command()
   .name('workflow')
@@ -32,12 +32,17 @@ workflowCommand
     const result = await wf.execute(
       undefined,
       (step) => console.log(`  → ${step}...`),
-      (step, ok, dur) => console.log(`    ${ok ? green('✓') : red('✗')} ${step} ${dim(`(${dur}ms)`)}`),
+      (step, ok, dur) =>
+        console.log(`    ${ok ? green('✓') : red('✗')} ${step} ${dim(`(${dur}ms)`)}`),
     );
 
     console.log();
     if (result.success) {
-      console.log(green(`✓ Workflow "${result.name}" completed. ${result.stepsCompleted}/${result.stepsTotal} steps (${result.durationMs}ms)`));
+      console.log(
+        green(
+          `✓ Workflow "${result.name}" completed. ${result.stepsCompleted}/${result.stepsTotal} steps (${result.durationMs}ms)`,
+        ),
+      );
     } else {
       console.log(red(`✗ Workflow "${result.name}" failed: ${result.error}`));
     }

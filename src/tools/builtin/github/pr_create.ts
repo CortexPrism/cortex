@@ -20,7 +20,13 @@ export const githubPRCreateTool: Tool = {
     const start = Date.now();
     const token = await getGitHubToken();
     if (!token) {
-      return { toolName: 'github_pr_create', success: false, output: '', error: 'No GitHub token configured', durationMs: 0 };
+      return {
+        toolName: 'github_pr_create',
+        success: false,
+        output: '',
+        error: 'No GitHub token configured',
+        durationMs: 0,
+      };
     }
 
     try {
@@ -38,7 +44,13 @@ export const githubPRCreateTool: Tool = {
         durationMs: Date.now() - start,
       };
     } catch (e) {
-      return { toolName: 'github_pr_create', success: false, output: '', error: (e as Error).message, durationMs: Date.now() - start };
+      return {
+        toolName: 'github_pr_create',
+        success: false,
+        output: '',
+        error: (e as Error).message,
+        durationMs: Date.now() - start,
+      };
     }
   },
 };

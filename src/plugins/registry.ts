@@ -105,12 +105,28 @@ export async function updatePlugin(name: string, updates: Partial<PluginRow>): P
        config_schema_json = ?
      WHERE name = ?`,
     [
-      merged.version, merged.prev_version, merged.type, merged.runtime, merged.entry,
-      merged.manifest_json, merged.declared_permissions, merged.effective_permissions,
-      merged.author, merged.description, merged.license, merged.source,
-      merged.integrity_hash, merged.enabled, merged.status, merged.process_id,
-      merged.updated_at, merged.last_load_at, merged.dependencies_json,
-      merged.trust_level, merged.error_message, merged.load_attempts,
+      merged.version,
+      merged.prev_version,
+      merged.type,
+      merged.runtime,
+      merged.entry,
+      merged.manifest_json,
+      merged.declared_permissions,
+      merged.effective_permissions,
+      merged.author,
+      merged.description,
+      merged.license,
+      merged.source,
+      merged.integrity_hash,
+      merged.enabled,
+      merged.status,
+      merged.process_id,
+      merged.updated_at,
+      merged.last_load_at,
+      merged.dependencies_json,
+      merged.trust_level,
+      merged.error_message,
+      merged.load_attempts,
       merged.config_schema_json,
       name,
     ] as InValue[],
@@ -148,8 +164,6 @@ export async function getEnabledPlugins(): Promise<PluginRow[]> {
   );
 }
 
-export {
-  deserializeCapabilities,
-};
+export { deserializeCapabilities };
 
 export type { PluginCapability, PluginManifest, PluginRow };

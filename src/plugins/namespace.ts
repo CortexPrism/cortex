@@ -62,7 +62,8 @@ export function validateAuthorKey(
   if (existingKey !== newKey) {
     return {
       valid: false,
-      reason: `Plugin @${author}/ conflicts with existing author "${author}" signed by a different key.`,
+      reason:
+        `Plugin @${author}/ conflicts with existing author "${author}" signed by a different key.`,
     };
   }
 

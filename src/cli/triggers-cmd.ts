@@ -1,10 +1,6 @@
 import { Command } from '@cliffy/command';
-import { Select, Input, Confirm } from '@cliffy/prompt';
-import {
-  registerTrigger,
-  listTriggers,
-  unregisterTrigger,
-} from '../triggers/manager.ts';
+import { Confirm, Input, Select } from '@cliffy/prompt';
+import { listTriggers, registerTrigger, unregisterTrigger } from '../triggers/manager.ts';
 import { installGitHooks, uninstallGitHooks } from '../triggers/git-hooks.ts';
 import type { TriggerConfig } from '../triggers/types.ts';
 
@@ -24,7 +20,9 @@ const triggersCommand = new Command()
       console.log(`  ${t.name} (${t.source}) — ${status}`);
       if (t.webhook) console.log(`    Webhook: POST /api/webhooks/${t.name}`);
       if (t.watcher) console.log(`    Watching: ${t.watcher.paths.join(', ')}`);
-      if (t.gitHook) console.log(`    Git repo: ${t.gitHook.repoPath} | hooks: ${t.gitHook.hooks.join(', ')}`);
+      if (t.gitHook) {
+        console.log(`    Git repo: ${t.gitHook.repoPath} | hooks: ${t.gitHook.hooks.join(', ')}`);
+      }
       console.log();
     }
   });

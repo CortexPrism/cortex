@@ -57,7 +57,10 @@ export async function loadSandboxedEsmPlugin(
   );
 
   return new Promise((resolve, reject) => {
-    const rpcRequests = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+    const rpcRequests = new Map<
+      number,
+      { resolve: (v: unknown) => void; reject: (e: Error) => void }
+    >();
     let rpcId = 0;
 
     worker.onmessage = (ev: MessageEvent<SandboxRpcResponse>) => {

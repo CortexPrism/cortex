@@ -40,12 +40,13 @@ import {
   fileWriteTool,
 } from '../tools/builtin/workspace/index.ts';
 import {
-  githubPRCreateTool,
-  githubPRListTool,
   githubIssueCreateTool,
   githubIssueListTool,
+  githubPRCreateTool,
+  githubPRListTool,
   gitPushTool,
 } from '../tools/builtin/github/index.ts';
+import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 
 interface InitMessage {
   type: 'init';
@@ -151,6 +152,7 @@ async function main(): Promise<void> {
       web_search: webSearchTool,
       shell: shellTool,
       code_exec: codeExecTool,
+      node_dispatch: nodeDispatchTool,
       github_pr_create: githubPRCreateTool,
       github_pr_list: githubPRListTool,
       github_issue_create: githubIssueCreateTool,
@@ -168,9 +170,7 @@ async function main(): Promise<void> {
 
     // Create a session for this sub-task
     const sessionId = `sub_${taskId}_${Date.now().toString(36)}`;
-    const sessionType = config.subAgentType
-      ? `subagent:${config.subAgentType}`
-      : 'subagent';
+    const sessionType = config.subAgentType ? `subagent:${config.subAgentType}` : 'subagent';
     const sessionDb = await initSessionDb(sessionId);
     await createSession(sessionId, sessionType, undefined, undefined, config.parentSessionId);
 

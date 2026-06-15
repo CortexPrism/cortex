@@ -89,7 +89,8 @@ const TIER_DEFINITIONS: Record<NodeTier, TierDefinition> = {
       'supervisorctl\\s+(restart|start|stop|status)\\s+\\S+',
     ],
     allowedDomains: ['*'],
-    description: 'Scoped sudo access — managed commands via sudoers, path restrictions on system files.',
+    description:
+      'Scoped sudo access — managed commands via sudoers, path restrictions on system files.',
   },
 
   unprivileged: {
@@ -131,7 +132,8 @@ const TIER_DEFINITIONS: Record<NodeTier, TierDefinition> = {
     ],
     allowedSudoCommands: [],
     allowedDomains: ['*'],
-    description: 'Read-only exploration + home-directory writes. No shell execution, no system paths.',
+    description:
+      'Read-only exploration + home-directory writes. No shell execution, no system paths.',
   },
 };
 
@@ -146,13 +148,19 @@ export function isToolAllowedByTier(tier: NodeTier, toolName: string): boolean {
   return def.allowedTools.includes(toolName);
 }
 
-export function isPathAllowedByTier(tier: NodeTier, filePath: string): { allowed: boolean; reason: string } {
+export function isPathAllowedByTier(
+  tier: NodeTier,
+  filePath: string,
+): { allowed: boolean; reason: string } {
   const def = TIER_DEFINITIONS[tier];
   const normalized = filePath.startsWith('/') ? filePath : `/${filePath}`;
 
   for (const forbidden of def.forbiddenPaths) {
     if (normalized.startsWith(forbidden) || normalized === forbidden) {
-      return { allowed: false, reason: `Path "${filePath}" forbidden for tier "${tier}": matches forbidden ${forbidden}` };
+      return {
+        allowed: false,
+        reason: `Path "${filePath}" forbidden for tier "${tier}": matches forbidden ${forbidden}`,
+      };
     }
   }
 
@@ -164,10 +172,18 @@ export function isPathAllowedByTier(tier: NodeTier, filePath: string): { allowed
     }
   }
 
-  return { allowed: false, reason: `Path "${filePath}" not in tier "${tier}" allowed paths: ${def.allowedPaths.join(', ')}` };
+  return {
+    allowed: false,
+    reason: `Path "${filePath}" not in tier "${tier}" allowed paths: ${
+      def.allowedPaths.join(', ')
+    }`,
+  };
 }
 
-export function isCommandAllowedByTier(tier: NodeTier, command: string): { allowed: boolean; reason: string } {
+export function isCommandAllowedByTier(
+  tier: NodeTier,
+  command: string,
+): { allowed: boolean; reason: string } {
   const def = TIER_DEFINITIONS[tier];
 
   if (tier === 'unprivileged') {
@@ -191,7 +207,9 @@ export function isCommandAllowedByTier(tier: NodeTier, command: string): { allow
 
   return {
     allowed: false,
-    reason: `Command not in sudo allow-list for tier "sudo". Allowed patterns: ${def.allowedSudoCommands.join(', ')}`,
+    reason: `Command not in sudo allow-list for tier "sudo". Allowed patterns: ${
+      def.allowedSudoCommands.join(', ')
+    }`,
   };
 }
 

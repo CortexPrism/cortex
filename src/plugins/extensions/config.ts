@@ -1,4 +1,9 @@
-import type { ConfigContribution, PluginManifest, UiContribution, UiSettingField } from '../types.ts';
+import type {
+  ConfigContribution,
+  PluginManifest,
+  UiContribution,
+  UiSettingField,
+} from '../types.ts';
 
 export interface PluginSettingsSchema {
   pluginName: string;

@@ -1,4 +1,10 @@
-import type { ChannelPlugin, ChannelConfig, ChannelEvent, ChannelTarget, EventHandler } from './types.ts';
+import type {
+  ChannelConfig,
+  ChannelEvent,
+  ChannelPlugin,
+  ChannelTarget,
+  EventHandler,
+} from './types.ts';
 
 interface RegisteredChannel {
   plugin: ChannelPlugin;
@@ -70,7 +76,12 @@ export async function sendToChannel(
   return channel.plugin.send(target, message);
 }
 
-export function listChannels(): { id: string; protocol: string; enabled: boolean; agentId: string }[] {
+export function listChannels(): {
+  id: string;
+  protocol: string;
+  enabled: boolean;
+  agentId: string;
+}[] {
   return [...channels.entries()].map(([id, c]) => ({
     id,
     protocol: c.plugin.protocol,

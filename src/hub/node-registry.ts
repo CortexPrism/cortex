@@ -1,5 +1,5 @@
 import { getCoreDb } from '../db/client.ts';
-import { vaultStore, vaultGet, vaultDelete } from '../security/vault.ts';
+import { vaultDelete, vaultGet, vaultStore } from '../security/vault.ts';
 import type { InValue } from 'npm:@libsql/client';
 
 export type NodeTier = 'root' | 'sudo' | 'unprivileged';
@@ -59,14 +59,18 @@ function parseRow(row: Record<string, unknown>): NodeRecord {
     version: row.version ? String(row.version) : null,
     group_name: row.group_name ? String(row.group_name) : null,
     last_heartbeat: row.last_heartbeat ? String(row.last_heartbeat) : null,
-    last_processed_directive_id: row.last_processed_directive_id ? String(row.last_processed_directive_id) : null,
+    last_processed_directive_id: row.last_processed_directive_id
+      ? String(row.last_processed_directive_id)
+      : null,
     registered_at: String(row.registered_at),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
 }
 
-export async function registerNode(opts: NodeRegistration): Promise<{ node: NodeRecord; token: string }> {
+export async function registerNode(
+  opts: NodeRegistration,
+): Promise<{ node: NodeRecord; token: string }> {
   const db = await getCoreDb();
   const id = nodeId();
   const token = generateToken();
@@ -76,7 +80,17 @@ export async function registerNode(opts: NodeRegistration): Promise<{ node: Node
   await db.run(
     `INSERT INTO nodes (id, name, endpoint, tier, status, capabilities, group_name, registered_at, created_at, updated_at)
      VALUES (?, ?, ?, ?, 'disconnected', ?, ?, ?, ?, ?)`,
-    [id, opts.name, opts.endpoint, opts.tier, capabilities, opts.group ?? null, now, now, now] as InValue[],
+    [
+      id,
+      opts.name,
+      opts.endpoint,
+      opts.tier,
+      capabilities,
+      opts.group ?? null,
+      now,
+      now,
+      now,
+    ] as InValue[],
   );
 
   await vaultStore({
@@ -103,7 +117,9 @@ export async function getNode(id: string): Promise<NodeRecord | null> {
   return parseRow(row);
 }
 
-export async function listNodes(opts?: { group?: string; tier?: NodeTier; status?: NodeStatus }): Promise<NodeRecord[]> {
+export async function listNodes(
+  opts?: { group?: string; tier?: NodeTier; status?: NodeStatus },
+): Promise<NodeRecord[]> {
   const db = await getCoreDb();
   let query = `SELECT * FROM nodes WHERE status != 'deregistered'`;
   const params: InValue[] = [];

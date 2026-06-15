@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
 import { Input } from '@cliffy/prompt';
-import { createProject, listProjects, loadProject, deleteProject } from '../projects/manager.ts';
+import { createProject, deleteProject, listProjects, loadProject } from '../projects/manager.ts';
 import { green, yellow } from '@std/fmt/colors';
 
 const projectsCommand = new Command()

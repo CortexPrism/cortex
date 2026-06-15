@@ -184,15 +184,18 @@ export function estimateConfidence(text: string): number {
   if (/i don'?t (really )?know/i.test(text)) score -= 0.25;
   if (/i (have )?no (idea|clue)/i.test(text)) score -= 0.25;
   if (/i'm not certain/i.test(text)) score -= 0.25;
-  if (/i can('t|not) (answer|respond|help|assist|determine|verify|confirm)/i.test(text)) score -=
-    0.25;
+  if (/i can('t|not) (answer|respond|help|assist|determine|verify|confirm)/i.test(text)) {
+    score -= 0.25;
+  }
 
   // Moderate low-confidence signals
   if (/\b(maybe|perhaps|possibly|probably|might|could be)\b/i.test(text)) score -= 0.15;
   if (/\b(i think|i believe|i guess|i suppose)\b/i.test(text)) score -= 0.12;
-  if (/\b(various|multiple|several|some kind of|sort of|kind of|something like|etc)\b/i.test(
-    text,
-  )) score -= 0.10;
+  if (
+    /\b(various|multiple|several|some kind of|sort of|kind of|something like|etc)\b/i.test(
+      text,
+    )
+  ) score -= 0.10;
 
   // Mild low-confidence signals
   if (/\b(unclear|uncertain|ambiguous|unlikely|unpredictable)\b/i.test(text)) score -= 0.10;
@@ -214,9 +217,11 @@ export function estimateConfidence(text: string): number {
   const numbers = (text.match(/\b\d{2,}\b/g) || []).length;
   score += Math.min(numbers * 0.02, 0.10);
 
-  if (/\b(clearly|certainly|absolutely|definitely|undoubtedly|without (doubt|question))\b/i.test(
-    text,
-  )) score += 0.10;
+  if (
+    /\b(clearly|certainly|absolutely|definitely|undoubtedly|without (doubt|question))\b/i.test(
+      text,
+    )
+  ) score += 0.10;
 
   // Ends with question → likely uncertain
   if (text.trim().endsWith('?')) score -= 0.15;
@@ -340,7 +345,13 @@ export class CascadeRouter extends BaseRouter {
         for (const line of lines) {
           if (line) yield { delta: line + '\n', done: false };
         }
-        yield { delta: '', done: true, tokensIn: result.tokensIn, tokensOut: result.tokensOut, costUsd: result.costUsd };
+        yield {
+          delta: '',
+          done: true,
+          tokensIn: result.tokensIn,
+          tokensOut: result.tokensOut,
+          costUsd: result.costUsd,
+        };
         return;
       } catch {
         continue;
@@ -373,8 +384,12 @@ export class HeuristicPromptScorer implements PromptScorer {
     if (/```[\s\S]*```/.test(prompt)) score += 0.20;
     if (/`[^`]+`/.test(prompt)) score += 0.08;
 
-    if (/\b(analyze|explain|compare|contrast|evaluate|synthesize|reason|diagnose)\b/i.test(prompt)) score += 0.15;
-    if (/\b(write|create|design|implement|refactor|debug|optimize|architect|migrate)\b/i.test(prompt)) score += 0.10;
+    if (
+      /\b(analyze|explain|compare|contrast|evaluate|synthesize|reason|diagnose)\b/i.test(prompt)
+    ) score += 0.15;
+    if (
+      /\b(write|create|design|implement|refactor|debug|optimize|architect|migrate)\b/i.test(prompt)
+    ) score += 0.10;
     if (/(\?[^?]*){2,}/.test(prompt)) score += 0.10;
     if ((prompt.match(/\n/g) || []).length > 5) score += 0.10;
 

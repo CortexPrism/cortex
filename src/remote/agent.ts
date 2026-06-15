@@ -2,9 +2,9 @@ import type { NodeMessage, NodeMetrics } from './types.ts';
 import { executeTool, parseToolCalls } from '../tools/executor.ts';
 import { globalRegistry } from '../tools/registry.ts';
 import {
-  isToolAllowedByTier,
-  isPathAllowedByTier,
   isCommandAllowedByTier,
+  isPathAllowedByTier,
+  isToolAllowedByTier,
 } from '../hub/capability-tiers.ts';
 import type { NodeTier } from '../hub/node-registry.ts';
 
@@ -106,9 +106,16 @@ function localPolicyCheck(
   }
 
   const FILE_TOOLS = new Set([
-    'file_read', 'file_write', 'file_edit', 'file_patch',
-    'file_delete', 'file_rename', 'file_list', 'file_tree',
-    'file_info', 'file_search',
+    'file_read',
+    'file_write',
+    'file_edit',
+    'file_patch',
+    'file_delete',
+    'file_rename',
+    'file_list',
+    'file_tree',
+    'file_info',
+    'file_search',
   ]);
   if (FILE_TOOLS.has(toolName)) {
     const pathArg = args.path ?? args.source ?? args.pattern ?? '';
@@ -123,9 +130,17 @@ function localPolicyCheck(
 
 export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
   const {
-    endpoint, token, agentId, name, tier, group,
-    reconnectMs, heartbeatMs, directiveTimeoutMs,
-    tlsCert, tlsKey,
+    endpoint,
+    token,
+    agentId,
+    name,
+    tier,
+    group,
+    reconnectMs,
+    heartbeatMs,
+    directiveTimeoutMs,
+    tlsCert,
+    tlsKey,
   } = opts;
   let lastProcessedDirectiveId = opts.lastProcessedDirectiveId;
 
@@ -176,11 +191,13 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
       if (ws?.readyState === WebSocket.OPEN) {
         missedHeartbeats++;
         const metrics = await collectMetrics();
-        ws.send(JSON.stringify({
-          type: 'heartbeat',
-          agentId,
-          metrics,
-        } satisfies NodeMessage));
+        ws.send(JSON.stringify(
+          {
+            type: 'heartbeat',
+            agentId,
+            metrics,
+          } satisfies NodeMessage,
+        ));
       }
     }, heartbeatMs);
   }
@@ -313,7 +330,9 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
 
   function cancelAllDirectives() {
     for (const [id, ctrl] of activeDirectives) {
-      try { ctrl.abort(`Node disconnected`); } catch { /* */ }
+      try {
+        ctrl.abort(`Node disconnected`);
+      } catch { /* */ }
       activeDirectives.delete(id);
     }
     activeDirectiveCount = 0;
@@ -365,7 +384,9 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
             case 'config_update':
               console.error(`[node-agent] Config update received from Hub`);
               if (msg.toolsAllowList) {
-                console.error(`[node-agent] Tools allow-list updated: ${msg.toolsAllowList.join(', ')}`);
+                console.error(
+                  `[node-agent] Tools allow-list updated: ${msg.toolsAllowList.join(', ')}`,
+                );
               }
               break;
 
@@ -398,7 +419,10 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
       };
 
       await new Promise<void>((resolve) => {
-        if (!ws) { resolve(); return; }
+        if (!ws) {
+          resolve();
+          return;
+        }
         ws.onclose = () => {
           if (heartbeatTimer) clearInterval(heartbeatTimer);
           heartbeatTimer = null;

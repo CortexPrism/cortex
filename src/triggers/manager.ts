@@ -1,4 +1,4 @@
-import type { TriggerConfig, TriggerEvent, RateLimit } from './types.ts';
+import type { RateLimit, TriggerConfig, TriggerEvent } from './types.ts';
 import { WEBHOOK_PROVIDERS } from './types.ts';
 
 const triggers: Map<string, TriggerConfig> = new Map();
@@ -67,7 +67,9 @@ export async function handleTriggerEvent(
       prompt,
     );
   } catch (e) {
-    console.error(`[triggers] Failed to create job for ${event.triggerName}: ${(e as Error).message}`);
+    console.error(
+      `[triggers] Failed to create job for ${event.triggerName}: ${(e as Error).message}`,
+    );
   }
 }
 
@@ -168,7 +170,8 @@ function ipInCidr(ip: string, cidr: string): boolean {
   if (ipParts.length !== 4 || rangeParts.length !== 4) return false;
 
   const ipInt = (ipParts[0] << 24) | (ipParts[1] << 16) | (ipParts[2] << 8) | ipParts[3];
-  const rangeInt = (rangeParts[0] << 24) | (rangeParts[1] << 16) | (rangeParts[2] << 8) | rangeParts[3];
+  const rangeInt = (rangeParts[0] << 24) | (rangeParts[1] << 16) | (rangeParts[2] << 8) |
+    rangeParts[3];
   const mask = -1 << (32 - bits);
 
   return (ipInt & mask) === (rangeInt & mask);

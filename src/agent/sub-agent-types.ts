@@ -68,7 +68,8 @@ Your parent agent has given you a specific task to complete.
     label: 'Planner',
     description:
       'Plans complex tasks by breaking them into steps, identifying risks, and creating detailed execution plans. Read-only — does not modify files.',
-    systemPrompt: `You are a planning agent. Your job is to analyze a task and produce a detailed execution plan.
+    systemPrompt:
+      `You are a planning agent. Your job is to analyze a task and produce a detailed execution plan.
 
 ## Output Format
 1. **Goal**: Restate the objective clearly
@@ -129,7 +130,8 @@ Your parent agent has given you a specific task to complete.
     label: 'Researcher',
     description:
       'Searches the web, reads documentation, and gathers information. Has web search access but cannot modify files.',
-    systemPrompt: `You are a research agent. Your job is to gather information and synthesize findings.
+    systemPrompt:
+      `You are a research agent. Your job is to gather information and synthesize findings.
 
 ## Guidelines
 - Use web_search for factual, up-to-date information

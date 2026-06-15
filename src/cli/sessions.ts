@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { listSessions, countChildSessions } from '../db/sessions.ts';
+import { countChildSessions, listSessions } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
 
 function formatDuration(startedAt: string, closedAt: string | null): string {
@@ -64,11 +64,17 @@ export const sessionsCommand = new Command()
       const chClr = channelColor(s.channel);
       const chBadge = s.channel !== 'cli' ? ` ${chClr(`[${ch}]`)}` : '';
       const childCount = childCounts.get(s.id);
-      const childBadge = childCount ? yellow(` ⤷ ${childCount} sub-agent${childCount > 1 ? 's' : ''}`) : '';
-      const parentBadge = s.parent_session_id ? dim(' ⤣ child of ') + dim(s.parent_session_id.slice(-12)) : '';
+      const childBadge = childCount
+        ? yellow(` ⤷ ${childCount} sub-agent${childCount > 1 ? 's' : ''}`)
+        : '';
+      const parentBadge = s.parent_session_id
+        ? dim(' ⤣ child of ') + dim(s.parent_session_id.slice(-12))
+        : '';
 
       console.log(
-        `  ${status} ${bold(cyan(name))}${chBadge} ${dim(`· ${turns} · ${duration} · ${date}`)}${childBadge}${parentBadge}`,
+        `  ${status} ${bold(cyan(name))}${chBadge} ${
+          dim(`· ${turns} · ${duration} · ${date}`)
+        }${childBadge}${parentBadge}`,
       );
 
       if (s.status === 'closed' && s.closed_at) {

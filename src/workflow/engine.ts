@@ -141,7 +141,9 @@ export class Workflow {
         } else if (node.kind === 'branch') {
           const cond = node.branch.condition(context);
           const subResult = await (cond ? node.branch.yes : node.branch.no).execute(
-            context, onStepStart, onStepEnd,
+            context,
+            onStepStart,
+            onStepEnd,
           );
           completed += subResult.stepsCompleted;
           if (!subResult.success) throw new Error(subResult.error);
@@ -176,15 +178,17 @@ export class Workflow {
           i = targetIdx;
         } else if (node.kind === 'wait') {
           const resolved = await this.resolveWait(context);
-          if (!resolved) return {
-            name: this.name,
-            success: false,
-            error: 'wait_for_approval',
-            durationMs: Date.now() - started,
-            stepsCompleted: completed,
-            stepsTotal: total,
-            context: context.getAll(),
-          };
+          if (!resolved) {
+            return {
+              name: this.name,
+              success: false,
+              error: 'wait_for_approval',
+              durationMs: Date.now() - started,
+              stepsCompleted: completed,
+              stepsTotal: total,
+              context: context.getAll(),
+            };
+          }
           i++;
         }
       }

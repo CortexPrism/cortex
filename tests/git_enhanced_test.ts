@@ -1,4 +1,4 @@
-import { assertEquals, assert, assertExists } from '@std/assert';
+import { assert, assertEquals, assertExists } from '@std/assert';
 import { join } from '@std/path';
 
 async function gitConfig(dir: string): Promise<void> {
@@ -14,8 +14,13 @@ async function gitConfig(dir: string): Promise<void> {
 async function makeInitialCommit(dir: string): Promise<void> {
   await gitConfig(dir);
   await Deno.writeTextFile(join(dir, 'initial.txt'), 'test');
-  await new Deno.Command('git', { args: ['-C', dir, 'add', '-A'], stdout: 'null', stderr: 'null' }).output();
-  await new Deno.Command('git', { args: ['-C', dir, 'commit', '--no-gpg-sign', '-m', 'initial'], stdout: 'null', stderr: 'null' }).output();
+  await new Deno.Command('git', { args: ['-C', dir, 'add', '-A'], stdout: 'null', stderr: 'null' })
+    .output();
+  await new Deno.Command('git', {
+    args: ['-C', dir, 'commit', '--no-gpg-sign', '-m', 'initial'],
+    stdout: 'null',
+    stderr: 'null',
+  }).output();
 }
 
 Deno.test('gitStatus shows clean working tree', async () => {
@@ -90,7 +95,9 @@ Deno.test('gitListBranches returns current branch', async () => {
 });
 
 Deno.test('gitCreateBranch and gitCheckout work', async () => {
-  const { gitInit, gitCreateBranch, gitCheckout, gitListBranches } = await import('../src/workspace/git.ts');
+  const { gitInit, gitCreateBranch, gitCheckout, gitListBranches } = await import(
+    '../src/workspace/git.ts'
+  );
   const dir = await Deno.makeTempDir();
   await gitInit(dir);
   await makeInitialCommit(dir);

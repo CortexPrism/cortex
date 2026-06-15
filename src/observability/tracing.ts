@@ -1,5 +1,3 @@
-
-
 let traceBackend: 'lens' | 'stdout' | 'none' = 'none';
 let otlpEndpoint: string | null = null;
 
@@ -57,7 +55,11 @@ export function startTrace(
   return span;
 }
 
-export function endTrace(span: TraceSpan, status: 'ok' | 'error' = 'ok', errorMessage?: string): void {
+export function endTrace(
+  span: TraceSpan,
+  status: 'ok' | 'error' = 'ok',
+  errorMessage?: string,
+): void {
   span.endTime = Date.now();
   span.duration = span.endTime - span.startTime;
   span.status = status;

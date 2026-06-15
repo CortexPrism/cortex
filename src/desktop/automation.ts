@@ -31,7 +31,11 @@ export interface DesktopActionResult {
   screenshot?: Uint8Array;
 }
 
-async function spawn(cmd: string, args: string[], stdin?: string): Promise<{ stdout: string; stderr: string; code: number }> {
+async function spawn(
+  cmd: string,
+  args: string[],
+  stdin?: string,
+): Promise<{ stdout: string; stderr: string; code: number }> {
   const command = new Deno.Command(cmd, {
     args,
     stdin: stdin ? 'piped' : 'null',
@@ -74,7 +78,15 @@ export async function executeDesktopAction(action: DesktopAction): Promise<Deskt
         return { success: true, durationMs: Date.now() - t0 };
 
       case 'dblclick':
-        await spawn('xdotool', ['mousemove', String(action.x), String(action.y), 'click', '--repeat', '2', '1']);
+        await spawn('xdotool', [
+          'mousemove',
+          String(action.x),
+          String(action.y),
+          'click',
+          '--repeat',
+          '2',
+          '1',
+        ]);
         return { success: true, durationMs: Date.now() - t0 };
 
       case 'type': {
@@ -97,10 +109,16 @@ export async function executeDesktopAction(action: DesktopAction): Promise<Deskt
 
       case 'drag':
         await spawn('xdotool', [
-          'mousemove', String(action.from.x), String(action.from.y),
-          'mousedown', '1',
-          'mousemove', String(action.to.x), String(action.to.y),
-          'mouseup', '1',
+          'mousemove',
+          String(action.from.x),
+          String(action.from.y),
+          'mousedown',
+          '1',
+          'mousemove',
+          String(action.to.x),
+          String(action.to.y),
+          'mouseup',
+          '1',
         ]);
         return { success: true, durationMs: Date.now() - t0 };
 

@@ -105,7 +105,8 @@ export class TerminalUI {
         continue;
       }
       if (r === statusRow) {
-        const s = ` [${this.status}] | Messages: ${this.messages.length} | Tools: ${this.tools.length} | Ctrl+C: cancel | Ctrl+L: clear | /: tools `;
+        const s =
+          ` [${this.status}] | Messages: ${this.messages.length} | Tools: ${this.tools.length} | Ctrl+C: cancel | Ctrl+L: clear | /: tools `;
         lines.push(`\x1b[7m${s.padEnd(cols)}\x1b[0m`);
         continue;
       }
@@ -139,7 +140,9 @@ export class TerminalUI {
     }
 
     Deno.stdout.writeSync(new TextEncoder().encode(lines.join('')));
-    Deno.stdout.writeSync(new TextEncoder().encode(`\x1b[${inputRow + 1};${Math.min(this.input.length + 3, cols)}H`));
+    Deno.stdout.writeSync(
+      new TextEncoder().encode(`\x1b[${inputRow + 1};${Math.min(this.input.length + 3, cols)}H`),
+    );
   }
 
   async start(): Promise<void> {
@@ -219,7 +222,8 @@ export class TerminalUI {
         }
         if (byte >= 32 && byte <= 126) {
           const char = String.fromCharCode(byte);
-          this.input = this.input.slice(0, this.cursorPos) + char + this.input.slice(this.cursorPos);
+          this.input = this.input.slice(0, this.cursorPos) + char +
+            this.input.slice(this.cursorPos);
           this.cursorPos++;
           this.render();
         }

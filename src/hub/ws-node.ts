@@ -1,14 +1,15 @@
 import type { NodeMessage, NodeMetrics } from '../remote/types.ts';
 import { logEvent } from '../db/lens.ts';
 import {
-  getNode,
-  updateNodeStatus,
-  updateLastDirective,
-  validateNodeToken,
   getDisconnectedNodes,
+  getNode,
+  updateLastDirective,
+  updateNodeStatus,
+  validateNodeToken,
 } from './node-registry.ts';
 import type { NodeTier } from './node-registry.ts';
 import { validateNodeDirective } from '../security/validator.ts';
+import { cancelPending, registerPending, routeResult } from './session-routing.ts';
 
 export type NodeEventType = 'node.connected' | 'node.disconnected' | 'node.error';
 
@@ -90,7 +91,8 @@ async function handleRegister(
   ws: WebSocket,
   msg: NodeMessage & { type: 'register' },
 ): Promise<void> {
-  const { agentId, name, token, capabilities, version, tier, group, lastProcessedDirectiveId } = msg;
+  const { agentId, name, token, capabilities, version, tier, group, lastProcessedDirectiveId } =
+    msg;
 
   const valid = await validateNodeToken(agentId, token);
   if (!valid) {
@@ -125,7 +127,11 @@ async function handleRegister(
   if (node) {
     if (version) {
       const db = await (await import('../db/client.ts')).getCoreDb();
-      await db.run(`UPDATE nodes SET version = ?, updated_at = ? WHERE id = ?`, [version, now, agentId]);
+      await db.run(`UPDATE nodes SET version = ?, updated_at = ? WHERE id = ?`, [
+        version,
+        now,
+        agentId,
+      ]);
     }
 
     if (lastProcessedDirectiveId) {
@@ -134,7 +140,11 @@ async function handleRegister(
 
     if (capabilities?.length) {
       const db = await (await import('../db/client.ts')).getCoreDb();
-      await db.run(`UPDATE nodes SET capabilities = ?, updated_at = ? WHERE id = ?`, [JSON.stringify(capabilities), now, agentId]);
+      await db.run(`UPDATE nodes SET capabilities = ?, updated_at = ? WHERE id = ?`, [
+        JSON.stringify(capabilities),
+        now,
+        agentId,
+      ]);
     }
   }
 
@@ -186,7 +196,8 @@ async function handleHeartbeat(
       session_id: 'system',
       actor: agentId,
       action: 'heartbeat',
-      summary: `Node heartbeat — CPU: ${metrics.cpuPercent}%, Mem: ${metrics.memoryMb}MB, Disk: ${metrics.diskFreeMb}MB free`,
+      summary:
+        `Node heartbeat — CPU: ${metrics.cpuPercent}%, Mem: ${metrics.memoryMb}MB, Disk: ${metrics.diskFreeMb}MB free`,
       started_at: now,
       payload: metrics as unknown as Record<string, unknown>,
     });
@@ -200,9 +211,18 @@ async function handleResult(
   const { directiveId, success, output, error, durationMs } = msg;
   const now = new Date().toISOString();
 
+  const pending = pendingDirectives.get(directiveId);
+  if (pending) {
+    clearTimeout(pending.timer);
+    pendingDirectives.delete(directiveId);
+    pending.resolve({ success, output, error, durationMs });
+  }
+
+  routeResult(directiveId, { success, output, error, durationMs });
+
   await logEvent({
     event_type: 'node_directive',
-    session_id: 'system',
+    session_id: pending?.sessionId ?? 'system',
     actor: 'node',
     action: success ? 'directive_completed' : 'directive_failed',
     summary: `Directive ${directiveId}: ${success ? 'success' : 'failed'} (${durationMs}ms)`,
@@ -237,6 +257,8 @@ async function handleDisconnect(
   nodeConnections.delete(agentId);
   await updateNodeStatus(agentId, 'disconnected');
 
+  rejectPendingForNode(agentId, 'Node disconnected');
+
   await logEvent({
     event_type: 'node_disconnected',
     session_id: 'system',
@@ -262,14 +284,19 @@ async function checkHealth(): Promise<void> {
     const elapsed = Date.now() - lastAck.getTime();
     if (elapsed > HEARTBEAT_TIMEOUT_MS) {
       nodeConnections.delete(agentId);
-      try { conn.ws.close(); } catch { /* gone */ }
+      try {
+        conn.ws.close();
+      } catch { /* gone */ }
+      rejectPendingForNode(agentId, `Node heartbeat timeout after ${Math.round(elapsed / 1000)}s`);
       await updateNodeStatus(agentId, 'disconnected');
       await logEvent({
         event_type: 'node_disconnected',
         session_id: 'system',
         actor: agentId,
         action: 'node_heartbeat_timeout',
-        summary: `Node marked disconnected due to heartbeat timeout (${Math.round(elapsed / 1000)}s)`,
+        summary: `Node marked disconnected due to heartbeat timeout (${
+          Math.round(elapsed / 1000)
+        }s)`,
         started_at: now,
       });
       emitNodeEvent({
@@ -299,6 +326,17 @@ async function checkHealth(): Promise<void> {
 function startHealthCheckLoop(): void {
   if (healthCheckTimer) return;
   healthCheckTimer = setInterval(checkHealth, 10_000);
+}
+
+function rejectPendingForNode(nodeId: string, reason: string) {
+  for (const [directiveId, pending] of pendingDirectives) {
+    if (pending.nodeId === nodeId) {
+      clearTimeout(pending.timer);
+      pendingDirectives.delete(directiveId);
+      cancelPending(directiveId);
+      pending.reject(new Error(reason));
+    }
+  }
 }
 
 function findAgentIdByWs(ws: WebSocket): string | undefined {
@@ -342,7 +380,11 @@ export function handleNodeWebSocket(req: Request): Response {
           await handleDisconnect(ws, msg);
           break;
         default:
-          send(ws, { type: 'error', message: `Unknown message type: ${(msg as { type: string }).type}`, code: 'UNKNOWN_TYPE' });
+          send(ws, {
+            type: 'error',
+            message: `Unknown message type: ${(msg as { type: string }).type}`,
+            code: 'UNKNOWN_TYPE',
+          });
       }
     } catch (e) {
       send(ws, { type: 'error', message: (e as Error).message, code: 'INTERNAL_ERROR' });
@@ -363,6 +405,7 @@ export function handleNodeWebSocket(req: Request): Response {
     if (agentId) {
       nodeConnections.delete(agentId);
       await updateNodeStatus(agentId, 'disconnected');
+      rejectPendingForNode(agentId, 'Node WebSocket connection closed');
       const now = new Date().toISOString();
       await logEvent({
         event_type: 'node_disconnected',
@@ -393,9 +436,33 @@ export interface DispatchResult {
   reason?: string;
 }
 
+export interface DirectivePending {
+  sessionId: string;
+  directiveId: string;
+  nodeId: string;
+  resolve: (
+    result: { success: boolean; output: string; error?: string; durationMs: number },
+  ) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const pendingDirectives = new Map<string, DirectivePending>();
+
+export function getPendingCount(): number {
+  return pendingDirectives.size;
+}
+
 export async function dispatchDirective(
   agentId: string,
-  directive: { id: string; sessionId: string; action: string; params: Record<string, unknown>; stream?: boolean; timeoutMs?: number },
+  directive: {
+    id: string;
+    sessionId: string;
+    action: string;
+    params: Record<string, unknown>;
+    stream?: boolean;
+    timeoutMs?: number;
+  },
 ): Promise<DispatchResult> {
   const conn = nodeConnections.get(agentId);
   if (!conn || conn.ws.readyState !== WebSocket.OPEN) {
@@ -438,6 +505,60 @@ export async function dispatchDirective(
   return { dispatched: true };
 }
 
+export function dispatchAndWait(
+  agentId: string,
+  directive: {
+    id: string;
+    sessionId: string;
+    action: string;
+    params: Record<string, unknown>;
+    stream?: boolean;
+    timeoutMs?: number;
+  },
+  defaultTimeoutMs = 120_000,
+): Promise<{ success: boolean; output: string; error?: string; durationMs: number }> {
+  return new Promise((resolve, reject) => {
+    const conn = nodeConnections.get(agentId);
+    if (!conn || conn.ws.readyState !== WebSocket.OPEN) {
+      reject(new Error('Node not connected'));
+      return;
+    }
+
+    const timeoutMs = directive.timeoutMs ?? defaultTimeoutMs;
+    const timer = setTimeout(() => {
+      pendingDirectives.delete(directive.id);
+      reject(new Error(`Directive ${directive.id} timed out after ${timeoutMs}ms`));
+    }, timeoutMs + 5000);
+
+    const pending: DirectivePending = {
+      sessionId: directive.sessionId,
+      directiveId: directive.id,
+      nodeId: agentId,
+      resolve,
+      reject,
+      timer,
+    };
+
+    pendingDirectives.set(directive.id, pending);
+
+    registerPending(directive.id, directive.sessionId, agentId);
+
+    dispatchDirective(agentId, directive).then((result) => {
+      if (!result.dispatched) {
+        clearTimeout(timer);
+        pendingDirectives.delete(directive.id);
+        cancelPending(directive.id);
+        reject(new Error(result.reason ?? 'Dispatch failed'));
+      }
+    }).catch((e) => {
+      clearTimeout(timer);
+      pendingDirectives.delete(directive.id);
+      cancelPending(directive.id);
+      reject(e);
+    });
+  });
+}
+
 export async function cancelDirective(agentId: string, directiveId: string): Promise<boolean> {
   const conn = nodeConnections.get(agentId);
   if (!conn || conn.ws.readyState !== WebSocket.OPEN) return false;
@@ -446,7 +567,10 @@ export async function cancelDirective(agentId: string, directiveId: string): Pro
   return true;
 }
 
-export async function pushConfigUpdate(agentId: string, update: { policies?: Record<string, unknown>; toolsAllowList?: string[] }): Promise<boolean> {
+export async function pushConfigUpdate(
+  agentId: string,
+  update: { policies?: Record<string, unknown>; toolsAllowList?: string[] },
+): Promise<boolean> {
   const conn = nodeConnections.get(agentId);
   if (!conn || conn.ws.readyState !== WebSocket.OPEN) return false;
 

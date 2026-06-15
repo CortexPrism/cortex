@@ -1,13 +1,13 @@
 import {
-  installPlugin as dbInstall,
-  enablePlugin as dbEnable,
   disablePlugin as dbDisable,
-  removePlugin as dbRemove,
+  enablePlugin as dbEnable,
   getPlugin,
+  installPlugin as dbInstall,
   listPlugins,
+  removePlugin as dbRemove,
   updatePlugin,
 } from './registry.ts';
-import { loadPlugin, unloadPlugin, isLoaded, getLoaded, loadAllPlugins } from './loader.ts';
+import { getLoaded, isLoaded, loadAllPlugins, loadPlugin, unloadPlugin } from './loader.ts';
 import { createPluginContext } from './context.ts';
 import { globalEventBus } from './events.ts';
 import { registerProvider } from './extensions/provider.ts';
@@ -47,7 +47,10 @@ class PluginManager {
           const lifecycle = loaded.module as unknown as PluginLifecycle;
           if (lifecycle.onInstall) await lifecycle.onInstall(ctx);
         }
-        await updatePlugin(manifest.name, { status: 'active', last_load_at: new Date().toISOString() });
+        await updatePlugin(manifest.name, {
+          status: 'active',
+          last_load_at: new Date().toISOString(),
+        });
         unloadPlugin(manifest.name);
       } catch (e) {
         ctx.logger.error(`Install hook failed: ${(e as Error).message}`);
@@ -61,7 +64,10 @@ class PluginManager {
     if (!row) throw new Error(`Plugin "${pluginName}" not found`);
 
     const ctx = await this.getContext(pluginName);
-    await updatePlugin(pluginName, { status: 'loading', load_attempts: (row.load_attempts ?? 0) + 1 });
+    await updatePlugin(pluginName, {
+      status: 'loading',
+      load_attempts: (row.load_attempts ?? 0) + 1,
+    });
 
     try {
       const loaded = await loadPlugin(row, ctx);
@@ -182,8 +188,11 @@ class PluginManager {
     return updatePlugin(name, updates);
   }
 
-  getActiveCliCommands(): Array<{ pluginName: string; module: PluginModule; manifest: PluginManifest }> {
-    const results: Array<{ pluginName: string; module: PluginModule; manifest: PluginManifest }> = [];
+  getActiveCliCommands(): Array<
+    { pluginName: string; module: PluginModule; manifest: PluginManifest }
+  > {
+    const results: Array<{ pluginName: string; module: PluginModule; manifest: PluginManifest }> =
+      [];
     for (const [name] of this.contexts) {
       const loaded = getLoaded(name);
       if (!loaded?.module) continue;

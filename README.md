@@ -15,17 +15,18 @@
 - **Tool use** — file read, shell execution, web search, code execution — all with approval gates
 - **Coding sandbox** — ephemeral Docker containers (or subprocess fallback) with resource limits;
   LLM auto-fix loop
-- **Code Runner** — execute code in sandboxed environments directly from the Web UI with
-  language selection and live output
+- **Code Runner** — execute code in sandboxed environments directly from the Web UI with language
+  selection and live output
 - **5-tier memory** — episodic (FTS5 keyword), semantic (vector embeddings), reflection (learned
   patterns); multi-strategy retrieval with decay scoring
-- **Model router** — RouteLLM-style routing: cascade (cheapest-first escalation) or threshold (prompt-scoring) strategies with multi-signal confidence estimation
+- **Model router** — RouteLLM-style routing: cascade (cheapest-first escalation) or threshold
+  (prompt-scoring) strategies with multi-signal confidence estimation
 - **Web UI + REST API** — built-in HTTP server with WebSocket streaming, Lens timeline, memory
   search, jobs dashboard, file editor, git workspace, and code runner
 - **Git workspace** — per-agent and global git repos with auto-commit, branch management,
   push/pull/clone, and full git CLI
-- **GitHub integration** — PR creation, issue tracking, repo browsing via CLI, agent tools,
-  and Web UI
+- **GitHub integration** — PR creation, issue tracking, repo browsing via CLI, agent tools, and Web
+  UI
 - **Per-turn reflection** — LLM self-assessment of confidence/quality; meta-pattern consolidation
 - **Scheduled jobs** — SQLite-persisted cron with retry
 - **Security (Parallax model)** — every tool call gated through a policy validator; AES-256-GCM
@@ -164,7 +165,8 @@ cortex github repo get <repo>           # Get repo details
 cortex github repo branches <repo>      # List repo branches
 ```
 
-Requires a GitHub token set via `GITHUB_TOKEN` environment variable, `githubToken` in config, or vault entry `github_token`.
+Requires a GitHub token set via `GITHUB_TOKEN` environment variable, `githubToken` in config, or
+vault entry `github_token`.
 
 ### `cortex daemon`
 
@@ -197,11 +199,11 @@ cortex stop --server-only            # Stop only the HTTP server
 cortex stop --daemon-only            # Stop only the daemon processes
 ```
 
-Web UI tabs: **Chat** (WebSocket streaming), **Editor** (file editor with CodeMirror),
-**Git** (status, commit, push/pull), **GitHub** (PRs, issues, repo info),
-**Code Runner** (sandboxed code execution), **Lens** (activity timeline),
-**Memory** (search), **Jobs** (status), **Sessions**, **Agents**, **Services**, **Settings**,
-**Soul** (identity editor), **Plugins**, **Marketplace**, **Analytics**, **Logs**
+Web UI tabs: **Chat** (WebSocket streaming), **Editor** (file editor with CodeMirror), **Git**
+(status, commit, push/pull), **GitHub** (PRs, issues, repo info), **Code Runner** (sandboxed code
+execution), **Lens** (activity timeline), **Memory** (search), **Jobs** (status), **Sessions**,
+**Agents**, **Services**, **Settings**, **Soul** (identity editor), **Plugins**, **Marketplace**,
+**Analytics**, **Logs**
 
 REST API endpoints:
 

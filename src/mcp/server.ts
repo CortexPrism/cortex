@@ -21,7 +21,9 @@ interface MCPTool {
   name: string;
   description: string;
   inputSchema: { type: string; properties: Record<string, unknown>; required?: string[] };
-  handler: (args: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text?: string }> }>;
+  handler: (
+    args: Record<string, unknown>,
+  ) => Promise<{ content: Array<{ type: string; text?: string }> }>;
 }
 
 const mcpTools = new Map<string, MCPTool>();
@@ -84,14 +86,18 @@ function registerBuiltinTools(): void {
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(sessions.map((s) => ({
-            id: s.id,
-            agent: s.agent_id ?? 'default',
-            status: s.status,
-            channel: s.channel,
-            startedAt: s.started_at,
-            turnCount: s.turn_count,
-          })), null, 2),
+          text: JSON.stringify(
+            sessions.map((s) => ({
+              id: s.id,
+              agent: s.agent_id ?? 'default',
+              status: s.status,
+              channel: s.channel,
+              startedAt: s.started_at,
+              turnCount: s.turn_count,
+            })),
+            null,
+            2,
+          ),
         }],
       };
     },
@@ -108,13 +114,17 @@ function registerBuiltinTools(): void {
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({
-            status: 'ok',
-            provider,
-            model,
-            version: '0.20.0',
-            ts: new Date().toISOString(),
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              status: 'ok',
+              provider,
+              model,
+              version: '0.20.0',
+              ts: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
         }],
       };
     },
@@ -139,9 +149,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>) {
     return {
       content: [{
         type: 'text',
-        text: result.success
-          ? result.output.slice(0, 10000)
-          : `Error: ${result.error}`,
+        text: result.success ? result.output.slice(0, 10000) : `Error: ${result.error}`,
       }],
     };
   }
@@ -262,11 +270,14 @@ export async function handleMcpHttpRequest(req: Request): Promise<Response | nul
         headers: { 'Content-Type': 'application/json' },
       });
     } catch {
-      return new Response(JSON.stringify({
-        jsonrpc: '2.0',
-        id: null,
-        error: { code: -32700, message: 'Parse error' },
-      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32700, message: 'Parse error' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
     }
   }
 
