@@ -2,6 +2,8 @@ import { loadConfig } from '../config/config.ts';
 import type { ProviderKind } from '../config/config.ts';
 import { getDefaultAgent, loadAgentIdentity } from './manager.ts';
 import type { AgentConfig } from '../config/config.ts';
+import type { SubAgentType } from './sub-agent-types.ts';
+import { getSubAgentType } from './sub-agent-types.ts';
 
 /** Configuration for spawning a sub-agent */
 export interface SubAgentConfig {
@@ -29,6 +31,8 @@ export interface SubAgentTask {
   parentSessionId: string;
   instruction: string;
   config: SubAgentConfig;
+  /** Sub-agent type for specialisation */
+  subAgentType?: SubAgentType;
 }
 
 /** Result returned from a sub-agent */
@@ -71,11 +75,11 @@ function nextId(): string {
  * Returns an async iterable of lifecycle events.
  */
 export async function* spawnSubAgent(
-  task: Omit<SubAgentTask, 'id'>,
+  task: Omit<SubAgentTask, 'id'> & { subAgentType?: SubAgentType },
   onChunk?: (delta: string) => void,
 ): AsyncIterable<SubAgentEvent> {
   const id = nextId();
-  const fullTask: SubAgentTask = { ...task, id };
+  const fullTask: SubAgentTask = { ...task, id, subAgentType: task.subAgentType };
 
   // Resolve the agent config
   let agent: AgentConfig;
@@ -87,15 +91,18 @@ export async function* spawnSubAgent(
     agent = await getDefaultAgent();
   }
 
+  // Apply sub-agent type overrides
+  const typeDef = task.subAgentType ? getSubAgentType(task.subAgentType) : undefined;
+
   // Apply overrides
   const effectiveAgent: AgentConfig = {
     ...agent,
     name: task.config.name || agent.name,
-    provider: task.config.provider || agent.provider,
-    model: task.config.model || agent.model,
-    systemPrompt: task.config.systemPrompt || agent.systemPrompt,
-    tools: task.config.tools || agent.tools,
-    maxTurns: task.config.maxTurns || agent.maxTurns,
+    provider: task.config.provider || typeDef?.provider || agent.provider,
+    model: task.config.model || typeDef?.model || agent.model,
+    systemPrompt: typeDef?.systemPrompt || task.config.systemPrompt || agent.systemPrompt,
+    tools: task.config.tools || (typeDef?.tools?.length ? typeDef.tools : agent.tools),
+    maxTurns: task.config.maxTurns || typeDef?.maxTurns || agent.maxTurns,
   };
 
   const timeout = task.config.timeout ?? 120_000;

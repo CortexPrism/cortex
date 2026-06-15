@@ -11,7 +11,45 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Plugin system Phase 1 — Core lifecycle and PluginContext**
+- **Sub-agent type system** (`src/agent/sub-agent-types.ts`):
+  - Five specialized sub-agent types: `explore` (codebase search, read-only), `general` (full tool access, multi-step), `plan` (execution plans, read-only), `code` (file write/edit/shell), `research` (web search, read-only)
+  - Each type has its own system prompt, tool allow-list, and max turn limit
+  - Type selection via `type` parameter on the `sub_agent` tool with enum validation
+  - Type overrides flow through: tool → `spawnSubAgent()` → child process → session creation
+- **Enhanced sub_agent tool** (`src/tools/builtin/sub_agent.ts`):
+  - New `type` parameter with enum (`explore`, `general`, `plan`, `code`, `research`)
+  - Comprehensive tool description with guidance on **when** to use sub-agents (parallel work, specialization, deep investigation), **when not** to use them, what each type does, and parallel usage instructions
+  - Type-based configuration automatically sets tool allow-lists and turn limits
+- **Intelligent delegation detection** (`src/agent/metacog.ts`):
+  - New task signals: `isExploratory`, `isCodeTask`, `isPlanningTask`, `isComplex`
+  - `suggestedSubAgents` output field on `MetaAssessment` recommending specific sub-agent types
+  - Enhanced detection: complex code+exploration → delegate to explorer, research+independent → parallelize with sub-agent types, pure exploration → delegate to explorer, destructive multi-step → suggest plan sub-agent
+  - Meta-cog guidance now includes concrete sub-agent type recommendations in system prompt
+- **Sub-agent guidance in agent soul** (`src/agent/soul.ts`):
+  - Default SOUL.md now includes a "Sub-Agents" section with clear usage guidelines
+  - Documents all five sub-agent types, when to use each, and when NOT to use sub-agents
+- **Session parent-child tracking**:
+  - Migration 013 adds `parent_session_id` column and index to `sessions` table (`src/db/migrations/013_sessions_parent.sql`)
+  - `createSession()` now accepts optional `parentSessionId` parameter
+  - Sub-agent entry point persists parent session ID on session creation
+  - New DB functions: `getChildSessions()`, `getParentSession()`, `countChildSessions()`
+  - `deleteSession()` clears parent references on orphaned children
+  - API endpoint `GET /api/sessions/:id/children` returns all sub-agent sessions for a parent
+- **Session parent-child visibility**:
+  - Web UI session list shows channel type badges (explore, code, web, etc.) color-coded by type and `⤷ child` badge for sub-agent sessions
+  - Session detail view shows `← parent` link to navigate up to parent session, and lists sub-agents as clickable links to navigate down into child sessions
+  - CLI `cortex sessions` shows `[channel-type]` badges, `⤷ N sub-agents` for parents, and `⤣ child of <id>` for sub-agent sessions
+
+### Changed
+
+- `sub_agent` tool definition rewritten with comprehensive context for the LLM about delegation strategy, type selection, and parallel usage patterns
+- `SubAgentTask` interface gained `subAgentType` field for type-based specialization
+- `spawnSubAgent()` applies type-based overrides (system prompt, tools, max turns) before spawning
+- `sub-agent-entry.ts` creates sessions with typed channel labels (`subagent:explore`, `subagent:code`, etc.)
+
+---
+
+## [0.19.0] — 2026-06-15
   - Unified type system with `PluginCapability`, `PluginManifest`, `PluginRow` (aligned with migration 005 canonical schema)
   - `PluginManager` singleton orchestrating full install/enable/disable/remove lifecycle
   - `PluginContext` factory with scoped state store (`plugin_state` table), config store (`config.json` / `plugins.<name>`), and namespaced logger

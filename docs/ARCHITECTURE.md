@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.8.0.
+This document describes the implemented architecture of CortexPrism as of v0.20.0.
 
 ---
 
@@ -76,6 +76,95 @@ agentTurn(opts)
 | `toolContext` | ToolContext | Working dir, approval gate |
 | `embedder` | EmbeddingProvider | For memory retrieval |
 | `enableReflection` | boolean | Post-turn reflection |
+
+---
+
+## Sub-Agent System (`src/agent/`)
+
+### Overview
+
+CortexPrism agents can spawn sub-agents — child Deno processes that run independently with their own model, tools, and system prompt. Sub-agents are used for parallel work, specialized tasks (exploration, research, planning, coding), and scope isolation.
+
+### Sub-Agent Types
+
+Defined in `src/agent/sub-agent-types.ts`:
+
+| Type | Label | Description | Tools | Max Turns |
+|------|-------|-------------|-------|-----------|
+| `explore` | Explorer | Fast codebase search, finds files/patterns, answers structural questions | file_read, file_search, file_list, file_tree, file_info | 6 |
+| `general` | Generalist | Full tool access for complex multi-step tasks | All available | 12 |
+| `plan` | Planner | Creates detailed execution plans | Read-only file tools | 8 |
+| `code` | Coder | Writes and edits code, runs shell commands | Full file system + shell + code_exec | 10 |
+| `research` | Researcher | Web research and information synthesis | web_search + read-only file tools | 8 |
+
+Each type has a specialized system prompt, tool allow-list, and turn limit. When a type is selected via the `type` parameter on the `sub_agent` tool, these overrides flow through the entire spawning chain.
+
+### Spawning Flow
+
+```
+Parent Agent (agent/loop.ts)
+  │  Tool call: sub_agent(type="code", task="...")
+  ▼
+tools/builtin/sub_agent.ts
+  │  resolveSubAgentType() → typeDef (system prompt, tools, maxTurns)
+  ▼
+agent/sub-agent.ts → spawnSubAgent()
+  │  Apply type overrides → effective agent config
+  │  Spawn child: deno run src/processes/sub-agent-entry.ts
+  │  Send init via stdin: { type:"init", config:{ parentSessionId, instruction, subAgentType, ... }, agentConfig:{ systemPrompt, tools, maxTurns, ... } }
+  ▼
+processes/sub-agent-entry.ts
+  │  Create session: channel="subagent:code", parent_session_id=<parentId>
+  │  Build provider, tool registry, embedder
+  │  Send { type:"ready" }
+  │  Run agentTurn({ userMessage: instruction, stream: true, onChunk: ... })
+  │  Send { type:"done", result:{ response, tokensIn, tokensOut, costUsd, durationMs } }
+  ▼
+Parent receives streamed chunks → tool result
+```
+
+### Meta-Cognition & Delegation
+
+`src/agent/metacog.ts` analyzes user messages to decide when delegation is appropriate:
+
+- **Complex code + exploration** → `delegate` with suggested types `[explore, code]`
+- **Research + independent subtasks** → `parallelize` with suggested types `[research]`
+- **Pure exploration** → `delegate` with suggested type `explore`
+- **Destructive multi-step** → `plan_with_rollback` with suggested type `plan`
+
+The `suggestedSubAgents` field is injected into the system prompt as meta-cognition guidance, helping the LLM choose the right sub-agent type.
+
+### Session Parent-Child Tracking
+
+Every sub-agent session records its parent via `parent_session_id` in the `sessions` table (migration 013):
+
+| API Endpoint | Description |
+|---|---|
+| `GET /api/sessions/:id/children` | Returns all sub-agent sessions for a parent |
+| `getChildSessions(parentId)` | DB function to query child sessions |
+| `getParentSession(childId)` | DB function to find a session's parent |
+| `countChildSessions(parentId)` | Count sub-agents without fetching full rows |
+
+Web UI session list shows channel type badges (explore, code, web) and `⤷ child` badges. Session detail view shows `← parent` link and lists clickable sub-agent children.
+
+### System Prompt Guidance
+
+The default agent soul (`src/agent/soul.ts`) includes a "Sub-Agents" section documenting all five types, describing when to use each, and listing anti-patterns for sub-agent usage. The `sub_agent` tool definition itself contains comprehensive guidance for the LLM on delegation strategy and parallel spawning.
+
+### Protocol
+
+Parent ↔ Child communication uses stdin/stdout JSON-line protocol:
+
+```
+Parent → Child:
+  { type: "init", config: { id, parentSessionId, instruction, subAgentType, config: {...} }, agentConfig: {...} }
+
+Child → Parent:
+  { type: "ready" }
+  { type: "chunk", delta: "..." }
+  { type: "done", result: { success, response, tokensIn, tokensOut, costUsd, durationMs } }
+  { type: "error", error: "..." }
+```
 
 ---
 
@@ -531,6 +620,10 @@ All databases use SQLite WAL mode via `@libsql/client`. Migrations are idempoten
 | 007_jobs_v2.sql | cortex.db | job scheduler columns |
 | 008_memory_embeddings.sql | memory.db | embedding + decay columns |
 | 009_policy.sql | cortex.db | policy_rules + default seeds |
+| 010_services.sql | cortex.db | micro-service definitions |
+| 011_workspace.sql | cortex.db | workspace_config + file_edit_log |
+| 012_plugins_enhanced.sql | plugins.db | enhanced plugin columns |
+| 013_sessions_parent.sql | cortex.db | parent_session_id for sub-agent tracking |
 
 ---
 
@@ -591,18 +684,45 @@ cli/chat.ts
        b. parseToolCalls(response)      [tools/executor.ts]
        c. validateToolCall()             [security/validator.ts]
           → checkPolicy() × 3           [security/policy.ts]
-       d. tool.execute()                [tools/builtin/*]
-       e. formatToolResults()
-       f. append to messages → goto 4a
-    5. persistMessage(db, 'assistant', response)
-    6. incrementTurn(sessionId)         [db/sessions.ts]
-    7. writeEpisodic(summary, embedder) [memory/store.ts] (async)
-    8. reflectOnTurn() [if enabled]     [agent/reflect.ts] (async)
-    9. logEvent(llm_call)              [db/lens.ts]
-  return { response, tokensIn, tokensOut, costUsd, durationMs }
-      │
-      ▼
+        d. tool.execute()                [tools/builtin/*]
+           → sub_agent: spawnSubAgent() → child Deno process → stdin/stdout JSON-line → result
+        e. formatToolResults()
+        f. append to messages → goto 4a
+     5. persistMessage(db, 'assistant', response)
+     6. incrementTurn(sessionId)         [db/sessions.ts]
+     7. writeEpisodic(summary, embedder) [memory/store.ts] (async)
+     8. reflectOnTurn() [if enabled]     [agent/reflect.ts] (async)
+     9. logEvent(llm_call)              [db/lens.ts]
+   return { response, tokensIn, tokensOut, costUsd, durationMs }
+       │
+       ▼
 cli/chat.ts
   → print to stdout (streaming or complete)
   → print cost/latency footer
+```
+
+### Sub-Agent Spawning Flow
+
+```
+Parent agent calls sub_agent tool
+  │
+  ▼
+tools/builtin/sub_agent.ts
+  │  resolveSubAgentType(type) → typeDef (systemPrompt, tools, maxTurns)
+  │
+  ▼
+agent/sub-agent.ts → spawnSubAgent()
+  │  Apply type overrides → effective agent config
+  │  Spawn: deno run src/processes/sub-agent-entry.ts
+  │  Send: { type:"init", config: { parentSessionId, instruction, subAgentType, ... }, agentConfig }
+  │
+  ▼
+processes/sub-agent-entry.ts
+  │  createSession(sessionId, "subagent:code", ..., parentSessionId)  → parent_session_id stored
+  │  buildProvider() → buildSystemPrompt() → buildToolRegistry()
+  │  agentTurn({ userMessage: instruction, stream: true, ... })
+  │  Send: { type:"chunk", delta } → { type:"done", result }
+  │
+  ▼
+Parent receives streamed chunks → tool result
 ```

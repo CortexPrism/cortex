@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
-import { bold, cyan, dim, green, red } from '@std/fmt/colors';
-import { listSessions } from '../db/sessions.ts';
+import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
+import { listSessions, countChildSessions } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
 
 function formatDuration(startedAt: string, closedAt: string | null): string {
@@ -16,6 +16,17 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
+function channelLabel(ch: string): string {
+  if (ch.startsWith('subagent:')) return ch.replace('subagent:', '');
+  return ch;
+}
+
+function channelColor(ch: string): (s: string) => string {
+  if (ch.startsWith('subagent')) return yellow;
+  if (ch === 'web') return cyan;
+  return dim;
+}
+
 export const sessionsCommand = new Command()
   .name('sessions')
   .description('List recent chat sessions')
@@ -29,6 +40,15 @@ export const sessionsCommand = new Command()
       return;
     }
 
+    // Fetch child counts for all sessions in parallel
+    const childCounts = new Map<string, number>();
+    await Promise.all(
+      sessions.map(async (s) => {
+        const count = await countChildSessions(s.id);
+        if (count > 0) childCounts.set(s.id, count);
+      }),
+    );
+
     console.log('');
     console.log(bold('  Recent Sessions'));
     console.log(dim('  ─────────────────────────────────────────────────────'));
@@ -40,8 +60,15 @@ export const sessionsCommand = new Command()
       const date = formatDate(s.started_at);
       const name = s.name ?? s.id;
 
+      const ch = channelLabel(s.channel);
+      const chClr = channelColor(s.channel);
+      const chBadge = s.channel !== 'cli' ? ` ${chClr(`[${ch}]`)}` : '';
+      const childCount = childCounts.get(s.id);
+      const childBadge = childCount ? yellow(` ⤷ ${childCount} sub-agent${childCount > 1 ? 's' : ''}`) : '';
+      const parentBadge = s.parent_session_id ? dim(' ⤣ child of ') + dim(s.parent_session_id.slice(-12)) : '';
+
       console.log(
-        `  ${status} ${bold(cyan(name))} ${dim(`· ${turns} · ${duration} · ${date}`)}`,
+        `  ${status} ${bold(cyan(name))}${chBadge} ${dim(`· ${turns} · ${duration} · ${date}`)}${childBadge}${parentBadge}`,
       );
 
       if (s.status === 'closed' && s.closed_at) {
