@@ -3,7 +3,7 @@ import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { initSessionDb } from '../db/migrate.ts';
-import { buildProvider } from '../llm/router.ts';
+import { buildProvider, buildRouter } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
@@ -13,6 +13,13 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
+import {
+  githubPRCreateTool,
+  githubPRListTool,
+  githubIssueCreateTool,
+  githubIssueListTool,
+  gitPushTool,
+} from '../tools/builtin/github/index.ts';
 import { onFileChange } from '../workspace/events.ts';
 import {
   fileDeleteTool,
@@ -162,6 +169,8 @@ export function handleWebSocket(req: Request): Response {
         // Resolve provider: agent-specific or default
         const providerKind = agent.provider || config.defaultProvider;
         const provider = buildProvider({ ...config, defaultProvider: providerKind as never });
+        const router = buildRouter(config);
+        const effectiveProvider = router ?? provider;
         const model = agent.model || config.providers[providerKind]?.model || 'unknown';
         const embedder = buildEmbedder(config);
 
@@ -212,6 +221,11 @@ export function handleWebSocket(req: Request): Response {
           web_search: webSearchTool,
           code_exec: codeExecTool,
           sub_agent: subAgentTool,
+          github_pr_create: githubPRCreateTool,
+          github_pr_list: githubPRListTool,
+          github_issue_create: githubIssueCreateTool,
+          github_issue_list: githubIssueListTool,
+          git_push: gitPushTool,
         };
         const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
         for (const name of allowedTools) {
@@ -222,7 +236,7 @@ export function handleWebSocket(req: Request): Response {
 
         const result = await agentTurn({
           userMessage: msg.message,
-          provider: provider!,
+          provider: effectiveProvider,
           model,
           sessionDb: sessionDbRef!,
           sessionId,

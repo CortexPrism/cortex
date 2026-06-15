@@ -15,11 +15,17 @@
 - **Tool use** — file read, shell execution, web search, code execution — all with approval gates
 - **Coding sandbox** — ephemeral Docker containers (or subprocess fallback) with resource limits;
   LLM auto-fix loop
+- **Code Runner** — execute code in sandboxed environments directly from the Web UI with
+  language selection and live output
 - **5-tier memory** — episodic (FTS5 keyword), semantic (vector embeddings), reflection (learned
   patterns); multi-strategy retrieval with decay scoring
-- **Model router** — RouteLLM cascading: tries cheapest model first, escalates on low confidence
+- **Model router** — RouteLLM-style routing: cascade (cheapest-first escalation) or threshold (prompt-scoring) strategies with multi-signal confidence estimation
 - **Web UI + REST API** — built-in HTTP server with WebSocket streaming, Lens timeline, memory
-  search, and jobs dashboard
+  search, jobs dashboard, file editor, git workspace, and code runner
+- **Git workspace** — per-agent and global git repos with auto-commit, branch management,
+  push/pull/clone, and full git CLI
+- **GitHub integration** — PR creation, issue tracking, repo browsing via CLI, agent tools,
+  and Web UI
 - **Per-turn reflection** — LLM self-assessment of confidence/quality; meta-pattern consolidation
 - **Scheduled jobs** — SQLite-persisted cron with retry
 - **Security (Parallax model)** — every tool call gated through a policy validator; AES-256-GCM
@@ -71,6 +77,8 @@ Commands:
   policy            Security policy rules (list / add / remove / check)
   migrate           Initialise or migrate all databases
   update            Check for updates and manage Cortex version
+  git               Git workspace operations (status, log, push, pull, branch, etc.)
+  github            GitHub integration (PRs, issues, repos)
 ```
 
 ### `cortex chat`
@@ -116,6 +124,48 @@ cortex update --force                  # Bypass dirty working tree check (source
 Supports both **source mode** (git clone) and **binary mode** (compiled `deno compile` binary).
 Binary downloads are verified against SHA-256 checksums and optionally GPG signatures.
 
+### `cortex git`
+
+Git workspace operations for agent and global workspaces:
+
+```bash
+cortex git status [--agent <id>]       # Show working tree status (branch, staged, unstaged, untracked)
+cortex git log [--agent <id>] [--limit 20]     # Show commit history
+cortex git diff [--agent <id>] [--stat] [--file <path>]  # Show working tree diff
+cortex git add <file...> [--agent <id>]  # Stage files
+cortex git add --all [--agent <id>]      # Stage all changes
+cortex git commit <message> [--agent <id>]  # Create a commit
+cortex git push [--agent <id>] [--remote origin] [--branch <name>]  # Push to remote
+cortex git pull [--agent <id>] [--remote origin] [--branch <name>]  # Pull from remote
+cortex git clone <url> <dest> [--branch <name>]  # Clone a repository
+cortex git branch [--agent <id>]        # List branches
+cortex git branch --create <name> [--agent <id>]  # Create and switch to new branch
+cortex git branch --checkout <name> [--agent <id>]  # Switch branch
+cortex git remote [--agent <id>]        # List remotes
+cortex git remote --add <name> --url <url> [--agent <id>]  # Add remote
+```
+
+### `cortex github`
+
+GitHub integration for managing pull requests, issues, and repositories:
+
+```bash
+cortex github token                     # Check token configuration status
+cortex github pr list <repo> [--state open] [--limit 10]  # List PRs
+cortex github pr get <repo> <number>    # Get PR details
+cortex github pr create <repo> <title> <head> <base> [--body "..."] [--draft]  # Create PR
+cortex github pr merge <repo> <number> [--method merge|squash|rebase]  # Merge PR
+cortex github pr close <repo> <number>  # Close PR without merging
+cortex github issue list <repo> [--state open] [--limit 10]  # List issues
+cortex github issue create <repo> <title> [--body "..."] [--labels a,b]  # Create issue
+cortex github issue close <repo> <number>   # Close issue
+cortex github repo list [--type all|owner|public|private] [--limit 20]  # List repos
+cortex github repo get <repo>           # Get repo details
+cortex github repo branches <repo>      # List repo branches
+```
+
+Requires a GitHub token set via `GITHUB_TOKEN` environment variable, `githubToken` in config, or vault entry `github_token`.
+
 ### `cortex daemon`
 
 ```bash
@@ -147,22 +197,38 @@ cortex stop --server-only            # Stop only the HTTP server
 cortex stop --daemon-only            # Stop only the daemon processes
 ```
 
-Web UI tabs: **Chat** (WebSocket streaming), **Lens** (activity timeline), **Memory** (search),
-**Jobs** (status)
+Web UI tabs: **Chat** (WebSocket streaming), **Editor** (file editor with CodeMirror),
+**Git** (status, commit, push/pull), **GitHub** (PRs, issues, repo info),
+**Code Runner** (sandboxed code execution), **Lens** (activity timeline),
+**Memory** (search), **Jobs** (status), **Sessions**, **Agents**, **Services**, **Settings**,
+**Soul** (identity editor), **Plugins**, **Marketplace**, **Analytics**, **Logs**
 
 REST API endpoints:
 
 ```
-GET  /api/health
-GET  /api/sessions?limit=20
-GET  /api/sessions/:id
-GET  /api/sessions/:id/events
-GET  /api/sessions/:id/messages
-POST /api/sessions/:id/resume
+GET    /api/health
+GET    /api/sessions?limit=20
+GET    /api/sessions/:id
+GET    /api/sessions/:id/events
+GET    /api/sessions/:id/messages
+POST   /api/sessions/:id/resume
 DELETE /api/sessions/:id
-GET  /api/jobs?status=pending
-GET  /api/memory/search?q=<query>
-WS   /ws   (streaming chat)
+GET    /api/jobs?status=pending
+GET    /api/memory/search?q=<query>
+GET    /api/workspace/git/status
+GET    /api/workspace/git/log
+GET    /api/workspace/git/branches
+POST   /api/workspace/git/commit
+POST   /api/workspace/git/push
+POST   /api/workspace/git/pull
+GET    /api/github/token
+GET    /api/github/repos
+GET    /api/github/repos/:owner/:name
+GET    /api/github/repos/:owner/:name/pulls
+GET    /api/github/repos/:owner/:name/issues
+GET    /api/github/repos/:owner/:name/branches
+POST   /api/code/exec
+WS     /ws   (streaming chat)
 ```
 
 ### `cortex memory`
@@ -251,6 +317,7 @@ Config file: `~/.cortex/config.json`
   },
   "router": {
     "enabled": false,
+    "strategy": "cascade",
     "confidenceThreshold": 0.7,
     "cascade": [
       { "provider": "ollama", "model": "llama3.2:3b" },
@@ -363,22 +430,24 @@ src/
 │   ├── loop.ts                  Core agent turn loop (tool rounds, memory, reflection)
 │   ├── reflect.ts               Per-turn reflection + consolidation
 │   └── soul.ts                  Agent persona + system prompt builder
-├── cli/
-│   ├── chat.ts                  cortex chat
-│   ├── daemon.ts                cortex daemon (start/run/status/stop) + ensureDaemons()
-│   ├── jobs.ts                  cortex jobs
-│   ├── update-cmd.ts            cortex update (check/apply/rollback/status)
-│   ├── memory-cmd.ts            cortex memory
-│   ├── migrate.ts               cortex migrate
-│   ├── policy-cmd.ts            cortex policy
-│   ├── reflect.ts               cortex reflect
-│   ├── run.ts                   cortex run
-│   ├── serve.ts                 cortex serve (with --daemon flag)
-│   ├── service-cmd.ts           cortex service
-│   ├── sessions.ts              cortex sessions
-│   ├── setup.ts                 First-run setup wizard
-│   ├── setup-cmd.ts             cortex setup
-│   └── vault-cmd.ts             cortex vault
+  ├── cli/
+  │   ├── chat.ts                  cortex chat
+  │   ├── daemon.ts                cortex daemon (start/run/status/stop) + ensureDaemons()
+  │   ├── git-cmd.ts               cortex git (status, log, push, pull, branch, etc.)
+  │   ├── github-cmd.ts            cortex github (PRs, issues, repos)
+  │   ├── jobs.ts                  cortex jobs
+  │   ├── update-cmd.ts            cortex update (check/apply/rollback/status)
+  │   ├── memory-cmd.ts            cortex memory
+  │   ├── migrate.ts               cortex migrate
+  │   ├── policy-cmd.ts            cortex policy
+  │   ├── reflect.ts               cortex reflect
+  │   ├── run.ts                   cortex run
+  │   ├── serve.ts                 cortex serve (with --daemon flag)
+  │   ├── service-cmd.ts           cortex service
+  │   ├── sessions.ts              cortex sessions
+  │   ├── setup.ts                 First-run setup wizard
+  │   ├── setup-cmd.ts             cortex setup
+  │   └── vault-cmd.ts             cortex vault
 ├── config/
 │   ├── config.ts                CortexConfig interface + load/save
 │   └── paths.ts                 XDG-style data paths
@@ -417,7 +486,7 @@ src/
 │   ├── bedrock.ts               AWS Bedrock provider
 │   ├── cohere.ts                Cohere provider
 │   ├── ollama.ts                Ollama local provider
-│   └── router.ts                buildProvider + CascadeRouter
+│   └── router.ts                buildProvider + CascadeRouter / ThresholdRouter + buildRouter
 ├── memory/
 │   ├── embeddings.ts            EmbeddingProvider (Ollama / OpenAI / Stub)
 │   ├── inject.ts                Inject memory hits into system prompt
@@ -425,6 +494,12 @@ src/
 ├── sandbox/
 │   ├── executor.ts              Docker / subprocess sandbox runner
 │   └── autofix.ts               LLM auto-fix loop
+├── workspace/
+│   ├── events.ts                File change event bus
+│   ├── git.ts                   Full git porcelain (status, log, push, pull, branch, remote)
+│   ├── github.ts                GitHub API client (PRs, issues, repos, branches)
+│   ├── mod.ts                   Module exports
+│   └── paths.ts                 Workspace path resolution + traversal protection
 ├── processes/
 │   ├── supervisor-process.ts    Daemon supervisor (auto-restart children on crash)
 │   ├── validator-process.ts     Tool intent validator daemon
@@ -451,7 +526,14 @@ src/
         ├── code_exec.ts         code_exec tool (sandbox)
         ├── file_read.ts         file_read tool
         ├── shell.ts             shell tool (with approval gate)
-        └── web_search.ts        web_search tool (DuckDuckGo)
+        ├── web_search.ts        web_search tool (DuckDuckGo)
+        └── github/
+            ├── index.ts         GitHub tool exports
+            ├── pr_create.ts     github_pr_create tool
+            ├── pr_list.ts       github_pr_list tool
+            ├── issue_create.ts  github_issue_create tool
+            ├── issue_list.ts    github_issue_list tool
+            └── git_push.ts      git_push tool (stage + commit + push)
 ```
 
 ---

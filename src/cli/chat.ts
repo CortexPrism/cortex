@@ -2,7 +2,7 @@ import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { isFirstRun, loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
-import { buildCascadeRouter, buildProvider } from '../llm/router.ts';
+import { buildProvider, buildRouter } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { runSetupWizard } from './setup.ts';
@@ -117,8 +117,8 @@ export const chatCommand = new Command()
       const model = options.model ?? agent.model ??
         config.providers[config.defaultProvider]?.model ?? 'unknown';
 
-      const cascadeRouter = buildCascadeRouter(config);
-      const effectiveProvider = cascadeRouter ?? activeProvider;
+      const router = buildRouter(config);
+      const effectiveProvider = router ?? activeProvider;
       const sid = options.resume ?? makeSessionId();
       const sessionDb = await initSessionDb(sid);
 

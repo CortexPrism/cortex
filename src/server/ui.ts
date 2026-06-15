@@ -325,6 +325,15 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('editor');closeMobileSidebar()" id="nav-editor">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Editor
     </button>
+    <button class="nav-item" onclick="showPage('git');closeMobileSidebar()" id="nav-git">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="4"/><circle cx="12" cy="6" r="4"/><path d="M18 12h-4"/><path d="M10 12H6"/></svg></span> Git
+    </button>
+    <button class="nav-item" onclick="showPage('github');closeMobileSidebar()" id="nav-github">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg></span> GitHub
+    </button>
+    <button class="nav-item" onclick="showPage('coderunner');closeMobileSidebar()" id="nav-coderunner">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span> Code Runner
+    </button>
 
     <!-- Management -->
     <div class="nav-section">Management</div>
@@ -463,6 +472,118 @@ const HTML = `<!DOCTYPE html>
             <button class="btn btn-primary" onclick="editorSave()" style="padding:3px 12px;font-size:11px;">Save</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Git -->
+  <div id="page-git" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Git Workspace</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Stage, commit, push, pull, and manage branches</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="git-agent-select" class="inp" style="width:160px;font-size:12px;padding:5px 8px;">
+          <option value="">Current directory</option>
+        </select>
+        <button class="btn btn-ghost" onclick="gitRefresh()" style="padding:5px 12px;font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <!-- Git status bar -->
+    <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-shrink:0;">
+      <span id="git-branch" style="font-size:13px;font-weight:500;color:var(--accent2);font-family:'JetBrains Mono',monospace;">—</span>
+      <span id="git-status-text" style="font-size:12px;color:var(--text3);">loading…</span>
+      <span id="git-ahead-behind" style="font-size:11px;color:var(--text3);"></span>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button class="btn btn-ghost" onclick="gitStageAll()" style="padding:4px 10px;font-size:11px;">Stage All</button>
+        <button class="btn btn-ghost" onclick="gitShowCommitInput()" style="padding:4px 10px;font-size:11px;">Commit</button>
+        <button class="btn btn-ghost" onclick="gitPush()" style="padding:4px 10px;font-size:11px;">Push</button>
+        <button class="btn btn-ghost" onclick="gitPull()" style="padding:4px 10px;font-size:11px;">Pull</button>
+      </div>
+    </div>
+    <!-- Commit input (hidden by default) -->
+    <div id="git-commit-area" style="display:none;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="display:flex;gap:8px;">
+        <input id="git-commit-message" class="inp" placeholder="Commit message…" style="flex:1;font-size:13px;" onkeydown="if(event.key==='Enter'){event.preventDefault();gitDoCommit()}"/>
+        <button class="btn btn-primary" onclick="gitDoCommit()" style="padding:5px 16px;font-size:12px;">Commit</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('git-commit-area').style.display='none'" style="padding:5px 12px;font-size:12px;">Cancel</button>
+      </div>
+    </div>
+    <!-- Main git content: two columns -->
+    <div style="flex:1;overflow:hidden;display:flex;">
+      <!-- Left: status/changes -->
+      <div style="flex:1;overflow-y:auto;padding:16px 20px;border-right:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Changes</div>
+        <div id="git-changes-list" style="font-size:12px;"></div>
+      </div>
+      <!-- Right: log -->
+      <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+        <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Recent Commits</div>
+        <div id="git-log-list" style="font-size:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: GitHub -->
+  <div id="page-github" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">GitHub</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Pull requests, issues, and repository management</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="gh-token-status" style="font-size:11px;color:var(--text3);"></span>
+        <button class="btn btn-ghost" onclick="ghRefresh()" style="padding:5px 12px;font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <!-- Repo selector / nav tabs -->
+    <div style="padding:10px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;">
+      <input id="gh-repo-input" class="inp" placeholder="owner/repo (e.g. user/myrepo)" style="width:260px;font-size:13px;" onkeydown="if(event.key==='Enter')ghLoadRepo()"/>
+      <button class="btn btn-primary" onclick="ghLoadRepo()" style="padding:5px 14px;font-size:12px;">Load</button>
+      <button class="nav-item compact" onclick="ghShowTab('pulls')" id="gh-tab-pulls" style="display:none;">Pull Requests</button>
+      <button class="nav-item compact" onclick="ghShowTab('issues')" id="gh-tab-issues" style="display:none;">Issues</button>
+      <button class="nav-item compact" onclick="ghShowTab('info')" id="gh-tab-info" style="display:none;">Repo Info</button>
+    </div>
+    <!-- GitHub content area -->
+    <div id="gh-content" style="flex:1;overflow-y:auto;padding:16px 24px;font-size:13px;">
+      <div style="text-align:center;color:var(--text3);padding:60px 20px;">
+        <p>Enter a repository (owner/repo) and click Load to get started.</p>
+        <p style="font-size:12px;margin-top:8px;">Requires a GitHub token in <code style="color:var(--text2);">GITHUB_TOKEN</code> env, <code style="color:var(--text2);">githubToken</code> config, or vault.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Code Runner -->
+  <div id="page-coderunner" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Code Runner</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Execute code in a sandboxed environment (Docker or subprocess)</p>
+      </div>
+    </div>
+    <!-- Language selector + run button -->
+    <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;">
+      <select id="coderunner-lang" class="inp" style="width:140px;font-size:13px;padding:6px 10px;">
+        <option value="python">Python</option>
+        <option value="javascript">JavaScript</option>
+        <option value="typescript">TypeScript</option>
+        <option value="bash">Bash</option>
+        <option value="ruby">Ruby</option>
+      </select>
+      <button class="btn btn-primary" onclick="codeRunnerRun()" style="padding:6px 20px;font-size:13px;">▶ Run</button>
+      <button class="btn btn-ghost" onclick="codeRunnerClear()" style="padding:6px 14px;font-size:12px;">Clear</button>
+      <span id="coderunner-status" style="font-size:11px;color:var(--text3);margin-left:auto;"></span>
+    </div>
+    <!-- Code input -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <textarea id="coderunner-input" class="inp" placeholder="Write your code here…" style="flex:1;border-radius:0;border:none;font-family:'JetBrains Mono',monospace;font-size:13px;padding:16px 20px;resize:none;background:var(--bg3);" spellcheck="false"></textarea>
+      </div>
+      <!-- Output area -->
+      <div style="height:200px;min-height:120px;border-top:1px solid var(--border);background:var(--bg2);overflow-y:auto;padding:12px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Output</div>
+        <pre id="coderunner-output" style="margin:0;white-space:pre-wrap;word-break:break-all;color:var(--text);"></pre>
       </div>
     </div>
   </div>
@@ -1121,7 +1242,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','editor','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs'];
+const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs'];
 function showPage(name) {
   currentPage = name;
   PAGES.forEach(p => {
@@ -1811,10 +1932,17 @@ async function loadSettings() {
 
     <!-- Router -->
     <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Model Router (RouteLLM cascade)</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Model Router (RouteLLM)</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-        <label style="font-size:12px;color:var(--text2);">Enable cascade router</label>
+        <label style="font-size:12px;color:var(--text2);">Enable router</label>
         <input type="checkbox" id="cfg-router" \${config.router?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Strategy</label>
+        <select class="inp" id="cfg-strategy" style="width:140px;">
+          <option value="cascade" \${config.router?.strategy==='cascade'?'selected':''}>Cascade</option>
+          <option value="threshold" \${config.router?.strategy==='threshold'?'selected':''}>Threshold</option>
+        </select>
       </div>
       <div>
         <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confidence threshold (0–1)</label>
@@ -1828,6 +1956,7 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
+  const current = await (await fetch(BASE + '/api/config')).json();
   const body = {
     defaultProvider: document.getElementById('cfg-provider')?.value,
     agent: {
@@ -1837,8 +1966,10 @@ async function saveSettings() {
     },
     router: {
       enabled: document.getElementById('cfg-router')?.checked,
+      strategy: document.getElementById('cfg-strategy')?.value ?? 'cascade',
       confidenceThreshold: Number(document.getElementById('cfg-confidence')?.value),
-      cascade: [],
+      cascade: current.router?.cascade ?? [],
+      threshold: current.router?.threshold ?? undefined,
     },
   };
   const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -3191,12 +3322,272 @@ async function editorNewFolder() {
   }
 }
 
+// ── Git Page ──────────────────────────────────────────────────
+let gitAgentId = '';
+
+async function gitRefresh() {
+  const agentId = gitAgentId || undefined;
+  const params = agentId ? '?agentId=' + encodeURIComponent(agentId) : '';
+  try {
+    const statusRes = await fetch(BASE + '/api/workspace/git/status' + params);
+    const status = await statusRes.json();
+    document.getElementById('git-branch').textContent = status.branch || '—';
+    document.getElementById('git-status-text').textContent = status.clean ? '✓ Clean' : (status.staged.length + status.unstaged.length + status.untracked.length) + ' changes';
+    document.getElementById('git-ahead-behind').textContent = (status.ahead || status.behind) ? (status.ahead + ' ahead, ' + status.behind + ' behind') : '';
+
+    const changesEl = document.getElementById('git-changes-list');
+    changesEl.innerHTML = '';
+    if (status.clean) {
+      changesEl.innerHTML = '<div style="color:var(--green);padding:20px 0;text-align:center;">Working tree clean</div>';
+    } else {
+      for (const f of status.staged) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:var(--green);font-family:monospace;">M</span><span>' + f.slice(2).trim() + '</span></div>';
+      for (const f of status.unstaged) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:#f87171;font-family:monospace;">M</span><span>' + f.slice(2).trim() + '</span></div>';
+      for (const f of status.untracked) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:var(--text3);font-family:monospace;">?</span><span>' + f + '</span></div>';
+    }
+
+    const logRes = await fetch(BASE + '/api/workspace/git/log' + params);
+    const log = await logRes.json();
+    const logEl = document.getElementById('git-log-list');
+    logEl.innerHTML = '';
+    if (!log.length) {
+      logEl.innerHTML = '<div style="color:var(--text3);padding:20px 0;text-align:center;">No commits yet</div>';
+    } else {
+      for (const e of log) {
+        logEl.innerHTML += '<div style="padding:5px 0;border-bottom:1px solid var(--border);">' +
+          '<div style="display:flex;gap:8px;"><span style="font-family:monospace;color:var(--text3);">' + e.hash.slice(0, 8) + '</span><span>' + e.message + '</span></div>' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + e.author + ' · ' + e.date.slice(0, 10) + '</div>' +
+          '</div>';
+      }
+    }
+  } catch (e) {
+    document.getElementById('git-changes-list').innerHTML = '<div style="color:#f87171;">Error: ' + e.message + '</div>';
+  }
+}
+
+async function gitStageAll() {
+  const agentId = gitAgentId || undefined;
+  const params = agentId ? '?agentId=' + encodeURIComponent(agentId) : '';
+  await fetch(BASE + '/api/workspace/git/commit' + params, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'stage all', agentId }),
+  });
+  gitRefresh();
+}
+
+function gitShowCommitInput() {
+  document.getElementById('git-commit-area').style.display = 'flex';
+  document.getElementById('git-commit-message').focus();
+}
+
+async function gitDoCommit() {
+  const msg = document.getElementById('git-commit-message').value.trim();
+  if (!msg) return toast('Enter a commit message', 'error');
+  const agentId = gitAgentId || undefined;
+  try {
+    const res = await fetch(BASE + '/api/workspace/git/commit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, agentId }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      toast('Committed: ' + msg, 'success');
+      document.getElementById('git-commit-area').style.display = 'none';
+      document.getElementById('git-commit-message').value = '';
+      gitRefresh();
+    } else {
+      toast(data.output || 'Nothing to commit', 'warning');
+    }
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function gitPush() {
+  const agentId = gitAgentId || undefined;
+  try {
+    const res = await fetch(BASE + '/api/workspace/git/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId }),
+    });
+    const data = await res.json();
+    toast(data.ok ? 'Push successful' : 'Push failed: ' + (data.output || ''), data.ok ? 'success' : 'error');
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function gitPull() {
+  const agentId = gitAgentId || undefined;
+  try {
+    const res = await fetch(BASE + '/api/workspace/git/pull', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId }),
+    });
+    const data = await res.json();
+    toast(data.ok ? 'Pull successful' : 'Pull failed: ' + (data.output || ''), data.ok ? 'success' : 'error');
+    gitRefresh();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function gitLoadAgentSelector() {
+  const res = await fetch(BASE + '/api/agents');
+  const agents = await res.json();
+  const sel = document.getElementById('git-agent-select');
+  sel.innerHTML = '<option value="">Current directory</option>';
+  for (const a of agents) {
+    sel.innerHTML += '<option value="' + a.id + '">' + a.name + ' (' + a.id.slice(0, 8) + ')</option>';
+  }
+  sel.onchange = () => {
+    const val = sel.value;
+    gitAgentId = val;
+    gitRefresh();
+  };
+}
+
+// ── GitHub Page ──────────────────────────────────────────────
+let ghRepo = '';
+
+async function ghRefresh() {
+  const tokenEl = document.getElementById('gh-token-status');
+  try {
+    const tokenRes = await fetch(BASE + '/api/github/token');
+    const tokenData = await tokenRes.json();
+    tokenEl.textContent = tokenData.configured ? '✓ Token configured' : '✗ No token';
+    tokenEl.style.color = tokenData.configured ? 'var(--green)' : '#f87171';
+  } catch { /* ignore */ }
+  if (ghRepo) ghLoadRepo();
+}
+
+async function ghLoadRepo() {
+  const repo = document.getElementById('gh-repo-input').value.trim();
+  if (!repo) return toast('Enter a repo (owner/name)', 'error');
+  ghRepo = repo;
+  document.getElementById('gh-tab-pulls').style.display = 'inline-flex';
+  document.getElementById('gh-tab-issues').style.display = 'inline-flex';
+  document.getElementById('gh-tab-info').style.display = 'inline-flex';
+  ghShowTab('pulls');
+}
+
+async function ghShowTab(tab) {
+  ['pulls', 'issues', 'info'].forEach(t => {
+    const el = document.getElementById('gh-tab-' + t);
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  const contentEl = document.getElementById('gh-content');
+  contentEl.innerHTML = '<div class="skeleton" style="height:200px;border-radius:8px;"></div>';
+  try {
+    if (tab === 'pulls') {
+      const res = await fetch(BASE + '/api/github/repos/' + ghRepo + '/pulls?state=open');
+      const prs = await res.json();
+      contentEl.innerHTML = '<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Open Pull Requests</div>';
+      if (prs.length === 0) {
+        contentEl.innerHTML += '<div style="color:var(--text3);padding:20px 0;text-align:center;">No open pull requests.</div>';
+      } else {
+        for (const pr of prs) {
+          contentEl.innerHTML += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="window.open(\'' + pr.html_url + '\',\'_blank\')">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span><strong>#' + pr.number + '</strong> ' + pr.title + '</span>' +
+            '<span style="font-size:11px;color:var(--text3);">@' + pr.user.login + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:var(--text3);margin-top:4px;">' + pr.head.ref + ' → ' + pr.base.ref + '</div>' +
+            '</div>';
+        }
+      }
+    } else if (tab === 'issues') {
+      const res = await fetch(BASE + '/api/github/repos/' + ghRepo + '/issues?state=open');
+      const issues = await res.json();
+      contentEl.innerHTML = '<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Open Issues</div>';
+      if (issues.length === 0) {
+        contentEl.innerHTML += '<div style="color:var(--text3);padding:20px 0;text-align:center;">No open issues.</div>';
+      } else {
+        for (const issue of issues) {
+          const labels = issue.labels.map(l => '<span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);font-size:10px;">' + l.name + '</span>').join(' ');
+          contentEl.innerHTML += '<div class="card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="window.open(\'' + issue.html_url + '\',\'_blank\')">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span><strong>#' + issue.number + '</strong> ' + issue.title + '</span>' +
+            '<span style="font-size:11px;color:var(--text3);">@' + issue.user.login + '</span>' +
+            '</div>' +
+            '<div style="margin-top:4px;">' + labels + '</div>' +
+            '</div>';
+        }
+      }
+    } else if (tab === 'info') {
+      const res = await fetch(BASE + '/api/github/repos/' + ghRepo);
+      const repo = await res.json();
+      contentEl.innerHTML =
+        '<div class="card" style="max-width:600px;">' +
+        '<h2 style="font-size:15px;font-weight:600;margin-bottom:8px;">' + repo.full_name + '</h2>' +
+        '<p style="font-size:13px;color:var(--text2);margin-bottom:12px;">' + (repo.description || 'No description') + '</p>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">' +
+        '<div><span style="color:var(--text3);">Default branch:</span> ' + repo.default_branch + '</div>' +
+        '<div><span style="color:var(--text3);">Private:</span> ' + repo.private + '</div>' +
+        '<div><span style="color:var(--text3);">Stars:</span> ' + repo.stargazers_count + '</div>' +
+        '<div><span style="color:var(--text3);">Issues:</span> ' + repo.open_issues_count + '</div>' +
+        '<div><span style="color:var(--text3);">Forks:</span> ' + repo.forks_count + '</div>' +
+        '</div>' +
+        '<div style="margin-top:12px;"><a href="' + repo.html_url + '" target="_blank" style="color:var(--accent2);font-size:13px;">View on GitHub →</a></div>' +
+        '</div>';
+    }
+  } catch (e) {
+    contentEl.innerHTML = '<div style="color:#f87171;">Error: ' + e.message + '</div>';
+  }
+}
+
+// ── Code Runner Page ─────────────────────────────────────────
+async function codeRunnerRun() {
+  const code = document.getElementById('coderunner-input').value.trim();
+  const lang = document.getElementById('coderunner-lang').value;
+  if (!code) return toast('Enter some code to run', 'error');
+
+  const statusEl = document.getElementById('coderunner-status');
+  const outputEl = document.getElementById('coderunner-output');
+  statusEl.textContent = 'Running…';
+  outputEl.textContent = '';
+  statusEl.style.color = 'var(--text3)';
+
+  try {
+    const res = await fetch(BASE + '/api/code/exec', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, language: lang }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      outputEl.textContent = result.output || '(no output)';
+      statusEl.textContent = '✓ Done (' + result.durationMs + 'ms)';
+      statusEl.style.color = 'var(--green)';
+    } else {
+      outputEl.textContent = result.error || result.output || 'Error';
+      statusEl.textContent = '✗ Failed (' + result.durationMs + 'ms)';
+      statusEl.style.color = '#f87171';
+    }
+  } catch (e) {
+    outputEl.textContent = e.message;
+    statusEl.textContent = '✗ Error';
+    statusEl.style.color = '#f87171';
+  }
+}
+
+function codeRunnerClear() {
+  document.getElementById('coderunner-input').value = '';
+  document.getElementById('coderunner-output').textContent = '';
+  document.getElementById('coderunner-status').textContent = '';
+}
+
 // ── Boot ────────────────────────────────────────────────────
 connect();
 loadSessionsSidebar();
 loadDaemonStatus();
 restoreSession();
 loadAgentSelector();
+gitLoadAgentSelector();
+ghRefresh();
 setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);
