@@ -1,24 +1,56 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { spawnSubAgent } from '../../agent/sub-agent.ts';
 import type { ProviderKind } from '../../config/config.ts';
+import { getSubAgentType, type SubAgentType } from '../../agent/sub-agent-types.ts';
 
 export const subAgentTool: Tool = {
   definition: {
     name: 'sub_agent',
     description:
-      `Delegate a complex, independent task to a sub-agent that runs in its own process with its own model and tools. Use this when a task is self-contained, time-consuming, or requires a different capability than you have. The sub-agent runs concurrently and its full response is returned.`,
+      `Delegate a task to a specialized sub-agent that runs in its own process with its own model, tools, and system prompt. Sub-agents work independently and return their full response when done.
+
+## When to Use Sub-Agents
+- **Parallel independent work**: When a task has multiple independent parts that can run concurrently, spawn multiple sub_agent calls in the same turn.
+- **Specialized work**: When a task requires a different skill set (e.g., codebase exploration, web research, planning).
+- **Deep investigation**: When you need thorough, multi-step investigation of a topic — sub-agents can take their time.
+- **Scope isolation**: When you want to isolate a task from the main conversation context.
+
+## When NOT to Use
+- Simple single-step operations (just do them yourself)
+- Tasks that require sequential dependency on your own intermediate results
+- Trivial lookups or reads
+
+## Available Sub-Agent Types
+Use the "type" parameter to select a specialized agent:
+
+- **explore** — Fast codebase search and exploration. Finds files, patterns, and answers structural questions. Read-only.
+- **general** — General-purpose agent for complex multi-step tasks. Has all tools.
+- **plan** — Plans complex tasks into detailed step-by-step execution plans. Read-only, no modifications.
+- **code** — Writes and edits code. Full file system access for reading, writing, and editing.
+- **research** — Web research agent. Searches, reads documentation, synthesizes findings. Cannot modify files.
+
+## Parallel Usage
+When you need to do multiple independent things at once, make multiple \`sub_agent\` tool calls in the same message. Each runs concurrently.`,
     params: [
       {
         name: 'task',
         type: 'string',
-        description: 'The complete instructions to give to the sub-agent',
+        description: 'The complete instructions to give to the sub-agent. Be specific and clear.',
         required: true,
+      },
+      {
+        name: 'type',
+        type: 'string',
+        description:
+          'Sub-agent type: "explore", "general", "plan", "code", or "research". Choose based on the task nature. Defaults to "general".',
+        required: false,
+        enum: ['explore', 'general', 'plan', 'code', 'research'],
       },
       {
         name: 'agent',
         type: 'string',
         description:
-          'Registered agent ID to use (e.g. "researcher", "coder"). Omit for the default agent.',
+          'Registered agent ID to use (e.g. "researcher", "coder"). Takes precedence over type.',
         required: false,
       },
       {
@@ -36,14 +68,14 @@ export const subAgentTool: Tool = {
       {
         name: 'system_prompt',
         type: 'string',
-        description: 'Additional system prompt instructions for the sub-agent',
+        description: 'Additional system prompt instructions appended to the sub-agent prompt',
         required: false,
       },
       {
         name: 'tools',
         type: 'string',
         description:
-          'Comma-separated tool allow-list (e.g. "web_search,file_read"). Defaults to all.',
+          'Comma-separated tool allow-list (e.g. "web_search,file_read"). Overrides the type defaults.',
         required: false,
       },
     ],
@@ -68,6 +100,10 @@ export const subAgentTool: Tool = {
     const startTime = Date.now();
     const chunks: string[] = [];
 
+    // Resolve sub-agent type configuration
+    const subAgentType = args.type as SubAgentType | undefined;
+    const typeDef = subAgentType ? getSubAgentType(subAgentType) : undefined;
+
     try {
       const iter = spawnSubAgent({
         parentSessionId: context.sessionId,
@@ -79,8 +115,10 @@ export const subAgentTool: Tool = {
           systemPrompt: args.system_prompt as string | undefined,
           tools: args.tools
             ? String(args.tools).split(',').map((s) => s.trim()).filter(Boolean)
-            : undefined,
+            : typeDef?.tools ?? undefined,
+          maxTurns: typeDef?.maxTurns,
         },
+        subAgentType,
       });
 
       for await (const event of iter) {
@@ -108,7 +146,6 @@ export const subAgentTool: Tool = {
         }
       }
 
-      // Fall through — should not reach here
       return {
         toolName: 'sub_agent',
         success: false,

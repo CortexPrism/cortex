@@ -23,6 +23,10 @@ export class ToolRegistry {
     return this.tools.has(name);
   }
 
+  unregister(name: string): void {
+    this.tools.delete(name);
+  }
+
   async loadEsm(specifier: string): Promise<void> {
     const mod = await import(specifier) as { default?: Tool; tool?: Tool };
     const tool = mod.default ?? mod.tool;

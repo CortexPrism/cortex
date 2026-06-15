@@ -1,5 +1,6 @@
 import {
   deleteSession as deleteSessionDb,
+  getChildSessions,
   getSession,
   listSessions,
   resumeSession,
@@ -19,13 +20,14 @@ import { listPolicies } from '../security/policy.ts';
 import { getMemoryDb } from '../db/client.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import {
-  disablePlugin,
-  enablePlugin,
   installPlugin,
   listPlugins,
   removePlugin,
 } from '../plugins/registry.ts';
-import type { PluginManifest } from '../plugins/registry.ts';
+import { pluginManager } from '../plugins/manager.ts';
+import type { PluginManifest } from '../plugins/types.ts';
+import { extractSettingsSchema } from '../plugins/extensions/config.ts';
+import { generatePanelHtml, generatePanelJs } from '../plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
@@ -103,6 +105,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(sessions.filter(Boolean));
   }
 
+  // GET /api/sessions/:id/children — sub-agent sessions spawned from a parent
+  const childrenMatch = path.match(/^\/api\/sessions\/([^/]+)\/children$/);
+  if (req.method === 'GET' && childrenMatch) {
+    const session = await getSession(childrenMatch[1]);
+    if (!session) return notFound('Session not found');
+    const children = await getChildSessions(childrenMatch[1]);
+    return json(children);
+  }
+
   // GET /api/sessions/:id
   const sessionMatch = path.match(/^\/api\/sessions\/([^/]+)$/);
   if (req.method === 'GET' && sessionMatch) {
@@ -142,6 +153,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const embedder = buildEmbedder(config);
     const hits = await retrieve(q, embedder, { limit: 10 });
     return json(hits);
+  }
+
+  // POST /api/webhooks/:name — Event trigger webhook receiver
+  if (req.method === 'POST' && path.startsWith('/api/webhooks/')) {
+    const { handleWebhookRequest } = await import('../triggers/webhook.ts');
+    const result = await handleWebhookRequest(req);
+    if (result) return result;
+  }
+
+  // MCP server endpoint (GET /mcp, POST /mcp)
+  if (path.startsWith('/mcp')) {
+    const { handleMcpHttpRequest } = await import('../mcp/server.ts');
+    const result = await handleMcpHttpRequest(req);
+    if (result) return result;
+  }
+
+  // GET /metrics — Prometheus metrics endpoint
+  if (req.method === 'GET' && path === '/metrics') {
+    const { renderPrometheus } = await import('../observability/metrics.ts');
+    const text = renderPrometheus();
+    return new Response(text, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; version=0.0.4' },
+    });
   }
 
   // GET /api/health
@@ -465,6 +500,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true });
   }
 
+  // ── Pipeline Hooks ───────────────────────────────────────
+
+  // GET /api/hooks
+  if (req.method === 'GET' && path === '/api/hooks') {
+    const { listHooks } = await import('../pipeline/manager.ts');
+    return json(listHooks().map((r) => ({
+      name: r.hook.name,
+      stages: r.hook.stages,
+      priority: r.hook.priority,
+      async: r.hook.async,
+      disableable: r.hook.disableable,
+      source: r.source,
+      pluginName: r.pluginName ?? null,
+    })));
+  }
+
+  // POST /api/hooks/:name/disable
+  const hookDisableMatch = path.match(/^\/api\/hooks\/([^/]+)\/disable$/);
+  if (req.method === 'POST' && hookDisableMatch) {
+    const { unregisterHook } = await import('../pipeline/manager.ts');
+    const ok = unregisterHook(hookDisableMatch[1]);
+    return ok ? json({ ok: true }) : notFound('Hook not found');
+  }
+
   // ── Plugins ──────────────────────────────────────────────
 
   // GET /api/plugins
@@ -472,32 +531,124 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(await listPlugins());
   }
 
+  // GET /api/plugins/panels
+  if (req.method === 'GET' && path === '/api/plugins/panels') {
+    const plugins = await listPlugins();
+    const panels = plugins
+      .filter((p) => p.enabled === 1 && p.status === 'active')
+      .map((p) => {
+        let manifest: PluginManifest | null = null;
+        try { manifest = JSON.parse(p.manifest_json) as PluginManifest; } catch { /* skip */ }
+        if (!manifest?.ui?.panels) return null;
+        return manifest.ui.panels.map((panel) => ({
+          pluginId: p.name,
+          panelId: panel.id,
+          title: panel.title,
+          icon: panel.icon ?? null,
+        }));
+      })
+      .filter(Boolean)
+      .flat();
+    return json(panels);
+  }
+
+  // GET /api/plugins/:name
+  const pluginGetMatch = path.match(/^\/api\/plugins\/([^/]+)$/);
+  if (req.method === 'GET' && pluginGetMatch) {
+    const plugin = await pluginManager.get(pluginGetMatch[1]);
+    if (!plugin) return notFound('Plugin not found');
+    return json(plugin);
+  }
+
   // POST /api/plugins/install
   if (req.method === 'POST' && path === '/api/plugins/install') {
     const body = await req.json() as PluginManifest;
-    await installPlugin(body);
+    await pluginManager.install(body);
     return json({ ok: true });
   }
 
-  // POST /api/plugins/:id/enable
+  // POST /api/plugins/:name/enable
   const pluginEnableMatch = path.match(/^\/api\/plugins\/([^/]+)\/enable$/);
   if (req.method === 'POST' && pluginEnableMatch) {
-    await enablePlugin(pluginEnableMatch[1]);
+    await pluginManager.enable(pluginEnableMatch[1]);
     return json({ ok: true });
   }
 
-  // POST /api/plugins/:id/disable
+  // POST /api/plugins/:name/disable
   const pluginDisableMatch = path.match(/^\/api\/plugins\/([^/]+)\/disable$/);
   if (req.method === 'POST' && pluginDisableMatch) {
-    await disablePlugin(pluginDisableMatch[1]);
+    await pluginManager.disable(pluginDisableMatch[1]);
     return json({ ok: true });
   }
 
-  // DELETE /api/plugins/:id
+  // DELETE /api/plugins/:name
   const pluginDeleteMatch = path.match(/^\/api\/plugins\/([^/]+)$/);
   if (req.method === 'DELETE' && pluginDeleteMatch) {
-    await removePlugin(pluginDeleteMatch[1]);
+    await pluginManager.remove(pluginDeleteMatch[1]);
     return json({ ok: true });
+  }
+
+  // GET /api/plugins/:name/config
+  const pluginConfigGetMatch = path.match(/^\/api\/plugins\/([^/]+)\/config$/);
+  if (req.method === 'GET' && pluginConfigGetMatch) {
+    const config = await loadConfig();
+    const plugins = (config as unknown as Record<string, unknown>).plugins as Record<string, Record<string, unknown>> | undefined;
+    return json(plugins?.[pluginConfigGetMatch[1]] ?? {});
+  }
+
+  // PUT /api/plugins/:name/config
+  const pluginConfigPutMatch = path.match(/^\/api\/plugins\/([^/]+)\/config$/);
+  if (req.method === 'PUT' && pluginConfigPutMatch) {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.plugins) cfg.plugins = {};
+    const plugins = cfg.plugins as Record<string, Record<string, unknown>>;
+    plugins[pluginConfigPutMatch[1]] = body;
+    await saveConfig(config);
+    return json({ ok: true });
+  }
+
+  // GET /api/plugins/:name/settings
+  const pluginSettingsMatch = path.match(/^\/api\/plugins\/([^/]+)\/settings$/);
+  if (req.method === 'GET' && pluginSettingsMatch) {
+    const plugin = await pluginManager.get(pluginSettingsMatch[1]);
+    if (!plugin) return notFound('Plugin not found');
+    try {
+      const manifest = JSON.parse(plugin.manifest_json) as PluginManifest;
+      return json(extractSettingsSchema(manifest));
+    } catch {
+      return json({ pluginName: pluginSettingsMatch[1], sections: [] });
+    }
+  }
+
+  // GET /api/plugins/:name/panel.js
+  const pluginPanelJsMatch = path.match(/^\/api\/plugins\/([^/]+)\/panel\.js$/);
+  if (req.method === 'GET' && pluginPanelJsMatch) {
+    return new Response(generatePanelJs(pluginPanelJsMatch[1]), {
+      headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
+    });
+  }
+
+  // GET /api/plugins/:name/panel
+  const pluginPanelMatch = path.match(/^\/api\/plugins\/([^/]+)\/panel$/);
+  if (req.method === 'GET' && pluginPanelMatch) {
+    const plugin = await pluginManager.get(pluginPanelMatch[1]);
+    if (!plugin) return notFound('Plugin not found');
+    try {
+      const manifest = JSON.parse(plugin.manifest_json) as PluginManifest;
+      const panel = manifest.ui?.panels?.[0];
+      const title = panel?.title ?? pluginPanelMatch[1];
+      const jsUrl = `/api/plugins/${pluginPanelMatch[1]}/panel.js`;
+      const html = generatePanelHtml(pluginPanelMatch[1], title, '', jsUrl);
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    } catch {
+      return new Response(generatePanelHtml(pluginPanelMatch[1], pluginPanelMatch[1], '', ''), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    }
   }
 
   // ── Jobs CRUD ────────────────────────────────────────────
@@ -957,7 +1108,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins/${slug}/download`);
     if (!dlRes.ok) return json({ error: `Plugin "${slug}" not found` }, 404);
     const manifest = await dlRes.json() as {
-      id?: string;
       name: string;
       version: string;
       description?: string;
@@ -966,19 +1116,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
       capabilities?: string[];
       author?: string;
       homepage?: string;
+      runtime?: string;
+      license?: string;
     };
     const { installPlugin } = await import('../plugins/registry.ts');
     try {
       await installPlugin({
-        id: manifest.id ?? '',
         name: manifest.name,
         version: manifest.version,
         description: manifest.description ?? '',
-        kind: manifest.kind as 'esm' | 'mcp' | 'wasm',
+        kind: (manifest.kind as 'esm' | 'mcp' | 'wasm') || 'esm',
         entryPoint: manifest.entryPoint,
-        capabilities: manifest.capabilities ?? [],
+        runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
+        capabilities: (manifest.capabilities ?? []) as never[],
         author: manifest.author,
         homepage: manifest.homepage,
+        license: manifest.license,
       });
       return json({ ok: true, name: manifest.name });
     } catch (e) {
@@ -1043,6 +1196,139 @@ export async function handleApi(req: Request): Promise<Response | null> {
     params.push(String(limit));
     const rows = await db.all(query, params);
     return json(rows);
+  }
+
+  // ── GitHub API endpoints ───────────────────────────────────
+
+  // GET /api/github/token — check if token is configured
+  if (req.method === 'GET' && path === '/api/github/token') {
+    const { getGitHubToken } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    return json({ configured: !!token });
+  }
+
+  // GET /api/github/repos — list repos
+  if (req.method === 'GET' && path === '/api/github/repos') {
+    const { getGitHubToken, listRepos } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const repos = await listRepos(token, { limit: 30 });
+    return json(repos);
+  }
+
+  // GET /api/github/repos/:owner/:name
+  const ghRepoMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)$/);
+  if (req.method === 'GET' && ghRepoMatch) {
+    const { getGitHubToken, getRepo } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const repo = await getRepo(`${ghRepoMatch[1]}/${ghRepoMatch[2]}`, token);
+    return json(repo);
+  }
+
+  // GET /api/github/repos/:owner/:name/pulls — list PRs
+  const ghPRMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)\/pulls$/);
+  if (req.method === 'GET' && ghPRMatch) {
+    const { getGitHubToken, listPullRequests } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const state = (url.searchParams.get('state') ?? 'open') as 'open' | 'closed' | 'all';
+    const prs = await listPullRequests(`${ghPRMatch[1]}/${ghPRMatch[2]}`, token, { state });
+    return json(prs);
+  }
+
+  // GET /api/github/repos/:owner/:name/issues — list issues
+  const ghIssueMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)\/issues$/);
+  if (req.method === 'GET' && ghIssueMatch) {
+    const { getGitHubToken, listIssues } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const state = (url.searchParams.get('state') ?? 'open') as 'open' | 'closed' | 'all';
+    const issues = await listIssues(`${ghIssueMatch[1]}/${ghIssueMatch[2]}`, token, { state, limit: 30 });
+    return json(issues);
+  }
+
+  // GET /api/github/repos/:owner/:name/branches — list branches
+  const ghBranchMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)\/branches$/);
+  if (req.method === 'GET' && ghBranchMatch) {
+    const { getGitHubToken, listBranches } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const branches = await listBranches(`${ghBranchMatch[1]}/${ghBranchMatch[2]}`, token);
+    return json(branches);
+  }
+
+  // ── Git workspace API endpoints ─────────────────────────
+
+  // GET /api/workspace/git/status — current git status
+  if (req.method === 'GET' && path === '/api/workspace/git/status') {
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { gitStatus } = await import('../workspace/git.ts');
+    const status = await gitStatus(dir);
+    return json(status);
+  }
+
+  // POST /api/workspace/git/commit — commit all staged
+  if (req.method === 'POST' && path === '/api/workspace/git/commit') {
+    const body = await req.json().catch(() => ({})) as { message?: string; agentId?: string };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitAdd, gitCommit } = await import('../workspace/git.ts');
+    await gitAdd(dir, ['-A']);
+    const ok = await gitCommit(dir, body.message ?? 'web commit');
+    return json({ ok, output: ok ? 'Committed' : 'Nothing to commit' });
+  }
+
+  // POST /api/workspace/git/push — push to remote
+  if (req.method === 'POST' && path === '/api/workspace/git/push') {
+    const body = await req.json().catch(() => ({})) as { agentId?: string; remote?: string; branch?: string };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitPush } = await import('../workspace/git.ts');
+    const result = await gitPush(dir, body.remote ?? 'origin', body.branch);
+    return json({ ok: result.success, output: result.output });
+  }
+
+  // POST /api/workspace/git/pull — pull from remote
+  if (req.method === 'POST' && path === '/api/workspace/git/pull') {
+    const body = await req.json().catch(() => ({})) as { agentId?: string; remote?: string; branch?: string };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitPull } = await import('../workspace/git.ts');
+    const result = await gitPull(dir, body.remote ?? 'origin', body.branch);
+    return json({ ok: result.success, output: result.output });
+  }
+
+  // GET /api/workspace/git/log — commit log
+  if (req.method === 'GET' && path === '/api/workspace/git/log') {
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { gitLog } = await import('../workspace/git.ts');
+    const log = await gitLog(dir);
+    return json(log);
+  }
+
+  // GET /api/workspace/git/branches — list branches
+  if (req.method === 'GET' && path === '/api/workspace/git/branches') {
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { gitListBranches } = await import('../workspace/git.ts');
+    const branches = await gitListBranches(dir);
+    return json(branches);
+  }
+
+  // POST /api/workspace/git/branch — create/switch branch
+  if (req.method === 'POST' && path === '/api/workspace/git/branch') {
+    const body = await req.json() as { agentId?: string; name: string; create?: boolean };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitCreateBranch, gitCheckout } = await import('../workspace/git.ts');
+    const ok = body.create ? await gitCreateBranch(dir, body.name) : await gitCheckout(dir, body.name);
+    return json({ ok });
   }
 
   // ── Git endpoints ────────────────────────────────────────
@@ -1110,6 +1396,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
     } catch (e) {
       return err((e as Error).message);
     }
+  }
+
+  // POST /api/code/exec — execute code in sandbox
+  if (req.method === 'POST' && path === '/api/code/exec') {
+    const body = await req.json() as { code: string; language: string };
+    if (!body.code) return err('Missing code', 400);
+    const { runInSandbox, formatSandboxResult } = await import('../sandbox/executor.ts');
+    const result = await runInSandbox({ code: body.code, language: body.language || 'python' });
+    const output = formatSandboxResult(result);
+    return json({
+      success: result.exitCode === 0 && !result.timedOut,
+      output,
+      error: result.exitCode !== 0 ? `exit ${result.exitCode}` : undefined,
+      durationMs: result.durationMs,
+      runtime: result.runtime,
+    });
   }
 
   return null;

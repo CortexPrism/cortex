@@ -1,5 +1,11 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
+import { runMigrations } from '../db/migrate.ts';
+import { installPlugin } from '../plugins/registry.ts';
+import { deserializeCapabilities } from '../plugins/registry.ts';
+import { resolvePermissions, getPluginPermissionOverrides } from '../plugins/permissions.ts';
+import { pluginManager } from '../plugins/manager.ts';
+import type { PluginKind } from '../plugins/types.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
 const API_BASE = `https://${MARKETPLACE_HOST}/api/marketplace`;
@@ -198,6 +204,95 @@ export const marketplaceCommand = new Command()
           console.log(`  ${cyan('Downloads:')}   ${formatNumber(data.totalDownloads)}`);
           console.log(`  ${cyan('Categories:')}  ${data.categories}`);
           console.log('');
+        } catch (e) {
+          console.error(red(`  ${(e as Error).message}`));
+        }
+      }),
+  )
+  .command(
+    'install',
+    new Command()
+      .description('Install a plugin from the marketplace with permission preview')
+      .arguments('<slug:string>')
+      .option('-y, --yes', 'Skip the permission confirmation prompt')
+      .action(async ({ yes }: { yes?: boolean }, slug: string) => {
+        await runMigrations();
+        const downloadUrl = `${API_BASE}/plugins/${slug}/download`;
+        try {
+          const res = await fetch(downloadUrl);
+          if (!res.ok) {
+            console.log(red(`  Plugin "${slug}" not found on marketplace.`));
+            return;
+          }
+          const manifest = await res.json() as {
+            name: string;
+            version: string;
+            description?: string;
+            kind: string;
+            entryPoint: string;
+            runtime?: string;
+            capabilities?: string[];
+            author?: string;
+            homepage?: string;
+            license?: string;
+          };
+
+          // Show permission preview
+          const capabilities = (manifest.capabilities ?? []) as string[];
+          const declared = capabilities as never[];
+          console.log(bold(`\n  ${manifest.name} v${manifest.version}`));
+          console.log(dim(`  ${manifest.description ?? 'No description'}`));
+          if (manifest.author) console.log(dim(`  by ${manifest.author}`));
+          console.log('');
+
+          if (capabilities.length > 0) {
+            console.log(bold('  Required Permissions:'));
+            const perms = capabilities.filter((c) =>
+              c.includes(':') && !['cli:commands', 'ui:panel', 'ui:widget', 'config:schema', 'config:provider', 'memory:store', 'memory:embedder', 'events:listener', 'middleware:pre', 'middleware:post'].includes(c)
+            );
+            const extPoints = capabilities.filter((c) =>
+              ['tools', 'cli:commands', 'ui:panel', 'ui:widget', 'config:schema', 'config:provider', 'memory:store', 'memory:embedder'].includes(c)
+            );
+            if (extPoints.length > 0) {
+              console.log(dim('  Extension points:'));
+              for (const ep of extPoints) console.log(`    ${cyan(ep)}`);
+              console.log('');
+            }
+            if (perms.length > 0) {
+              console.log(dim('  File/network/db access:'));
+              for (const p of perms) {
+                const isSensitive = ['fs:write', 'fs:delete', 'shell:run', 'net:inbound'].includes(p);
+                console.log(`    ${isSensitive ? yellow('⚠ ') + yellow(p) : cyan('● ') + p}`);
+              }
+              console.log('');
+            }
+          } else {
+            console.log(dim('  No special permissions required.\n'));
+          }
+
+          if (!yes) {
+            const answer = prompt('  Install? [y/N] ');
+            if (!answer || !['y', 'yes'].includes(answer.toLowerCase())) {
+              console.log(dim('  Cancelled.\n'));
+              return;
+            }
+          }
+
+          await installPlugin({
+            name: manifest.name,
+            version: manifest.version,
+            description: manifest.description ?? '',
+            kind: (manifest.kind as PluginKind) || 'esm',
+            entryPoint: manifest.entryPoint,
+            runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
+            capabilities: (manifest.capabilities ?? []) as never[],
+            author: manifest.author,
+            homepage: manifest.homepage,
+            license: manifest.license,
+          });
+
+          console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
+          console.log(dim(`  Enable it with: cortex plugins enable ${manifest.name}\n`));
         } catch (e) {
           console.error(red(`  ${(e as Error).message}`));
         }

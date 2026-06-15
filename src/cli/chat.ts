@@ -2,7 +2,7 @@ import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { isFirstRun, loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
-import { buildCascadeRouter, buildProvider } from '../llm/router.ts';
+import { buildProvider, buildRouter } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { runSetupWizard } from './setup.ts';
@@ -10,7 +10,7 @@ import { runMigrations } from '../db/migrate.ts';
 import { buildSystemPrompt, ensureSoulFile, loadSoulContext } from '../agent/soul.ts';
 import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
-import { ToolRegistry } from '../tools/registry.ts';
+import { globalRegistry } from '../tools/registry.ts';
 import type { Tool } from '../tools/types.ts';
 import { ensureDaemons } from './daemon.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
@@ -117,8 +117,8 @@ export const chatCommand = new Command()
       const model = options.model ?? agent.model ??
         config.providers[config.defaultProvider]?.model ?? 'unknown';
 
-      const cascadeRouter = buildCascadeRouter(config);
-      const effectiveProvider = cascadeRouter ?? activeProvider;
+      const router = buildRouter(config);
+      const effectiveProvider = router ?? activeProvider;
       const sid = options.resume ?? makeSessionId();
       const sessionDb = await initSessionDb(sid);
 
@@ -154,7 +154,7 @@ export const chatCommand = new Command()
       const embedder = buildEmbedder(config);
 
       // Build tool registry respecting agent's tool allow-list
-      const registry = new ToolRegistry();
+      const registry = globalRegistry;
       const allTools: Record<string, Tool> = {
         file_read: fileReadTool,
         web_search: webSearchTool,
@@ -166,6 +166,12 @@ export const chatCommand = new Command()
       for (const name of allowedTools) {
         if (allTools[name]) registry.register(allTools[name]);
       }
+
+      // Load active plugin tools
+      const { pluginManager } = await import('../plugins/manager.ts');
+      await pluginManager.loadAll().catch((e) => {
+        console.error(dim(`  Plugin load warning: ${(e as Error).message}`));
+      });
 
       const approvalGate = async (_tool: string, command: string): Promise<boolean> => {
         await Deno.stdout.write(

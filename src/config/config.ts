@@ -29,10 +29,20 @@ export interface ProviderConfig {
   topP?: number;
 }
 
+export interface RouterThresholdConfig {
+  strongProvider: ProviderKind;
+  strongModel: string;
+  weakProvider: ProviderKind;
+  weakModel: string;
+  scorer: 'heuristic' | 'llm';
+}
+
 export interface RouterConfig {
   enabled: boolean;
+  strategy: 'cascade' | 'threshold';
   confidenceThreshold: number;
   cascade: Array<{ provider: ProviderKind; model: string }>;
+  threshold?: RouterThresholdConfig;
 }
 
 /** Defines a named, selectable agent with its own identity, model, tools, and behaviour. */
@@ -92,6 +102,8 @@ export interface CortexConfig {
   /** Currently selected/default agent ID */
   defaultAgent: string;
   update: UpdateConfig;
+  /** Plugin-scoped configuration keyed by plugin name */
+  plugins?: Record<string, Record<string, unknown>>;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -119,6 +131,7 @@ const DEFAULT_CONFIG: CortexConfig = {
   },
   router: {
     enabled: false,
+    strategy: 'cascade',
     confidenceThreshold: 0.7,
     cascade: [],
   },
@@ -132,6 +145,7 @@ const DEFAULT_CONFIG: CortexConfig = {
     githubToken: null,
     gpgKeyPath: null,
   },
+  plugins: {},
 };
 
 let _config: CortexConfig | null = null;

@@ -17,6 +17,14 @@ import { writeEpisodic } from '../memory/store.ts';
 import { reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
+import {
+  createPipelineContext,
+  runHooksForStage,
+} from '../pipeline/manager.ts';
+import { registerBuiltinHooks } from '../pipeline/builtin.ts';
+import type { AgentState } from '../pipeline/types.ts';
+
+let builtinHooksRegistered = false;
 
 const MAX_TOOL_ROUNDS = 8;
 
@@ -77,6 +85,11 @@ function nanoid(): string {
 }
 
 export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnResult> {
+  if (!builtinHooksRegistered) {
+    registerBuiltinHooks();
+    builtinHooksRegistered = true;
+  }
+
   const {
     userMessage,
     provider,
@@ -92,7 +105,42 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   const started = Date.now();
   const startedAt = new Date(started).toISOString();
 
-  await persistMessage(sessionDb, 'user', userMessage);
+  let effectiveInput = userMessage;
+
+  const state: AgentState = {
+    sessionId,
+    turnId,
+    tokensUsed: 0,
+    costUsd: 0,
+    toolCallsMade: 0,
+    startedAt,
+    userMessage,
+    model,
+  };
+
+  let preAssessCtx = createPipelineContext({
+    stage: 'pre-assess',
+    sessionId,
+    turnId,
+    state,
+    input: userMessage,
+    messages: [],
+  });
+
+  const preAssessResult = await runHooksForStage('pre-assess', preAssessCtx);
+  if (preAssessResult.aborted) {
+    return {
+      response: preAssessResult.abortMessage || 'Request blocked',
+      tokensIn: 0,
+      tokensOut: 0,
+      costUsd: 0,
+      turnId,
+      durationMs: Date.now() - started,
+    };
+  }
+  effectiveInput = preAssessCtx.input ?? effectiveInput;
+
+  await persistMessage(sessionDb, 'user', effectiveInput);
 
   const history = await loadHistory(sessionDb);
   const messages: Message[] = [...history];
@@ -108,17 +156,65 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     ? { ...options.toolContext, sessionId }
     : undefined;
 
-  const metaAssessment = assessTask(userMessage);
+  const metaAssessment = assessTask(effectiveInput);
+
+  const postAssessCtx = createPipelineContext({
+    stage: 'post-assess',
+    sessionId,
+    turnId,
+    state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd },
+    input: effectiveInput,
+    assessment: metaAssessment,
+    messages,
+  });
+  const postAssessResult = await runHooksForStage('post-assess', postAssessCtx);
+  if (postAssessResult.aborted) {
+    return {
+      response: postAssessResult.abortMessage || 'Request blocked',
+      tokensIn: 0,
+      tokensOut: 0,
+      costUsd: 0,
+      turnId,
+      durationMs: Date.now() - started,
+    };
+  }
 
   if (metaAssessment.decision === 'ask_first' && metaAssessment.requiresClarification) {
     const clarification = metaAssessment.requiresClarification;
-    if (onChunk) onChunk(clarification);
+
+    const preOutputCtx = createPipelineContext({
+      stage: 'pre-output',
+      sessionId,
+      turnId,
+      state: { ...state, tokensUsed: 0, costUsd: 0 },
+      output: clarification,
+    });
+    const preOutputResult = await runHooksForStage('pre-output', preOutputCtx);
+    if (preOutputResult.aborted) {
+      return {
+        response: preOutputResult.abortMessage || 'Request blocked',
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        turnId,
+        durationMs: Date.now() - started,
+      };
+    }
+
+    if (onChunk) onChunk(preOutputCtx.output ?? clarification);
     await Promise.allSettled([
-      persistMessage(sessionDb, 'assistant', clarification),
+      persistMessage(sessionDb, 'assistant', preOutputCtx.output ?? clarification),
       incrementTurn(sessionId),
+      runHooksForStage('post-output', createPipelineContext({
+        stage: 'post-output',
+        sessionId,
+        turnId,
+        state: { ...state, tokensUsed: 0, costUsd: 0 },
+        output: preOutputCtx.output ?? clarification,
+      })),
     ]);
     return {
-      response: clarification,
+      response: preOutputCtx.output ?? clarification,
       tokensIn: 0,
       tokensOut: 0,
       costUsd: 0,
@@ -129,7 +225,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
   const memoryEnrichedPrompt = await injectMemory(
     systemPrompt,
-    userMessage,
+    effectiveInput,
     options.embedder ?? null,
   )
     .catch(() => systemPrompt);
@@ -146,6 +242,25 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
     while (round < MAX_TOOL_ROUNDS) {
       let roundResponse = '';
+
+      const preReasonCtx = createPipelineContext({
+        stage: 'pre-reason',
+        sessionId,
+        turnId,
+        state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd },
+        messages: currentMessages,
+      });
+      const preReasonResult = await runHooksForStage('pre-reason', preReasonCtx);
+      if (preReasonResult.aborted) {
+        return {
+          response: preReasonResult.abortMessage || 'Request blocked',
+          tokensIn,
+          tokensOut,
+          costUsd,
+          turnId,
+          durationMs: Date.now() - started,
+        };
+      }
 
       if (stream && onChunk && round === 0) {
         for await (
@@ -178,6 +293,28 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       response = roundResponse;
 
+      const postReasonCtx = createPipelineContext({
+        stage: 'post-reason',
+        sessionId,
+        turnId,
+        state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd },
+        messages: currentMessages,
+        currentLLMResponse: roundResponse,
+      });
+      const postReasonResult = await runHooksForStage('post-reason', postReasonCtx);
+      if (postReasonResult.aborted) {
+        return {
+          response: postReasonResult.abortMessage || 'Request blocked',
+          tokensIn,
+          tokensOut,
+          costUsd,
+          turnId,
+          durationMs: Date.now() - started,
+        };
+      }
+      roundResponse = postReasonCtx.currentLLMResponse ?? roundResponse;
+      response = roundResponse;
+
       if (!registry || !toolCtx) break;
 
       const toolCalls = parseToolCalls(roundResponse);
@@ -187,9 +324,42 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         if (onChunk) onChunk(roundResponse);
       }
 
-      const toolResults = await Promise.all(
-        toolCalls.map((tc) => executeTool(tc, registry, toolCtx)),
-      );
+      const toolResults = [];
+      for (const tc of toolCalls) {
+        const preToolCtx = createPipelineContext({
+          stage: 'pre-tool',
+          sessionId,
+          turnId,
+          state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd, toolCallsMade: toolResults.length },
+          toolCall: tc,
+        });
+        const preToolResult = await runHooksForStage('pre-tool', preToolCtx);
+        if (preToolResult.aborted) {
+          toolResults.push({
+            toolName: tc.toolName,
+            success: false,
+            output: '',
+            error: preToolResult.abortMessage || 'Tool execution blocked by hook',
+            durationMs: 0,
+          });
+          continue;
+        }
+
+        const result = await executeTool(tc, registry, toolCtx);
+        state.toolCallsMade++;
+
+        const postToolCtx = createPipelineContext({
+          stage: 'post-tool',
+          sessionId,
+          turnId,
+          state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd, toolCallsMade: state.toolCallsMade },
+          toolCall: tc,
+          toolResult: result,
+        });
+        await runHooksForStage('post-tool', postToolCtx);
+
+        toolResults.push(result);
+      }
 
       const resultText = formatToolResults(toolResults);
       if (onChunk) onChunk(`\n\n${resultText}\n`);
@@ -206,12 +376,34 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     errorMsg = (err as Error).message;
     throw err;
   } finally {
+    const finalState: AgentState = {
+      ...state,
+      tokensUsed: tokensIn + tokensOut,
+      costUsd,
+      toolCallsMade: state.toolCallsMade,
+    };
+
+    const preOutputCtx = createPipelineContext({
+      stage: 'pre-output',
+      sessionId,
+      turnId,
+      state: finalState,
+      output: response || '(error)',
+    });
+    const preOutputResult = await runHooksForStage('pre-output', preOutputCtx);
+    let finalOutput = response || '(error)';
+    if (preOutputResult.aborted) {
+      finalOutput = preOutputResult.abortMessage || 'Request blocked';
+    } else {
+      finalOutput = preOutputCtx.output ?? finalOutput;
+    }
+
     const durationMs = Date.now() - started;
     const episodicSummary = `User: ${userMessage.slice(0, 200)}\nAssistant: ${
       (response || '(error)').slice(0, 200)
     }`;
     await Promise.allSettled([
-      persistMessage(sessionDb, 'assistant', response || '(error)', tokensOut),
+      persistMessage(sessionDb, 'assistant', finalOutput, tokensOut),
       incrementTurn(sessionId),
       writeEpisodic({
         sessionId,
@@ -241,6 +433,14 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         error: errorMsg,
       }),
     ]);
+
+    await runHooksForStage('post-output', createPipelineContext({
+      stage: 'post-output',
+      sessionId,
+      turnId,
+      state: finalState,
+      output: finalOutput,
+    }));
   }
 
   const durationMs = Date.now() - started;

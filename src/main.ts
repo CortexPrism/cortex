@@ -21,6 +21,18 @@ import { serviceCommand } from './cli/service-cmd.ts';
 import { stopCommand } from './cli/stop.ts';
 import { updateCommand } from './cli/update-cmd.ts';
 import { getVersion } from './config/version.ts';
+import { hooksCommand } from './cli/hooks-cmd.ts';
+import { triggersCommand } from './cli/triggers-cmd.ts';
+import { channelsCommand } from './cli/channels-cmd.ts';
+import { mcpCommand } from './cli/mcp-cmd.ts';
+import { remoteCommand } from './cli/remote-cmd.ts';
+import { tuiCommand } from './cli/tui-cmd.ts';
+import { projectsCommand } from './cli/projects-cmd.ts';
+import { workflowCommand } from './cli/workflow-cmd.ts';
+import { desktopCommand } from './cli/desktop-cmd.ts';
+import { runMcpServerStdio } from './mcp/server.ts';
+import { gitCommand } from './cli/git-cmd.ts';
+import { githubCommand } from './cli/github-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -44,6 +56,10 @@ if (subprocessIdx !== -1 && Deno.args[subprocessIdx + 1]) {
       break;
     case 'supervisor':
       await runSupervisor();
+      Deno.exit(0);
+      break;
+    case 'mcp-stdio':
+      await runMcpServerStdio();
       Deno.exit(0);
       break;
     default:
@@ -78,6 +94,37 @@ const program = new Command()
   .command('agent', agentCommand)
   .command('service', serviceCommand)
   .command('stop', stopCommand)
-  .command('update', updateCommand);
+  .command('update', updateCommand)
+  .command('git', gitCommand)
+  .command('github', githubCommand)
+  .command('hooks', hooksCommand)
+  .command('triggers', triggersCommand)
+  .command('channels', channelsCommand)
+  .command('mcp', mcpCommand)
+  .command('remote', remoteCommand)
+  .command('tui', tuiCommand)
+  .command('projects', projectsCommand)
+  .command('workflow', workflowCommand)
+  .command('desktop', desktopCommand);
+
+// Dynamically register plugin CLI commands
+try {
+  const { pluginManager } = await import('./plugins/manager.ts');
+  const { buildCliffyCommand } = await import('./plugins/extensions/cli.ts');
+  await pluginManager.loadAll();
+  const activeCliCommands = pluginManager.getActiveCliCommands();
+  for (const { pluginName, module, manifest } of activeCliCommands) {
+    for (const cmdDecl of manifest.cliCommands ?? []) {
+      try {
+        const cmd = buildCliffyCommand(cmdDecl, module as Record<string, unknown>);
+        program.command(cmdDecl.name, cmd);
+      } catch (e) {
+        console.error(`[plugins] Failed to register CLI command from ${pluginName}: ${(e as Error).message}`);
+      }
+    }
+  }
+} catch (e) {
+  console.error(`[plugins] Failed to load plugin CLI commands: ${(e as Error).message}`);
+}
 
 await program.parse(Deno.args);
