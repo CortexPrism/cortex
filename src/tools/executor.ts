@@ -5,6 +5,8 @@ import { validateToolCall } from '../security/validator.ts';
 
 const TOOL_CALL_RE = /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
 
+const MAX_OUTPUT_LENGTH = 8_000;
+
 export function parseToolCalls(text: string): ToolCallRequest[] {
   const calls: ToolCallRequest[] = [];
   let match: RegExpExecArray | null;
@@ -42,6 +44,12 @@ export async function executeTool(
       success: false,
       output: '',
       error: `Unknown tool: ${request.toolName}`,
+      errorInfo: {
+        code: 'UNKNOWN_TOOL',
+        message: `Tool "${request.toolName}" is not registered`,
+        retryable: false,
+        suggestedAction: `Available tools: ${[...registry.toolNames()].join(', ')}`,
+      },
       durationMs: 0,
     };
   }
@@ -50,7 +58,10 @@ export async function executeTool(
     request.toolName,
     request.args,
     context.sessionId,
-  ).catch(() => ({ allowed: true, reason: 'validator unavailable' }));
+  ).catch((err) => {
+    console.error(`[executor] Validator unavailable for ${request.toolName}: ${(err as Error).message}`);
+    return { allowed: false, reason: `Validator unavailable: ${(err as Error).message}` };
+  });
 
   if (!validation.allowed) {
     return {
@@ -58,11 +69,31 @@ export async function executeTool(
       success: false,
       output: '',
       error: `Blocked by policy: ${validation.reason}`,
+      errorInfo: {
+        code: 'POLICY_DENIED',
+        message: validation.reason,
+        retryable: true,
+        suggestedAction: 'Remove the blocked operation or request a policy exception.',
+      },
       durationMs: 0,
     };
   }
 
   const toolResult = await tool.execute(request.args, context);
+
+  const result: ToolCallResult = {
+    ...toolResult,
+    errorInfo: toolResult.error && !toolResult.errorInfo
+      ? {
+          code: 'TOOL_ERROR',
+          message: toolResult.error,
+          retryable: true,
+          suggestedAction: 'Check the tool parameters and retry.',
+        }
+      : toolResult.errorInfo,
+    truncated: toolResult.output.length > MAX_OUTPUT_LENGTH,
+    outputLength: toolResult.output.length,
+  };
 
   await logEvent({
     event_type: 'tool_call',
@@ -75,15 +106,27 @@ export async function executeTool(
     error: toolResult.error,
   });
 
-  return toolResult;
+  return result;
 }
 
 export function formatToolResults(results: ToolCallResult[]): string {
   return results
     .map((r) => {
       const status = r.success ? 'OK' : 'ERROR';
-      const body = r.success ? r.output : (r.error ?? 'unknown error');
-      return `<tool_result tool="${r.toolName}" status="${status}">\n${body}\n</tool_result>`;
+      const fullBody = r.success ? r.output : (r.error ?? 'unknown error');
+      const shouldTruncate = fullBody.length > MAX_OUTPUT_LENGTH;
+      let body = shouldTruncate
+        ? fullBody.slice(0, MAX_OUTPUT_LENGTH) +
+          `\n... [truncated ${fullBody.length - MAX_OUTPUT_LENGTH} bytes — full output available via tool_output_read]`
+        : fullBody;
+      let attrs = `tool="${r.toolName}" status="${status}"`;
+      if (r.errorInfo) {
+        attrs += ` error_code="${r.errorInfo.code}" retryable="${r.errorInfo.retryable}"`;
+        if (r.errorInfo.suggestedAction) {
+          body += `\n[Suggested: ${r.errorInfo.suggestedAction}]`;
+        }
+      }
+      return `<tool_result ${attrs}>\n${body}\n</tool_result>`;
     })
     .join('\n\n');
 }

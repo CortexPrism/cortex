@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.21.0.
+This document describes the implemented architecture of CortexPrism as of v0.24.1.
 
 ---
 
@@ -778,6 +778,51 @@ Prometheus-compatible metrics at `GET /metrics` with 15 metric families. OpenTel
 ## MCP Server (`src/mcp/server.ts`)
 
 Cortex operates as a Model Context Protocol server. JSON-RPC 2.0 protocol (`initialize`, `tools/list`, `tools/call`). Dual transport: stdio (Claude Desktop/VS Code) and HTTP (`GET/POST /mcp`).
+
+---
+
+## Pipeline Middleware (`src/pipeline/`)
+
+10-stage hook pipeline intercepting the agent loop at `pre-assess`, `post-assess`, `pre-reason`, `post-reason`, `pre-tool`, `post-tool`, `pre-reflect`, `post-reflect`, `pre-output`, `post-output`. Hooks support `abort`, `modifyInput`, `modifyLLMResponse`, `modifyOutput`, `injectMessages`, and `sideEffects` (log/metric/store/notify).
+
+Built-in hooks (high priority = earlier execution):
+- `@cortex/injection-guard` (priority 5, `pre-reason`) — Prompt injection detection
+- `@cortex/summarization` (priority 8, `pre-reason`) — Context compaction at 80K token threshold with graduated summarization and PII redaction
+- `@cortex/loop-detection` (priority 12, `pre-tool`) — Per-file edit tracking with escalation warnings at 5+ edits
+- `@cortex/content-safety` (priority 10, `pre-output`) — Harmful content blocking and PII redaction
+- `@cortex/tool-output-sandbox` (priority 15, `post-tool`) — Large tool output capture for external storage
+- `@cortex/pre-completion-checklist` (priority 20, `post-reason`) — Build-Verify-Fix enforcement
+- `@cortex/cost-tracker` (priority 200, `post-tool`/`post-output`) — Metric emission
+- `@cortex/audit-log` (priority 150, `post-output`) — Session/turn stat logging
+
+Hooks are composable, priority-ordered, with support for plugin-contributed hooks and per-hook disable toggles. Per-session state cleaned up on turn end to prevent memory leaks.
+
+---
+
+## Structured Tool Errors (`src/tools/types.ts`, `src/tools/executor.ts`)
+
+`ToolCallResult` carries `ToolErrorInfo` with machine-readable `code`, `message`, `retryable`, `suggestedAction`, and `context` fields. Two-tier error model: tool-level errors (UNKNOWN_TOOL, SKILL_NOT_FOUND, POLICY_DENIED) and protocol errors. `formatToolResults` renders error codes and retry suggestions in tool result XML. Output truncation (8,000 chars) at the presentation layer only — full output preserved with `truncated` and `outputLength` metadata.
+
+Validator is fail-closed: when the validator daemon is unreachable, tool calls are denied rather than silently auto-approved.
+
+---
+
+## Eval Infrastructure (`src/eval/`)
+
+Eval suite runner (`cortex eval`) with:
+- Pattern-based scoring: `regex:`, `contains:`, `not_contains:` prefixes, plus plain fuzzy matching
+- File content verification for file-creation tasks
+- Regression detection against baseline results (score delta threshold 0.1)
+- Per-category pass/fail statistics with average scores
+- Isolated per-session databases for eval runs
+- `--save-baseline` and `--baseline <file>` options
+- Sample smoke test suite at `.cortex/eval_suite.json`
+
+---
+
+## Sandbox gVisor Support (`src/sandbox/`)
+
+`SandboxRuntime` extended with `gvisor` option. `runInDocker` passes `--runtime=runsc` for kernel-level syscall filtering via gVisor. `getAvailableRuntime()` auto-detects gVisor availability (cached result) and prefers it over plain Docker. `agent-sandbox.ts` provides a supervisor-outside/sandbox-inside pattern for running agent execution in isolated containers with configurable workspace mounts, network modes, and resource limits.
 
 ---
 
