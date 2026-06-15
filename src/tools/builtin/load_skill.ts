@@ -1,5 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import { getSkillByName, formatSkillDetail } from '../../memory/skills.ts';
+import { formatSkillDetail, getSkillByName } from '../../memory/skills.ts';
 
 export const loadSkillTool: Tool = {
   definition: {

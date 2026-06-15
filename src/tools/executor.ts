@@ -59,7 +59,9 @@ export async function executeTool(
     request.args,
     context.sessionId,
   ).catch((err) => {
-    console.error(`[executor] Validator unavailable for ${request.toolName}: ${(err as Error).message}`);
+    console.error(
+      `[executor] Validator unavailable for ${request.toolName}: ${(err as Error).message}`,
+    );
     return { allowed: false, reason: `Validator unavailable: ${(err as Error).message}` };
   });
 
@@ -85,11 +87,11 @@ export async function executeTool(
     ...toolResult,
     errorInfo: toolResult.error && !toolResult.errorInfo
       ? {
-          code: 'TOOL_ERROR',
-          message: toolResult.error,
-          retryable: true,
-          suggestedAction: 'Check the tool parameters and retry.',
-        }
+        code: 'TOOL_ERROR',
+        message: toolResult.error,
+        retryable: true,
+        suggestedAction: 'Check the tool parameters and retry.',
+      }
       : toolResult.errorInfo,
     truncated: toolResult.output.length > MAX_OUTPUT_LENGTH,
     outputLength: toolResult.output.length,
@@ -117,7 +119,9 @@ export function formatToolResults(results: ToolCallResult[]): string {
       const shouldTruncate = fullBody.length > MAX_OUTPUT_LENGTH;
       let body = shouldTruncate
         ? fullBody.slice(0, MAX_OUTPUT_LENGTH) +
-          `\n... [truncated ${fullBody.length - MAX_OUTPUT_LENGTH} bytes — full output available via tool_output_read]`
+          `\n... [truncated ${
+            fullBody.length - MAX_OUTPUT_LENGTH
+          } bytes — full output available via tool_output_read]`
         : fullBody;
       let attrs = `tool="${r.toolName}" status="${status}"`;
       if (r.errorInfo) {

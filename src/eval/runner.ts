@@ -3,14 +3,8 @@ import type { ToolRegistry } from '../tools/registry.ts';
 import type { ToolContext } from '../tools/types.ts';
 import type { Db } from '../db/client.ts';
 import { agentTurn } from '../agent/loop.ts';
-import type {
-  EvalTask,
-  EvalResult,
-  EvalSuite,
-  EvalRunSummary,
-  RegressionCheck,
-} from './types.ts';
-import { scoreResponse, scoreFileContent, checkRegression } from './scorer.ts';
+import type { EvalResult, EvalRunSummary, EvalSuite, EvalTask, RegressionCheck } from './types.ts';
+import { checkRegression, scoreFileContent, scoreResponse } from './scorer.ts';
 
 const DEFAULT_TIMEOUT = 120_000;
 
@@ -142,7 +136,9 @@ async function runTask(
       }],
     };
   } finally {
-    try { sessionDb.close(); } catch { /* ignore */ }
+    try {
+      sessionDb.close();
+    } catch { /* ignore */ }
   }
 }
 

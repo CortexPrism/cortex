@@ -18,7 +18,7 @@ import { reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
 import { createPipelineContext, runHooksForStage } from '../pipeline/manager.ts';
-import { registerBuiltinHooks, cleanupSessionState } from '../pipeline/builtin.ts';
+import { cleanupSessionState, registerBuiltinHooks } from '../pipeline/builtin.ts';
 import type { AgentState } from '../pipeline/types.ts';
 import {
   extractSkillFromSession,

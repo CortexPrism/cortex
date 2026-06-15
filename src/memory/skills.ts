@@ -359,10 +359,14 @@ export function formatSkillsForPrompt(skills: Skill[]): string {
 
   const entries = skills.map((s) => {
     const originLabel = s.origin === 'human' ? '[human-authored]' : '[learned]';
-    return `- **${s.name}** ${originLabel} (${Math.round(s.success_rate * 100)}% success): ${s.description ?? ''} — Trigger: ${s.trigger_pattern ?? '(any)'}`;
+    return `- **${s.name}** ${originLabel} (${Math.round(s.success_rate * 100)}% success): ${
+      s.description ?? ''
+    } — Trigger: ${s.trigger_pattern ?? '(any)'}`;
   });
 
-  return `\n\n## Available Skills\nUse the \`load_skill\` tool to load a skill's full instructions before using it.\n${entries.join('\n')}`;
+  return `\n\n## Available Skills\nUse the \`load_skill\` tool to load a skill's full instructions before using it.\n${
+    entries.join('\n')
+  }`;
 }
 
 export function formatSkillDetail(skill: Skill): string {

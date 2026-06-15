@@ -1,4 +1,4 @@
-import type { EvalResult, EvalDetail } from './types.ts';
+import type { EvalDetail, EvalResult } from './types.ts';
 
 export function scoreResponse(output: string, expectedPatterns: string[]): {
   passed: boolean;
@@ -44,7 +44,9 @@ export function scoreResponse(output: string, expectedPatterns: string[]): {
     : (output.length > 10 ? 1.0 : 0.0);
 
   return {
-    passed: expectedPatterns.length === 0 ? (output.length > 10) : matches === expectedPatterns.length,
+    passed: expectedPatterns.length === 0
+      ? (output.length > 10)
+      : matches === expectedPatterns.length,
     score,
     details,
   };

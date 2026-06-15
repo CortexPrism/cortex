@@ -207,17 +207,21 @@ class SummarizationMiddleware implements PipelineHook {
     const olderSummary = redactPII(
       olderMessages
         .map((m) => `[${m.role}]: ${(m.content ?? '').slice(0, 120)}`)
-        .join(' | ')
+        .join(' | '),
     );
 
     const compactBlock: typeof messages[0] = {
       role: 'user' as const,
-      content: `<compaction iteration="${state.compactCount}">Previous conversation summary (${olderMessages.length} messages compacted):\n${olderSummary.slice(0, 2000)}\n\nKey details may have been lost. Use tools to re-examine context if needed.</compaction>`,
+      content:
+        `<compaction iteration="${state.compactCount}">Previous conversation summary (${olderMessages.length} messages compacted):\n${
+          olderSummary.slice(0, 2000)
+        }\n\nKey details may have been lost. Use tools to re-examine context if needed.</compaction>`,
     };
 
     return {
       injectMessages: [compactBlock],
-      modifyInput: `[Context compacted ${state.compactCount}x. Recent ${recentMessages.length} messages retained. Older ${olderMessages.length} summarized.]`,
+      modifyInput:
+        `[Context compacted ${state.compactCount}x. Recent ${recentMessages.length} messages retained. Older ${olderMessages.length} summarized.]`,
     };
   }
 }
@@ -271,7 +275,8 @@ class PreCompletionChecklistMiddleware implements PipelineHook {
     return {
       injectMessages: [{
         role: 'system' as const,
-        content: 'Before finalizing, verify that: (1) all changes were tested, (2) output matches requirements, (3) no errors remain. If any check fails, continue working with additional tool calls.',
+        content:
+          'Before finalizing, verify that: (1) all changes were tested, (2) output matches requirements, (3) no errors remain. If any check fails, continue working with additional tool calls.',
       }],
     };
   }
@@ -306,7 +311,8 @@ class LoopDetectionMiddleware implements PipelineHook {
         return {
           injectMessages: [{
             role: 'system' as const,
-            content: `WARNING: File "${path}" has been edited ${count} times in this turn. Consider a different approach. If stuck, explain what's blocking progress and ask for guidance.`,
+            content:
+              `WARNING: File "${path}" has been edited ${count} times in this turn. Consider a different approach. If stuck, explain what's blocking progress and ask for guidance.`,
           }],
         };
       }
