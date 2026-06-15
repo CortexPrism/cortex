@@ -204,6 +204,9 @@ export async function requireAuth(
     return { authenticated: true };
   }
 
+  const pwExists = await hasPassword();
+  if (!pwExists) return { authenticated: true };
+
   const cookies = parseCookies(req.headers.get('cookie') || '');
   const sessionId = cookies['cortex_session'];
 
