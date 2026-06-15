@@ -77,7 +77,7 @@ Changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) forma
 - Lint: \`deno task lint\`
 - Format: \`deno task fmt\`
 
-## Available Kilo Agents
+## Available Cortex Agents
 
 - \`@architect\` — Technical design and planning
 - \`@backend-specialist\` — Backend/API/database development
@@ -85,7 +85,7 @@ Changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) forma
 - \`@agent-developer\` — Agent loop/tools/infrastructure
 - \`@docs-specialist\` — Documentation and markdown files
 
-## Available Kilo Commands
+## Available Cortex Commands
 
 - \`/commit\` — Stage, update changelog + version, commit, push
 - \`/dev\` — Run check, lint, fmt, test, serve tasks`,
