@@ -2,12 +2,7 @@ import { getPluginsDb } from '../db/client.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { ensureDir } from '@std/fs';
-import type {
-  PluginConfigStore,
-  PluginContext,
-  PluginLogger,
-  PluginStateStore,
-} from './types.ts';
+import type { PluginConfigStore, PluginContext, PluginLogger, PluginStateStore } from './types.ts';
 
 function createLogger(pluginName: string): PluginLogger {
   const prefix = `[plugin:${pluginName}]`;
@@ -70,7 +65,9 @@ function createConfigStore(pluginName: string): PluginConfigStore {
   return {
     async get<T = unknown>(key: string): Promise<T | null> {
       const config = await loadConfig();
-      const plugins = (config as unknown as Record<string, unknown>).plugins as Record<string, Record<string, unknown>> | undefined;
+      const plugins = (config as unknown as Record<string, unknown>).plugins as
+        | Record<string, Record<string, unknown>>
+        | undefined;
       return (plugins?.[pluginName]?.[key] as T) ?? null;
     },
     async set<T = unknown>(key: string, value: T): Promise<void> {
@@ -84,7 +81,9 @@ function createConfigStore(pluginName: string): PluginConfigStore {
     },
     async getAll(): Promise<Record<string, unknown>> {
       const config = await loadConfig();
-      const plugins = (config as unknown as Record<string, unknown>).plugins as Record<string, Record<string, unknown>> | undefined;
+      const plugins = (config as unknown as Record<string, unknown>).plugins as
+        | Record<string, Record<string, unknown>>
+        | undefined;
       return plugins?.[pluginName] ?? {};
     },
   };

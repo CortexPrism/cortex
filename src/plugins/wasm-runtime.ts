@@ -18,10 +18,30 @@ interface WasmExports {
 
 interface WasmHostFunctions {
   log: (ptr: number, len: number) => void;
-  http_request: (methodPtr: number, methodLen: number, urlPtr: number, urlLen: number, bodyPtr: number, bodyLen: number, outStatusPtr: number, outBodyPtr: number, outBodyLenPtr: number) => number;
-  get_config: (keyPtr: number, keyLen: number, outValuePtr: number, outValueLenPtr: number) => number;
+  http_request: (
+    methodPtr: number,
+    methodLen: number,
+    urlPtr: number,
+    urlLen: number,
+    bodyPtr: number,
+    bodyLen: number,
+    outStatusPtr: number,
+    outBodyPtr: number,
+    outBodyLenPtr: number,
+  ) => number;
+  get_config: (
+    keyPtr: number,
+    keyLen: number,
+    outValuePtr: number,
+    outValueLenPtr: number,
+  ) => number;
   set_state: (keyPtr: number, keyLen: number, valuePtr: number, valueLen: number) => void;
-  get_state: (keyPtr: number, keyLen: number, outValuePtr: number, outValueLenPtr: number) => number;
+  get_state: (
+    keyPtr: number,
+    keyLen: number,
+    outValuePtr: number,
+    outValueLenPtr: number,
+  ) => number;
 }
 
 export async function loadWasmPlugin(row: PluginRow): Promise<LoadedPlugin> {
@@ -45,7 +65,17 @@ export async function loadWasmPlugin(row: PluginRow): Promise<LoadedPlugin> {
       const msg = new TextDecoder().decode(mem);
       console.log(`[wasm:${row.name}] ${msg}`);
     },
-    http_request(_methodPtr, _methodLen, _urlPtr, _urlLen, _bodyPtr, _bodyLen, _outStatusPtr, _outBodyPtr, _outBodyLenPtr) {
+    http_request(
+      _methodPtr,
+      _methodLen,
+      _urlPtr,
+      _urlLen,
+      _bodyPtr,
+      _bodyLen,
+      _outStatusPtr,
+      _outBodyPtr,
+      _outBodyLenPtr,
+    ) {
       return -1;
     },
     get_config(_keyPtr, _keyLen, _outValuePtr, _outValueLenPtr) {

@@ -87,6 +87,49 @@ export interface UpdateConfig {
   gpgKeyPath: string | null;
 }
 
+export interface UserProfile {
+  role?: string;
+  primaryUseCase?: string;
+  experienceLevel?: string;
+  preferredWorkflow?: string;
+  domains?: string[];
+  additionalContext?: string;
+  completed?: boolean;
+  timestamp: string;
+}
+
+export interface UIAnimations {
+  enabled: boolean;
+  backgroundEffect: 'matrix' | 'particles' | 'neural' | 'none';
+  colorScheme: 'vibrant' | 'subtle' | 'monochrome';
+}
+
+export interface OnboardingState {
+  completed: boolean;
+  completedAt?: string;
+  version: string;
+  skippedSteps: string[];
+  currentMode?: 'cli' | 'web' | 'hybrid';
+  currentStep?: number | null;
+  steps?: {
+    password?: boolean;
+    provider?: boolean;
+    profile?: boolean;
+    personality?: boolean;
+    channels?: boolean;
+    telemetry?: boolean;
+    initialization?: boolean;
+  };
+  startedAt?: string;
+}
+
+export interface WebAuth {
+  passwordHash?: string;
+  passwordSalt?: string;
+  requireAuth?: boolean;
+  sessionSecret?: string;
+}
+
 export interface CortexConfig {
   version: number;
   defaultProvider: ProviderKind;
@@ -104,6 +147,14 @@ export interface CortexConfig {
   update: UpdateConfig;
   /** Plugin-scoped configuration keyed by plugin name */
   plugins?: Record<string, Record<string, unknown>>;
+  /** User personalization data */
+  userProfile?: UserProfile;
+  /** UI animation preferences */
+  ui?: UIAnimations;
+  /** Onboarding tracking state */
+  onboarding?: OnboardingState;
+  /** Web authentication settings */
+  webAuth?: WebAuth;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -146,6 +197,14 @@ const DEFAULT_CONFIG: CortexConfig = {
     gpgKeyPath: null,
   },
   plugins: {},
+  ui: {
+    enabled: true,
+    backgroundEffect: 'neural',
+    colorScheme: 'vibrant',
+  },
+  webAuth: {
+    requireAuth: true,
+  },
 };
 
 let _config: CortexConfig | null = null;

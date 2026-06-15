@@ -1,20 +1,20 @@
 import { Command } from '@cliffy/command';
 import { ensureAgentWorkspace } from '../workspace/paths.ts';
 import {
-  gitStatus,
-  gitLog,
-  gitDiff,
-  gitPush,
-  gitPull,
-  gitClone,
-  gitListBranches,
-  gitCheckout,
-  gitCreateBranch,
-  gitCommit,
   gitAdd,
   gitAddRemote,
-  gitListRemotes,
+  gitCheckout,
+  gitClone,
+  gitCommit,
+  gitCreateBranch,
+  gitDiff,
   gitDiffStat,
+  gitListBranches,
+  gitListRemotes,
+  gitLog,
+  gitPull,
+  gitPush,
+  gitStatus,
 } from '../workspace/git.ts';
 
 async function resolveDir(agentId?: string): Promise<string> {
@@ -35,8 +35,12 @@ const statusCmd = new Command()
     if (st.ahead || st.behind) console.log(`  ${st.ahead} ahead, ${st.behind} behind`);
     console.log(st.clean ? 'Working tree clean' : '');
     if (st.staged.length) console.log(`\nStaged:\n${st.staged.map((s) => `  ${s}`).join('\n')}`);
-    if (st.unstaged.length) console.log(`\nUnstaged:\n${st.unstaged.map((s) => `  ${s}`).join('\n')}`);
-    if (st.untracked.length) console.log(`\nUntracked:\n${st.untracked.map((s) => `  ${s}`).join('\n')}`);
+    if (st.unstaged.length) {
+      console.log(`\nUnstaged:\n${st.unstaged.map((s) => `  ${s}`).join('\n')}`);
+    }
+    if (st.untracked.length) {
+      console.log(`\nUntracked:\n${st.untracked.map((s) => `  ${s}`).join('\n')}`);
+    }
   });
 
 const logCmd = new Command()

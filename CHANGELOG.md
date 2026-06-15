@@ -7,6 +7,83 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.24.0] — 2026-06-15
+
+### Added
+
+- **Web UI authentication** — PBKDF2 password hashing (200K iterations, SHA-256), session
+  management with 7-day cookie expiry, login page (`/login`), onboarding page (`/onboarding`),
+  and `POST /api/auth/login` / `POST /api/auth/logout` / `POST /api/auth/setup-password` /
+  `POST /api/auth/change-password` endpoints. Password complexity enforcement (8+ chars, 2 of
+  4 character classes).
+- **WebSocket authentication** — `/ws` endpoint now checks session cookies before upgrading
+  connections; returns 401 when `requireAuth` is enabled and no valid session exists.
+  Public endpoints (`/api/health`, `/api/status`, `/api/system`) bypass auth.
+- **`requireAuth` middleware** (`src/server/auth.ts`): `requireAuth()` function for REST
+  endpoints; `hasPassword()`, `verifyPassword()`, `setupPassword()`, `changePassword()`,
+  session CRUD (`createSession`/`validateSession`/`destroySession`/`getActiveSessions`),
+  cookie parsing and `Set-Cookie` header generation.
+- **Onboarding CLI** (`src/cli/onboarding/`): 6-step animated setup flow with password
+  creation, LLM provider selection (9 providers), AI personalization chat, agent personality
+  picker (professional/friendly/developer), telemetry opt-in, and completion screen. Terminal
+  animations, logo rendering, background effects, and personalization profile saving.
+- **Onboarding REST API** — `POST /api/onboarding/provider` (test + save provider config),
+  `POST /api/onboarding/profile/answer` (interactive personalization Q&A),
+  `POST /api/onboarding/profile/skip` (skip personalization),
+  `POST /api/onboarding/personality` (set agent personality),
+  `POST /api/onboarding/telemetry` (opt in/out),
+  `POST /api/onboarding/complete` (finalize setup),
+  `GET /api/onboarding/status` (check current state).
+- **Node Dispatch tool** (`src/tools/builtin/node_dispatch.ts`): Delegates work to
+  distributed Cortex Nodes for remote execution. Supports `action="list"` (discovery),
+  `action="shell"`/`"file_read"`/`"file_write"`/`"code_exec"`/`"web_search"` with
+  node selection by `node_id`, `tier`, `group`, or `capability` filters. Integrated
+  into agent loop, sub-agents, service processes, and WebSocket sessions.
+- **Session routing** (`src/hub/session-routing.ts`): Routes node results back to
+  originating sessions via `registerPending` / `routeResult` / `onNodeResult` pub/sub.
+  Lens audit events logged for every routed result.
+- **Node context** (`src/agent/node-context.ts`): Builds a structured "Distributed Nodes"
+  section for agent system prompts showing connected nodes, their capabilities, tiers,
+  and groups. Injects `node_dispatch` usage instructions into the agent context.
+- **Plugin developer documentation** — Three new docs:
+  - `docs/plugins/best-practices.md` — single responsibility, error handling, input
+    validation, timeout/cancellation, minimal permissions, per-kind guidance (ESM/MCP/WASM),
+    testing, debugging, and anti-patterns.
+  - `docs/plugins/publishing.md` — marketplace account setup, web UI and API submission,
+    review process, version management, marketplace API reference, and publishing best
+    practices.
+  - `docs/plugins/submission-standards.md` — repository structure, semantic versioning
+    rules, pre-release versioning, AI disclosure requirements (`AI.md` + `aiDisclosure`
+    manifest field), breaking change checklist, dependency versioning, pre-submission
+    checklist (repository/code/versioning/documentation/legal), step-by-step submission
+    guide, CI/CD with GitHub Actions, marketplace review standards, and resubmission
+    guidance.
+- **Plugin docs expansion** — `getting-started.md`: trust levels, plugin statuses table,
+  web UI plugin management, setting field types reference, REST API table. `developing.md`:
+  full lifecycle hook reference (6 hooks + `onConfigChange`), lifecycle sequence diagram,
+  PluginContext API (state store, config store, logger, host API), enum params example.
+  `manifest-reference.md`: plugin kinds (ESM/MCP/WASM) with protocol details, expanded
+  capability descriptions, full `PluginModule` exports table, lifecycle hooks table,
+  `PluginContext` API with type signatures, `Tool` / `ToolDefinition` / `ToolParam` /
+  `ToolCallResult` / `ToolContext` interfaces. `README.md`: architecture diagram, plugin
+  store structure, trust levels table, documentation index.
+- **Plugin extension points** — `onInstall`, `onActivate`, `onDeactivate`, `onUninstall`
+  lifecycle hooks; `state.delete()` and `state.list()` on `PluginStateStore`; MCP tool
+  creation via manifest `tools` declarations; middleware (`pre`/`post`) and event listener
+  capabilities documented and implemented.
+
+### Changed
+
+- **Codebase formatting pass** — Widespread `deno fmt` pass across 65+ source files for
+  consistent line wrapping, import ordering, and bracket style per project config
+  (100-char line width, 2-space indent, single quotes, semicolons).
+- **Plugin CLI enhancements** — `cortex plugins verify`, `cortex plugins permissions`,
+  `cortex plugins update --all`, `cortex plugins permissions --trust` subcommands added.
+  Install from URL supported.
+- **Settings page** — Web auth section added to Security tab.
+
+---
+
 ## [0.23.1] — 2026-06-15
 
 ### Added

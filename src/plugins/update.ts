@@ -1,6 +1,6 @@
 import { getPlugin, listPlugins, updatePlugin } from './registry.ts';
 import { pluginManager } from './manager.ts';
-import type { PluginRow, PluginManifest } from './types.ts';
+import type { PluginManifest, PluginRow } from './types.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
 const API_BASE = `https://${MARKETPLACE_HOST}/api/marketplace`;
@@ -17,7 +17,14 @@ export interface UpdateCheck {
 export async function checkPluginUpdate(pluginName: string): Promise<UpdateCheck> {
   const plugin = await getPlugin(pluginName);
   if (!plugin) {
-    return { pluginName, currentVersion: '0.0.0', latestVersion: null, updateAvailable: false, source: null, error: 'Plugin not found' };
+    return {
+      pluginName,
+      currentVersion: '0.0.0',
+      latestVersion: null,
+      updateAvailable: false,
+      source: null,
+      error: 'Plugin not found',
+    };
   }
 
   return await checkUpdateForRow(plugin);
@@ -46,11 +53,24 @@ async function checkUpdateForRow(plugin: PluginRow): Promise<UpdateCheck> {
             const data = await res.json() as { version: string };
             const latestVersion = data.version;
             const updateAvailable = compareVersions(latestVersion, plugin.version) > 0;
-            return { pluginName: plugin.name, currentVersion: plugin.version, latestVersion, updateAvailable, source };
+            return {
+              pluginName: plugin.name,
+              currentVersion: plugin.version,
+              latestVersion,
+              updateAvailable,
+              source,
+            };
           }
         }
       } catch (e) {
-        return { pluginName: plugin.name, currentVersion: plugin.version, latestVersion: null, updateAvailable: false, source, error: (e as Error).message };
+        return {
+          pluginName: plugin.name,
+          currentVersion: plugin.version,
+          latestVersion: null,
+          updateAvailable: false,
+          source,
+          error: (e as Error).message,
+        };
       }
     }
 
@@ -62,17 +82,43 @@ async function checkUpdateForRow(plugin: PluginRow): Promise<UpdateCheck> {
           manifest = await res.json() as PluginManifest;
           if (manifest.version) {
             const updateAvailable = compareVersions(manifest.version, plugin.version) > 0;
-            return { pluginName: plugin.name, currentVersion: plugin.version, latestVersion: manifest.version, updateAvailable, source };
+            return {
+              pluginName: plugin.name,
+              currentVersion: plugin.version,
+              latestVersion: manifest.version,
+              updateAvailable,
+              source,
+            };
           }
         }
       } catch (e) {
-        return { pluginName: plugin.name, currentVersion: plugin.version, latestVersion: null, updateAvailable: false, source, error: (e as Error).message };
+        return {
+          pluginName: plugin.name,
+          currentVersion: plugin.version,
+          latestVersion: null,
+          updateAvailable: false,
+          source,
+          error: (e as Error).message,
+        };
       }
     }
 
-    return { pluginName: plugin.name, currentVersion: plugin.version, latestVersion: null, updateAvailable: false, source };
+    return {
+      pluginName: plugin.name,
+      currentVersion: plugin.version,
+      latestVersion: null,
+      updateAvailable: false,
+      source,
+    };
   } catch (e) {
-    return { pluginName: plugin.name, currentVersion: plugin.version, latestVersion: null, updateAvailable: false, source: null, error: (e as Error).message };
+    return {
+      pluginName: plugin.name,
+      currentVersion: plugin.version,
+      latestVersion: null,
+      updateAvailable: false,
+      source: null,
+      error: (e as Error).message,
+    };
   }
 }
 
@@ -85,7 +131,9 @@ export async function checkAllUpdates(): Promise<UpdateCheck[]> {
   return results;
 }
 
-export async function applyPluginUpdate(pluginName: string): Promise<{ success: boolean; previousVersion: string; newVersion: string }> {
+export async function applyPluginUpdate(
+  pluginName: string,
+): Promise<{ success: boolean; previousVersion: string; newVersion: string }> {
   const plugin = await getPlugin(pluginName);
   if (!plugin) throw new Error(`Plugin "${pluginName}" not found`);
 

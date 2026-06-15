@@ -1,7 +1,14 @@
-import { listTriggers, handleTriggerEvent } from './manager.ts';
+import { handleTriggerEvent, listTriggers } from './manager.ts';
 import type { TriggerEvent } from './types.ts';
 
-const watchers: Map<string, { watcher: Deno.FsWatcher; debounceTimer: ReturnType<typeof setTimeout> | null; changedFiles: Set<string> }> = new Map();
+const watchers: Map<
+  string,
+  {
+    watcher: Deno.FsWatcher;
+    debounceTimer: ReturnType<typeof setTimeout> | null;
+    changedFiles: Set<string>;
+  }
+> = new Map();
 
 export interface WatcherJobCreator {
   createJob(agentId: string, prompt: string): Promise<unknown>;
@@ -89,9 +96,7 @@ async function startWatcher(triggerName: string): Promise<void> {
           },
         };
 
-        await handleTriggerEvent(event, (agentId, prompt) =>
-          creator.createJob(agentId, prompt),
-        );
+        await handleTriggerEvent(event, (agentId, prompt) => creator.createJob(agentId, prompt));
       }, debounceMs) as unknown as ReturnType<typeof setTimeout>;
     }
   })().catch((e) => {
@@ -104,7 +109,9 @@ export function stopWatcher(triggerName: string): void {
   if (!entry) return;
 
   if (entry.debounceTimer) clearTimeout(entry.debounceTimer);
-  try { entry.watcher.close(); } catch { /* ignore */ }
+  try {
+    entry.watcher.close();
+  } catch { /* ignore */ }
   watchers.delete(triggerName);
 }
 

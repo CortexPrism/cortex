@@ -1,6 +1,11 @@
 import { Command } from '@cliffy/command';
 import { Input, Secret } from '@cliffy/prompt';
-import { listAgents, saveAgentConfig, listAgentConfigs, removeAgentConfig } from '../remote/manager.ts';
+import {
+  listAgentConfigs,
+  listAgents,
+  removeAgentConfig,
+  saveAgentConfig,
+} from '../remote/manager.ts';
 import type { RemoteAgentInfo } from '../remote/types.ts';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
 
@@ -33,7 +38,9 @@ const remoteCommand = new Command()
       console.log(`\n${configs.length} configured agent(s):\n`);
       for (const c of configs) {
         const connected = agents.some((a) => a.id === c.id);
-        console.log(`  ${c.name} (${c.id}) — ${connected ? green('connected') : yellow('offline')}`);
+        console.log(
+          `  ${c.name} (${c.id}) — ${connected ? green('connected') : yellow('offline')}`,
+        );
         console.log(`    Endpoint: ${c.endpoint}`);
         console.log();
       }

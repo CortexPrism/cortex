@@ -9,7 +9,10 @@ export interface MemoryPrivacyPolicy {
 
 const policies = new Map<string, MemoryPrivacyPolicy>();
 
-export function setPrivacyPolicy(agentId: string, policy: Omit<MemoryPrivacyPolicy, 'agentId'>): void {
+export function setPrivacyPolicy(
+  agentId: string,
+  policy: Omit<MemoryPrivacyPolicy, 'agentId'>,
+): void {
   policies.set(agentId, { ...policy, agentId });
 }
 

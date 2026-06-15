@@ -1,10 +1,27 @@
-import { retrieve as sqliteRetrieve, writeEpisodic as sqliteWrite, type MemoryHit } from './store.ts';
+import {
+  type MemoryHit,
+  retrieve as sqliteRetrieve,
+  writeEpisodic as sqliteWrite,
+} from './store.ts';
 import type { EmbeddingProvider } from './embeddings.ts';
 
 export interface MemoryBackend {
   readonly name: string;
-  retrieve(query: string, embedder: EmbeddingProvider, opts?: { limit?: number }): Promise<MemoryHit[]>;
-  write(params: { sessionId: string; summary: string; topics?: string[]; entities?: string[]; importance?: number; embedder?: EmbeddingProvider }): Promise<string>;
+  retrieve(
+    query: string,
+    embedder: EmbeddingProvider,
+    opts?: { limit?: number },
+  ): Promise<MemoryHit[]>;
+  write(
+    params: {
+      sessionId: string;
+      summary: string;
+      topics?: string[];
+      entities?: string[];
+      importance?: number;
+      embedder?: EmbeddingProvider;
+    },
+  ): Promise<string>;
 }
 
 let activeBackend: MemoryBackend | null = null;

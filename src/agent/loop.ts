@@ -17,13 +17,15 @@ import { writeEpisodic } from '../memory/store.ts';
 import { reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
-import {
-  createPipelineContext,
-  runHooksForStage,
-} from '../pipeline/manager.ts';
+import { createPipelineContext, runHooksForStage } from '../pipeline/manager.ts';
 import { registerBuiltinHooks } from '../pipeline/builtin.ts';
 import type { AgentState } from '../pipeline/types.ts';
-import { extractSkillFromSession, findMatchingSkills, formatSkillsForPrompt } from '../memory/skills.ts';
+import {
+  extractSkillFromSession,
+  findMatchingSkills,
+  formatSkillsForPrompt,
+} from '../memory/skills.ts';
+import { buildNodeContextSection, injectNodeContext } from './node-context.ts';
 
 let builtinHooksRegistered = false;
 
@@ -206,13 +208,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     await Promise.allSettled([
       persistMessage(sessionDb, 'assistant', preOutputCtx.output ?? clarification),
       incrementTurn(sessionId),
-      runHooksForStage('post-output', createPipelineContext({
-        stage: 'post-output',
-        sessionId,
-        turnId,
-        state: { ...state, tokensUsed: 0, costUsd: 0 },
-        output: preOutputCtx.output ?? clarification,
-      })),
+      runHooksForStage(
+        'post-output',
+        createPipelineContext({
+          stage: 'post-output',
+          sessionId,
+          turnId,
+          state: { ...state, tokensUsed: 0, costUsd: 0 },
+          output: preOutputCtx.output ?? clarification,
+        }),
+      ),
     ]);
     return {
       response: preOutputCtx.output ?? clarification,
@@ -246,7 +251,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     ? injectToolsIntoPrompt(metaCogPrompt, registry.definitions())
     : metaCogPrompt;
 
-  const collectedToolCalls: Array<{ tool: string; params: Record<string, unknown>; result: string }> = [];
+  const nodeSection = await buildNodeContextSection().catch(() => null);
+  const nodeAwareSystemPrompt = injectNodeContext(effectiveSystemPrompt, nodeSection);
+
+  const collectedToolCalls: Array<
+    { tool: string; params: Record<string, unknown>; result: string }
+  > = [];
 
   const SENSITIVE_KEYS = /^(api_?key|token|secret|password|auth|credential|private_?key)$/i;
   function redactParams(params: Record<string, unknown>): Record<string, unknown> {
@@ -288,7 +298,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           const chunk of provider.stream({
             messages: currentMessages,
             model,
-            systemPrompt: effectiveSystemPrompt,
+            systemPrompt: nodeAwareSystemPrompt,
           })
         ) {
           if (!chunk.done) {
@@ -304,7 +314,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         const r = await provider.complete({
           messages: currentMessages,
           model,
-          systemPrompt: effectiveSystemPrompt,
+          systemPrompt: nodeAwareSystemPrompt,
         });
         roundResponse = r.content;
         tokensIn += r.tokensIn;
@@ -351,7 +361,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           stage: 'pre-tool',
           sessionId,
           turnId,
-          state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd, toolCallsMade: toolResults.length },
+          state: {
+            ...state,
+            tokensUsed: tokensIn + tokensOut,
+            costUsd,
+            toolCallsMade: toolResults.length,
+          },
           toolCall: tc,
         });
         const preToolResult = await runHooksForStage('pre-tool', preToolCtx);
@@ -373,7 +388,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           stage: 'post-tool',
           sessionId,
           turnId,
-          state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd, toolCallsMade: state.toolCallsMade },
+          state: {
+            ...state,
+            tokensUsed: tokensIn + tokensOut,
+            costUsd,
+            toolCallsMade: state.toolCallsMade,
+          },
           toolCall: tc,
           toolResult: result,
         });
@@ -470,13 +490,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       ).catch(() => {});
     }
 
-    await runHooksForStage('post-output', createPipelineContext({
-      stage: 'post-output',
-      sessionId,
-      turnId,
-      state: finalState,
-      output: finalOutput,
-    }));
+    await runHooksForStage(
+      'post-output',
+      createPipelineContext({
+        stage: 'post-output',
+        sessionId,
+        turnId,
+        state: finalState,
+        output: finalOutput,
+      }),
+    );
   }
 
   const durationMs = Date.now() - started;

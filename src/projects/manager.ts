@@ -1,4 +1,4 @@
-import { exists, ensureDir } from '@std/fs';
+import { ensureDir, exists } from '@std/fs';
 import { join } from '@std/path';
 import { PATHS } from '../config/paths.ts';
 

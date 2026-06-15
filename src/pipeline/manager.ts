@@ -38,7 +38,9 @@ export function unregisterAllForPlugin(pluginName: string): void {
   }
 }
 
-export function getHooksForStage(stage: PipelineStage): { hook: PipelineHook; source: 'core' | 'plugin' }[] {
+export function getHooksForStage(
+  stage: PipelineStage,
+): { hook: PipelineHook; source: 'core' | 'plugin' }[] {
   const stageHooks = registrations
     .filter((r) => r.hook.stages.includes(stage))
     .sort((a, b) => a.hook.priority - b.hook.priority);
@@ -63,7 +65,10 @@ async function runHookWithTimeout(
     const result = await Promise.race([
       hook.run(ctx),
       new Promise<HookResult>((_, reject) =>
-        setTimeout(() => reject(new Error(`Hook ${hook.name} timed out after ${timeout}ms`)), timeout)
+        setTimeout(
+          () => reject(new Error(`Hook ${hook.name} timed out after ${timeout}ms`)),
+          timeout,
+        )
       ),
     ]);
     return result;
@@ -135,12 +140,14 @@ function applyResult(ctx: PipelineContext, result: HookResult, _stage: PipelineS
   }
 }
 
-export function createPipelineContext(overrides: Partial<PipelineContext> & {
-  stage: PipelineStage;
-  sessionId: string;
-  turnId: string;
-  state: PipelineContext['state'];
-}): PipelineContext {
+export function createPipelineContext(
+  overrides: Partial<PipelineContext> & {
+    stage: PipelineStage;
+    sessionId: string;
+    turnId: string;
+    state: PipelineContext['state'];
+  },
+): PipelineContext {
   const internalState = { ...overrides.state };
   return {
     stage: overrides.stage,

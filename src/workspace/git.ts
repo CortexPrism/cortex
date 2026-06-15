@@ -21,7 +21,10 @@ export interface GitBranchInfo {
   remote: string | null;
 }
 
-async function git(args: string[], dir?: string): Promise<{ success: boolean; stdout: string; stderr: string }> {
+async function git(
+  args: string[],
+  dir?: string,
+): Promise<{ success: boolean; stdout: string; stderr: string }> {
   try {
     const cmdArgs = dir ? ['-C', dir, ...args] : args;
     const cmd = new Deno.Command('git', {

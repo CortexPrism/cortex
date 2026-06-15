@@ -1,75 +1,34 @@
-import { Input, Secret, Select, Confirm } from '@cliffy/prompt';
-import { bold, cyan, green, yellow, dim } from '@std/fmt/colors';
+import { Confirm, Input, Secret, Select } from '@cliffy/prompt';
+import { bold, cyan, dim, green, yellow } from '@std/fmt/colors';
 import type { CortexConfig, ProviderKind } from '../config/config.ts';
-import { saveConfig } from '../config/config.ts';
+import { loadConfig, saveConfig } from '../config/config.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { PATHS } from '../config/paths.ts';
 import { ensureDir } from '@std/fs';
 import { buildProviderFromConfig } from '../llm/router.ts';
+import { renderWelcomeScreen } from './onboarding/logo.ts';
+import { clearScreen, registerCleanup } from './onboarding/animations.ts';
+import {
+  errorBadge,
+  infoBadge,
+  separator,
+  spinner,
+  stepHeader,
+  successBadge,
+} from './onboarding/effects.ts';
+import {
+  getUserProfileSummary,
+  runAIQuestionnaireInteractive,
+  saveUserProfile,
+} from './onboarding/personalization.ts';
 
 const PERSONALITY_TEMPLATES: Record<string, string> = {
-  professional: `# Cortex — Agent Soul
-
-## Identity
-You are Cortex, a professional AI assistant. You are precise, thorough, and business-appropriate.
-
-## Tone
-- Concise and direct. Get to the point.
-- Avoid casual language, slang, or excessive enthusiasm.
-- Default to structured responses: headers, bullet points, code blocks.
-
-## Behavior
-- When uncertain, ask clarifying questions rather than guessing.
-- Provide references and citations when possible.
-- Respect confidentiality — never repeat what you've read in memory unless explicitly asked.
-
-## Capabilities
-- You can search the web, read and write files, execute shell commands, and manage git repositories.
-- Use tools proactively when they would improve your answer.
-`,
-
-  friendly: `# Cortex — Agent Soul
-
-## Identity
-You are Cortex, a friendly and helpful AI assistant. You're warm, approachable, and always happy to help.
-
-## Tone
-- Warm and conversational. Use friendly language.
-- Celebrate wins and be encouraging.
-- Keep things light — you can use gentle humor.
-
-## Behavior
-- Ask follow-up questions to understand what the user really needs.
-- Offer alternatives and suggestions proactively.
-- Remember context from earlier in the conversation.
-- If something goes wrong, be reassuring and help fix it.
-
-## Capabilities
-- You can search the web, read and write files, execute shell commands, and manage git repositories.
-- Use these capabilities to go above and beyond when helping.
-`,
-
-  developer: `# Cortex — Agent Soul
-
-## Identity
-You are Cortex, a technical AI assistant built for developers. You think in code, architecture, and systems.
-
-## Tone
-- Technical, direct, and precise.
-- Prefer code examples over prose explanations.
-- Use correct technical terminology. No hand-waving.
-
-## Behavior
-- When given a coding task, write complete, production-quality solutions.
-- Test your code before presenting it.
-- Explain architectural decisions and tradeoffs.
-- Error messages are data — read them carefully and fix the root cause.
-
-## Capabilities
-- You can search the web, read and write files, execute shell commands, manage git repositories, and run code in sandboxes.
-- Use shell for testing, git for versioning, and the file system for project structure.
-- Prefer concrete actions over theoretical discussion.
-`,
+  professional:
+    `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a professional AI assistant. You are precise, thorough, and business-appropriate.\n\n## Tone\n- Concise and direct. Get to the point.\n- Avoid casual language, slang, or excessive enthusiasm.\n- Default to structured responses: headers, bullet points, code blocks.\n\n## Behavior\n- When uncertain, ask clarifying questions rather than guessing.\n- Provide references and citations when possible.\n- Respect confidentiality — never repeat what you've read in memory unless explicitly asked.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, and manage git repositories.\n- Use tools proactively when they would improve your answer.\n`,
+  friendly:
+    `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a friendly and helpful AI assistant. You're warm, approachable, and always happy to help.\n\n## Tone\n- Warm and conversational. Use friendly language.\n- Celebrate wins and be encouraging.\n- Keep things light — you can use gentle humor.\n\n## Behavior\n- Ask follow-up questions to understand what the user really needs.\n- Offer alternatives and suggestions proactively.\n- Remember context from earlier in the conversation.\n- If something goes wrong, be reassuring and help fix it.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, and manage git repositories.\n- Use these capabilities to go above and beyond when helping.\n`,
+  developer:
+    `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a technical AI assistant built for developers. You think in code, architecture, and systems.\n\n## Tone\n- Technical, direct, and precise.\n- Prefer code examples over prose explanations.\n- Use correct technical terminology. No hand-waving.\n\n## Behavior\n- When given a coding task, write complete, production-quality solutions.\n- Test your code before presenting it.\n- Explain architectural decisions and tradeoffs.\n- Error messages are data — read them carefully and fix the root cause.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, manage git repositories, and run code in sandboxes.\n- Use shell for testing, git for versioning, and the file system for project structure.\n- Prefer concrete actions over theoretical discussion.\n`,
 };
 
 function generateSoul(personality: string): string {
@@ -118,12 +77,41 @@ const PROVIDER_LABELS: Record<string, { label: string; defaultModel: string }> =
 };
 
 export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig> {
+  const useColors = !Deno.noColor;
+  const noAnim = Deno.env.get('CORTEX_NO_ANIMATIONS') === '1';
+
+  // Mode selection: CLI or Web
+  if (!noAnim) {
+    const useWeb = await Confirm.prompt({
+      message: 'Complete setup in your web browser instead?',
+      default: false,
+    });
+
+    if (useWeb) {
+      return await handleWebOnboarding(config);
+    }
+  }
+
+  registerCleanup();
+
+  if (!noAnim) {
+    clearScreen();
+    await renderWelcomeScreen();
+    clearScreen();
+  }
+
   console.log('');
-  console.log(bold(cyan('  ⚡ Welcome to Cortex!')));
-  console.log(dim("  Let's get your agent up and running. This takes about 2 minutes.\n"));
+  const updated: CortexConfig = { ...config };
 
   // Step 1: Provider selection
-  console.log(bold('  Step 1/4: Model Provider'));
+  if (noAnim) {
+    console.log(bold(cyan('  ⚡ Welcome to Cortex!')));
+    console.log(dim("  Let's get your agent up and running. This takes about 2 minutes.\n"));
+    console.log(bold('  Step 1/4: Model Provider'));
+  } else {
+    stepHeader(1, 5, 'Model Provider');
+  }
+
   const providerOptions = Object.entries(PROVIDER_LABELS).map(([value, { label }]) => ({
     name: label,
     value,
@@ -132,14 +120,12 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     message: 'Which LLM provider do you want to use?',
     options: [
       ...providerOptions,
-      { name: 'Skip — I\'ll configure later', value: 'skip' },
+      { name: "Skip — I'll configure later", value: 'skip' },
     ],
-  })) as ProviderKind | 'skip';
-
-  const updated: CortexConfig = { ...config };
+  })) as string;
 
   if (providerChoice !== 'skip') {
-    updated.defaultProvider = providerChoice;
+    updated.defaultProvider = providerChoice as ProviderKind;
 
     const { defaultModel } = PROVIDER_LABELS[providerChoice];
     let apiKey: string | undefined;
@@ -159,7 +145,9 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
         default: 'us-east-1',
       });
     } else {
-      apiKey = await Secret.prompt(`${PROVIDER_LABELS[providerChoice].label} API key:`);
+      apiKey = await Secret.prompt(
+        `${PROVIDER_LABELS[providerChoice as ProviderKind].label} API key:`,
+      );
     }
 
     const model = await Input.prompt({
@@ -167,51 +155,94 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
       default: defaultModel,
     });
 
-    console.log('\n  Testing connection...');
-    const connected = await testConnection(
-      providerChoice,
-      model,
-      apiKey,
-      baseUrl,
-    );
+    const providerKind = providerChoice as ProviderKind;
 
-    if (connected) {
-      console.log(green(`  ✓ ${model} is reachable.\n`));
+    const connected = await testConnection(providerKind, model, apiKey, baseUrl);
+    if (noAnim) {
+      console.log(connected ? '  ✓ Connected' : '  ⚠ Connection failed');
     } else {
-      console.log(yellow(`  ⚠ Could not reach ${model}. Check your credentials.\n`));
+      if (connected) {
+        successBadge(`${model} is reachable`);
+      } else {
+        errorBadge(`Could not reach ${model}. Check your credentials`);
+        infoBadge('You can reconfigure later with `cortex config edit`');
+      }
     }
 
-    (updated.providers as Record<string, unknown>)[providerChoice] = {
-      kind: providerChoice,
+    (updated.providers as Record<string, unknown>)[providerKind] = {
+      kind: providerKind,
       model,
       apiKey,
       ...(baseUrl && { baseUrl }),
       ...(secretKey && { secretKey }),
     };
+
+    // Step 1b: AI Personalization (only if connected)
+    stepHeader(2, 5, 'AI Personalization (Optional)');
+
+    const doAI = await Confirm.prompt({
+      message: 'Answer a few questions to personalize your experience? (3-4 quick questions)',
+      default: false,
+    });
+
+    if (doAI) {
+      const spin = spinner('Initializing AI questionnaire...');
+      try {
+        const provider = buildProviderFromConfig(providerKind, {
+          kind: providerKind,
+          model,
+          apiKey,
+          ...(baseUrl && { baseUrl }),
+        });
+        spin.update('Asking AI to generate questions...');
+        const profile = await runAIQuestionnaireInteractive(provider, model, 4);
+        if (profile) {
+          spin.succeed('Profile created!');
+          await saveUserProfile(profile);
+          console.log('');
+          console.log(bold(green('  Profile Summary:')));
+          console.log(getUserProfileSummary(profile));
+          console.log('');
+        } else {
+          spin.stop();
+          infoBadge('Questionnaire skipped. You can complete it later.');
+        }
+      } catch {
+        spin.stop();
+        infoBadge('AI personalization unavailable. You can complete it later.');
+      }
+    } else {
+      separator();
+    }
   }
 
-  // Step 2: Personality
-  console.log(bold('  Step 2/4: Agent Personality'));
+  // Step 2/3: Personality (step 2 if provider skipped, step 3 otherwise)
+  if (providerChoice === 'skip') {
+    stepHeader(2, 5, 'Agent Personality');
+  } else {
+    stepHeader(3, 5, 'Agent Personality');
+  }
+
   const personality = await Select.prompt<string>({
     message: 'Pick a vibe for your agent:',
     options: [
       { name: 'Professional — Concise, precise, business-ready', value: 'professional' },
       { name: 'Friendly — Warm, helpful, casual', value: 'friendly' },
       { name: 'Developer — Technical, direct, code-aware', value: 'developer' },
-      { name: 'Custom — I\'ll write my own SOUL.md', value: 'custom' },
+      { name: "Custom — I'll write my own SOUL.md", value: 'custom' },
     ],
   });
 
   if (personality !== 'custom') {
     const soul = generateSoul(personality);
     await writeSoul(soul);
-    console.log(green(`  ✓ SOUL.md created (${personality})\n`));
+    successBadge(`SOUL.md created (${personality})`);
   } else {
-    console.log(dim('  Skipped. Write your own SOUL.md at any time with `cortex soul edit`.\n'));
+    infoBadge('Write your own SOUL.md with `cortex soul edit`');
   }
 
-  // Step 3: Channels
-  console.log(bold('  Step 3/4: Channels'));
+  // Channels (step 3 if provider skipped, step 4 otherwise)
+  stepHeader(providerChoice === 'skip' ? 3 : 4, 5, 'Channels');
   const channelChoice = await Select.prompt<string>({
     message: 'How do you want to talk to Cortex?',
     options: [
@@ -224,31 +255,47 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
   if (channelChoice === 'cli+discord' || channelChoice === 'all') {
     const token = await Secret.prompt('Discord bot token:');
-    console.log(green('  ✓ Discord configured. Run `cortex discord start` to activate.\n'));
+    successBadge('Discord configured. Run `cortex discord start` to activate.');
     updated.providers ??= {} as CortexConfig['providers'];
   } else if (channelChoice === 'cli+web' || channelChoice === 'all') {
-    console.log(green('  ✓ Web UI will be available on port 3000.\n'));
+    successBadge('Web UI will be available on port 3000.');
   }
 
-  // Step 4: Telemetry consent
-  console.log(bold('  Step 4/4: Usage Data'));
+  // Telemetry (step 4 if provider skipped, step 5 otherwise)
+  stepHeader(providerChoice === 'skip' ? 4 : 5, 5, 'Usage Data');
   const telemetry = await Confirm.prompt({
     message: 'Share anonymous usage data to help improve Cortex?',
     default: false,
   });
   if (telemetry) {
-    console.log(dim('  ✓ Anonymous usage data collection enabled. Thank you!\n'));
+    infoBadge('Anonymous usage data collection enabled. Thank you!');
   } else {
-    console.log(dim('  ✓ Telemetry disabled.\n'));
+    infoBadge('Telemetry disabled.');
   }
 
-  console.log('\n  Initializing databases...');
+  // Initialization
+  console.log('');
+  const initSpin = spinner('Initializing databases...');
   await runMigrations();
+  initSpin.succeed('Databases ready');
 
   updated.agent ??= { name: 'cortex', maxTurns: 25, streamOutput: true };
 
+  // Mark onboarding complete
+  const cfg = updated as unknown as Record<string, unknown>;
+  cfg.onboarding = {
+    completed: true,
+    completedAt: new Date().toISOString(),
+    version: '1.0',
+    skippedSteps: [],
+  };
+
   await saveConfig(updated);
-  console.log(green('\n  ✅ Cortex is ready!\n'));
+
+  // Completion
+  console.log('');
+  console.log(green(bold('  ✅ Cortex is ready!')));
+  console.log('');
   console.log('  Quick commands:');
   console.log(`    ${bold(cyan('cortex'))}                    → Start interactive chat`);
   console.log(`    ${bold(cyan('cortex "check the time"'))}   → One-shot command`);
@@ -258,6 +305,28 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   console.log(`    ${bold('cortex plugin list')}        → Browse available plugins`);
   console.log(`    ${bold('cortex config edit')}        → Customize settings`);
   console.log(`    ${bold('cortex docs')}               → Open documentation\n`);
+
+  return updated;
+}
+
+async function handleWebOnboarding(config: CortexConfig): Promise<CortexConfig> {
+  console.log(cyan('  Starting web server for browser-based setup...\n'));
+  const { startServer } = await import('../server/server.ts');
+  startServer({ port: 3000, host: '0.0.0.0' }).catch(() => {});
+  console.log(green('  ✓ Web server started on http://localhost:3000/onboarding'));
+  console.log(dim('  Complete setup in your browser, then return here.\n'));
+
+  // Save partial configuration
+  const updated = { ...config };
+  const cfg = updated as unknown as Record<string, unknown>;
+  cfg.onboarding = {
+    completed: false,
+    version: '1.0',
+    skippedSteps: [],
+    currentMode: 'web',
+    startedAt: new Date().toISOString(),
+  };
+  await saveConfig(updated);
 
   return updated;
 }

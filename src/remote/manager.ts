@@ -1,4 +1,4 @@
-import type { RemoteAgentInfo, RemoteAgentConfig, RemoteDirective, RemoteResult } from './types.ts';
+import type { RemoteAgentConfig, RemoteAgentInfo, RemoteDirective, RemoteResult } from './types.ts';
 
 const agents = new Map<string, RemoteAgentInfo>();
 const configs = new Map<string, RemoteAgentConfig>();

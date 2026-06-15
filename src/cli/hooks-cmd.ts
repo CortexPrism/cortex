@@ -1,5 +1,5 @@
 import { Command } from '@cliffy/command';
-import { listHooks, registerHook, unregisterHook, getHookCount } from '../pipeline/manager.ts';
+import { getHookCount, listHooks, registerHook, unregisterHook } from '../pipeline/manager.ts';
 import { registerBuiltinHooks } from '../pipeline/builtin.ts';
 
 const hooksCommand = new Command()

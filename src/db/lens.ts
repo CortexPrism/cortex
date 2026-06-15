@@ -40,6 +40,7 @@ export type EventType =
   | 'node_heartbeat'
   | 'node_directive'
   | 'node_directive_dispatched'
+  | 'node_result_routed'
   | 'node_stream_chunk'
   | 'error'
   | 'warning';

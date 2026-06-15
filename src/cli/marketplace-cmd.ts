@@ -3,7 +3,7 @@ import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
 import { installPlugin } from '../plugins/registry.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
-import { resolvePermissions, getPluginPermissionOverrides } from '../plugins/permissions.ts';
+import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
 import { pluginManager } from '../plugins/manager.ts';
 import type { PluginKind } from '../plugins/types.ts';
 
@@ -248,10 +248,31 @@ export const marketplaceCommand = new Command()
           if (capabilities.length > 0) {
             console.log(bold('  Required Permissions:'));
             const perms = capabilities.filter((c) =>
-              c.includes(':') && !['cli:commands', 'ui:panel', 'ui:widget', 'config:schema', 'config:provider', 'memory:store', 'memory:embedder', 'events:listener', 'middleware:pre', 'middleware:post'].includes(c)
+              c.includes(':') &&
+              ![
+                'cli:commands',
+                'ui:panel',
+                'ui:widget',
+                'config:schema',
+                'config:provider',
+                'memory:store',
+                'memory:embedder',
+                'events:listener',
+                'middleware:pre',
+                'middleware:post',
+              ].includes(c)
             );
             const extPoints = capabilities.filter((c) =>
-              ['tools', 'cli:commands', 'ui:panel', 'ui:widget', 'config:schema', 'config:provider', 'memory:store', 'memory:embedder'].includes(c)
+              [
+                'tools',
+                'cli:commands',
+                'ui:panel',
+                'ui:widget',
+                'config:schema',
+                'config:provider',
+                'memory:store',
+                'memory:embedder',
+              ].includes(c)
             );
             if (extPoints.length > 0) {
               console.log(dim('  Extension points:'));
@@ -261,7 +282,9 @@ export const marketplaceCommand = new Command()
             if (perms.length > 0) {
               console.log(dim('  File/network/db access:'));
               for (const p of perms) {
-                const isSensitive = ['fs:write', 'fs:delete', 'shell:run', 'net:inbound'].includes(p);
+                const isSensitive = ['fs:write', 'fs:delete', 'shell:run', 'net:inbound'].includes(
+                  p,
+                );
                 console.log(`    ${isSensitive ? yellow('⚠ ') + yellow(p) : cyan('● ') + p}`);
               }
               console.log('');

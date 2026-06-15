@@ -19,6 +19,7 @@ import { shellTool } from '../tools/builtin/shell.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
+import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 import { getDefaultAgent, listAgents, loadAgentIdentity } from '../agent/manager.ts';
 
 function makeSessionId(): string {
@@ -161,6 +162,7 @@ export const chatCommand = new Command()
         shell: shellTool,
         code_exec: codeExecTool,
         sub_agent: subAgentTool,
+        node_dispatch: nodeDispatchTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {

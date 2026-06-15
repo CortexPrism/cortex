@@ -188,9 +188,15 @@ export async function getSkillStats(): Promise<{
   const db = await getMemoryDb();
   const [total, human, llm, avg] = await Promise.all([
     db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory`),
-    db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory WHERE origin = 'human'`),
-    db.get<{ count: number }>(`SELECT COUNT(*) as count FROM procedural_memory WHERE origin = 'llm'`),
-    db.get<{ avg: number }>(`SELECT AVG(success_rate) as avg FROM procedural_memory WHERE invocation_count > 0`),
+    db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM procedural_memory WHERE origin = 'human'`,
+    ),
+    db.get<{ count: number }>(
+      `SELECT COUNT(*) as count FROM procedural_memory WHERE origin = 'llm'`,
+    ),
+    db.get<{ avg: number }>(
+      `SELECT AVG(success_rate) as avg FROM procedural_memory WHERE invocation_count > 0`,
+    ),
   ]);
   return {
     total: total?.count ?? 0,
@@ -353,7 +359,11 @@ export function formatSkillsForPrompt(skills: Skill[]): string {
 
   const entries = skills.map((s) => {
     const steps = (() => {
-      try { return JSON.parse(s.steps); } catch { return []; }
+      try {
+        return JSON.parse(s.steps);
+      } catch {
+        return [];
+      }
     })() as SkillStep[];
     const stepText = steps.slice(0, 3).map((st: SkillStep) =>
       `${st.step}. ${st.action}${st.tool ? ` [tool: ${st.tool}]` : ''}`

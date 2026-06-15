@@ -7,7 +7,10 @@ export async function computeSha256(content: string | Uint8Array): Promise<strin
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function verifyIntegrity(content: string | Uint8Array, expectedHash: string): Promise<boolean> {
+export function verifyIntegrity(
+  content: string | Uint8Array,
+  expectedHash: string,
+): Promise<boolean> {
   const bytes = typeof content === 'string' ? encoder.encode(content) : content;
   return computeSha256(bytes).then((hash) => hash === expectedHash).catch(() => false);
 }

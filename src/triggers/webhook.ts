@@ -1,4 +1,4 @@
-import { handleTriggerEvent, verifyWebhookSignature, checkIpAllowed } from './manager.ts';
+import { checkIpAllowed, handleTriggerEvent, verifyWebhookSignature } from './manager.ts';
 import { listTriggers } from './manager.ts';
 import type { TriggerEvent } from './types.ts';
 
@@ -72,8 +72,9 @@ export async function handleWebhookRequest(req: Request): Promise<Response | nul
     return new Response(JSON.stringify({ error: 'Job creator not initialized' }), { status: 500 });
   }
 
-  const job = await handleTriggerEvent(event, (agentId, prompt) =>
-    jobCreator!.createJob(agentId, prompt)
+  const job = await handleTriggerEvent(
+    event,
+    (agentId, prompt) => jobCreator!.createJob(agentId, prompt),
   );
 
   return new Response(JSON.stringify({ accepted: true, job }), {

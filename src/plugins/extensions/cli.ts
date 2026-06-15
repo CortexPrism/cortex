@@ -6,7 +6,10 @@ interface PluginCliModule {
   [key: string]: unknown;
 }
 
-export function buildCliffyCommand(decl: CliCommandDeclaration, handlerModule: PluginCliModule): Command {
+export function buildCliffyCommand(
+  decl: CliCommandDeclaration,
+  handlerModule: PluginCliModule,
+): Command {
   const cmd = new Command()
     .name(decl.name)
     .description(decl.description);

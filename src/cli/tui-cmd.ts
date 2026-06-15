@@ -3,7 +3,7 @@ import { TerminalUI } from '../tui/terminal.ts';
 import { loadConfig } from '../config/config.ts';
 import { buildProvider } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
-import { createSession, closeSession } from '../db/sessions.ts';
+import { closeSession, createSession } from '../db/sessions.ts';
 import { getSessionDb } from '../db/client.ts';
 
 const tuiCommand = new Command()
@@ -40,7 +40,9 @@ const tuiCommand = new Command()
           },
         });
 
-        tui.setStatus(`idle — ${result.tokensIn}+${result.tokensOut} tokens | $${result.costUsd.toFixed(6)}`);
+        tui.setStatus(
+          `idle — ${result.tokensIn}+${result.tokensOut} tokens | $${result.costUsd.toFixed(6)}`,
+        );
       } catch (e) {
         tui.addMessage({
           role: 'system',
@@ -62,7 +64,8 @@ const tuiCommand = new Command()
 
     tui.addMessage({
       role: 'system',
-      content: 'Key bindings: Ctrl+C cancel, Ctrl+L clear, /: focus tools, Up/Down: history, Enter: send',
+      content:
+        'Key bindings: Ctrl+C cancel, Ctrl+L clear, /: focus tools, Up/Down: history, Enter: send',
     });
 
     await tui.start();

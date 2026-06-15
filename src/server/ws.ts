@@ -13,11 +13,12 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
+import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 import {
-  githubPRCreateTool,
-  githubPRListTool,
   githubIssueCreateTool,
   githubIssueListTool,
+  githubPRCreateTool,
+  githubPRListTool,
   gitPushTool,
 } from '../tools/builtin/github/index.ts';
 import { onFileChange } from '../workspace/events.ts';
@@ -61,7 +62,27 @@ function broadcast(msg: unknown): void {
   }
 }
 
-export function handleWebSocket(req: Request): Response {
+async function isWsAuthenticated(req: Request): Promise<boolean> {
+  const config = await loadConfig();
+  const webAuth = config.webAuth || {};
+  if (webAuth.requireAuth === false) return true;
+  const { hasPassword, parseCookies, validateSession } = await import('./auth.ts');
+  const pwExists = await hasPassword();
+  if (!pwExists) return true;
+  const cookies = parseCookies(req.headers.get('cookie') || '');
+  const sessionId = cookies['cortex_session'];
+  return sessionId ? validateSession(sessionId) : false;
+}
+
+export async function handleWebSocket(req: Request): Promise<Response> {
+  const authed = await isWsAuthenticated(req);
+  if (!authed) {
+    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const { socket: ws, response } = Deno.upgradeWebSocket(req);
   wsClients.add(ws);
 
@@ -221,6 +242,7 @@ export function handleWebSocket(req: Request): Response {
           web_search: webSearchTool,
           code_exec: codeExecTool,
           sub_agent: subAgentTool,
+          node_dispatch: nodeDispatchTool,
           github_pr_create: githubPRCreateTool,
           github_pr_list: githubPRListTool,
           github_issue_create: githubIssueCreateTool,

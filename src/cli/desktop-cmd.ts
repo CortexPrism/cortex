@@ -1,7 +1,7 @@
 import { Command } from '@cliffy/command';
-import { getDockerfile, getEntrypointScript, executeDesktopAction } from '../desktop/automation.ts';
+import { executeDesktopAction, getDockerfile, getEntrypointScript } from '../desktop/automation.ts';
 import { Input } from '@cliffy/prompt';
-import { green, dim } from '@std/fmt/colors';
+import { dim, green } from '@std/fmt/colors';
 
 const desktopCommand = new Command()
   .name('desktop')
