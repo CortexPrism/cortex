@@ -39,6 +39,13 @@ import {
   fileUndoTool,
   fileWriteTool,
 } from '../tools/builtin/workspace/index.ts';
+import {
+  githubPRCreateTool,
+  githubPRListTool,
+  githubIssueCreateTool,
+  githubIssueListTool,
+  gitPushTool,
+} from '../tools/builtin/github/index.ts';
 
 interface InitMessage {
   type: 'init';
@@ -143,6 +150,11 @@ async function main(): Promise<void> {
       web_search: webSearchTool,
       shell: shellTool,
       code_exec: codeExecTool,
+      github_pr_create: githubPRCreateTool,
+      github_pr_list: githubPRListTool,
+      github_issue_create: githubIssueCreateTool,
+      github_issue_list: githubIssueListTool,
+      git_push: gitPushTool,
     };
     const allowedTools = config.config.tools?.length
       ? config.config.tools

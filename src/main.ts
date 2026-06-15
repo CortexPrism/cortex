@@ -20,6 +20,8 @@ import { agentCommand } from './cli/agent-cmd.ts';
 import { serviceCommand } from './cli/service-cmd.ts';
 import { stopCommand } from './cli/stop.ts';
 import { updateCommand } from './cli/update-cmd.ts';
+import { gitCommand } from './cli/git-cmd.ts';
+import { githubCommand } from './cli/github-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -77,7 +79,9 @@ const program = new Command()
   .command('agent', agentCommand)
   .command('service', serviceCommand)
   .command('stop', stopCommand)
-  .command('update', updateCommand);
+  .command('update', updateCommand)
+  .command('git', gitCommand)
+  .command('github', githubCommand);
 
 await program.parse(Deno.args);
 

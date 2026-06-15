@@ -110,19 +110,23 @@ interface LLMProvider {
 }
 ```
 
-### CascadeRouter
+### Model Router
 
-`CascadeRouter` wraps multiple providers. On each call:
+The router supports two strategies:
+
+**Cascade** (`CascadeRouter`): wraps multiple providers. On each call:
 1. Tries first provider (cheapest)
-2. Calls `estimateConfidence(text)` — heuristic based on hedging language
+2. Calls `estimateConfidence(text)` — multi-signal heuristic (hedging, vagueness, repetition, specificity, length)
 3. If `confidence < threshold` → tries next provider
 4. Returns last result if all providers exhausted
 
-Enable via config:
+**Threshold** (`ThresholdRouter`): RouteLLM-style prompt scoring. Scores the user's prompt before generating, then routes to the strong or weak model based on complexity signals (code blocks, question length, reasoning keywords).
+
 ```json
 {
   "router": {
     "enabled": true,
+    "strategy": "cascade",
     "confidenceThreshold": 0.7,
     "cascade": [
       { "provider": "ollama", "model": "llama3.2:3b" },
@@ -131,6 +135,26 @@ Enable via config:
   }
 }
 ```
+
+Threshold strategy config:
+```json
+{
+  "router": {
+    "enabled": true,
+    "strategy": "threshold",
+    "confidenceThreshold": 0.5,
+    "threshold": {
+      "strongProvider": "anthropic",
+      "strongModel": "claude-sonnet-4-5",
+      "weakProvider": "ollama",
+      "weakModel": "llama3.2:3b",
+      "scorer": "heuristic"
+    }
+  }
+}
+```
+
+All routers implement `LLMProvider` so they are drop-in replacements. Router metrics (decisions, costs, savings per model) are available via `router.getMetrics()`.
 
 ---
 
@@ -289,6 +313,118 @@ runInSandbox(code)
      → runInSandbox(fixedCode)
      → repeat up to maxRounds (default 4)
 ```
+
+---
+
+## Workspace System (`src/workspace/`)
+
+The workspace system provides scoped file storage and git integration for agents.
+
+### Architecture
+
+```
+Agent workspace:   ~/.cortex/data/workspaces/<agent-id>/
+Global workspace:  cwd (current working directory)
+```
+
+Every agent workspace is automatically `git init`'d on first access. File system tools
+(`file_write`, `file_edit`, `file_delete`, etc.) target either the agent or global workspace,
+with path traversal protection enforced by `resolveWorkspacePath()`.
+
+### Git Integration
+
+The `git.ts` module provides a full git porcelain layer via `Deno.Command`:
+
+```typescript
+gitInit(dir)              // Initialize a git repo
+gitStatus(dir)            // Branch, staged/unstaged/untracked, ahead/behind
+gitLog(dir, limit)        // Commit history with hashes, authors, dates
+gitDiff(dir, file?)       // Working tree diff
+gitAdd(dir, paths)        // Stage files
+gitCommit(dir, msg)       // Create commit
+gitPush(dir, remote, branch?)   // Push to remote
+gitPull(dir, remote, branch?)   // Pull from remote
+gitClone(url, dest, branch?)    // Clone a repository
+gitListBranches(dir)      // List local branches
+gitCreateBranch(dir, name)      // Create and switch to branch
+gitCheckout(dir, name)          // Switch branch
+gitAddRemote(dir, name, url)    // Add remote
+gitListRemotes(dir)       // List configured remotes
+gitAutoCommit(dir, agentId, file, tool)  // Auto-commit agent file writes
+```
+
+Auto-commit is triggered by every file write/edit tool call, creating commits with
+`agent/<agent-id>: <tool> <file-path>` messages on a dedicated `workspace/<agent-id>` branch.
+
+### GitHub Integration
+
+The `github.ts` module is a REST API client for GitHub:
+
+```typescript
+getGitHubToken()          // Resolve token from env, config, or vault
+listPullRequests(repo, token, opts)
+createPullRequest(repo, token, opts)
+mergePullRequest(repo, token, number, opts)
+listIssues(repo, token, opts)
+createIssue(repo, token, opts)
+listRepos(token, opts)
+getRepo(repo, token)
+listBranches(repo, token)
+listCommitStatuses(repo, token, ref)
+listCheckRuns(repo, token, ref)
+```
+
+Token resolution order:
+1. `githubToken` field in `~/.cortex/config.json`
+2. `GITHUB_TOKEN` or `GH_TOKEN` environment variable
+3. `github_token` entry in the encrypted credential vault
+
+### Agent Tools
+
+| Tool | Description |
+|---|---|
+| `github_pr_create` | Create a pull request |
+| `github_pr_list` | List pull requests |
+| `github_issue_create` | Create an issue |
+| `github_issue_list` | List issues |
+| `git_push` | Stage all, commit, and push to remote |
+
+### REST API
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/workspace/git/status` | GET | Current git status |
+| `/api/workspace/git/log` | GET | Commit log |
+| `/api/workspace/git/branches` | GET | List branches |
+| `/api/workspace/git/commit` | POST | Stage all and commit |
+| `/api/workspace/git/push` | POST | Push to remote |
+| `/api/workspace/git/pull` | POST | Pull from remote |
+| `/api/github/token` | GET | Check token configuration |
+| `/api/github/repos` | GET | List user repos |
+| `/api/github/repos/:owner/:name` | GET | Get repo details |
+| `/api/github/repos/:owner/:name/pulls` | GET | List PRs |
+| `/api/github/repos/:owner/:name/issues` | GET | List issues |
+| `/api/github/repos/:owner/:name/branches` | GET | List branches |
+| `/api/code/exec` | POST | Execute code in sandbox (Web UI Code Runner) |
+
+### CLI Commands
+
+| Command | Description |
+|---|---|
+| `cortex git status` | Show working tree status |
+| `cortex git log` | Show commit history |
+| `cortex git diff` | Show working tree diff |
+| `cortex git add` | Stage files |
+| `cortex git commit` | Create commit |
+| `cortex git push` | Push to remote |
+| `cortex git pull` | Pull from remote |
+| `cortex git clone` | Clone repository |
+| `cortex git branch` | List/create/switch branches |
+| `cortex git remote` | List/add remotes |
+| `cortex github pr list\|get\|create\|merge\|close` | Manage PRs |
+| `cortex github issue list\|create\|close` | Manage issues |
+| `cortex github repo list\|get\|branches` | Browse repos |
+| `cortex github token` | Check token status |
 
 ---
 

@@ -1013,6 +1013,139 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(rows);
   }
 
+  // ── GitHub API endpoints ───────────────────────────────────
+
+  // GET /api/github/token — check if token is configured
+  if (req.method === 'GET' && path === '/api/github/token') {
+    const { getGitHubToken } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    return json({ configured: !!token });
+  }
+
+  // GET /api/github/repos — list repos
+  if (req.method === 'GET' && path === '/api/github/repos') {
+    const { getGitHubToken, listRepos } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const repos = await listRepos(token, { limit: 30 });
+    return json(repos);
+  }
+
+  // GET /api/github/repos/:owner/:name
+  const ghRepoMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)$/);
+  if (req.method === 'GET' && ghRepoMatch) {
+    const { getGitHubToken, getRepo } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const repo = await getRepo(`${ghRepoMatch[1]}/${ghRepoMatch[2]}`, token);
+    return json(repo);
+  }
+
+  // GET /api/github/repos/:owner/:name/pulls — list PRs
+  const ghPRMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)\/pulls$/);
+  if (req.method === 'GET' && ghPRMatch) {
+    const { getGitHubToken, listPullRequests } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const state = (url.searchParams.get('state') ?? 'open') as 'open' | 'closed' | 'all';
+    const prs = await listPullRequests(`${ghPRMatch[1]}/${ghPRMatch[2]}`, token, { state });
+    return json(prs);
+  }
+
+  // GET /api/github/repos/:owner/:name/issues — list issues
+  const ghIssueMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)\/issues$/);
+  if (req.method === 'GET' && ghIssueMatch) {
+    const { getGitHubToken, listIssues } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const state = (url.searchParams.get('state') ?? 'open') as 'open' | 'closed' | 'all';
+    const issues = await listIssues(`${ghIssueMatch[1]}/${ghIssueMatch[2]}`, token, { state, limit: 30 });
+    return json(issues);
+  }
+
+  // GET /api/github/repos/:owner/:name/branches — list branches
+  const ghBranchMatch = path.match(/^\/api\/github\/repos\/([^/]+)\/([^/]+)\/branches$/);
+  if (req.method === 'GET' && ghBranchMatch) {
+    const { getGitHubToken, listBranches } = await import('../workspace/github.ts');
+    const token = await getGitHubToken();
+    if (!token) return err('GitHub token not configured', 401);
+    const branches = await listBranches(`${ghBranchMatch[1]}/${ghBranchMatch[2]}`, token);
+    return json(branches);
+  }
+
+  // ── Git workspace API endpoints ─────────────────────────
+
+  // GET /api/workspace/git/status — current git status
+  if (req.method === 'GET' && path === '/api/workspace/git/status') {
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { gitStatus } = await import('../workspace/git.ts');
+    const status = await gitStatus(dir);
+    return json(status);
+  }
+
+  // POST /api/workspace/git/commit — commit all staged
+  if (req.method === 'POST' && path === '/api/workspace/git/commit') {
+    const body = await req.json().catch(() => ({})) as { message?: string; agentId?: string };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitAdd, gitCommit } = await import('../workspace/git.ts');
+    await gitAdd(dir, ['-A']);
+    const ok = await gitCommit(dir, body.message ?? 'web commit');
+    return json({ ok, output: ok ? 'Committed' : 'Nothing to commit' });
+  }
+
+  // POST /api/workspace/git/push — push to remote
+  if (req.method === 'POST' && path === '/api/workspace/git/push') {
+    const body = await req.json().catch(() => ({})) as { agentId?: string; remote?: string; branch?: string };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitPush } = await import('../workspace/git.ts');
+    const result = await gitPush(dir, body.remote ?? 'origin', body.branch);
+    return json({ ok: result.success, output: result.output });
+  }
+
+  // POST /api/workspace/git/pull — pull from remote
+  if (req.method === 'POST' && path === '/api/workspace/git/pull') {
+    const body = await req.json().catch(() => ({})) as { agentId?: string; remote?: string; branch?: string };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitPull } = await import('../workspace/git.ts');
+    const result = await gitPull(dir, body.remote ?? 'origin', body.branch);
+    return json({ ok: result.success, output: result.output });
+  }
+
+  // GET /api/workspace/git/log — commit log
+  if (req.method === 'GET' && path === '/api/workspace/git/log') {
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { gitLog } = await import('../workspace/git.ts');
+    const log = await gitLog(dir);
+    return json(log);
+  }
+
+  // GET /api/workspace/git/branches — list branches
+  if (req.method === 'GET' && path === '/api/workspace/git/branches') {
+    const agentId = url.searchParams.get('agentId') ?? undefined;
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { gitListBranches } = await import('../workspace/git.ts');
+    const branches = await gitListBranches(dir);
+    return json(branches);
+  }
+
+  // POST /api/workspace/git/branch — create/switch branch
+  if (req.method === 'POST' && path === '/api/workspace/git/branch') {
+    const body = await req.json() as { agentId?: string; name: string; create?: boolean };
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { gitCreateBranch, gitCheckout } = await import('../workspace/git.ts');
+    const ok = body.create ? await gitCreateBranch(dir, body.name) : await gitCheckout(dir, body.name);
+    return json({ ok });
+  }
+
   // ── Git endpoints ────────────────────────────────────────
 
   // GET /api/workspace/agents/:agentId/git/log
@@ -1078,6 +1211,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
     } catch (e) {
       return err((e as Error).message);
     }
+  }
+
+  // POST /api/code/exec — execute code in sandbox
+  if (req.method === 'POST' && path === '/api/code/exec') {
+    const body = await req.json() as { code: string; language: string };
+    if (!body.code) return err('Missing code', 400);
+    const { runInSandbox, formatSandboxResult } = await import('../sandbox/executor.ts');
+    const result = await runInSandbox({ code: body.code, language: body.language || 'python' });
+    const output = formatSandboxResult(result);
+    return json({
+      success: result.exitCode === 0 && !result.timedOut,
+      output,
+      error: result.exitCode !== 0 ? `exit ${result.exitCode}` : undefined,
+      durationMs: result.durationMs,
+      runtime: result.runtime,
+    });
   }
 
   return null;

@@ -11,7 +11,24 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- (none)
+- **GitHub integration** — full GitHub API client with PR, issue, and repo management
+  - `cortex github pr list|get|create|merge|close` — manage pull requests
+  - `cortex github issue list|create|close` — manage issues
+  - `cortex github repo list|get|branches` — browse repositories
+  - `cortex github token` — check token configuration status
+  - Agent tools: `github_pr_create`, `github_pr_list`, `github_issue_create`, `github_issue_list`
+  - Token resolution from `GITHUB_TOKEN` env, `githubToken` config field, or encrypted vault
+  - REST API endpoints at `/api/github/*` for the web UI
+  - Web UI GitHub page — repo selector with PR/issue lists and repo info view
+- **Enhanced Git workspace** — full git porcelain with push, pull, clone, branch, and remote management
+  - `cortex git status|log|diff|add|commit|push|pull|clone|branch|remote` — complete git CLI
+  - Agent tool: `git_push` — stage, commit, and push in one step
+  - REST API endpoints at `/api/workspace/git/*` for web UI integration
+  - Web UI Git page — real-time status display, stage/commit/push/pull buttons, commit log
+- **Code Runner** — sandboxed code execution directly from the web UI
+  - Web UI Code Runner page with language selector, editor textarea, and output panel
+  - REST endpoint at `/api/code/exec` — runs code through the Docker/subprocess sandbox
+- **Enhanced `cortex.githubToken` config** — optional GitHub token field in the config file for authenticated API access
 
 ## [0.18.0] — 2026-06-14
 
