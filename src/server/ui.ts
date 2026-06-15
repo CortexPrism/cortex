@@ -5264,12 +5264,12 @@ function sdUpdatePreview() {
 
 function sdRenderMarkdown(text) {
   let html = esc(text);
-  // Code blocks (triple backtick)
-  html = html.replace(/\x60\x60\x60(\w*)\n([\s\S]*?)\x60\x60\x60/g, function(_, lang, code) {
+  // Code blocks (triple backtick) — use escaped backticks for template literal safety
+  html = html.replace(/\`\`\`(\w*)\n([\s\S]*?)\`\`\`/g, function(_, lang, code) {
     return '<pre><code>' + esc(code) + '</code></pre>';
   });
   // Inline code (single backtick)
-  html = html.replace(/\x60([^\x60]+)\x60/g, '<code>$1</code>');
+  html = html.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
   // Bold
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   // Italic
