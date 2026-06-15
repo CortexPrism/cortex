@@ -358,24 +358,34 @@ export function formatSkillsForPrompt(skills: Skill[]): string {
   if (skills.length === 0) return '';
 
   const entries = skills.map((s) => {
-    const steps = (() => {
-      try {
-        return JSON.parse(s.steps);
-      } catch {
-        return [];
-      }
-    })() as SkillStep[];
-    const stepText = steps.slice(0, 3).map((st: SkillStep) =>
-      `${st.step}. ${st.action}${st.tool ? ` [tool: ${st.tool}]` : ''}`
-    ).join('\n');
-
     const originLabel = s.origin === 'human' ? '[human-authored]' : '[learned]';
-    return `### ${s.name} ${originLabel} (${Math.round(s.success_rate * 100)}% success)
-${s.description ?? ''}
-Trigger: ${s.trigger_pattern ?? '(any)'}
-Steps:
-${stepText}`;
+    return `- **${s.name}** ${originLabel} (${Math.round(s.success_rate * 100)}% success): ${s.description ?? ''} — Trigger: ${s.trigger_pattern ?? '(any)'}`;
   });
 
-  return `\n\n## Available Skills\n${entries.join('\n\n')}`;
+  return `\n\n## Available Skills\nUse the \`load_skill\` tool to load a skill's full instructions before using it.\n${entries.join('\n')}`;
+}
+
+export function formatSkillDetail(skill: Skill): string {
+  const steps = (() => {
+    try {
+      return JSON.parse(skill.steps);
+    } catch {
+      return [];
+    }
+  })() as SkillStep[];
+
+  const stepText = steps.map((st: SkillStep) =>
+    `${st.step}. ${st.action}${st.tool ? ` [tool: ${st.tool}]` : ''}`
+  ).join('\n');
+
+  const originLabel = skill.origin === 'human' ? '[human-authored]' : '[learned]';
+  return `## Skill: ${skill.name} ${originLabel}
+**Success rate**: ${Math.round(skill.success_rate * 100)}%
+**Trigger**: ${skill.trigger_pattern ?? '(any)'}
+**Description**: ${skill.description ?? ''}
+
+**Steps**:
+${stepText}
+
+${skill.content ? `**Full instructions**:\n${skill.content}` : ''}`;
 }

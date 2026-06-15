@@ -1,7 +1,7 @@
 const TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
-export type SandboxRuntime = 'docker' | 'subprocess';
+export type SandboxRuntime = 'docker' | 'subprocess' | 'gvisor';
 
 export interface SandboxOptions {
   code: string;
@@ -48,6 +48,15 @@ const SUBPROCESS_RUNNERS: Record<string, string[]> = {
   ruby: ['ruby', '-e'],
 };
 
+export async function getAvailableRuntime(): Promise<SandboxRuntime> {
+  const dockerOk = await isDockerAvailable();
+  if (dockerOk) {
+    const gvisorOk = await isGVisorAvailable();
+    return gvisorOk ? 'gvisor' : 'docker';
+  }
+  return 'subprocess';
+}
+
 export async function isDockerAvailable(): Promise<boolean> {
   try {
     const proc = new Deno.Command('docker', {
@@ -58,6 +67,26 @@ export async function isDockerAvailable(): Promise<boolean> {
     const { code } = await proc.output();
     return code === 0;
   } catch {
+    return false;
+  }
+}
+
+let gvisorAvailable: boolean | undefined;
+
+export async function isGVisorAvailable(): Promise<boolean> {
+  if (gvisorAvailable !== undefined) return gvisorAvailable;
+  try {
+    const proc = new Deno.Command('docker', {
+      args: ['info', '--format', '{{.Runtimes}}'],
+      stdout: 'piped',
+      stderr: 'null',
+    });
+    const output = await proc.output();
+    gvisorAvailable = output.code === 0 &&
+      new TextDecoder().decode(output.stdout).includes('runsc');
+    return gvisorAvailable;
+  } catch {
+    gvisorAvailable = false;
     return false;
   }
 }
@@ -91,6 +120,7 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   const args = [
     'run',
     '--rm',
+    ...(opts.runtime === 'gvisor' ? ['--runtime=runsc'] : []),
     '--network=none',
     '--memory=256m',
     '--cpus=0.5',

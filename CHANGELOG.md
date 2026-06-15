@@ -7,6 +7,93 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.24.1] — 2026-06-15
+
+### Added
+
+- **Structured tool errors** (`src/tools/types.ts`, `src/tools/executor.ts`) —
+  `ToolErrorInfo` with `code`, `message`, `retryable`, `suggestedAction`, and
+  `context` fields. All tool failures now carry machine-readable error metadata.
+  `formatToolResults` renders error codes and suggested actions in tool result
+  XML. Outputs over 8,000 characters are truncated at the presentation layer
+  only — full output preserved in the `ToolCallResult` object with `truncated`
+  and `outputLength` metadata.
+
+- **Context compaction middleware** (`src/pipeline/builtin.ts`) —
+  `@cortex/summarization` hook fires at 80K estimated token threshold (priority
+  8 at `pre-reason` stage), summarizes older half of conversation history into a
+  compacted block, retaining recent messages intact. PII redaction applied to
+  summarized content before injection.
+
+- **Tool output sandboxing** (`src/pipeline/builtin.ts`) —
+  `@cortex/tool-output-sandbox` hook intercepts large tool outputs at
+  `post-tool` stage, stores full output in session-scoped storage for retrieval.
+
+- **Build-Verify-Fix enforcement** (`src/pipeline/builtin.ts`) —
+  `@cortex/pre-completion-checklist` injects a self-check system message when
+  the agent emits exit keywords, forcing verification before claiming completion.
+
+- **Loop detection** (`src/pipeline/builtin.ts`) —
+  `@cortex/loop-detection` trackes per-file edit counts and injects warnings
+  after 5+ edits to the same file in one turn.
+
+- **Lazy three-tier skill loading** (`src/memory/skills.ts`,
+  `src/tools/builtin/load_skill.ts`) — Skills now injected as a compact manifest
+  (name + description + trigger) in the system prompt. Full skill instructions
+  loaded on demand via the new `load_skill` tool. `formatSkillDetail()` for
+  comprehensive skill display.
+
+- **Eval infrastructure** (`src/eval/` — `types.ts`, `scorer.ts`, `runner.ts`,
+  `src/cli/eval-cmd.ts`) — `cortex eval` CLI command with benchmark suite
+  runner, pattern-based scoring (regex/contains/not_contains), file content
+  verification, regression detection against baseline results, per-category
+  pass/fail statistics, and `--save-baseline` / `--baseline` options.
+
+- **Sandbox gVisor support** (`src/sandbox/executor.ts`,
+  `src/sandbox/agent-sandbox.ts`) — `gvisor` added as a `SandboxRuntime` option
+  using `--runtime=runsc` for kernel-level syscall filtering. `getAvailableRuntime()`
+  auto-detects gVisor availability and prefers it over plain Docker. Supervisor
+  pattern implemented in `agent-sandbox.ts` for running agent execution isolated
+  from the control plane.
+
+- **Tool registry enhancement** (`src/tools/registry.ts`) — `toolNames()`
+  method returning all registered tool names for error suggestions.
+
+### Changed
+
+- **Validator fail-closed** (`src/tools/executor.ts`) — When the validator
+  daemon is unreachable, tool calls are now denied with `POLICY_DENIED` error
+  instead of silently auto-approved. Structured error info provides retry
+  guidance.
+
+- **Pipeline hook result handling** (`src/pipeline/manager.ts`) —
+  `injectMessages` from hooks now spliced into the message context. `store`
+  side effects now persisted to session-scoped storage with accessor and
+  cleanup functions. `modifyInput` now applies at any pipeline stage (not just
+  pre-assess).
+
+- **Session state cleanup** (`src/pipeline/builtin.ts`, `src/agent/loop.ts`) —
+  Per-session state (`summarizationStates`, `loopStates` Maps) cleaned up at
+  turn end to prevent unbounded memory growth.
+
+- **Pre-completion checklist as system message** (`src/pipeline/builtin.ts`) —
+  Changed from appending to LLM response to injecting a system message, so the
+  LLM actually evaluates the self-check before the next reasoning round.
+
+### Fixed
+
+- **gVisor detection double-read** (`src/sandbox/executor.ts`) — Fixed
+  `isGVisorAvailable()` calling `proc.output()` twice (second call returning
+  empty data), which silently disabled gVisor sandboxing.
+
+- **Eval runner memory DB pollution** (`src/cli/eval-cmd.ts`) — Changed from
+  `getMemoryDb()` to isolated `initSessionDb()` to prevent eval transcripts
+  from polluting the persistent memory store.
+
+- **Duplicate availability functions** (`src/sandbox/executor.ts`,
+  `src/sandbox/agent-sandbox.ts`) — Consolidated `isGVisorAvailable()` and
+  `isDockerAvailable()` into `executor.ts`, re-exported from `agent-sandbox.ts`.
+
 ## [0.24.0] — 2026-06-15
 
 ### Added

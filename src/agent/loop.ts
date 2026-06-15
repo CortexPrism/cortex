@@ -18,7 +18,7 @@ import { reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
 import { createPipelineContext, runHooksForStage } from '../pipeline/manager.ts';
-import { registerBuiltinHooks } from '../pipeline/builtin.ts';
+import { registerBuiltinHooks, cleanupSessionState } from '../pipeline/builtin.ts';
 import type { AgentState } from '../pipeline/types.ts';
 import {
   extractSkillFromSession,
@@ -500,6 +500,8 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         output: finalOutput,
       }),
     );
+
+    cleanupSessionState(sessionId);
   }
 
   const durationMs = Date.now() - started;

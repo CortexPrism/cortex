@@ -14,6 +14,7 @@ import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
 import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
+import { loadSkillTool } from '../tools/builtin/load_skill.ts';
 import {
   githubIssueCreateTool,
   githubIssueListTool,
@@ -248,6 +249,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           github_issue_create: githubIssueCreateTool,
           github_issue_list: githubIssueListTool,
           git_push: gitPushTool,
+          load_skill: loadSkillTool,
         };
         const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
         for (const name of allowedTools) {

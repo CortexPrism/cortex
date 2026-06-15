@@ -49,6 +49,9 @@ coverage/
 
 # ── Design / spec docs (pre-existing, not for public repo) ────
 docs/design/
+docs/research/
+/.cortex/eval_suite.json
+/.cortex/eval_baseline.json
 
 # Kilo AI
 .kilo/

@@ -23,6 +23,10 @@ export class ToolRegistry {
     return this.tools.has(name);
   }
 
+  toolNames(): string[] {
+    return [...this.tools.keys()];
+  }
+
   unregister(name: string): void {
     this.tools.delete(name);
   }

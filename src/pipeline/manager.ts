@@ -5,6 +5,7 @@ import type {
   PipelineHook,
   PipelineStage,
 } from './types.ts';
+import type { Message } from '../llm/types.ts';
 
 const HOOK_TIMEOUT_MS = 5_000;
 const ASYNC_HOOK_TIMEOUT_MS = 15_000;
@@ -113,7 +114,7 @@ export async function runHooksForStage(
 }
 
 function applyResult(ctx: PipelineContext, result: HookResult, _stage: PipelineStage): void {
-  if (result.modifyInput !== undefined && ctx.stage === 'pre-assess') {
+  if (result.modifyInput !== undefined) {
     (ctx as { input?: string }).input = result.modifyInput;
   }
   if (result.modifyLLMResponse !== undefined) {
@@ -121,6 +122,14 @@ function applyResult(ctx: PipelineContext, result: HookResult, _stage: PipelineS
   }
   if (result.modifyOutput !== undefined) {
     (ctx as { output?: string }).output = result.modifyOutput;
+  }
+
+  if (result.injectMessages && result.injectMessages.length > 0) {
+    const currentMessages = (ctx as { messages?: Message[] }).messages ?? [];
+    (ctx as { messages?: Message[] }).messages = [
+      ...currentMessages,
+      ...result.injectMessages,
+    ];
   }
 
   if (result.sideEffects) {
@@ -131,12 +140,27 @@ function applyResult(ctx: PipelineContext, result: HookResult, _stage: PipelineS
           break;
         case 'metric':
           break;
-        case 'store':
+        case 'store': {
+          const sp = se.payload as { key?: string; value?: unknown };
+          if (sp?.key) storedSideEffects.set(sp.key, sp.value);
           break;
+        }
         case 'notify':
           break;
       }
     }
+  }
+}
+
+const storedSideEffects = new Map<string, unknown>();
+
+export function getStoredSideEffect(key: string): unknown | undefined {
+  return storedSideEffects.get(key);
+}
+
+export function clearSessionSideEffects(sessionId: string): void {
+  for (const key of storedSideEffects.keys()) {
+    if (key.includes(sessionId)) storedSideEffects.delete(key);
   }
 }
 

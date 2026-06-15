@@ -30,11 +30,22 @@ export interface ToolCallRequest {
   args: Record<string, unknown>;
 }
 
+export interface ToolErrorInfo {
+  code: string;
+  message: string;
+  retryable: boolean;
+  suggestedAction?: string;
+  context?: Record<string, unknown>;
+}
+
 export interface ToolCallResult {
   toolName: string;
   success: boolean;
   output: string;
   error?: string;
+  errorInfo?: ToolErrorInfo;
+  truncated?: boolean;
+  outputLength?: number;
   durationMs: number;
 }
 

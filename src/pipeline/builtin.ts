@@ -10,6 +10,37 @@ const BLOCKED_TERMS = [
   'you are a developer',
 ];
 
+const TOKEN_THRESHOLD_COMPACT = 80_000;
+const MAX_OUTPUT_LENGTH = 8_000;
+const LOOP_CYCLE_ESCALATE = 5;
+
+const PII_REDACT_RE = [
+  [/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[EMAIL]'],
+  [/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[IP]'],
+  [/\b\d{3}-\d{2}-\d{4}\b/g, '[SSN]'],
+] as const;
+
+function redactPII(text: string): string {
+  let out = text;
+  for (const [re, replacement] of PII_REDACT_RE) {
+    out = out.replace(re, replacement);
+  }
+  return out;
+}
+
+interface SummarizationState {
+  lastCompactRound: number;
+  compactCount: number;
+}
+
+interface LoopDetectionState {
+  editCounts: Map<string, number>;
+  lastWarnedRound: number;
+}
+
+const summarizationStates = new Map<string, SummarizationState>();
+const loopStates = new Map<string, LoopDetectionState>();
+
 class ContentSafetyHook implements PipelineHook {
   name = '@cortex/content-safety';
   stages: PipelineStage[] = ['pre-output'];
@@ -141,9 +172,162 @@ class AuditLogHook implements PipelineHook {
   }
 }
 
+class SummarizationMiddleware implements PipelineHook {
+  name = '@cortex/summarization';
+  stages: PipelineStage[] = ['pre-reason'];
+  priority = 8;
+  async = false;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    const messages = ctx.messages;
+    if (!messages || messages.length === 0) return {};
+
+    const totalChars = messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
+    const estimatedTokens = Math.ceil(totalChars / 3);
+
+    if (estimatedTokens < TOKEN_THRESHOLD_COMPACT) return {};
+
+    const sessionId = ctx.sessionId;
+    let state = summarizationStates.get(sessionId);
+    if (!state) {
+      state = { lastCompactRound: -1, compactCount: 0 };
+      summarizationStates.set(sessionId, state);
+    }
+
+    const currentRound = ctx.state.toolCallsMade;
+    if (currentRound === state.lastCompactRound) return {};
+    state.lastCompactRound = currentRound;
+    state.compactCount++;
+
+    const halfPoint = Math.floor(messages.length / 2);
+    const olderMessages = messages.slice(0, halfPoint);
+    const recentMessages = messages.slice(halfPoint);
+
+    const olderSummary = redactPII(
+      olderMessages
+        .map((m) => `[${m.role}]: ${(m.content ?? '').slice(0, 120)}`)
+        .join(' | ')
+    );
+
+    const compactBlock: typeof messages[0] = {
+      role: 'user' as const,
+      content: `<compaction iteration="${state.compactCount}">Previous conversation summary (${olderMessages.length} messages compacted):\n${olderSummary.slice(0, 2000)}\n\nKey details may have been lost. Use tools to re-examine context if needed.</compaction>`,
+    };
+
+    return {
+      injectMessages: [compactBlock],
+      modifyInput: `[Context compacted ${state.compactCount}x. Recent ${recentMessages.length} messages retained. Older ${olderMessages.length} summarized.]`,
+    };
+  }
+}
+
+class ToolOutputSandboxHook implements PipelineHook {
+  name = '@cortex/tool-output-sandbox';
+  stages: PipelineStage[] = ['post-tool'];
+  priority = 15;
+  async = false;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    if (!ctx.toolResult?.success) return {};
+
+    const output = ctx.toolResult.output;
+    if (!output || output.length <= MAX_OUTPUT_LENGTH) return {};
+
+    return {
+      sideEffects: [{
+        type: 'store',
+        payload: {
+          key: `tool_output:${ctx.sessionId}:${ctx.toolResult.toolName}`,
+          value: output,
+        },
+      }],
+    };
+  }
+}
+
+class PreCompletionChecklistMiddleware implements PipelineHook {
+  name = '@cortex/pre-completion-checklist';
+  stages: PipelineStage[] = ['post-reason'];
+  priority = 20;
+  async = false;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    const response = ctx.currentLLMResponse;
+    if (!response) return {};
+
+    const hasToolCalls = /<tool_call>/.test(response);
+    if (hasToolCalls) return {};
+
+    const lower = response.toLowerCase();
+    const isExitMessage = lower.includes('done') || lower.includes('complete') ||
+      lower.includes('finished') || lower.includes('all set') ||
+      lower.includes('ready') || lower.includes('implemented');
+
+    if (!isExitMessage) return {};
+
+    return {
+      injectMessages: [{
+        role: 'system' as const,
+        content: 'Before finalizing, verify that: (1) all changes were tested, (2) output matches requirements, (3) no errors remain. If any check fails, continue working with additional tool calls.',
+      }],
+    };
+  }
+}
+
+class LoopDetectionMiddleware implements PipelineHook {
+  name = '@cortex/loop-detection';
+  stages: PipelineStage[] = ['pre-tool'];
+  priority = 12;
+  async = false;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    if (!ctx.toolCall) return {};
+
+    const sessionId = ctx.sessionId;
+    let state = loopStates.get(sessionId);
+    if (!state) {
+      state = { editCounts: new Map(), lastWarnedRound: 0 };
+      loopStates.set(sessionId, state);
+    }
+
+    const toolName = ctx.toolCall.toolName;
+    if (toolName === 'file_edit' || toolName === 'file_write' || toolName === 'file_patch') {
+      const path = String(ctx.toolCall.args?.path ?? ctx.toolCall.args?.file ?? '');
+      const count = (state.editCounts.get(path) ?? 0) + 1;
+      state.editCounts.set(path, count);
+
+      const round = ctx.state.toolCallsMade;
+      if (count >= LOOP_CYCLE_ESCALATE && round > state.lastWarnedRound) {
+        state.lastWarnedRound = round;
+        return {
+          injectMessages: [{
+            role: 'system' as const,
+            content: `WARNING: File "${path}" has been edited ${count} times in this turn. Consider a different approach. If stuck, explain what's blocking progress and ask for guidance.`,
+          }],
+        };
+      }
+    }
+
+    return {};
+  }
+}
+
 export function registerBuiltinHooks(): void {
   registerHook(new ContentSafetyHook(), 'core');
   registerHook(new InjectionDetectorHook(), 'core');
+  registerHook(new SummarizationMiddleware(), 'core');
+  registerHook(new ToolOutputSandboxHook(), 'core');
+  registerHook(new PreCompletionChecklistMiddleware(), 'core');
+  registerHook(new LoopDetectionMiddleware(), 'core');
   registerHook(new CostTrackerHook(), 'core');
   registerHook(new AuditLogHook(), 'core');
+}
+
+export function cleanupSessionState(sessionId: string): void {
+  summarizationStates.delete(sessionId);
+  loopStates.delete(sessionId);
 }
