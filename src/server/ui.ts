@@ -114,6 +114,19 @@ const HTML = `<!DOCTYPE html>
   .card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px; }
   .card-sm { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
 
+  /* Memory tabs */
+  .mem-tab { padding:8px 16px; border:none; background:transparent; color:var(--text3); font-size:12px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
+  .mem-tab:hover { color:var(--text2); }
+  .mem-tab.active { color:var(--accent2); border-bottom-color:var(--accent); }
+
+  /* Decay bar */
+  .decay-bar { height:3px; border-radius:2px; background:var(--border); overflow:hidden; }
+  .decay-bar-fill { height:100%; border-radius:2px; transition:width 0.3s; }
+
+  /* Entity chip */
+  .entity-chip { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+  .entity-chip:hover { opacity:0.8; }
+
   /* Pill badge */
   .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9999px; font-size:11px; font-weight:500; }
 
@@ -617,20 +630,51 @@ const HTML = `<!DOCTYPE html>
 
   <!-- Page: Memory -->
   <div id="page-memory" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div>
-          <h1 style="font-size:15px;font-weight:600;">Memory Browser</h1>
-          <p style="font-size:12px;color:var(--text3);margin-top:2px;">Search episodic, semantic, and graph memory</p>
-        </div>
-      </div>
-      <div id="mem-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;"></div>
-      <div style="display:flex;gap:8px;">
-        <input id="mem-query" class="inp" placeholder="Search memory… (keyword + vector)" style="flex:1;" />
-        <button class="btn btn-primary" onclick="searchMemory()">Search</button>
+    <div style="padding:12px 24px 0;border-bottom:1px solid var(--border);display:flex;gap:0;">
+      <div style="display:flex;gap:2px;">
+        <button class="mem-tab active" onclick="switchMemoryTab('search')" id="memtab-search">Search</button>
+        <button class="mem-tab" onclick="switchMemoryTab('graph')" id="memtab-graph">Graph</button>
+        <button class="mem-tab" onclick="switchMemoryTab('reflections')" id="memtab-reflections">Reflections</button>
+        <button class="mem-tab" onclick="switchMemoryTab('health')" id="memtab-health">Health</button>
       </div>
     </div>
-    <div id="mem-results" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;"></div>
+
+    <!-- Search Tab -->
+    <div id="mem-pane-search" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--border);">
+        <div id="mem-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input id="mem-query" class="inp" placeholder="Search memory… (keyword + vector)" style="flex:1;" />
+          <button class="btn btn-primary" onclick="searchMemory()">Search</button>
+        </div>
+      </div>
+      <div id="mem-results" style="flex:1;overflow-y:auto;padding:12px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- Graph Tab -->
+    <div id="mem-pane-graph" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;">
+        <input id="graph-query" class="inp" placeholder="Search entity by name…" style="flex:1;" onkeydown="if(event.key==='Enter')searchGraphEntities()" />
+        <button class="btn btn-primary" onclick="searchGraphEntities()">Search</button>
+      </div>
+      <div style="padding:12px 24px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);">
+        <span id="graph-breadcrumb"></span>
+      </div>
+      <div id="graph-results" style="flex:1;overflow-y:auto;padding:0 24px 16px;display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
+    <!-- Reflections Tab -->
+    <div id="mem-pane-reflections" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--border);">
+        <p style="font-size:12px;color:var(--text3);">Meta-patterns observed across sessions. Higher confidence = more reliable.</p>
+      </div>
+      <div id="reflections-list" style="flex:1;overflow-y:auto;padding:12px 24px;display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
+    <!-- Health Tab -->
+    <div id="mem-pane-health" style="display:none;flex:1;overflow:auto;padding:16px 24px;">
+      <div id="health-content"></div>
+    </div>
   </div>
 
   <!-- Page: Jobs -->
@@ -1364,18 +1408,41 @@ async function loadLens() {
 }
 
 // ── Memory ──────────────────────────────────────────────────
+const ENTITY_COLORS = { concept:'#a78bfa', code:'#38bdf8', domain:'#34d399' };
+
+function decayColor(score) {
+  if (score >= 0.7) return '#4ade80';
+  if (score >= 0.4) return '#fbbf24';
+  if (score >= 0.1) return '#fb923c';
+  return '#f87171';
+}
+
+function switchMemoryTab(name) {
+  document.querySelectorAll('.mem-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('memtab-'+name).classList.add('active');
+  ['search','graph','reflections','health'].forEach(p => {
+    const el = document.getElementById('mem-pane-'+p);
+    if (el) el.style.display = p === name ? 'flex' : 'none';
+  });
+  if (name === 'graph') searchGraphEntities();
+  if (name === 'reflections') loadReflections();
+  if (name === 'health') loadMemoryHealth();
+}
+
 async function loadMemoryStats() {
   try {
     const s = await fetch(BASE + '/api/memory/stats').then(r => r.json());
     const el = document.getElementById('mem-stats');
+    if (!el) return;
     el.innerHTML = [
-      { label:'Episodic', val: s.episodic, color:'#fbbf24' },
-      { label:'Semantic', val: s.semantic, color:'#818cf8' },
-      { label:'Reflection', val: s.reflection, color:'#34d399' },
-      { label:'Procedural', val: s.procedural, color:'#fb923c' },
-    ].map(s => \`<div class="stat">
+      { label:'Episodic', val: s.episodic, color:'#fbbf24', desc:'Session traces' },
+      { label:'Semantic', val: s.semantic, color:'#818cf8', desc:'Facts & knowledge' },
+      { label:'Reflection', val: s.reflection, color:'#34d399', desc:'Meta-patterns' },
+      { label:'Procedural', val: s.procedural, color:'#fb923c', desc:'Learned skills' },
+    ].map(s => \`<div class="stat" style="cursor:pointer;" onclick="document.getElementById('mem-query').value='';searchMemory()">
       <div class="stat-num" style="color:\${s.color};">\${s.val}</div>
       <div class="stat-label">\${s.label}</div>
+      <div style="font-size:9px;color:var(--text3);">\${s.desc}</div>
     </div>\`).join('');
   } catch { /* ignore */ }
 }
@@ -1383,6 +1450,7 @@ async function loadMemoryStats() {
 async function searchMemory() {
   const q = document.getElementById('mem-query').value.trim();
   if (!q) return;
+  switchMemoryTab('search');
   const el = document.getElementById('mem-results');
   el.innerHTML = '<p style="color:var(--text3);font-size:13px;">Searching…</p>';
   const hits = await fetch(\`\${BASE}/api/memory/search?q=\${encodeURIComponent(q)}\`).then(r => r.json()).catch(() => []);
@@ -1390,22 +1458,220 @@ async function searchMemory() {
 
   el.innerHTML = '';
   for (const h of hits) {
-    const typeColor = h.type === 'episodic' ? '#fbbf24' : h.type === 'semantic' ? '#818cf8' : '#34d399';
+    const typeColor = h.type === 'episodic' ? '#fbbf24' : '#818cf8';
+    const typeLabel = h.type === 'episodic' ? 'Episodic' : 'Semantic';
+    const decay = h.decayScore ?? 1;
+    const dColor = decayColor(decay);
+    const entities = h.entities ?? [];
+    const tags = h.tags ?? [];
+    const topics = h.topics ?? [];
+
     const d = document.createElement('div');
     d.className = 'card-sm';
+    d.style.cssText = 'cursor:pointer;';
+    d.onclick = () => { d.querySelector('.mem-detail').style.display = d.querySelector('.mem-detail').style.display === 'none' ? 'block' : 'none'; };
+
     d.innerHTML = \`
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-        <span class="badge" style="background:rgba(255,255,255,0.06);color:\${typeColor};">\${h.type ?? 'episodic'}</span>
-        <span style="font-size:11px;color:var(--text3);">\${new Date(h.created_at).toLocaleString()}</span>
-        <span style="margin-left:auto;font-size:11px;color:var(--text3);">score \${Number(h.score ?? 0).toFixed(3)}</span>
+        <span class="badge" style="background:rgba(255,255,255,0.06);color:\${typeColor};">\${typeLabel}</span>
+        <span style="font-size:11px;color:var(--text3);">\${timeAgo(h.created_at)}</span>
+        \${h.category ? \`<span style="font-size:10px;color:var(--text3);">· \${esc(h.category)}</span>\` : ''}
+        \${h.accessCount ? \`<span style="font-size:10px;color:var(--text3);">· \${h.accessCount} accesses</span>\` : ''}
+        <span style="margin-left:auto;font-size:11px;color:\${dColor};">decay \${(decay*100).toFixed(0)}%</span>
       </div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.5;">\${esc(String(h.text ?? h.summary ?? '').slice(0, 400))}</p>
+      <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:6px;overflow:hidden;">
+        <div style="height:100%;width:\${decay*100}%;background:\${dColor};border-radius:2px;transition:width 0.3s;"></div>
+      </div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.5;">\${esc(String(h.text ?? '').slice(0, 300))}</p>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+        \${entities.map(e => \`<span class="entity-chip" style="background:rgba(167,139,250,0.12);color:#a78bfa;" onclick="event.stopPropagation();document.getElementById('graph-query').value='\${esc(e)}';switchMemoryTab('graph');searchGraphEntities()">\${esc(e)}</span>\`).join('')}
+        \${tags.map(t => \`<span class="entity-chip" style="background:rgba(99,102,241,0.1);color:#818cf8;">\${esc(t)}</span>\`).join('')}
+        \${topics.map(t => \`<span class="entity-chip" style="background:rgba(251,191,36,0.1);color:#fbbf24;">\${esc(t)}</span>\`).join('')}
+      </div>
+      <div class="mem-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:10px;color:var(--text3);">ID</div>
+            <div style="font-size:11px;color:var(--text2);font-family:monospace;">\${esc(h.id)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3);">Score</div>
+            <div style="font-size:11px;color:var(--text2);">\${Number(h.score ?? 0).toFixed(4)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--text3);">Decay</div>
+            <div style="font-size:11px;color:\${dColor};">\${(decay*100).toFixed(1)}%</div>
+          </div>
+          \${h.accessCount !== undefined ? \`<div><div style="font-size:10px;color:var(--text3);">Accesses</div><div style="font-size:11px;color:var(--text2);">\${h.accessCount}</div></div>\` : ''}
+        </div>
+      </div>
     \`;
     el.appendChild(d);
   }
 }
 
 document.getElementById('mem-query').addEventListener('keydown', e => { if (e.key === 'Enter') searchMemory(); });
+
+// ── Graph ────────────────────────────────────────────────────
+async function searchGraphEntities() {
+  const q = document.getElementById('graph-query').value.trim();
+  let url = BASE + '/api/memory/graph/entities';
+  if (q) url += '?q=' + encodeURIComponent(q);
+
+  const entities = await fetch(url).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('graph-results');
+  const bc = document.getElementById('graph-breadcrumb');
+
+  if (!entities.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">No entities found.</p>';
+    bc.innerHTML = '';
+    return;
+  }
+
+  bc.innerHTML = '<span style="color:var(--text2);">Entities</span>' + (q ? ' · <span style="color:var(--text3);">matching "' + esc(q) + '"</span>' : '');
+
+  el.innerHTML = entities.map(e => {
+    const color = ENTITY_COLORS[e.type] ?? '#9090a8';
+    return \`<div class="card-sm" style="cursor:pointer;" onclick="loadGraphForEntity('\${esc(e.name)}')">
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge" style="background:rgba(255,255,255,0.06);color:\${color};">\${esc(e.type)}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--text);">\${esc(e.name)}</span>
+        </div>
+      </div>
+      \${e.description ? \`<p style="font-size:11px;color:var(--text3);margin-top:4px;">\${esc(e.description)}</p>\` : ''}
+    </div>\`;
+  }).join('');
+}
+
+async function loadGraphForEntity(name) {
+  const hits = await fetch(\`\${BASE}/api/memory/graph?entity=\${encodeURIComponent(name)}&depth=1\`).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('graph-results');
+  const bc = document.getElementById('graph-breadcrumb');
+
+  bc.innerHTML = \`<span style="color:var(--text3);cursor:pointer;" onclick="searchGraphEntities()">Entities</span> <span style="color:var(--text3);">/</span> <span style="color:var(--text2);">\${esc(name)}</span>\`;
+
+  if (!hits.length) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">No connections found for "' + esc(name) + '".</p>';
+    return;
+  }
+
+  const relations = {};
+  const REL_COLORS = { uses:'#38bdf8', replaces:'#f87171', extends:'#a78bfa', is_part_of:'#34d399', is_instance_of:'#fb923c', related_to:'#9090a8', contradicts:'#f87171', supports:'#4ade80', causes:'#fbbf24', requires:'#f97316', configures:'#818cf8' };
+
+  for (const h of hits) {
+    const dir = h.direction === 'outbound' ? '→' : '←';
+    const key = h.relation;
+    if (!relations[key]) relations[key] = { name: h.relation, direction: dir, peers: [] };
+    relations[key].peers.push(h);
+  }
+
+  el.innerHTML = Object.entries(relations).map(([rel, group]) => {
+    const color = REL_COLORS[rel] ?? '#9090a8';
+    return \`<div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:600;color:\${color};margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">\${group.direction} \${group.name}</div>
+      \${group.peers.map(h => {
+        const peerColor = ENTITY_COLORS[h.peer.type] ?? '#9090a8';
+        return \`<div class="card-sm" style="cursor:pointer;margin-bottom:6px;" onclick="document.getElementById('graph-query').value='\${esc(h.peer.name)}';loadGraphForEntity('\${esc(h.peer.name)}')">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="badge" style="background:rgba(255,255,255,0.06);color:\${peerColor};">\${esc(h.peer.type)}</span>
+              <span style="font-size:13px;font-weight:500;color:var(--text);">\${esc(h.peer.name)}</span>
+            </div>
+            <span style="font-size:10px;color:var(--text3);">str \${(h.strength*100).toFixed(0)}%</span>
+          </div>
+          \${h.peer.description ? \`<p style="font-size:11px;color:var(--text3);margin-top:4px;">\${esc(h.peer.description)}</p>\` : ''}
+          <div style="height:2px;background:var(--border);border-radius:1px;margin-top:6px;overflow:hidden;">
+            <div style="height:100%;width:\${h.strength*100}%;background:\${color};border-radius:1px;"></div>
+          </div>
+        </div>\`;
+      }).join('')}
+    </div>\`;
+  }).join('');
+}
+
+// ── Reflections ─────────────────────────────────────────────
+async function loadReflections() {
+  const refs = await fetch(BASE + '/api/memory/reflections').then(r => r.json()).catch(() => []);
+  const el = document.getElementById('reflections-list');
+  if (!refs.length) { el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">No reflection patterns yet. Patterns emerge from agent self-assessment and consolidation cycles.</p>'; return; }
+
+  const CAT_COLORS = { general:'#818cf8', meta:'#34d399', technical:'#fbbf24', behavioral:'#fb923c' };
+
+  el.innerHTML = refs.map(r => {
+    const color = CAT_COLORS[r.category] ?? '#818cf8';
+    const pct = (r.confidence * 100).toFixed(0);
+    return \`<div class="card-sm">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span class="badge" style="background:rgba(255,255,255,0.06);color:\${color};">\${esc(r.category)}</span>
+        <span style="font-size:13px;color:var(--text);">\${esc(r.pattern)}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text3);">\${timeAgo(r.created_at)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:\${pct}%;background:\${color};border-radius:2px;"></div>
+        </div>
+        <span style="font-size:10px;color:\${color};min-width:36px;text-align:right;">\${pct}%</span>
+      </div>
+    </div>\`;
+  }).join('');
+}
+
+// ── Health ───────────────────────────────────────────────────
+async function loadMemoryHealth() {
+  const h = await fetch(BASE + '/api/memory/health').then(r => r.json()).catch(() => null);
+  const el = document.getElementById('health-content');
+  if (!h) { el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Failed to load health data.</p>'; return; }
+
+  function healthCard(label, data, color) {
+    const activePct = data.total ? ((data.active/data.total)*100).toFixed(0) : 0;
+    const stalePct = data.total ? ((data.stale/data.total)*100).toFixed(0) : 0;
+    return \`<div class="card">
+      <h3 style="font-size:14px;font-weight:600;color:\${color};margin-bottom:10px;">\${label}</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;">
+        <div><div style="font-size:10px;color:var(--text3);">Total</div><div style="font-size:18px;font-weight:600;color:var(--text);">\${data.total}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Active</div><div style="font-size:18px;font-weight:600;color:#4ade80;">\${data.active} <span style="font-size:10px;">\${activePct}%</span></div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Stale</div><div style="font-size:18px;font-weight:600;color:#f87171;">\${data.stale} <span style="font-size:10px;">\${stalePct}%</span></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div><div style="font-size:10px;color:var(--text3);">Avg Decay</div><div style="font-size:13px;color:\${decayColor(data.avgDecay)};">\${(data.avgDecay*100).toFixed(0)}%</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Avg Importance</div><div style="font-size:13px;color:var(--text2);">\${(data.avgImportance*100).toFixed(0)}%</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Avg Accesses</div><div style="font-size:13px;color:var(--text2);">\${data.avgAccess.toFixed(1)}</div></div>
+      </div>
+      <div style="margin-top:8px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Decay Distribution</div>
+        <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;display:flex;">
+          <div style="height:100%;width:\${activePct}%;background:#4ade80;"></div>
+          <div style="height:100%;width:\${Math.max(0,100-activePct-stalePct)}%;background:#fbbf24;"></div>
+          <div style="height:100%;width:\${stalePct}%;background:#f87171;"></div>
+        </div>
+      </div>
+    </div>\`;
+  }
+
+  el.innerHTML = \`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+      \${healthCard('Episodic Memory', h.episodic, '#fbbf24')}
+      \${healthCard('Semantic Memory', h.semantic, '#818cf8')}
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:600;color:#a78bfa;margin-bottom:10px;">Knowledge Graph</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div><div style="font-size:10px;color:var(--text3);">Entities</div><div style="font-size:18px;font-weight:600;color:var(--text);">\${h.graph.entities}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Relations</div><div style="font-size:18px;font-weight:600;color:var(--text);">\${h.graph.relations}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Avg Strength</div><div style="font-size:18px;font-weight:600;color:var(--text2);">\${(h.graph.avgStrength*100).toFixed(0)}%</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:600;color:#34d399;margin-bottom:10px;">Reflections</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <div><div style="font-size:10px;color:var(--text3);">Total Patterns</div><div style="font-size:18px;font-weight:600;color:var(--text);">\${h.reflection.total}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Meta-Patterns</div><div style="font-size:18px;font-weight:600;color:var(--text);">\${h.reflection.metaPatterns}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);">Avg Confidence</div><div style="font-size:18px;font-weight:600;color:var(--text2);">\${(h.reflection.avgConfidence*100).toFixed(0)}%</div></div>
+      </div>
+    </div>
+  \`;
+}
 
 // ── Jobs ────────────────────────────────────────────────────
 const JOB_COLORS = { pending:'#fbbf24', running:'#38bdf8', completed:'#4ade80', failed:'#f87171', cancelled:'#6b7280' };
@@ -1497,7 +1763,7 @@ async function loadPolicies() {
 
 // ── Utils ───────────────────────────────────────────────────
 function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ── Status page ──────────────────────────────────────────────

@@ -11,6 +11,47 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Memory heuristic learning** — AI-driven memory self-improvement that runs daily
+  - Access tracking: records every retrieval to `access_count` and `last_accessed`, enabling
+    usage-based reinforcement
+  - Importance boosting: heavily-accessed memories (10+ hits) get +0.15 importance bump,
+    moderate (5+) get +0.05, with `access_count` reset after each boost cycle
+  - Decay slowing: frequently-accessed memories receive a one-time 1.3× half-life extension
+    (episodic 14→18.2 days, semantic 30→39 days), capped at 90/180 days respectively
+  - Co-occurrence learning: analyzes entity pairs across episodic memories, creates or
+    strengthens `related_to` graph relations when entities co-occur 3+ times
+  - Auto-categorization: 12 pattern-based rules auto-tag untagged semantic memories with
+    categories (api, database, frontend, debugging, security, devops, etc.) and tags
+  - Memory health dashboard: aggregated metrics for active/stale counts, average decay,
+    importance, access frequency, graph entity/relation counts, and reflection confidence
+  - All heuristic jobs run via `runHeuristicCycle()` in the daily consolidation cycle
+- **Richer memory search** — search results now include entities, topics, tags, category,
+  decay score with visual bar, and access count
+- **Memory page tabs** — rebuilt Web UI with Search, Graph, Reflections, and Health tabs
+  - Graph tab: entity browser with type badges, click-through traversal showing grouped
+    relations with strength bars, and breadcrumb navigation
+  - Reflections tab: confidence-ranked pattern list with category badges and confidence bars
+  - Health tab: per-tier cards with total/active/stale counts, decay distribution bars,
+    average metrics, and graph/reflection overview
+- **New API endpoints** — `GET /api/memory/health`, `GET /api/memory/reflections`,
+  `GET /api/memory/graph/entities?q=`, `GET /api/memory/graph?entity=&depth=`
+- **Centralized version module** — extracted `getVersion()` into `src/config/version.ts`,
+  reused by main entrypoint, status API, and update installer
+
+### Fixed
+
+- Heuristic learning column mismatches: `last_accessed_at` removed from episodic
+  (column didn't exist), fixed to `last_accessed` on semantic, `context` replaced with
+  `metadata` (JSON) on graph_relations INSERT
+- `slowDecayForFrequentAccess` now guarded against daily compounding (only applies when
+  `half_life_days` is at default)
+- `boostImportanceFromAccess` now resets `access_count` after each boost to prevent
+  qualifying set from growing unbounded
+- Escaped single quotes in `esc()` to prevent XSS via entity names in onclick handlers
+- Replaced dynamic `import('./heuristics.ts')` with static import in `retrieve()` hot path
+- `getMemoryHealth()` now uses 60s in-memory cache to avoid full table scans per request
+- Removed duplicate `ageStr()` function in favor of existing `timeAgo()` for consistent
+  relative time formatting
 - **Pipeline hooks system** (`src/pipeline/`): 10-stage middleware architecture (pre/post-assess, pre/post-reason, pre/post-tool, pre/post-reflect, pre/post-output). Priority-ordered hook execution within each stage with abort support. Built-in hooks: content safety filter (`@cortex/content-safety`), prompt injection detector (`@cortex/injection-guard`), cost tracker (`@cortex/cost-tracker`), audit logger (`@cortex/audit-log`). Sync hooks block the pipeline; async hooks fire-and-forget. Timeout enforcement per hook (5s sync, 15s async). CLI: `cortex hooks` (list/init/disable). API: `GET /api/hooks`, `POST /api/hooks/:name/disable`.
 - **Enhanced onboarding wizard** (`src/cli/setup.ts`): 4-step first-run wizard (model provider → personality → channels → telemetry). Personality templates generate SOUL.md (professional/friendly/developer/custom). Channel selection (CLI only / CLI+Web / CLI+Discord / all). Connection test validates API key before saving. Post-install summary with next-step commands.
 - **Event triggers system** (`src/triggers/`): Webhook receiver with HMAC signature verification (GitHub, GitLab, generic providers). Filesystem watcher using `Deno.watchFs` with configurable debounce and pattern matching. Git hook installer auto-places `post-receive`/`post-commit` scripts. Rate limiting with sliding windows and cooldown periods. IP allowlisting for webhook endpoints. Jinja2-style prompt template rendering. Trigger-to-job mapping creates immediate agent turns. CLI: `cortex triggers` (list/add/remove/install-hooks/uninstall-hooks). API: `POST /api/webhooks/:name`.

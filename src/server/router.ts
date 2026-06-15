@@ -9,6 +9,9 @@ import { getSessionEvents } from '../db/lens.ts';
 import { getLensDb, type InValue } from '../db/client.ts';
 import { listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
+import { searchEntities, traverseGraph } from '../memory/graph.ts';
+import { listReflections } from '../agent/reflect.ts';
+import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import type { AgentConfig, CortexConfig, ProviderKind } from '../config/config.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
@@ -260,6 +263,34 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
+  // GET /api/memory/health
+  if (req.method === 'GET' && path === '/api/memory/health') {
+    const health = await getMemoryHealth();
+    return json(health);
+  }
+
+  // GET /api/memory/reflections
+  if (req.method === 'GET' && path === '/api/memory/reflections') {
+    const reflections = await listReflections(50);
+    return json(reflections);
+  }
+
+  // GET /api/memory/graph/entities?q=
+  if (req.method === 'GET' && path === '/api/memory/graph/entities') {
+    const q = url.searchParams.get('q') ?? '';
+    const entities = await searchEntities(q, q ? 20 : 50);
+    return json(entities);
+  }
+
+  // GET /api/memory/graph?entity=
+  if (req.method === 'GET' && path === '/api/memory/graph') {
+    const entity = url.searchParams.get('entity');
+    if (!entity) return err('Missing query param: entity', 400);
+    const depth = Number(url.searchParams.get('depth') ?? 2);
+    const hits = await traverseGraph(entity, { depth, limit: 30 });
+    return json(hits);
+  }
+
   // GET /api/config
   if (req.method === 'GET' && path === '/api/config') {
     const config = await loadConfig();
@@ -445,8 +476,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
         diskInfo = { total: Number(dfLine[1]), used: Number(dfLine[2]), free: Number(dfLine[3]) };
       }
     } catch { /* ignore */ }
+    const { getVersion } = await import('../config/version.ts');
     return json({
-      version: '0.9.0',
+      version: await getVersion(),
       provider: config.defaultProvider,
       model: config.providers[config.defaultProvider]?.model ?? 'unknown',
       activeSessions,
