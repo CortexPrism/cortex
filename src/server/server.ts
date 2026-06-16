@@ -43,59 +43,66 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   console.log(`  Node WS:      ws://${host}:${port}/ws/node`);
   console.log(`  Press Ctrl+C to stop\n`);
 
-  Deno.serve({ port, hostname: host }, async (req: Request): Promise<Response> => {
-    const url = new URL(req.url);
+  const httpServer = Deno.serve(
+    { port, hostname: host },
+    async (req: Request): Promise<Response> => {
+      const url = new URL(req.url);
 
-    if (url.pathname === '/ws') {
-      const upgrade = req.headers.get('upgrade') ?? '';
-      if (upgrade.toLowerCase() !== 'websocket') {
-        return new Response('Expected WebSocket upgrade', { status: 426 });
+      if (url.pathname === '/ws') {
+        const upgrade = req.headers.get('upgrade') ?? '';
+        if (upgrade.toLowerCase() !== 'websocket') {
+          return new Response('Expected WebSocket upgrade', { status: 426 });
+        }
+        return await handleWebSocket(req);
       }
-      return await handleWebSocket(req);
-    }
 
-    if (url.pathname === '/ws/node') {
-      const upgrade = req.headers.get('upgrade') ?? '';
-      if (upgrade.toLowerCase() !== 'websocket') {
-        return new Response('Expected WebSocket upgrade', { status: 426 });
+      if (url.pathname === '/ws/node') {
+        const upgrade = req.headers.get('upgrade') ?? '';
+        if (upgrade.toLowerCase() !== 'websocket') {
+          return new Response('Expected WebSocket upgrade', { status: 426 });
+        }
+        return handleNodeWebSocket(req);
       }
-      return handleNodeWebSocket(req);
-    }
 
-    if (url.pathname.startsWith('/api/')) {
-      const res = await handleApi(req);
-      return res ?? new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+      if (url.pathname.startsWith('/api/')) {
+        const res = await handleApi(req);
+        return res ?? new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
 
-    // Login page (no auth required)
-    if (url.pathname === '/login') {
-      return serveLoginPage();
-    }
+      // Login page (no auth required)
+      if (url.pathname === '/login') {
+        return serveLoginPage();
+      }
 
-    // Onboarding page (no auth required)
-    if (url.pathname === '/onboarding') {
-      return serveOnboardingPage();
-    }
+      // Onboarding page (no auth required)
+      if (url.pathname === '/onboarding') {
+        return serveOnboardingPage();
+      }
 
-    // All other UI routes require auth (if password is set)
-    const config = await loadConfig();
-    const webAuth = config.webAuth || {};
-    if (webAuth.requireAuth !== false) {
-      const pwExists = await hasPassword();
-      if (pwExists) {
-        const auth = await requireAuth(req);
-        if (!auth.authenticated) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: '/login' },
-          });
+      // All other UI routes require auth (if password is set)
+      const config = await loadConfig();
+      const webAuth = config.webAuth || {};
+      if (webAuth.requireAuth !== false) {
+        const pwExists = await hasPassword();
+        if (pwExists) {
+          const auth = await requireAuth(req);
+          if (!auth.authenticated) {
+            return new Response(null, {
+              status: 302,
+              headers: { Location: '/login' },
+            });
+          }
         }
       }
-    }
 
-    return serveUi();
+      return serveUi();
+    },
+  );
+
+  httpServer.finished.catch((err) => {
+    console.error(`Server error: ${(err as Error).message}`);
   });
 }

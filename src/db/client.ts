@@ -61,7 +61,8 @@ export class Db {
   readonly client: LibSQLClient;
 
   constructor(path: string) {
-    this.client = createClient({ url: `file:${path}` });
+    const normalized = path.replace(/\\/g, '/');
+    this.client = createClient({ url: `file:${normalized}` });
   }
 
   async init(): Promise<void> {
