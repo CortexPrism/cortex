@@ -6086,7 +6086,7 @@ function startMqmAutoRefresh() {
   }, 5000);
 }
 
-function loadMqmOverview() {
+async function loadMqmOverview() {
   const data = mqmData;
   if (!data) return;
   const s = data.summary || {};
