@@ -146,6 +146,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
   await persistMessage(sessionDb, 'user', effectiveInput);
 
+  import('../quartermaster/mod.ts').then(({ recordUserMessage }) => {
+    recordUserMessage(sessionId, effectiveInput);
+  }).catch(() => {});
+
   const history = await loadHistory(sessionDb);
   const messages: Message[] = [...history];
 

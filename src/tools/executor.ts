@@ -37,12 +37,27 @@ function extractBareToolCalls(text: string): ToolCallRequest[] {
     let escaped = false;
     for (let i = start; i < text.length; i++) {
       const ch = text[i];
-      if (escaped) { escaped = false; continue; }
-      if (ch === '\\') { escaped = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
       if (inString) continue;
       if (ch === '{') depth++;
-      if (ch === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
     }
     if (end > start) {
       const call = parseToolCallJson(text.slice(start, end));

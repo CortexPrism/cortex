@@ -220,6 +220,7 @@ export async function runMigrations(): Promise<void> {
     { db: memoryDb, sqlFile: '017_skills_metadata.sql', label: 'memory.db (skills metadata)' },
     { db: coreDb, sqlFile: '015_nodes.sql', label: 'cortex.db (nodes)' },
     { db: coreDb, sqlFile: '016_node_policies.sql', label: 'cortex.db (node policies)' },
+    { db: coreDb, sqlFile: '018_quartermaster.sql', label: 'cortex.db (quartermaster)' },
   ];
 
   for (const { db, sqlFile, label } of targets) {

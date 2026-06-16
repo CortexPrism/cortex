@@ -322,10 +322,69 @@ class LoopDetectionMiddleware implements PipelineHook {
   }
 }
 
+class QuartermasterHook implements PipelineHook {
+  name = '@cortex/quartermaster';
+  stages: PipelineStage[] = ['pre-tool', 'post-tool'];
+  priority = 6;
+  async = true;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    try {
+      const { observe, predict, recordUserMessage } = await import('../quartermaster/mod.ts');
+
+      if (ctx.stage === 'pre-tool') {
+        recordUserMessage(ctx.sessionId, ctx.state.userMessage);
+        const prediction = await predict({
+          turnId: ctx.turnId,
+          sessionId: ctx.sessionId,
+          userMessage: ctx.state.userMessage,
+          toolCall: ctx.toolCall,
+          recentToolCalls: [],
+          toolCallIndex: ctx.state.toolCallsMade,
+          totalToolsInTurn: ctx.state.toolCallsMade + 1,
+        });
+
+        if (prediction && prediction.mode === 'suggest' && ctx.toolCall) {
+          const suggested = prediction.suggestedTool;
+          const currentTool = ctx.toolCall.toolName;
+          if (suggested !== currentTool) {
+            const msg =
+              `[Quartermaster: based on learned patterns, consider using "${suggested}" instead of "${currentTool}" (confidence: ${
+                (prediction.confidence * 100).toFixed(0)
+              }%)]`;
+            return {
+              injectMessages: [{
+                role: 'system' as const,
+                content: msg,
+              }],
+            };
+          }
+        }
+      }
+
+      if (ctx.stage === 'post-tool' && ctx.toolCall && ctx.toolResult) {
+        await observe({
+          turnId: ctx.turnId,
+          sessionId: ctx.sessionId,
+          toolCall: ctx.toolCall,
+          toolResult: ctx.toolResult,
+          toolIndex: 0,
+          totalToolsInTurn: ctx.state.toolCallsMade,
+        });
+      }
+    } catch {
+      // Quartermaster failures must never block the pipeline
+    }
+    return {};
+  }
+}
+
 export function registerBuiltinHooks(): void {
   registerHook(new ContentSafetyHook(), 'core');
   registerHook(new InjectionDetectorHook(), 'core');
   registerHook(new SummarizationMiddleware(), 'core');
+  registerHook(new QuartermasterHook(), 'core');
   registerHook(new ToolOutputSandboxHook(), 'core');
   registerHook(new PreCompletionChecklistMiddleware(), 'core');
   registerHook(new LoopDetectionMiddleware(), 'core');

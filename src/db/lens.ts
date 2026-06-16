@@ -43,7 +43,12 @@ export type EventType =
   | 'node_result_routed'
   | 'node_stream_chunk'
   | 'error'
-  | 'warning';
+  | 'warning'
+  | 'qm_prediction'
+  | 'qm_decision_evaluated'
+  | 'qm_weight_updated'
+  | 'qm_pattern_learned'
+  | 'qm_mode_changed';
 
 export interface LensEvent {
   id: string;
