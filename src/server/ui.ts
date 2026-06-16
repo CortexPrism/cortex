@@ -1257,6 +1257,25 @@ const HTML = `<!DOCTYPE html>
         <div id="sd-tab-meta" style="flex:1;overflow-y:auto;padding:16px;display:none;">
           <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
             <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique, no spaces)</span></label>
+              <input class="inp" id="sd-name" placeholder="my-skill-name" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label>
+              <input class="inp" id="sd-desc" placeholder="What this skill does and when to use it" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label>
+              <input class="inp" id="sd-trigger" placeholder="Phrase that triggers this skill (optional)" />
+            </div>
+            <div style="font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+              <b>Frontmatter preview:</b>
+              <pre id="sd-frontmatter-preview" style="background:var(--bg2);padding:10px;border-radius:4px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;"></pre>
+            </div>
+            <div style="font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+              <b>Skill metadata (tags, difficulty, examples):</b>
+            </div>
+            <div>
               <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Difficulty <span style="color:var(--text3);">(beginner, intermediate, advanced)</span></label>
               <input class="inp" id="sd-meta-difficulty" placeholder="intermediate" onchange="sdUpdateMetadataFromUI()" />
             </div>
