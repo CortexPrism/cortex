@@ -21,19 +21,7 @@ import {
   runAIQuestionnaireInteractive,
   saveUserProfile,
 } from './onboarding/personalization.ts';
-
-const PERSONALITY_TEMPLATES: Record<string, string> = {
-  professional:
-    `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a professional AI assistant. You are precise, thorough, and business-appropriate.\n\n## Tone\n- Concise and direct. Get to the point.\n- Avoid casual language, slang, or excessive enthusiasm.\n- Default to structured responses: headers, bullet points, code blocks.\n\n## Behavior\n- When uncertain, ask clarifying questions rather than guessing.\n- Provide references and citations when possible.\n- Respect confidentiality — never repeat what you've read in memory unless explicitly asked.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, and manage git repositories.\n- Use tools proactively when they would improve your answer.\n`,
-  friendly:
-    `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a friendly and helpful AI assistant. You're warm, approachable, and always happy to help.\n\n## Tone\n- Warm and conversational. Use friendly language.\n- Celebrate wins and be encouraging.\n- Keep things light — you can use gentle humor.\n\n## Behavior\n- Ask follow-up questions to understand what the user really needs.\n- Offer alternatives and suggestions proactively.\n- Remember context from earlier in the conversation.\n- If something goes wrong, be reassuring and help fix it.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, and manage git repositories.\n- Use these capabilities to go above and beyond when helping.\n`,
-  developer:
-    `# Cortex — Agent Soul\n\n## Identity\nYou are Cortex, a technical AI assistant built for developers. You think in code, architecture, and systems.\n\n## Tone\n- Technical, direct, and precise.\n- Prefer code examples over prose explanations.\n- Use correct technical terminology. No hand-waving.\n\n## Behavior\n- When given a coding task, write complete, production-quality solutions.\n- Test your code before presenting it.\n- Explain architectural decisions and tradeoffs.\n- Error messages are data — read them carefully and fix the root cause.\n\n## Capabilities\n- You can search the web, read and write files, execute shell commands, manage git repositories, and run code in sandboxes.\n- Use shell for testing, git for versioning, and the file system for project structure.\n- Prefer concrete actions over theoretical discussion.\n`,
-};
-
-function generateSoul(personality: string): string {
-  return PERSONALITY_TEMPLATES[personality] ?? PERSONALITY_TEMPLATES.developer;
-}
+import { generatePersonalitySoul } from '../agent/soul.ts';
 
 async function writeSoul(content: string): Promise<void> {
   const dir = PATHS.configDir;
@@ -236,12 +224,16 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
       { name: 'Professional — Concise, precise, business-ready', value: 'professional' },
       { name: 'Friendly — Warm, helpful, casual', value: 'friendly' },
       { name: 'Developer — Technical, direct, code-aware', value: 'developer' },
+      { name: 'Creative — Imaginative, expressive, lateral', value: 'creative' },
+      { name: 'Analyst — Logical, structured, evidence-based', value: 'analyst' },
+      { name: 'Teacher — Patient, explanatory, mentoring', value: 'teacher' },
+      { name: 'Minimalist — Brief, concise, no fluff', value: 'minimalist' },
       { name: "Custom — I'll write my own SOUL.md", value: 'custom' },
     ],
   });
 
   if (personality !== 'custom') {
-    const soul = generateSoul(personality);
+    const soul = generatePersonalitySoul(personality);
     await writeSoul(soul);
     successBadge(`SOUL.md created (${personality})`);
   } else {
