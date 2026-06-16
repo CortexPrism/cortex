@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertThrows } from '@std/assert';
+import { join } from '@std/path';
 
 // We need to bypass the module-level Deno calls for testing
 
@@ -57,8 +58,8 @@ Deno.test('resolveWorkspacePath with global workspace', async () => {
   const { resolveWorkspacePath } = await import('../src/workspace/paths.ts');
   const cwd = Deno.cwd();
 
-  const result = resolveWorkspacePath('ignored', cwd + '/test.txt', 'global');
-  assertEquals(result, cwd + '/test.txt');
+  const result = resolveWorkspacePath('ignored', join(cwd, 'test.txt'), 'global');
+  assertEquals(result, join(cwd, 'test.txt'));
 });
 
 Deno.test('resolveWorkspacePath with relative path resolves correctly', async () => {
@@ -68,5 +69,5 @@ Deno.test('resolveWorkspacePath with relative path resolves correctly', async ()
 
   const result = resolveWorkspacePath(agentId, 'relative/file.txt', 'agent');
   assert(result.startsWith(agentDir), `Path should be under agent dir`);
-  assert(result.endsWith('/relative/file.txt'), `Path should end with relative/file.txt`);
+  assert(result.endsWith(join('relative', 'file.txt')), `Path should end with relative/file.txt`);
 });
