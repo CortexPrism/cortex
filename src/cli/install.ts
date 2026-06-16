@@ -1,10 +1,14 @@
 import { Command } from '@cliffy/command';
-import { bold, dim, green } from '@std/fmt/colors';
+import { bold, dim, green, red } from '@std/fmt/colors';
 import {
+  installBothServices,
   installDaemonService,
   installServerService,
+  startLinuxService,
+  uninstallBothServices,
   uninstallDaemonService,
   uninstallServerService,
+  validateMutuallyExclusive,
 } from './service-helper.ts';
 
 export const installCommand = new Command()
@@ -25,18 +29,31 @@ export const installCommand = new Command()
         noStart?: boolean;
       },
     ) => {
+      try {
+        validateMutuallyExclusive(opts.daemonOnly, opts.serverOnly);
+      } catch (err) {
+        console.error(red(`  ${(err as Error).message}`));
+        Deno.exit(1);
+      }
+
       console.log(bold('Installing Cortex services…'));
       console.log('');
 
-      const installDaemon = !opts.serverOnly;
-      const installServer = !opts.daemonOnly;
+      const installBoth = !opts.daemonOnly && !opts.serverOnly;
+      const installDaemon = installBoth || opts.daemonOnly;
+      const installServer = installBoth || opts.serverOnly;
 
-      if (installDaemon) {
-        await installDaemonService();
-      }
+      const svcOpts = { port: opts.port, host: opts.host, noStart: opts.noStart };
 
-      if (installServer) {
-        await installServerService({ port: opts.port, host: opts.host });
+      if (installBoth) {
+        await installBothServices(svcOpts);
+      } else {
+        if (installDaemon) {
+          await installDaemonService(svcOpts);
+        }
+        if (installServer) {
+          await installServerService(svcOpts);
+        }
       }
 
       console.log('');
@@ -52,20 +69,22 @@ export const installCommand = new Command()
         }
       }
 
-      if (!opts.noStart && Deno.build.os === 'linux') {
-        console.log('');
-        console.log(dim('Starting services…'));
-        if (installDaemon) {
-          await new Deno.Command('systemctl', {
-            args: ['--user', 'start', 'cortex-daemon'],
-          }).output().catch(() => {});
+      if (!opts.noStart) {
+        if (Deno.build.os === 'linux') {
+          console.log('');
+          console.log(dim('Starting services…'));
+          if (installDaemon) {
+            await startLinuxService('cortex-daemon');
+          }
+          if (installServer) {
+            await startLinuxService('cortex-server');
+          }
+          console.log(green('  ✓ Services started'));
+        } else {
+          console.log('');
+          const platform = Deno.build.os === 'darwin' ? 'macOS' : 'Windows';
+          console.log(dim(`  No manual start needed on ${platform} (services auto-init via launchd / NSSM)`));
         }
-        if (installServer) {
-          await new Deno.Command('systemctl', {
-            args: ['--user', 'start', 'cortex-server'],
-          }).output().catch(() => {});
-        }
-        console.log(green('  ✓ Services started'));
       }
 
       Deno.exit(0);
@@ -79,18 +98,27 @@ export const uninstallCommand = new Command()
   .option('--server-only', 'Uninstall only the server service')
   .action(
     async (opts: { daemonOnly?: boolean; serverOnly?: boolean }) => {
+      try {
+        validateMutuallyExclusive(opts.daemonOnly, opts.serverOnly);
+      } catch (err) {
+        console.error(red(`  ${(err as Error).message}`));
+        Deno.exit(1);
+      }
+
       console.log(bold('Uninstalling Cortex services…'));
       console.log('');
 
-      const uninstallDaemon = !opts.serverOnly;
-      const uninstallServer = !opts.daemonOnly;
+      const uninstallBoth = !opts.daemonOnly && !opts.serverOnly;
 
-      if (uninstallDaemon) {
-        await uninstallDaemonService();
-      }
-
-      if (uninstallServer) {
-        await uninstallServerService();
+      if (uninstallBoth) {
+        await uninstallBothServices();
+      } else {
+        if (opts.daemonOnly) {
+          await uninstallDaemonService();
+        }
+        if (opts.serverOnly) {
+          await uninstallServerService();
+        }
       }
 
       console.log('');
