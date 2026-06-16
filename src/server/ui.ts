@@ -437,6 +437,12 @@ const HTML = `<!DOCTYPE html>
     .skeleton { animation: shimmer 1.5s infinite; }
   }
 
+  /* Voice recording indicator */
+  .voice-recording { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); animation: rec-pulse 1.5s infinite; border-color:#ef4444 !important; }
+  @keyframes rec-pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); } 70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+  .voice-speaking { display:inline-block; animation: speak-glow 0.8s ease-in-out infinite alternate; }
+  @keyframes speak-glow { from { opacity:0.6; transform:scale(0.95); } to { opacity:1; transform:scale(1.05); } }
+
   /* Status dot pulse */
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
@@ -563,6 +569,8 @@ const HTML = `<!DOCTYPE html>
   /* ── Tooltip ──────────────────────────────────── */
   [data-tip] { position:relative; }
   [data-tip]:hover::after { content:attr(data-tip); position:absolute; top:calc(100% + 4px); left:50%; transform:translateX(-50%); background:#1a1a24; color:var(--text); font-size:11px; padding:4px 10px; border-radius:6px; white-space:nowrap; border:1px solid var(--border); pointer-events:none; z-index:100; }
+  /* Multi-line tooltip for context bar */
+  #context-bar-container[data-tip]:hover::after { white-space:pre-line; text-align:left; font-family:'JetBrains Mono',monospace; font-size:10px; padding:8px 12px; line-height:1.5; min-width:180px; }
 
   /* ── Code block enhancements ──────────────────── */
   .md pre { position:relative; }
@@ -926,6 +934,29 @@ const HTML = `<!DOCTYPE html>
         </button>
         <button class="btn btn-ghost" onclick="showPage('sessions')" style="font-size:12px;padding:5px 12px;" data-tip="Browse sessions">History</button>
         <button id="agent-panel-toggle" onclick="toggleAgentPanel()" data-tip="Agent panel">⎇</button>
+        <span id="voice-indicator" style="display:none;font-size:16px;"></span>
+      </div>
+    </div>
+
+    <!-- Model / reasoning / context bar -->
+    <div style="padding:6px 20px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;">
+      <select id="chat-model-select" class="inp" style="width:200px;font-size:11px;padding:4px 6px;" onchange="onModelChange()" title="Model">
+        <option value="">Default model</option>
+      </select>
+      <select id="chat-reasoning-select" class="inp" style="width:110px;font-size:11px;padding:4px 6px;" onchange="onReasoningChange()" title="Reasoning effort">
+        <option value="">Reasoning: auto</option>
+        <option value="low">Reasoning: low</option>
+        <option value="medium">Reasoning: medium</option>
+        <option value="high">Reasoning: high</option>
+      </select>
+      <div style="flex:1;min-width:120px;max-width:260px;" id="context-bar-container" title="Context usage">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:2px;">
+          <span id="context-label">context</span>
+          <span id="context-pct">—</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+          <div id="context-bar-fill" style="height:100%;width:0%;border-radius:2px;background:var(--accent);transition:width 0.3s;"></div>
+        </div>
       </div>
     </div>
 
@@ -936,8 +967,12 @@ const HTML = `<!DOCTYPE html>
 
       <!-- Input bar -->
       <div style="border-top:1px solid var(--border);padding:16px 24px;background:var(--bg2);">
+        <div id="file-preview" style="display:none;max-width:900px;margin:0 auto 8px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);align-items:center;gap:8px;" class="flex"></div>
         <div style="display:flex;gap:10px;align-items:flex-end;max-width:900px;margin:0 auto;">
+          <input type="file" id="file-input" style="display:none;" multiple onchange="handleFileSelect(event)" />
+          <button class="btn" onclick="document.getElementById('file-input').click()" style="height:44px;width:44px;padding:0;font-size:18px;" title="Attach files">📎</button>
           <textarea id="chat-input" class="inp" placeholder="Message Cortex… (Enter to send, Shift+Enter for newline)" style="flex:1;"></textarea>
+          <button id="voice-mic-btn" class="btn" onclick="toggleMic()" style="height:44px;width:44px;padding:0;font-size:18px;display:none;" title="Voice input">🎤</button>
           <button class="btn btn-primary" onclick="sendMessage()" style="height:44px;padding:0 18px;white-space:nowrap;">Send ↵</button>
         </div>
         <div id="thinking-bar" style="display:none;max-width:900px;margin:8px auto 0;gap:6px;align-items:center;" class="flex">
@@ -1959,6 +1994,7 @@ function newChat() {
   agentRaw = '';
   document.getElementById('chat-session-id').textContent = '';
   document.getElementById('thinking-bar').style.display = 'none';
+  updateContextBar(0, 200000, 0);
   try { localStorage.removeItem('cortex_session_id'); } catch {}
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'new_session' }));
@@ -1991,10 +2027,83 @@ function switchChatAgent(agentId) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'select_agent', agentId }));
   }
-  // Also update the header with the selected agent's name
   const sel = document.getElementById('chat-agent-select');
   const name = sel.options[sel.selectedIndex]?.text || agentId;
   document.getElementById('chat-agent-name').textContent = name;
+  loadModelSelector();
+}
+
+let currentModel = null;
+let currentReasoning = null;
+
+async function loadModelSelector() {
+  try {
+    const config = await fetch(BASE + '/api/config').then(r => r.json());
+    const providerKind = config.defaultProvider || 'anthropic';
+    const sel = document.getElementById('chat-model-select');
+    const current = sel.value || config.providers[providerKind]?.model || '';
+
+    const ml = document.getElementById('model-label');
+    if (ml && (!ml.textContent || ml.textContent === 'loading…')) {
+      ml.textContent = (config.providers[providerKind]?.model || providerKind) + ' · ' + providerKind;
+    }
+
+    let models = [];
+    try {
+      const resp = await fetch(BASE + '/api/providers/' + providerKind + '/models');
+      if (resp.ok) models = await resp.json();
+    } catch { models = []; }
+
+    sel.innerHTML = '<option value="">Default (' + esc(current || 'auto') + ')</option>';
+    const seen = new Set();
+    for (const m of models) {
+      const id = m.id || m;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const label = m.name ? m.name + ' (' + id + ')' : id;
+      sel.innerHTML += '<option value="' + esc(id) + '"' + (id === currentModel ? ' selected' : '') + '>' + esc(label) + '</option>';
+    }
+    if (!models.length && current) {
+      sel.innerHTML += '<option value="' + esc(current) + '" selected>' + esc(current) + '</option>';
+    }
+    if (currentModel) sel.value = currentModel;
+  } catch {}
+}
+
+function onModelChange() {
+  currentModel = document.getElementById('chat-model-select').value || null;
+}
+
+function onReasoningChange() {
+  currentReasoning = document.getElementById('chat-reasoning-select').value || null;
+}
+
+function updateContextBar(usedTokens, maxContext, percentage, breakdown) {
+  const pct = Math.min(percentage || 0, 100);
+  const bar = document.getElementById('context-bar-fill');
+  const label = document.getElementById('context-label');
+  const pctEl = document.getElementById('context-pct');
+  if (bar) {
+    bar.style.width = pct + '%';
+    if (pct > 80) bar.style.background = '#ef4444';
+    else if (pct > 60) bar.style.background = '#f59e0b';
+    else bar.style.background = 'var(--accent)';
+  }
+  if (label) label.textContent = fmtNum(usedTokens || 0) + ' / ' + fmtNum(maxContext || 0) + ' tokens';
+  if (pctEl) pctEl.textContent = pct + '% used';
+  if (breakdown) {
+    const container = document.getElementById('context-bar-container');
+    if (container) {
+      container.setAttribute('data-tip', [
+        'System prompt: ' + fmtNum(breakdown.systemPrompt || 0),
+        'User messages: ' + fmtNum(breakdown.userMessages || 0),
+        'Assistant: ' + fmtNum(breakdown.assistantMessages || 0),
+        'Reasoning overhead: ' + fmtNum(breakdown.reasoningOverhead || 0),
+        '',
+        'Total estimated: ' + fmtNum(usedTokens || 0) + ' / ' + fmtNum(maxContext || 0),
+      ].join('\\n'));
+    }
+  }
 }
 
 // ── Markdown ────────────────────────────────────────────────
@@ -2022,13 +2131,22 @@ async function restoreSession() {
       const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(sid) + '/messages');
       if (!res.ok) return;
       const msgs = await res.json();
+      let lastRole = '';
       for (const m of msgs) {
         if (m.role === 'user') {
           appendBubble('user', m.content);
+          lastRole = 'user';
         } else if (m.role === 'assistant') {
-          const b = appendBubble('agent', m.content);
-          b.innerHTML = md(m.content);
-          if (m.token_count) appendMeta(0, m.token_count, 0, 0);
+          const isToolCall = /^\s*\{[^}]*"tool"\s*:\s*"/.test(m.content);
+          if (isToolCall) {
+            const label = (m.content.match(/"tool"\s*:\s*"([^"]+)"/) || [])[1] || 'tool';
+            appendBubble('tool', '\u2699 ' + label);
+          } else {
+            const b = appendBubble('agent', m.content);
+            b.innerHTML = md(m.content);
+            if (m.token_count) appendMeta(0, m.token_count, 0, 0);
+          }
+          lastRole = 'assistant';
         }
       }
       scrollChat();
@@ -2054,6 +2172,7 @@ function connect() {
         saveSession();
         loadSessionsSidebar();
         loadAgentPanel();
+        loadModelSelector();
         break;
       case 'agent_selected':
         document.getElementById('chat-agent-name').textContent = msg.agentName;
@@ -2083,11 +2202,23 @@ function connect() {
         saveSession();
         if (currentPage === 'lens') loadLens();
         loadAgentPanel();
+        const ml = document.getElementById('model-label');
+        if (ml && msg.model) ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
         break;
       case 'error':
         document.getElementById('thinking-bar').style.display = 'none';
         appendBubble('error', msg.error);
         loadAgentPanel();
+        break;
+      case 'audio':
+        playAudio(msg.data, msg.format || 'mp3');
+        break;
+      case 'transcribed':
+        appendBubble('user', msg.text);
+        // Server already processes the transcribed text as a chat; just show the bubble
+        break;
+      case 'voice_state':
+        updateVoiceIndicator(msg.speaking);
         break;
       case 'file_change':
         if (currentPage === 'editor') {
@@ -2096,6 +2227,9 @@ function connect() {
             editorOpenFile(editorCurrentFile);
           }
         }
+        break;
+      case 'context_usage':
+        updateContextBar(msg.usedTokens, msg.maxContext, msg.percentage, msg.breakdown);
         break;
     }
   };
@@ -2125,7 +2259,22 @@ function appendBubble(role, content) {
 
   const bubble = document.createElement('div');
   if (role === 'user') { bubble.className = 'bubble-user'; bubble.style.fontSize = '14px'; bubble.textContent = content; }
-  else if (role === 'agent') { bubble.className = 'bubble-agent md'; bubble.style.fontSize = '14px'; bubble.innerHTML = md(content); }
+  else if (role === 'agent') {
+    bubble.className = 'bubble-agent md';
+    bubble.style.fontSize = '14px';
+    bubble.innerHTML = md(content);
+    // Add speaker button for TTS
+    const voiceBtn = document.createElement('button');
+    voiceBtn.textContent = '🔊';
+    voiceBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;margin-top:4px;color:var(--text3);';
+    voiceBtn.title = 'Read aloud';
+    voiceBtn.onclick = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'speak', text: content }));
+      }
+    };
+    bubble.appendChild(voiceBtn);
+  }
   else if (role === 'tool') { bubble.className = 'bubble-tool'; bubble.textContent = content; }
   else { bubble.className = 'bubble-error'; bubble.textContent = content; }
 
@@ -2146,16 +2295,143 @@ function appendMeta(tokIn, tokOut, cost, ms) {
   chatLog.appendChild(div);
 }
 
+// ── Voice / Audio ───────────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+async function toggleMic() {
+  const btn = document.getElementById('voice-mic-btn');
+  if (isRecording) {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+    btn.classList.remove('voice-recording');
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('Microphone access requires HTTPS or localhost. Voice input is not available in insecure contexts.', 'error');
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const buffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const base64 = btoa(String.fromCharCode(...bytes));
+
+      // Send audio chunks
+      const chunkSize = 65536;
+      for (let i = 0; i < base64.length; i += chunkSize) {
+        ws.send(JSON.stringify({
+          type: 'audio_chunk',
+          data: base64.slice(i, i + chunkSize),
+          format: 'webm',
+          session: true,
+        }));
+      }
+      ws.send(JSON.stringify({ type: 'audio_end', session: true }));
+
+      // Cleanup
+      stream.getTracks().forEach(t => t.stop());
+      isRecording = false;
+      btn.classList.remove('voice-recording');
+    };
+
+    mediaRecorder.start(100);
+    isRecording = true;
+    btn.classList.add('voice-recording');
+    toast('Recording... Click mic to stop', 'info');
+  } catch (e) {
+    toast('Microphone access denied: ' + e.message, 'error');
+    isRecording = false;
+    btn.classList.remove('voice-recording');
+  }
+}
+
+function playAudio(base64Data, format) {
+  try {
+    const binary = atob(base64Data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'audio/' + format });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.play().catch(e => console.warn('Audio playback:', e.message));
+  } catch (e) {
+    console.warn('Audio playback error:', e.message);
+  }
+}
+
+let voiceIndicatorInterval = null;
+
+function updateVoiceIndicator(speaking) {
+  const el = document.getElementById('voice-indicator');
+  if (!el) return;
+  if (speaking) {
+    el.style.display = 'inline-block';
+    el.textContent = '🔊';
+    el.className = 'voice-speaking';
+  } else {
+    el.style.display = 'none';
+    el.className = '';
+  }
+}
+
+// Check if voice is enabled and show mic button
+async function checkVoiceEnabled() {
+  try {
+    const config = await fetch(BASE + '/api/config').then(r => r.json());
+    const btn = document.getElementById('voice-mic-btn');
+    if (config.voice?.enabled && btn) {
+      btn.style.display = '';
+    }
+  } catch {}
+}
+
 function scrollChat() { chatLog.scrollTop = chatLog.scrollHeight; }
 
-function sendMessage() {
+async function sendMessage() {
   const el = document.getElementById('chat-input');
   const text = el.value.trim();
-  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  appendBubble('user', text);
-  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId }));
+  if ((!text && !attachedFiles.length) || !ws || ws.readyState !== WebSocket.OPEN) return;
+  let filesData = null;
+  if (attachedFiles.length) {
+    try { filesData = await readFilesAsBase64(); } catch (e) { showToast('Failed to read files: ' + (e.message || e), 'error'); return; }
+  }
+  if (text) appendBubble('user', text);
+  if (filesData && filesData.length) {
+    for (const f of filesData) {
+      const previewEl = document.createElement('div');
+      if (f.mimeType.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = 'data:' + f.mimeType + ';base64,' + f.data;
+        img.style.cssText = 'max-width:200px;max-height:150px;border-radius:8px;margin:4px 0;';
+        previewEl.appendChild(img);
+      } else {
+        previewEl.style.cssText = 'font-size:12px;color:var(--text2);padding:6px 10px;background:var(--bg3);border-radius:6px;margin:4px 0;';
+        previewEl.textContent = '📎 ' + f.filename;
+      }
+      chatLog.appendChild(previewEl);
+    }
+  }
+  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId, model: currentModel || undefined, reasoningEffort: currentReasoning || undefined, files: filesData || undefined }));
   el.value = '';
   el.style.height = 'auto';
+  attachedFiles = [];
+  renderFilePreview();
 }
 
 document.getElementById('chat-input').addEventListener('keydown', (e) => {
@@ -2189,6 +2465,54 @@ sendMessage = function() {
   try { localStorage.removeItem('cortex_message_draft'); } catch {}
   _origSendMessage();
 };
+
+// ── File attachments ───────────────────
+let attachedFiles = [];
+
+function handleFileSelect(event) {
+  const files = event.target.files;
+  if (!files || !files.length) return;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (attachedFiles.length >= 5) { showToast('Max 5 files per message', 'warning'); break; }
+    if (file.size > 50 * 1024 * 1024) { showToast('File too large (max 50MB): ' + file.name, 'warning'); continue; }
+    attachedFiles.push(file);
+  }
+  event.target.value = '';
+  renderFilePreview();
+}
+
+function renderFilePreview() {
+  const container = document.getElementById('file-preview');
+  if (!container) return;
+  if (!attachedFiles.length) { container.style.display = 'none'; container.innerHTML = ''; return; }
+  container.style.display = 'flex';
+  container.innerHTML = attachedFiles.map((f, i) => {
+    const sizeStr = f.size < 1024 ? f.size + 'B' : f.size < 1048576 ? (f.size / 1024).toFixed(1) + 'KB' : (f.size / 1048576).toFixed(1) + 'MB';
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg2);padding:4px 8px;border-radius:6px;">' +
+      '<span>' + (f.type.startsWith('image/') ? '🖼 ' : '📄 ') + esc(f.name) + ' (' + sizeStr + ')</span>' +
+      '<button onclick="removeFile(' + i + ')" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text3);">✕</button></span>';
+  }).join(' ');
+}
+
+function removeFile(index) {
+  attachedFiles.splice(index, 1);
+  renderFilePreview();
+}
+
+async function readFilesAsBase64() {
+  const results = [];
+  for (const file of attachedFiles) {
+    const data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    results.push({ filename: file.name, mimeType: file.type, data: data });
+  }
+  return results;
+}
 
 // ── Recent pages tracking ─────────────────
 const MAX_RECENT = 5;
@@ -3437,6 +3761,7 @@ async function loadSettings() {
       <button class="mem-tab \${settingsActiveTab === 'profile' ? 'active' : ''}" onclick="switchSettingsTab('profile')" id="settings-tab-profile">User Profile</button>
       <button class="mem-tab \${settingsActiveTab === 'ui' ? 'active' : ''}" onclick="switchSettingsTab('ui')" id="settings-tab-ui">UI & Appearance</button>
       <button class="mem-tab \${settingsActiveTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')" id="settings-tab-security">Security</button>
+      <button class="mem-tab \${settingsActiveTab === 'voice' ? 'active' : ''}" onclick="switchSettingsTab('voice')" id="settings-tab-voice">Voice & TTS</button>
     </div>
 
     <!-- General Settings Tab -->
@@ -3747,12 +4072,77 @@ async function loadSettings() {
         </div>
       </div>
     </div>
+
+    <!-- Voice Settings Tab -->
+    <div id="settings-pane-voice" style="display:\${settingsActiveTab === 'voice' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Voice & TTS Configuration</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Enable Voice</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cfg-voice-enabled" \${config.voice?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Enable speech-to-text & text-to-speech</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">STT Provider</label>
+            <select class="inp" id="cfg-stt-provider">
+              <option value="openai" \${config.voice?.sttProvider==='openai'?'selected':''}>OpenAI Whisper</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">TTS Provider</label>
+            <select class="inp" id="cfg-tts-provider">
+              <option value="openai" \${config.voice?.ttsProvider==='openai'?'selected':''}>OpenAI TTS</option>
+              <option value="elevenlabs" \${config.voice?.ttsProvider==='elevenlabs'?'selected':''}>ElevenLabs</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Default Voice</label>
+            <select class="inp" id="cfg-default-voice">
+              <option value="alloy" \${config.voice?.defaultVoice==='alloy'?'selected':''}>Alloy</option>
+              <option value="echo" \${config.voice?.defaultVoice==='echo'?'selected':''}>Echo</option>
+              <option value="fable" \${config.voice?.defaultVoice==='fable'?'selected':''}>Fable</option>
+              <option value="onyx" \${config.voice?.defaultVoice==='onyx'?'selected':''}>Onyx</option>
+              <option value="nova" \${config.voice?.defaultVoice==='nova'?'selected':''}>Nova</option>
+              <option value="shimmer" \${config.voice?.defaultVoice==='shimmer'?'selected':''}>Shimmer</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">ElevenLabs API Key</label>
+            <input class="inp" id="cfg-elevenlabs-key" type="password" value="\${config.voice?.elevenLabsApiKey || ''}" placeholder="sk_..." />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Language</label>
+            <select class="inp" id="cfg-voice-language">
+              <option value="auto" \${config.voice?.language==='auto'?'selected':''}>Auto-detect</option>
+              <option value="en" \${(!config.voice?.language || config.voice?.language==='en')?'selected':''}>English</option>
+              <option value="fr" \${config.voice?.language==='fr'?'selected':''}>French</option>
+              <option value="es" \${config.voice?.language==='es'?'selected':''}>Spanish</option>
+              <option value="de" \${config.voice?.language==='de'?'selected':''}>German</option>
+              <option value="ja" \${config.voice?.language==='ja'?'selected':''}>Japanese</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Auto TTS</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cfg-auto-tts" \${config.voice?.autoTTS?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Auto-speak all text responses</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveVoiceSettings()">Save Voice Settings</button>
+        </div>
+      </div>
+    </div>
   \`;
 }
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security'];
+  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security', 'voice'];
   tabs.forEach(t => {
     const tabBtn = document.getElementById('settings-tab-' + t);
     const pane = document.getElementById('settings-pane-' + t);
@@ -3890,6 +4280,29 @@ async function saveSecuritySettings() {
     toast('Password must be at least 8 characters', 'error');
   } else {
     toast('Security settings saved', 'success');
+  }
+}
+
+async function saveVoiceSettings() {
+  const elevenLabsKey = document.getElementById('cfg-elevenlabs-key')?.value || '';
+  const voiceCfg = {
+    enabled: document.getElementById('cfg-voice-enabled')?.checked ?? false,
+    sttProvider: document.getElementById('cfg-stt-provider')?.value ?? 'openai',
+    ttsProvider: document.getElementById('cfg-tts-provider')?.value ?? 'openai',
+    sttModel: 'whisper-1',
+    ttsModel: 'tts-1',
+    defaultVoice: document.getElementById('cfg-default-voice')?.value ?? 'alloy',
+    autoTTS: document.getElementById('cfg-auto-tts')?.checked ?? false,
+    language: document.getElementById('cfg-voice-language')?.value ?? 'en',
+  };
+  if (elevenLabsKey) voiceCfg.elevenLabsApiKey = elevenLabsKey;
+  const body = { voice: voiceCfg };
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) {
+    toast('Voice settings saved', 'success');
+    checkVoiceEnabled();
+  } else {
+    toast('Failed to save voice settings', 'error');
   }
 }
 
@@ -6144,8 +6557,10 @@ async function loadAgentPanel() {
 connect();
 loadSessionsSidebar();
 loadDaemonStatus();
+checkVoiceEnabled();
 restoreSession();
 loadAgentSelector();
+loadModelSelector();
 gitLoadAgentSelector();
 ghRefresh();
 loadPluginPanels();

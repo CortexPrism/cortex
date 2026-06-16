@@ -1,5 +1,23 @@
 import OpenAI from 'npm:openai';
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+
+function toOpenAIContent(
+  content: string | ContentBlock[],
+): string | OpenAI.Chat.ChatCompletionContentPart[] {
+  if (typeof content === 'string') return content;
+  return content.map((block): OpenAI.Chat.ChatCompletionContentPart => {
+    if (block.type === 'text') return { type: 'text', text: block.text };
+    if (block.type === 'image') {
+      return {
+        type: 'image_url',
+        image_url: {
+          url: `data:${block.source.mediaType};base64,${block.source.data}`,
+        },
+      };
+    }
+    return { type: 'text', text: '' };
+  });
+}
 
 export class OpenAICompatibleProvider implements LLMProvider {
   readonly name: string;
@@ -21,10 +39,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = options.messages.map((m) => ({
+    const messages = options.messages.map((m) => ({
       role: m.role,
-      content: m.content,
-    }));
+      content: toOpenAIContent(m.content),
+    })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
     if (options.systemPrompt) {
       messages.unshift({ role: 'system', content: options.systemPrompt });
@@ -54,10 +72,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
   }
 
   async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = options.messages.map((m) => ({
+    const messages = options.messages.map((m) => ({
       role: m.role,
-      content: m.content,
-    }));
+      content: toOpenAIContent(m.content),
+    })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
     if (options.systemPrompt) {
       messages.unshift({ role: 'system', content: options.systemPrompt });

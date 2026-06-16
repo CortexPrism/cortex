@@ -426,6 +426,29 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(rows);
   }
 
+  // POST /api/upload — file upload for chat attachments
+  if (req.method === 'POST' && path === '/api/upload') {
+    const body = await req.json() as {
+      filename: string;
+      mimeType: string;
+      data: string;
+    };
+    if (!body.filename?.trim() || !body.data) return err('Missing filename or data', 400);
+    if (typeof body.data !== 'string') return err('Data must be a base64 string', 400);
+    const sanitized = body.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uploadDir = join(PATHS.dataDir, 'uploads');
+    await Deno.mkdir(uploadDir, { recursive: true });
+    const filePath = join(uploadDir, `${Date.now()}_${sanitized}`);
+    const binary = Uint8Array.from(atob(body.data), (c) => c.charCodeAt(0));
+    await Deno.writeFile(filePath, binary);
+    return json({
+      ok: true,
+      path: filePath,
+      filename: sanitized,
+      mimeType: body.mimeType || 'application/octet-stream',
+    });
+  }
+
   // POST /api/memory/add
   if (req.method === 'POST' && path === '/api/memory/add') {
     const body = await req.json() as { content: string; type?: string; topics?: string[] };
@@ -642,11 +665,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const modelsMatch = path.match(/^\/api\/providers\/(\w+)\/models$/);
   if (req.method === 'GET' && modelsMatch) {
     const kind = modelsMatch[1] as ProviderKind;
-    const apiKey = url.searchParams.get('apiKey') ?? undefined;
-    const baseUrl = url.searchParams.get('baseUrl') ?? undefined;
+    const apiKey = url.searchParams.get('apiKey') || undefined;
+    const baseUrl = url.searchParams.get('baseUrl') || undefined;
     const { fetchModels } = await import('./models.ts');
     try {
-      const models = await fetchModels(kind, apiKey, baseUrl);
+      let models;
+      if (apiKey) {
+        models = await fetchModels(kind, apiKey, baseUrl);
+      } else {
+        const config = await loadConfig();
+        const stored = config.providers[kind];
+        models = await fetchModels(kind, stored?.apiKey ?? '', stored?.baseUrl ?? baseUrl);
+      }
       return json(models);
     } catch (err) {
       return json({ error: (err as Error).message }, 502);
@@ -2073,6 +2103,132 @@ export async function handleApi(req: Request): Promise<Response | null> {
     cfg.onboarding = onboarding;
     await saveConfig(config);
     return json({ success: true });
+  }
+
+  // ── Voice API routes ──
+
+  // POST /api/voice/transcribe — Upload audio, return transcribed text
+  if (req.method === 'POST' && path === '/api/voice/transcribe') {
+    try {
+      const formData = await req.formData();
+      const audioFile = formData.get('audio') as File | null;
+      const language = (formData.get('language') as string) || undefined;
+
+      if (!audioFile) return err('No audio file provided', 400);
+
+      const audioBytes = new Uint8Array(await audioFile.arrayBuffer());
+      const mimeType = audioFile.type || 'audio/wav';
+      const { initVoiceSystem, getSTT } = await import('../voice/manager.ts');
+      const { loadConfig } = await import('../config/config.ts');
+      const config = await loadConfig();
+      if (config.voice) await initVoiceSystem(config.voice);
+
+      const stt = getSTT();
+      if (!stt) return err('STT provider not available', 503);
+
+      const { mimeToFormat } = await import('../voice/audio.ts');
+      const format = mimeToFormat(mimeType);
+
+      const utterance = await stt.transcribe(
+        { format, data: audioBytes },
+        { language },
+      );
+      return json(utterance);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/voice/synthesize — Send text, return audio file
+  if (req.method === 'POST' && path === '/api/voice/synthesize') {
+    try {
+      const body = await req.json() as {
+        text: string;
+        voice?: string;
+        speed?: number;
+        format?: string;
+      };
+      if (!body.text?.trim()) return err('No text provided', 400);
+
+      const { initVoiceSystem, getTTS } = await import('../voice/manager.ts');
+      const { loadConfig } = await import('../config/config.ts');
+      const config = await loadConfig();
+      if (config.voice) await initVoiceSystem(config.voice);
+
+      const tts = getTTS();
+      if (!tts) return err('TTS provider not available', 503);
+
+      const audio = await tts.synthesize(body.text, {
+        voice: body.voice,
+        speed: body.speed,
+        format: (body.format as 'wav' | 'mp3') || 'mp3',
+      });
+
+      return new Response(audio.data.buffer as ArrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': `audio/${audio.format}`,
+          'Content-Disposition': `inline; filename="speech.${audio.format}"`,
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/voice/synthesize/:text — Streaming TTS (direct audio)
+  if (req.method === 'GET' && path.startsWith('/api/voice/synthesize/')) {
+    try {
+      const text = decodeURIComponent(path.slice('/api/voice/synthesize/'.length));
+      if (!text.trim()) return err('No text provided', 400);
+
+      const voice = url.searchParams.get('voice') || undefined;
+      const speed = Number(url.searchParams.get('speed')) || 1.0;
+
+      const { initVoiceSystem, getTTS } = await import('../voice/manager.ts');
+      const { loadConfig } = await import('../config/config.ts');
+      const config = await loadConfig();
+      if (config.voice) await initVoiceSystem(config.voice);
+
+      const tts = getTTS();
+      if (!tts) return err('TTS provider not available', 503);
+
+      const audio = await tts.synthesize(text, { voice, speed, format: 'mp3' });
+
+      return new Response(audio.data.buffer as ArrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': `audio/${audio.format}`,
+          'Content-Disposition': `inline; filename="speech.${audio.format}"`,
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/voice/providers — List available voice providers/models/voices
+  if (req.method === 'GET' && path === '/api/voice/providers') {
+    const { listSTTProviders } = await import('../voice/stt.ts');
+    const { listTTSProviders } = await import('../voice/tts.ts');
+    return json({
+      sttProviders: listSTTProviders(),
+      ttsProviders: listTTSProviders(),
+      openaiVoices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+      elevenLabsVoices: [
+        'rachel',
+        'domi',
+        'bella',
+        'antoni',
+        'elli',
+        'josh',
+        'arnold',
+        'adam',
+        'sam',
+      ],
+    });
   }
 
   return null;

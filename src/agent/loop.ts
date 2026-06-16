@@ -1,5 +1,5 @@
 import type { LLMProvider } from '../llm/types.ts';
-import type { Message } from '../llm/types.ts';
+import type { Message, ContentBlock } from '../llm/types.ts';
 import type { Db } from '../db/client.ts';
 import { logEvent } from '../db/lens.ts';
 import { incrementTurn } from '../db/sessions.ts';
@@ -49,6 +49,7 @@ export interface AgentTurnOptions {
   embedder?: EmbeddingProvider;
   enableReflection?: boolean;
   reasoningEffort?: string;
+  userContentBlocks?: ContentBlock[];
 }
 
 export interface AgentTurnResult {
@@ -92,6 +93,13 @@ function nanoid(): string {
 export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnResult> {
   if (!builtinHooksRegistered) {
     registerBuiltinHooks();
+    // Register voice auto-TTS hook
+    try {
+      const { registerVoicePipelineHook } = await import('../voice/pipeline.ts');
+      registerVoicePipelineHook();
+    } catch {
+      // Voice module not loaded — not a fatal error
+    }
     builtinHooksRegistered = true;
   }
 
@@ -157,6 +165,18 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
   const history = await loadHistory(sessionDb);
   const messages: Message[] = [...history];
+
+  if (
+    options.userContentBlocks &&
+    options.userContentBlocks.length > 0 &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === 'user'
+  ) {
+    messages[messages.length - 1] = {
+      role: 'user',
+      content: options.userContentBlocks,
+    };
+  }
 
   let response = '';
   let tokensIn = 0;
@@ -483,7 +503,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       currentMessages = [
         ...currentMessages,
         { role: 'assistant' as const, content: roundResponse },
-        { role: 'user' as const, content: resultText },
+        { role: 'user' as const, content: `${resultText}\n\nBased on the tool output above, provide your complete response to the user. Do NOT make additional tool calls unless absolutely necessary.` },
       ];
 
       round++;

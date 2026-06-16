@@ -9,6 +9,94 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.32.0] — 2026-06-16
+
+### Added
+
+- **Web UI file upload** (`src/server/ui.ts`, `src/server/ws.ts`, `src/server/router.ts`) — attach
+  files (PDFs, images, documents) directly in the chat input bar via a new 📎 button. Files are sent
+  as base64 over WebSocket alongside chat messages, saved to both the working directory and agent
+  workspace for tool access, and displayed as inline previews in the chat log
+- **Multimodal content types** (`src/llm/types.ts`) — `Message.content` now supports
+  `ContentBlock[]` (text, image, document) in addition to plain strings, enabling multimodal LLM
+  providers to receive images and documents natively
+- **Multimodal LLM provider support** — Anthropic (`src/llm/anthropic.ts`) maps content blocks to
+  native `image`/`document` blocks; OpenAI and OpenAI-compatible providers
+  (`src/llm/openai.ts`, `src/llm/openai-compatible.ts`) map images to `image_url` parts; Google
+  (`src/llm/google.ts`) maps to `inlineData` parts; Ollama (`src/llm/ollama.ts`) maps images to the
+  `images` array; Bedrock (`src/llm/bedrock.ts`) extracts text from content blocks for Converse API
+- **PDF text extraction** (`src/utils/pdf.ts`) — new utility using `pdf-parse` (PDF.js) to extract
+  readable text from uploaded PDFs. Integrated into `file_read` tool (`src/tools/builtin/file_read.ts`)
+  for on-demand extraction, and into the WebSocket handler for immediate inline preview in the chat
+  message
+- **Upload endpoint** (`POST /api/upload`) — REST endpoint for programmatic file uploads, accepts
+  `{ filename, mimeType, data (base64) }` and saves to `$DATA_DIR/uploads/`
+- **Session resume on page refresh** (`src/server/ws.ts`) — `processChatMessage` now accepts and
+  reuses the client-provided `sessionId` from WebSocket chat messages, so page refresh resumes the
+  existing conversation (with full history) instead of creating a new session
+- **Text-only model image handling** (`src/server/ws.ts`) — image content blocks are only sent to
+  providers known to support multimodal input (Anthropic, Google); for other providers a clear
+  message is appended noting the limitation and suggesting a provider switch, with the file saved
+  to disk for reference
+- **Raw tool call filtering in session restore** (`src/server/ui.ts`) — `restoreSession()` now
+  detects assistant messages containing raw `{"tool":...}` JSON and renders them as compact
+  `⚙ tool_name` bubbles instead of displaying the raw JSON verbatim
+- **Uploaded files written to both working directory and agent workspace** (`src/server/ws.ts`) —
+  ensures `file_read` and `file_list` tools can find the file regardless of which workspace root
+  they resolve to
+- **`web_fetch` tool** (`src/tools/builtin/web_fetch.ts`) — fetch any URL and return cleaned plain
+  text (strips HTML, scripts, and styles). Supports configurable max length
+- **`file_glob` tool** (`src/tools/builtin/workspace/file_glob.ts`) — find files matching glob
+  patterns (e.g. `**/*.ts`, `*.pdf`). Returns relative paths sorted by modification time, respects
+  `workspace: "agent"/"global"` parameter
+- **`shell` tool wired in** (`src/tools/builtin/shell.ts`, `src/server/ws.ts`) — local shell command
+  execution tool was already built but not registered; now wired into the default tool set with
+  safety filtering against destructive commands
+
+### Changed
+
+- **Agent loop** (`src/agent/loop.ts`) — `AgentTurnOptions` now accepts optional `userContentBlocks`
+  for multimodal user messages; when provided, the last user message in history is replaced with
+  content blocks so the LLM receives the full multimodal context. After tool execution, a follow-up
+  instruction is embedded in the tool result message (*"Based on the tool output above, provide your
+  complete response. Do NOT make additional tool calls unless absolutely necessary"*) to force the
+  LLM to produce analysis rather than stopping after raw tool output
+- **LLM router** (`src/llm/router.ts`) — `chooseModel()` updated to extract text from
+  `ContentBlock[]` for scoring, maintaining compatibility with multimodal messages
+- **`file_read` tool** (`src/tools/builtin/file_read.ts`) — added `workspace` parameter
+  (`"agent"/"global"`) matching other file tools; path resolution now uses `resolveWorkspacePath()`
+  to find files in the agent workspace; PDF output capped at 150 lines / 8000 chars to avoid
+  context exhaustion; description prominently mentions PDF auto-extraction
+- **`code_exec` tool description** (`src/tools/builtin/code_exec.ts`) — now explicitly warns that
+  the sandbox has NO access to host files or workspace, no package managers available
+- **System prompt augmentations** (`src/server/ws.ts`) — two new sections appended:
+  - `## File Context` — tells the agent uploaded content is included inline and to analyze it
+    directly without calling `file_read` unless necessary
+  - `## Environment` — warns that `code_exec` runs in an isolated Docker sandbox with no host
+    filesystem access; use file tools for all file operations
+- **PDF inline preview** (`src/server/ws.ts`) — extracted text wrapped in
+  `=== BEGIN/END DOCUMENT ===` markers; preview capped at 2000 chars to keep initial context lean;
+  when extraction fails, an explicit `file_read("filename.pdf")` hint is included
+- **File-upload prompt** (`src/server/ws.ts`) — when files are uploaded without a text message,
+  the effective prompt is now explicitly directive: *"Read, analyze, and provide a thorough
+  evaluation — include: Summary of key content, Main points and findings, Your assessment and
+  any recommendations"*
+
+### Fixed
+
+- **PDF extraction silent failure** (`src/utils/pdf.ts`) — `pdf-parse` was receiving `Buffer.from()`
+  when it requires `Uint8Array` in Deno, causing silent extraction failures. Fixed by passing the
+  raw `Uint8Array` directly
+- **`code_exec` Docker filesystem blindness** — agent was running `find /`, `strings`, `pip install`
+  in the Docker sandbox which has no host filesystem access, wasting tool rounds. Fixed by adding
+  warnings to both the `code_exec` tool description and the system prompt `## Environment` section
+- **Tool output displayed without analysis** — after `file_read` returned PDF text, the agent would
+  stop without producing a natural language analysis. Fixed by embedding a follow-up instruction
+  directly in the tool result user message and telling the agent to analyze inline content directly
+  rather than re-reading it via tools
+
+---
+
 ## [0.31.0] — 2026-06-16
 
 ### Added
@@ -18,22 +106,23 @@ Versioning: [Semantic Versioning](https://semver.org/)
   a single step
 - **Server service installation** (`src/cli/serve.ts`) — `cortex serve install` and
   `cortex serve uninstall` subcommands for installing only the web UI server as a system service
-- **`--with-server` flag** (`src/cli/daemon.ts`) — `cortex daemon install --with-server` installs both
-  the daemon and server services together
+- **`--with-server` flag** (`src/cli/daemon.ts`) — `cortex daemon install --with-server` installs
+  both the daemon and server services together
 - **Shared service helper** (`src/cli/service-helper.ts`) — cross-platform service management module
   generating systemd user units (Linux), launchd agents (macOS), and NSSM/Task Scheduler
-  instructions (Windows) for both daemon and server, with correct per-platform binary path and
-  home directory resolution
+  instructions (Windows) for both daemon and server, with correct per-platform binary path and home
+  directory resolution
 - **Server service templates** — `deploy/cortex-server.service` (systemd user unit) and
   `deploy/com.cortexprism.server.plist` (launchd agent) for manual deployment
-- **Extended Windows installer** (`deploy/install-service.bat`) — now installs both daemon and server
-  with `--daemon-only`/`--server-only` flags for selective installation via NSSM or Task Scheduler
+- **Extended Windows installer** (`deploy/install-service.bat`) — now installs both daemon and
+  server with `--daemon-only`/`--server-only` flags for selective installation via NSSM or Task
+  Scheduler
 
 ### Changed
 
-- **Daemon service install** (`src/cli/daemon.ts`) — refactored to use shared service helper;
-  macOS launchd plist now writes the correct `HOME` value from environment instead of requiring
-  a manual placeholder edit
+- **Daemon service install** (`src/cli/daemon.ts`) — refactored to use shared service helper; macOS
+  launchd plist now writes the correct `HOME` value from environment instead of requiring a manual
+  placeholder edit
 - **macOS launchd agent** (`deploy/com.cortexprism.plist`) — now dynamically writes `HOME`
   environment variable at install time
 

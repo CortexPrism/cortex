@@ -1,5 +1,5 @@
 import OpenAI from 'npm:openai';
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'gpt-4o': { in: 2.5, out: 10.0 },
@@ -8,6 +8,24 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'o1-mini': { in: 1.1, out: 4.4 },
   'o3-mini': { in: 1.1, out: 4.4 },
 };
+
+function toOpenAIContent(
+  content: string | ContentBlock[],
+): string | OpenAI.Chat.ChatCompletionContentPart[] {
+  if (typeof content === 'string') return content;
+  return content.map((block): OpenAI.Chat.ChatCompletionContentPart => {
+    if (block.type === 'text') return { type: 'text', text: block.text };
+    if (block.type === 'image') {
+      return {
+        type: 'image_url',
+        image_url: {
+          url: `data:${block.source.mediaType};base64,${block.source.data}`,
+        },
+      };
+    }
+    return { type: 'text', text: '' };
+  });
+}
 
 export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
@@ -20,10 +38,10 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = options.messages.map((m) => ({
+    const messages = options.messages.map((m) => ({
       role: m.role,
-      content: m.content,
-    }));
+      content: toOpenAIContent(m.content),
+    })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
     if (options.systemPrompt) {
       messages.unshift({ role: 'system', content: options.systemPrompt });
@@ -53,10 +71,10 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = options.messages.map((m) => ({
+    const messages = options.messages.map((m) => ({
       role: m.role,
-      content: m.content,
-    }));
+      content: toOpenAIContent(m.content),
+    })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
     if (options.systemPrompt) {
       messages.unshift({ role: 'system', content: options.systemPrompt });

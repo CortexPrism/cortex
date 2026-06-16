@@ -1,6 +1,23 @@
+export interface ImageContent {
+  type: 'image';
+  source: { type: 'base64'; mediaType: string; data: string };
+}
+
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+export interface DocumentContent {
+  type: 'document';
+  source: { type: 'base64'; mediaType: string; data: string };
+}
+
+export type ContentBlock = TextContent | ImageContent | DocumentContent;
+
 export interface Message {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | ContentBlock[];
 }
 
 export interface CompletionOptions {
