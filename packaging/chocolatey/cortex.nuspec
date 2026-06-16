@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>cortex</id>
+    <version>__VERSION__</version>
+    <title>CortexPrism</title>
+    <authors>CortexPrism</authors>
+    <projectUrl>https://cortexprism.io</projectUrl>
+    <license type="expression">MIT</license>
+    <projectSourceUrl>https://github.com/CortexPrism/cortex</projectSourceUrl>
+    <docsUrl>https://cortexprism.io/docs</docsUrl>
+    <bugTrackerUrl>https://github.com/CortexPrism/cortex/issues</bugTrackerUrl>
+    <tags>ai llm agent cli automation</tags>
+    <summary>Open-source agentic harness for AI — CLI, server, and desktop automation</summary>
+    <description><![CDATA[
+CortexPrism is an open-source agentic harness that provides:
+- Multi-provider LLM chat and agent workflows
+- Memory system (episodic, semantic, vector)
+- Desktop automation (screenshot, click, type)
+- Plugin system and tool registry
+- Web UI and REST API server
+- Git hooks and CI/CD triggers
+    ]]></description>
+    <dependencies>
+      <dependency id="deno" version="2.0.0" />
+      <dependency id="git" version="2.40.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

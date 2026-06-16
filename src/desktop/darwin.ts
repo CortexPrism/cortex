@@ -1,7 +1,4 @@
-export type { Point, Rect, DesktopAction, DesktopActionResult, DesktopAutomation } from './types.ts';
 import type { DesktopAction, DesktopActionResult, DesktopAutomation } from './types.ts';
-import { darwinAutomation } from './darwin.ts';
-import { windowsAutomation } from './windows.ts';
 
 async function spawn(
   cmd: string,
@@ -31,7 +28,15 @@ async function spawn(
   };
 }
 
-const linuxAutomation: DesktopAutomation = {
+function escapeAppleScriptString(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function osascript(script: string): Promise<{ stdout: string; stderr: string; code: number }> {
+  return spawn('osascript', ['-e', script]);
+}
+
+export const darwinAutomation: DesktopAutomation = {
   async executeDesktopAction(action: DesktopAction): Promise<DesktopActionResult> {
     const t0 = Date.now();
 
@@ -39,7 +44,8 @@ const linuxAutomation: DesktopAutomation = {
       switch (action.action) {
         case 'screenshot': {
           const tmp = `/tmp/cortex-screenshot-${Date.now()}.${action.format}`;
-          const result = await spawn('scrot', ['--overwrite', '--quality', '90', tmp]);
+          const formatFlag = action.format === 'jpeg' ? 'jpg' : 'png';
+          const result = await spawn('screencapture', ['-t', formatFlag, tmp]);
           if (result.code !== 0) throw new Error(result.stderr);
           const data = await Deno.readFile(tmp);
           await Deno.remove(tmp).catch(() => {});
@@ -47,75 +53,84 @@ const linuxAutomation: DesktopAutomation = {
         }
 
         case 'click':
-          await spawn('xdotool', ['mousemove', String(action.x), String(action.y), 'click', '1']);
+        case 'dblclick': {
+          const clicks = action.action === 'dblclick' ? 2 : 1;
+          await osascript(`
+            tell application "System Events"
+              set clickCount to ${clicks}
+              do shell script "cliclick c:" & ${action.x} & "," & ${action.y} & " w:100"
+            end tell
+          `);
           return { success: true, durationMs: Date.now() - t0 };
-
-        case 'dblclick':
-          await spawn('xdotool', [
-            'mousemove',
-            String(action.x),
-            String(action.y),
-            'click',
-            '--repeat',
-            '2',
-            '1',
-          ]);
-          return { success: true, durationMs: Date.now() - t0 };
+        }
 
         case 'type': {
-          const escaped = action.text.replace(/['"\\]/g, '\\$&');
-          await spawn('sh', ['-c', `echo '${escaped}' | xdotool type --file -`]);
+          const escaped = escapeAppleScriptString(action.text);
+          await osascript(`tell application "System Events" to keystroke "${escaped}"`);
           return { success: true, durationMs: Date.now() - t0 };
         }
 
         case 'keypress': {
-          const args = ['key'];
-          if (action.modifiers) {
-            const keyCombo = [...action.modifiers, action.key].join('+');
-            args.push(keyCombo);
+          let keyStr = escapeAppleScriptString(action.key);
+          if (action.modifiers?.length) {
+            const modMap: Record<string, string> = {
+              ctrl: 'control',
+              alt: 'option',
+              shift: 'shift',
+              meta: 'command',
+            };
+            const mods = action.modifiers.map((m) => modMap[m.toLowerCase()] || m).join(', ');
+            await osascript(
+              `tell application "System Events" to keystroke "${keyStr}" using {${mods}}`,
+            );
           } else {
-            args.push(action.key);
+            await osascript(
+              `tell application "System Events" to keystroke "${keyStr}"`,
+            );
           }
-          await spawn('xdotool', args);
           return { success: true, durationMs: Date.now() - t0 };
         }
 
-        case 'drag':
-          await spawn('xdotool', [
-            'mousemove',
-            String(action.from.x),
-            String(action.from.y),
-            'mousedown',
-            '1',
-            'mousemove',
-            String(action.to.x),
-            String(action.to.y),
-            'mouseup',
-            '1',
-          ]);
+        case 'drag': {
+          await osascript(`
+            tell application "System Events"
+              do shell script "cliclick dd:" & ${action.from.x} & "," & ${action.from.y} & " du:" & ${action.to.x} & "," & ${action.to.y}
+            end tell
+          `);
           return { success: true, durationMs: Date.now() - t0 };
+        }
 
         case 'get_clipboard': {
-          const result = await spawn('xclip', ['-selection', 'clipboard', '-o']);
+          const result = await spawn('pbpaste', []);
           if (result.code !== 0) throw new Error(result.stderr);
           return { success: true, durationMs: Date.now() - t0, output: result.stdout };
         }
 
-        case 'set_clipboard':
-          await spawn('xclip', ['-selection', 'clipboard'], action.text);
+        case 'set_clipboard': {
+          const result = await spawn('pbcopy', [], action.text);
+          if (result.code !== 0) throw new Error(result.stderr);
           return { success: true, durationMs: Date.now() - t0 };
+        }
 
         case 'wait':
           await new Promise((r) => setTimeout(r, action.ms));
           return { success: true, durationMs: Date.now() - t0 };
 
-        case 'move':
-          await spawn('xdotool', ['mousemove', String(action.x), String(action.y)]);
+        case 'move': {
+          await osascript(
+            `tell application "System Events" to do shell script "cliclick m:" & ${action.x} & "," & ${action.y}`,
+          );
           return { success: true, durationMs: Date.now() - t0 };
+        }
 
         case 'scroll': {
-          const dir = action.direction === 'down' ? '5' : '4';
-          await spawn('xdotool', ['click', '--repeat', String(action.amount ?? 3), dir]);
+          const amount = action.amount ?? 3;
+          const dir = action.direction === 'down' ? amount : -amount;
+          await osascript(`
+            tell application "System Events"
+              do shell script "cliclick w:${dir * 100}"
+            end tell
+          `);
           return { success: true, durationMs: Date.now() - t0 };
         }
 
@@ -176,21 +191,3 @@ wait
 `;
   },
 };
-
-function getAutomation(): DesktopAutomation {
-  if (Deno.build.os === 'darwin') return darwinAutomation;
-  if (Deno.build.os === 'windows') return windowsAutomation;
-  return linuxAutomation;
-}
-
-export async function executeDesktopAction(action: DesktopAction): Promise<DesktopActionResult> {
-  return getAutomation().executeDesktopAction(action);
-}
-
-export function getDockerfile(): string {
-  return getAutomation().getDockerfile();
-}
-
-export function getEntrypointScript(): string {
-  return getAutomation().getEntrypointScript();
-}

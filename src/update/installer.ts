@@ -1,6 +1,8 @@
 import { dirname, join } from '@std/path';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
+import { makeExecutable } from '../utils/permissions.ts';
+import { getExeSuffix, isWindows } from '../utils/platform.ts';
 import type { ReleaseInfo } from './checker.ts';
 
 export interface InstallManifest {
@@ -29,6 +31,54 @@ function getCurrentPlatformAssetName(): string | null {
 
   const key = `${arch}-${os}`;
   return map[key] || null;
+}
+
+async function extractTarball(
+  tarPath: string,
+  destDir: string,
+  stripComponents = 0,
+): Promise<void> {
+  const cmdName = isWindows() ? 'tar.exe' : 'tar';
+  const args = ['xzf', tarPath, '-C', destDir];
+  if (stripComponents > 0) {
+    args.push(`--strip-components=${stripComponents}`);
+  }
+  const cmd = new Deno.Command(cmdName, {
+    args,
+    stdout: 'piped',
+    stderr: 'piped',
+  });
+  const { code, stderr } = await cmd.output();
+  if (code !== 0) {
+    const err = new TextDecoder().decode(stderr);
+    throw new Error(`tar extraction failed: ${err}`);
+  }
+}
+
+async function extractZip(zipPath: string, destDir: string): Promise<void> {
+  if (isWindows()) {
+    const cmd = new Deno.Command('powershell.exe', {
+      args: ['-NoProfile', '-Command', `Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force`],
+      stdout: 'piped',
+      stderr: 'piped',
+    });
+    const { code, stderr } = await cmd.output();
+    if (code !== 0) {
+      const err = new TextDecoder().decode(stderr);
+      throw new Error(`zip extraction failed: ${err}`);
+    }
+  } else {
+    const cmd = new Deno.Command('unzip', {
+      args: ['-o', zipPath, '-d', destDir],
+      stdout: 'piped',
+      stderr: 'piped',
+    });
+    const { code, stderr } = await cmd.output();
+    if (code !== 0) {
+      const err = new TextDecoder().decode(stderr);
+      throw new Error(`unzip extraction failed: ${err}`);
+    }
+  }
 }
 
 async function detectInstallType(): Promise<InstallManifest> {
@@ -101,40 +151,6 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
   const data = await resp.arrayBuffer();
   await Deno.mkdir(dirname(destPath), { recursive: true });
   await Deno.writeFile(destPath, new Uint8Array(data));
-}
-
-async function extractTarball(
-  tarPath: string,
-  destDir: string,
-  stripComponents = 0,
-): Promise<void> {
-  const args = ['xzf', tarPath, '-C', destDir];
-  if (stripComponents > 0) {
-    args.push(`--strip-components=${stripComponents}`);
-  }
-  const cmd = new Deno.Command('tar', {
-    args,
-    stdout: 'piped',
-    stderr: 'piped',
-  });
-  const { code, stderr } = await cmd.output();
-  if (code !== 0) {
-    const err = new TextDecoder().decode(stderr);
-    throw new Error(`tar extraction failed: ${err}`);
-  }
-}
-
-async function extractZip(zipPath: string, destDir: string): Promise<void> {
-  const cmd = new Deno.Command('unzip', {
-    args: ['-o', zipPath, '-d', destDir],
-    stdout: 'piped',
-    stderr: 'piped',
-  });
-  const { code, stderr } = await cmd.output();
-  if (code !== 0) {
-    const err = new TextDecoder().decode(stderr);
-    throw new Error(`unzip extraction failed: ${err}`);
-  }
 }
 
 async function gitCheckout(version: string, installPath: string, force: boolean): Promise<void> {
@@ -211,7 +227,7 @@ export async function installBinaryUpdate(
       await extractTarball(archivePath, extractDir);
     }
 
-    const execName = Deno.build.os === 'windows' ? 'cortex.exe' : 'cortex';
+    const execName = `cortex${getExeSuffix()}`;
     const newBinary = join(extractDir, execName);
     const execStat = await Deno.stat(newBinary).catch(() => null);
     if (!execStat) throw new Error(`Extracted binary not found: ${newBinary}`);
@@ -224,7 +240,7 @@ export async function installBinaryUpdate(
     }
 
     await Deno.copyFile(newBinary, manifest.binaryPath);
-    await Deno.chmod(manifest.binaryPath, 0o755);
+    await makeExecutable(manifest.binaryPath);
 
     manifest.prevVersion = oldVersion;
     manifest.prevBinaryPath = backupPath;

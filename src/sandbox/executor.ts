@@ -22,6 +22,22 @@ export interface SandboxResult {
   runtime: SandboxRuntime;
 }
 
+function isWindows(): boolean {
+  return Deno.build.os === 'windows';
+}
+
+function killProcess(child: Deno.ChildProcess): void {
+  try {
+    if (isWindows()) {
+      child.kill();
+    } else {
+      child.kill('SIGTERM');
+    }
+  } catch {
+    // already exited
+  }
+}
+
 const DOCKER_IMAGES: Record<string, string> = {
   python: 'python:3.12-alpine',
   python3: 'python:3.12-alpine',
@@ -36,17 +52,20 @@ const DOCKER_IMAGES: Record<string, string> = {
   rust: 'rust:1.78-alpine',
 };
 
-const SUBPROCESS_RUNNERS: Record<string, string[]> = {
-  python: ['python3', '-c'],
-  python3: ['python3', '-c'],
-  js: ['node', '-e'],
-  javascript: ['node', '-e'],
-  bash: ['bash', '-c'],
-  sh: ['sh', '-c'],
-  ts: ['deno', 'eval'],
-  typescript: ['deno', 'eval'],
-  ruby: ['ruby', '-e'],
-};
+const SUBPROCESS_RUNNERS: Record<string, string[]> = (() => {
+  const win = isWindows();
+  return {
+    python: [win ? 'python.exe' : 'python3', '-c'],
+    python3: [win ? 'python.exe' : 'python3', '-c'],
+    js: [win ? 'node.exe' : 'node', '-e'],
+    javascript: [win ? 'node.exe' : 'node', '-e'],
+    bash: [win ? 'bash.exe' : 'bash', '-c'],
+    sh: [win ? 'bash.exe' : 'sh', '-c'],
+    ts: [win ? 'deno.exe' : 'deno', 'eval'],
+    typescript: [win ? 'deno.exe' : 'deno', 'eval'],
+    ruby: [win ? 'ruby.exe' : 'ruby', '-e'],
+  };
+})();
 
 export async function getAvailableRuntime(): Promise<SandboxRuntime> {
   const dockerOk = await isDockerAvailable();
@@ -59,7 +78,8 @@ export async function getAvailableRuntime(): Promise<SandboxRuntime> {
 
 export async function isDockerAvailable(): Promise<boolean> {
   try {
-    const proc = new Deno.Command('docker', {
+    const cmdName = isWindows() ? 'docker.exe' : 'docker';
+    const proc = new Deno.Command(cmdName, {
       args: ['info', '--format', '{{.ServerVersion}}'],
       stdout: 'piped',
       stderr: 'null',
@@ -69,6 +89,16 @@ export async function isDockerAvailable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export function getDockerNotAvailableMessage(): string {
+  if (Deno.build.os === 'darwin') {
+    return 'Docker not found. Install Docker Desktop from https://www.docker.com/products/docker-desktop/';
+  }
+  if (Deno.build.os === 'windows') {
+    return 'Docker not found. Install Docker Desktop (requires WSL2) from https://www.docker.com/products/docker-desktop/';
+  }
+  return 'Docker not found. Install Docker Engine: https://docs.docker.com/engine/install/';
 }
 
 let gvisorAvailable: boolean | undefined;
@@ -139,7 +169,7 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   });
 
   const child = proc.spawn();
-  const timer = setTimeout(() => child.kill('SIGTERM'), timeout);
+  const timer = setTimeout(() => killProcess(child), timeout);
   let timedOut = false;
 
   if (opts.stdin) {
@@ -193,7 +223,7 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
   });
 
   const child = proc.spawn();
-  const timer = setTimeout(() => child.kill('SIGTERM'), timeout);
+  const timer = setTimeout(() => killProcess(child), timeout);
   let timedOut = false;
 
   if (opts.stdin) {
