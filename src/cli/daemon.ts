@@ -192,14 +192,18 @@ WantedBy=default.target
           await Deno.writeTextFile(unitPath, unitContent);
           const reload = new Deno.Command('systemctl', { args: ['--user', 'daemon-reload'] });
           await reload.output();
-          const enable = new Deno.Command('systemctl', { args: ['--user', 'enable', 'cortex-daemon'] });
+          const enable = new Deno.Command('systemctl', {
+            args: ['--user', 'enable', 'cortex-daemon'],
+          });
           await enable.output();
           console.log(green('✓ Daemon installed as user systemd service'));
           console.log(dim('  Start: systemctl --user start cortex-daemon'));
           console.log(dim('  Status: systemctl --user status cortex-daemon'));
           console.log(dim('  Logs: journalctl --user -u cortex-daemon -f'));
         } else if (Deno.build.os === 'darwin') {
-          const plistPath = `${Deno.env.get('HOME')}/Library/LaunchAgents/com.cortexprism.daemon.plist`;
+          const plistPath = `${
+            Deno.env.get('HOME')
+          }/Library/LaunchAgents/com.cortexprism.daemon.plist`;
           const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -247,7 +251,9 @@ WantedBy=default.target
         if (Deno.build.os === 'linux') {
           const stop = new Deno.Command('systemctl', { args: ['--user', 'stop', 'cortex-daemon'] });
           await stop.output().catch(() => {});
-          const disable = new Deno.Command('systemctl', { args: ['--user', 'disable', 'cortex-daemon'] });
+          const disable = new Deno.Command('systemctl', {
+            args: ['--user', 'disable', 'cortex-daemon'],
+          });
           await disable.output().catch(() => {});
           const unitPath = `${Deno.env.get('HOME')}/.config/systemd/user/cortex-daemon.service`;
           await Deno.remove(unitPath).catch(() => {});
@@ -255,7 +261,9 @@ WantedBy=default.target
           await reload.output();
           console.log(green('✓ Daemon uninstalled from systemd'));
         } else if (Deno.build.os === 'darwin') {
-          const plistPath = `${Deno.env.get('HOME')}/Library/LaunchAgents/com.cortexprism.daemon.plist`;
+          const plistPath = `${
+            Deno.env.get('HOME')
+          }/Library/LaunchAgents/com.cortexprism.daemon.plist`;
           const unload = new Deno.Command('launchctl', { args: ['unload', plistPath] });
           await unload.output().catch(() => {});
           await Deno.remove(plistPath).catch(() => {});

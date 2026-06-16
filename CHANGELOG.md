@@ -28,8 +28,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
     platform-specific Docker Desktop installation messages
   - **Cross-platform git hooks** (`src/triggers/git-hooks.ts`) — `$(date -Iseconds)` replaced with
     Deno-generated ISO timestamps
-  - **Cross-platform update installer** (`src/update/installer.ts`) — `powershell Expand-Archive` for
-    zip extraction on Windows, `tar.exe` on Windows, `getExeSuffix()` for binary naming
+  - **Cross-platform update installer** (`src/update/installer.ts`) — `powershell Expand-Archive`
+    for zip extraction on Windows, `tar.exe` on Windows, `getExeSuffix()` for binary naming
 
 - **Desktop automation — macOS** (`src/desktop/darwin.ts`) — `screencapture` for screenshots,
   `osascript` for keystrokes, `pbpaste`/`pbcopy` for clipboard, `cliclick` for mouse actions and
@@ -49,8 +49,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - **macOS**: `launchctl load/unload` via `~/Library/LaunchAgents/com.cortexprism.daemon.plist`
   - **Windows**: NSSM-based service or directs to `deploy/install-service.bat`
 
-- **Deployment configs** — `deploy/cortex-daemon.service` (systemd user unit), `deploy/com.cortexprism.plist`
-  (launchd agent), `deploy/install-service.bat` (Windows NSSM/Task Scheduler setup)
+- **Deployment configs** — `deploy/cortex-daemon.service` (systemd user unit),
+  `deploy/com.cortexprism.plist` (launchd agent), `deploy/install-service.bat` (Windows NSSM/Task
+  Scheduler setup)
 
 - **CI/CD expansion** (`.github/workflows/ci.yml`, `.github/workflows/release.yml`) — Test matrix
   expanded to `[ubuntu-latest, macos-latest, windows-latest]`. Tauri build job added with platform
@@ -72,9 +73,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ### Changed
 
 - Desktop automation refactored from single Linux-only `automation.ts` to platform-dispatching
-  architecture with three independent implementations sharing a common `DesktopAutomation` interface.
-  Public API (`executeDesktopAction`, `getDockerfile`, `getEntrypointScript`) unchanged for backward
-  compatibility
+  architecture with three independent implementations sharing a common `DesktopAutomation`
+  interface. Public API (`executeDesktopAction`, `getDockerfile`, `getEntrypointScript`) unchanged
+  for backward compatibility
 
 ### Fixed
 
@@ -91,12 +92,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
   providing an immediate system overview. Dashboard moved from "Monitoring" to "Core" nav section
   with active-state highlighting on load.
 - **Navigation consolidation** — Removed standalone Status page; all Status content (system
-  overview, KPI cards, daemon status, system resources, activity feed) merged into the Dashboard
-  as configurable widgets. Sidebar simplified with Dashboard as the primary Core entry.
+  overview, KPI cards, daemon status, system resources, activity feed) merged into the Dashboard as
+  configurable widgets. Sidebar simplified with Dashboard as the primary Core entry.
 - **Three new Dashboard widgets** covering the old Status page functionality:
   - **Server Info** (2×1) — Uptime, LLM Provider/Model, Cortex Build version, System Status
-  - **Enhanced System Resources** (2×2, up from 2×1) — Memory/Disk bars plus CPU Cores and
-    Platform panels
+  - **Enhanced System Resources** (2×2, up from 2×1) — Memory/Disk bars plus CPU Cores and Platform
+    panels
   - **Enhanced Daemon Status** (2×2, up from 1×1) — Detailed daemon cards with status dots,
     descriptions, online count, and operational-status warning banner
 - **Dashboard Config REST API** (`GET`/`PUT /api/dashboard/config`) — Persists widget layout to
@@ -112,8 +113,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ### Changed
 
 - **Default dashboard layout** reconfigured to 8 widgets: KPI Cards, Server Info, Daemon Status
-  (2-row), Memory Stats, System Resources (2-row), Recent Sessions (2-row), Token Chart, and
-  Recent Activity
+  (2-row), Memory Stats, System Resources (2-row), Recent Sessions (2-row), Token Chart, and Recent
+  Activity
 - **Memory Stats widget** widened from 1×1 to 2×1 for better readability
 - **Command palette** (Ctrl+K) entry for Status merged into Dashboard entry
 
@@ -129,13 +130,13 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Soul system expansion** — Overhauled agent identity system with richer defaults, more personality
-  options, and new CLI commands:
+- **Soul system expansion** — Overhauled agent identity system with richer defaults, more
+  personality options, and new CLI commands:
   - **Expanded DEFAULT_SOUL** — Now 10 sections (Identity, Behavior, Output Format, Tool Usage,
-    Memory, Sub-Agents, Safety & Ethics, Learning & Adaptation, Limitations) with detailed behavioral
-    guidance for tool usage, output formatting, and ethical conduct
-  - **USER.md template** — Expanded with Goals & Objectives, Current Projects, Technical Environment,
-    Communication preferences, and Learning Interests sections
+    Memory, Sub-Agents, Safety & Ethics, Learning & Adaptation, Limitations) with detailed
+    behavioral guidance for tool usage, output formatting, and ethical conduct
+  - **USER.md template** — Expanded with Goals & Objectives, Current Projects, Technical
+    Environment, Communication preferences, and Learning Interests sections
   - **MEMORY.md template** — Restructured with About the User, Project Context, Key Decisions,
     Preferences, and Ongoing Work sections
   - **4 new personality templates** — Creative, Analyst, Teacher, and Minimalist, bringing the total

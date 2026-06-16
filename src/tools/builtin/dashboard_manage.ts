@@ -20,9 +20,17 @@ interface DashboardConfig {
 
 const CONFIG_PATH = join(PATHS.configDir, 'dashboard.json');
 const VALID_TYPES = [
-  'kpi-grid', 'server-info', 'system-resources', 'daemon-status',
-  'memory-stats', 'recent-sessions', 'daily-tokens-chart',
-  'recent-lens', 'model-breakdown', 'agent-breakdown', 'custom',
+  'kpi-grid',
+  'server-info',
+  'system-resources',
+  'daemon-status',
+  'memory-stats',
+  'recent-sessions',
+  'daily-tokens-chart',
+  'recent-lens',
+  'model-breakdown',
+  'agent-breakdown',
+  'custom',
 ];
 
 async function readConfig(): Promise<DashboardConfig> {
@@ -62,7 +70,8 @@ export const dashboardManageTool: Tool = {
       {
         name: 'type',
         type: 'string',
-        description: 'Widget type (required for add). Valid types: kpi-grid, server-info, system-resources, daemon-status, memory-stats, recent-sessions, daily-tokens-chart, recent-lens, model-breakdown, agent-breakdown, custom',
+        description:
+          'Widget type (required for add). Valid types: kpi-grid, server-info, system-resources, daemon-status, memory-stats, recent-sessions, daily-tokens-chart, recent-lens, model-breakdown, agent-breakdown, custom',
         required: false,
       },
       {
@@ -92,7 +101,8 @@ export const dashboardManageTool: Tool = {
       {
         name: 'content',
         type: 'string',
-        description: 'HTML content for custom widgets. Supports inline CSS. Script tags are stripped for safety.',
+        description:
+          'HTML content for custom widgets. Supports inline CSS. Script tags are stripped for safety.',
         required: false,
       },
       {
@@ -117,13 +127,18 @@ export const dashboardManageTool: Tool = {
       switch (op) {
         case 'list': {
           if (!config.widgets.length) {
-            return ok('No widgets configured. The dashboard uses default widgets when the config is empty.', start);
+            return ok(
+              'No widgets configured. The dashboard uses default widgets when the config is empty.',
+              start,
+            );
           }
           const lines = config.widgets.map((w, i) => {
             const extra = w.type === 'custom'
               ? ` title="${w.title || ''}" content=${(w.content || '').length}chars`
               : '';
-            return `${i + 1}. [${w.id}] ${w.type} (${w.width}×${w.height} at row ${w.row}, col ${w.col})${extra}`;
+            return `${
+              i + 1
+            }. [${w.id}] ${w.type} (${w.width}×${w.height} at row ${w.row}, col ${w.col})${extra}`;
           });
           return ok(`Dashboard widgets (${config.widgets.length}):\n${lines.join('\n')}`, start);
         }
@@ -136,7 +151,9 @@ export const dashboardManageTool: Tool = {
           }
 
           const width = typeof args.width === 'number' ? Math.max(1, Math.min(4, args.width)) : 2;
-          const height = typeof args.height === 'number' ? Math.max(1, Math.min(4, args.height)) : 2;
+          const height = typeof args.height === 'number'
+            ? Math.max(1, Math.min(4, args.height))
+            : 2;
 
           // Find max row for placement
           let maxRow = 0;
@@ -156,7 +173,9 @@ export const dashboardManageTool: Tool = {
 
           if (type === 'custom') {
             const content = String(args.content ?? '');
-            if (!content) return err('Custom widgets require "content" parameter (HTML string)', start);
+            if (!content) {
+              return err('Custom widgets require "content" parameter (HTML string)', start);
+            }
             widget.content = content;
             if (args.title) widget.title = String(args.title);
             if (typeof args.refresh === 'number') {
@@ -169,25 +188,37 @@ export const dashboardManageTool: Tool = {
 
           config.widgets.push(widget);
           await writeConfig(config);
-          return ok(`Widget added: [${widget.id}] ${type} (${width}×${height}) at row ${maxRow + 1}. Refresh the dashboard to see it.`, start);
+          return ok(
+            `Widget added: [${widget.id}] ${type} (${width}×${height}) at row ${
+              maxRow + 1
+            }. Refresh the dashboard to see it.`,
+            start,
+          );
         }
 
         case 'remove': {
           const id = String(args.id ?? '');
           if (!id) return err('Missing required parameter: id', start);
           const idx = config.widgets.findIndex((w) => w.id === id);
-          if (idx === -1) return err(`Widget "${id}" not found. Use list to see current widgets.`, start);
+          if (idx === -1) {
+            return err(`Widget "${id}" not found. Use list to see current widgets.`, start);
+          }
           const removed = config.widgets[idx];
           config.widgets.splice(idx, 1);
           await writeConfig(config);
-          return ok(`Widget removed: [${removed.id}] ${removed.type}. Refresh the dashboard to see changes.`, start);
+          return ok(
+            `Widget removed: [${removed.id}] ${removed.type}. Refresh the dashboard to see changes.`,
+            start,
+          );
         }
 
         case 'update': {
           const id = String(args.id ?? '');
           if (!id) return err('Missing required parameter: id', start);
           const widget = config.widgets.find((w) => w.id === id);
-          if (!widget) return err(`Widget "${id}" not found. Use list to see current widgets.`, start);
+          if (!widget) {
+            return err(`Widget "${id}" not found. Use list to see current widgets.`, start);
+          }
 
           const changed: string[] = [];
           if (typeof args.width === 'number') {
@@ -211,9 +242,19 @@ export const dashboardManageTool: Tool = {
             changed.push(`refresh=${widget.refresh}s`);
           }
 
-          if (!changed.length) return err('No changes specified. Provide at least one of: width, height, title, content, refresh', start);
+          if (!changed.length) {
+            return err(
+              'No changes specified. Provide at least one of: width, height, title, content, refresh',
+              start,
+            );
+          }
           await writeConfig(config);
-          return ok(`Widget updated: [${widget.id}] ${widget.type} — ${changed.join(', ')}. Refresh the dashboard to see changes.`, start);
+          return ok(
+            `Widget updated: [${widget.id}] ${widget.type} — ${
+              changed.join(', ')
+            }. Refresh the dashboard to see changes.`,
+            start,
+          );
         }
 
         default:
@@ -230,7 +271,13 @@ function ok(output: string, startMs: number): ToolCallResult {
 }
 
 function err(error: string, startMs: number): ToolCallResult {
-  return { toolName: 'dashboard_manage', success: false, output: '', error, durationMs: Date.now() - startMs };
+  return {
+    toolName: 'dashboard_manage',
+    success: false,
+    output: '',
+    error,
+    durationMs: Date.now() - startMs,
+  };
 }
 
 export default dashboardManageTool;
