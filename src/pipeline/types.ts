@@ -9,6 +9,8 @@ export type PipelineStage =
   | 'post-reason'
   | 'pre-tool'
   | 'post-tool'
+  | 'pre-llm'
+  | 'post-llm'
   | 'pre-reflect'
   | 'post-reflect'
   | 'pre-output'
@@ -24,6 +26,14 @@ export interface AgentState {
   userMessage: string;
   agentName?: string;
   model?: string;
+  /** MQM predicted provider (if prediction was made) */
+  mqmPredictedProvider?: string;
+  /** MQM predicted model (if prediction was made) */
+  mqmPredictedModel?: string;
+  /** MQM prediction mode: enforce | suggest | defer */
+  mqmPredictionMode?: string;
+  /** MQM prediction confidence */
+  mqmPredictionConfidence?: number;
 }
 
 export interface PipelineContext {

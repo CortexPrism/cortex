@@ -48,7 +48,12 @@ export type EventType =
   | 'qm_decision_evaluated'
   | 'qm_weight_updated'
   | 'qm_pattern_learned'
-  | 'qm_mode_changed';
+  | 'qm_mode_changed'
+  | 'mqm_prediction'
+  | 'mqm_observation'
+  | 'mqm_weight_updated'
+  | 'mqm_pattern_learned'
+  | 'mqm_mode_changed';
 
 export interface LensEvent {
   id: string;

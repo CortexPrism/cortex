@@ -26,6 +26,7 @@ import {
   formatSkillsForPrompt,
 } from '../memory/skills.ts';
 import { buildNodeContextSection, injectNodeContext } from './node-context.ts';
+import type { ProviderKind } from '../config/config.ts';
 
 let builtinHooksRegistered = false;
 
@@ -93,6 +94,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     registerBuiltinHooks();
     builtinHooksRegistered = true;
   }
+
+  // Load config for MQM (cached, cheap after first call)
+  const { loadConfig } = await import('../config/config.ts');
+  const config = await loadConfig();
 
   const {
     userMessage,
@@ -259,6 +264,64 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   const nodeSection = await buildNodeContextSection().catch(() => null);
   const nodeAwareSystemPrompt = injectNodeContext(effectiveSystemPrompt, nodeSection);
 
+  // ── Model Quartermaster: predict model before LLM call ──
+  let effectiveProvider = provider;
+  let effectiveModel = model;
+  let mqmPredictedProviderKind: string | undefined;
+
+  if (config?.modelSelection?.enabled) {
+    const mqmPreLlmCtx = createPipelineContext({
+      stage: 'pre-llm',
+      sessionId,
+      turnId,
+      state: { ...state, tokensUsed: tokensIn + tokensOut, costUsd },
+      input: effectiveInput,
+      assessment: metaAssessment,
+    });
+    const mqmPreLlmResult = await runHooksForStage('pre-llm', mqmPreLlmCtx);
+    if (mqmPreLlmResult.aborted) {
+      return {
+        response: mqmPreLlmResult.abortMessage || 'Request blocked',
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        turnId,
+        durationMs: Date.now() - started,
+      };
+    }
+
+    // Check for MQM prediction from hook
+    const predictedState = mqmPreLlmCtx.state as Record<string, unknown>;
+    mqmPredictedProviderKind = predictedState.mqmPredictedProvider as string | undefined;
+    if (
+      predictedState.mqmPredictionMode === 'enforce' &&
+      typeof predictedState.mqmPredictedProvider === 'string' &&
+      typeof predictedState.mqmPredictedModel === 'string'
+    ) {
+      try {
+        const { buildProviderFromConfig } = await import('../llm/router.ts');
+        const { loadConfig: lc } = await import('../config/config.ts');
+        const cfg = await lc();
+        const predictedProvider = predictedState.mqmPredictedProvider as ProviderKind;
+        const predictedModel = predictedState.mqmPredictedModel as string;
+        const providerCfg = cfg.providers[predictedProvider];
+        if (providerCfg) {
+          effectiveProvider = buildProviderFromConfig(predictedProvider, providerCfg);
+          effectiveModel = predictedModel;
+          if (state.mqmPredictionConfidence) {
+            console.log(
+              `  🎯 MQM: Using ${predictedProvider}/${predictedModel} (confidence: ${
+                (predictedState.mqmPredictionConfidence as number).toFixed(2)
+              })`,
+            );
+          }
+        }
+      } catch {
+        // Provider build failed, fall through to default
+      }
+    }
+  }
+
   const collectedToolCalls: Array<
     { tool: string; params: Record<string, unknown>; result: string }
   > = [];
@@ -300,9 +363,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       if (stream && onChunk && round === 0) {
         for await (
-          const chunk of provider.stream({
+          const chunk of effectiveProvider.stream({
             messages: currentMessages,
-            model,
+            model: effectiveModel,
             systemPrompt: nodeAwareSystemPrompt,
             reasoningEffort: options.reasoningEffort,
           })
@@ -317,9 +380,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           }
         }
       } else {
-        const r = await provider.complete({
+        const r = await effectiveProvider.complete({
           messages: currentMessages,
-          model,
+          model: effectiveModel,
           systemPrompt: nodeAwareSystemPrompt,
           reasoningEffort: options.reasoningEffort,
         });
@@ -436,6 +499,42 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       toolCallsMade: state.toolCallsMade,
     };
 
+    // ── Model Quartermaster: record observation after LLM call ──
+    if (config?.modelSelection?.enabled) {
+      const { buildRequestContext } = await import('../model-quartermaster/mod.ts');
+      const mqmReqCtx = buildRequestContext(
+        userMessage,
+        metaAssessment,
+        [],
+        0,
+      );
+      const mqmDurationMs = Date.now() - started;
+      // Simple quality heuristic: longer response = higher quality
+      const mqmQualityScore = response && response.length > 100
+        ? Math.min(0.7 + (response.length / 5000), 1.0)
+        : 0.3;
+
+      const mqmState = { ...finalState } as Record<string, unknown>;
+      mqmState.mqmRequestContext = mqmReqCtx;
+      mqmState.mqmModelUsed = {
+        provider: mqmPredictedProviderKind ?? config.defaultProvider,
+        model: effectiveModel,
+      };
+      mqmState.mqmConfidence = mqmQualityScore;
+      mqmState.mqmQualityScore = mqmQualityScore;
+      mqmState.mqmDurationMs = mqmDurationMs;
+      mqmState.mqmError = errorMsg;
+
+      const mqmPostLlmCtx = createPipelineContext({
+        stage: 'post-llm',
+        sessionId,
+        turnId,
+        state: mqmState as unknown as AgentState,
+        output: response || '(error)',
+      });
+      runHooksForStage('post-llm', mqmPostLlmCtx).catch(() => {});
+    }
+
     const preOutputCtx = createPipelineContext({
       stage: 'pre-output',
       sessionId,
@@ -466,7 +565,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }).catch(() => {}),
       extractAndStoreEntities(`${userMessage} ${response}`, sessionId).catch(() => {}),
       options.enableReflection && response
-        ? reflectOnTurn(userMessage, response, provider, model, options.reasoningEffort)
+        ? reflectOnTurn(userMessage, response, effectiveProvider, effectiveModel, options.reasoningEffort)
           .then((r) => storeReflection(sessionId, r))
           .catch(() => {})
         : Promise.resolve(),
@@ -477,7 +576,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         actor: 'agent',
         action: 'llm_call',
         summary: userMessage.slice(0, 120),
-        model,
+        model: effectiveModel,
         tokens_in: tokensIn,
         tokens_out: tokensOut,
         cost_usd: costUsd,
