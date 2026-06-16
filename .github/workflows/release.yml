@@ -43,26 +43,31 @@ jobs:
             target: x86_64-unknown-linux-gnu
             artifact: cortex-x86_64-linux
             package-ext: .tar.gz
+            binary-name: cortex
           - name: linux-arm64
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             artifact: cortex-aarch64-linux
             package-ext: .tar.gz
+            binary-name: cortex
           - name: darwin-x64
             os: macos-latest
             target: x86_64-apple-darwin
             artifact: cortex-x86_64-darwin
             package-ext: .tar.gz
+            binary-name: cortex
           - name: darwin-arm64
             os: macos-latest
             target: aarch64-apple-darwin
             artifact: cortex-aarch64-darwin
             package-ext: .tar.gz
+            binary-name: cortex
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: cortex-x86_64-windows
             package-ext: .zip
+            binary-name: cortex.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -71,15 +76,15 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Compile binary
-        run: deno compile --target "${{ matrix.target }}" --output "${{ matrix.artifact }}" src/main.ts
+        run: deno compile --target "${{ matrix.target }}" --output "${{ matrix.binary-name }}" src/main.ts
 
       - name: Package archive
         shell: bash
         run: |
           if [ "${{ matrix.package-ext }}" = ".zip" ]; then
-            7z a -tzip "${{ matrix.artifact }}.zip" "${{ matrix.artifact }}.exe"
+            7z a -tzip "${{ matrix.artifact }}.zip" "${{ matrix.binary-name }}"
           else
-            tar czf "${{ matrix.artifact }}.tar.gz" "${{ matrix.artifact }}"
+            tar czf "${{ matrix.artifact }}.tar.gz" "${{ matrix.binary-name }}"
           fi
 
       - name: Upload archive
