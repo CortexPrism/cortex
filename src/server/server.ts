@@ -20,11 +20,9 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   try {
     const { registerBuiltinSkills: registerSkills } = await import('../memory/skills.ts');
     const loaded = await registerSkills();
-    if (loaded > 0) {
-      console.log(`  Skills: loaded ${loaded} skill(s)`);
-    }
-  } catch {
-    // non-fatal
+    console.log(`  Skills: registered/loaded ${loaded} skill(s)`);
+  } catch (e) {
+    console.error(`  Skills: Failed to register builtin skills - ${(e as Error).message}`);
   }
 
   // Load plugins after migrations to ensure database is ready

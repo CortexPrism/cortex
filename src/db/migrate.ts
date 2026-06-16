@@ -217,6 +217,7 @@ export async function runMigrations(): Promise<void> {
     { db: pluginsDb, sqlFile: '012_plugins_enhanced.sql', label: 'plugins.db (enhanced)' },
     { db: coreDb, sqlFile: '013_sessions_parent.sql', label: 'cortex.db (sessions parent)' },
     { db: memoryDb, sqlFile: '014_skills_origin.sql', label: 'memory.db (skills origin)' },
+    { db: memoryDb, sqlFile: '017_skills_metadata.sql', label: 'memory.db (skills metadata)' },
     { db: coreDb, sqlFile: '015_nodes.sql', label: 'cortex.db (nodes)' },
     { db: coreDb, sqlFile: '016_node_policies.sql', label: 'cortex.db (node policies)' },
   ];
