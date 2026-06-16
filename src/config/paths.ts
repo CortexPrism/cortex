@@ -71,6 +71,10 @@ export const PATHS = {
     return join(this.configDir, 'update.lock');
   },
 
+  get voiceDataDir() {
+    return join(this.dataDir, 'voice');
+  },
+
   sessionDb(sessionId: string): string {
     return join(this.sessionsDir, `${sessionId}.db`);
   },

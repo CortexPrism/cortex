@@ -39,6 +39,8 @@ import { githubCommand } from './cli/github-cmd.ts';
 import { quartermasterCommand } from './cli/quartermaster-cmd.ts';
 import { mqmCommand } from './cli/model-qm-cmd.ts';
 import { installCommand, uninstallCommand } from './cli/install.ts';
+import { startCommand, restartCommand } from './cli/start.ts';
+import { voiceCommand } from './cli/voice-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -118,6 +120,9 @@ const program = new Command()
   .command('qm', quartermasterCommand)
   .command('mqm', mqmCommand)
   .command('install', installCommand)
-  .command('uninstall', uninstallCommand);
+  .command('uninstall', uninstallCommand)
+  .command('start', startCommand)
+  .command('restart', restartCommand)
+  .command('voice', voiceCommand);
 
 await program.parse(Deno.args);

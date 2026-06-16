@@ -13,6 +13,37 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Voice & TTS system** (`src/voice/`, `src/tools/builtin/speak.ts`, `src/tools/builtin/listen.ts`,
+  `src/cli/voice-cmd.ts`) — full voice pipeline: speech-to-text via OpenAI Whisper, text-to-speech
+  via OpenAI TTS (or optional ElevenLabs), energy-based VAD, audio format conversion with ffmpeg
+  fallback, voice channel plugin implementing `ChannelPlugin`, and `speak`/`listen` agent tools
+- **Voice WebSocket protocol** (`src/server/ws.ts`) — new `WsMsg` variants (`audio_chunk`, `audio_end`,
+  `speak`, `audio`, `voice_state`) for real-time audio streaming, server-side transcription, and TTS
+  playback; transcribed speech is dispatched directly into the agent loop
+- **Voice API routes** (`POST /api/voice/transcribe`, `POST /api/voice/synthesize`,
+  `GET /api/voice/synthesize/:text`, `GET /api/voice/providers`) — REST endpoints for audio
+  transcription and speech synthesis
+- **Auto-TTS pipeline hook** (`src/voice/pipeline.ts`) — `post-output` hook that automatically
+  synthesizes agent text responses to audio when `voice.autoTTS` is enabled; audio is forwarded to
+  the WebSocket client before the `done` signal
+- **Voice settings in Web UI** (`src/server/ui.ts`) — Voice & TTS settings tab with provider selection,
+  default voice, language, auto-TTS toggle, and ElevenLabs API key; microphone button in chat input
+  bar with CSS recording animation; speaker button on each assistant message for on-demand TTS;
+  voice indicator with speaking pulse animation
+- **Voice activity detection** (`src/voice/vad.ts`) — energy-based VAD with configurable frame size,
+  speech threshold, silence timeout, and minimum speech duration
+- **Voice CLI command** (`cortex voice enable|disable|status|set-voice`) — manage voice mode and
+  default voice from the terminal
+- **`voiceDataDir` path** (`src/config/paths.ts`) — dedicated voice cache directory under the
+  data directory
+- **Service management commands** (`src/cli/start.ts`) — `cortex start` and `cortex restart`
+  commands for managing the daemon and web UI server processes
+- **Silent install and uninstall operations** (`src/cli/install.ts`, `src/cli/service-helper.ts`) —
+  `--yes` flags and non-interactive mode for automated setup scripts
+- **macOS launchd `HOME` fix** (`src/cli/daemon.ts`, `src/cli/serve.ts`, `src/utils/platform.ts`) —
+  launchd plist now writes the correct `HOME` value from environment instead of requiring a manual
+  placeholder edit
+
 - **Web UI file upload** (`src/server/ui.ts`, `src/server/ws.ts`, `src/server/router.ts`) — attach
   files (PDFs, images, documents) directly in the chat input bar via a new 📎 button. Files are sent
   as base64 over WebSocket alongside chat messages, saved to both the working directory and agent

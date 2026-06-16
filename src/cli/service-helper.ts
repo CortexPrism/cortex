@@ -13,7 +13,9 @@ function getExecPath(): string {
 
 function sanitizeHost(host: string): string {
   if (!/^[a-zA-Z0-9.:\-]+$/.test(host)) {
-    throw new Error(`Invalid host: "${host}". Must contain only alphanumeric, dots, colons, and hyphens.`);
+    throw new Error(
+      `Invalid host: "${host}". Must contain only alphanumeric, dots, colons, and hyphens.`,
+    );
   }
   return host;
 }
@@ -304,7 +306,11 @@ async function installWindowsDaemonService(): Promise<void> {
   console.log(dim('    nssm set CortexDaemon Start SERVICE_AUTO_START'));
   console.log(dim('    nssm start CortexDaemon'));
   console.log(dim('  Or use Task Scheduler:'));
-  console.log(dim(`    schtasks /create /tn "Cortex Daemon" /tr "\\"${execPath}\\" daemon run" /sc onlogon /delay 0001:00 /f`));
+  console.log(
+    dim(
+      `    schtasks /create /tn "Cortex Daemon" /tr "\\"${execPath}\\" daemon run" /sc onlogon /delay 0001:00 /f`,
+    ),
+  );
 }
 
 async function installWindowsServerService(opts: ServiceInstallOptions): Promise<void> {
@@ -313,11 +319,17 @@ async function installWindowsServerService(opts: ServiceInstallOptions): Promise
   const host = sanitizeHost(opts.host ?? '127.0.0.1');
   console.log(bold(`Windows Server Service Setup (http://${host}:${port})`));
   console.log(dim('  Install manually with NSSM:'));
-  console.log(dim(`    nssm install CortexServer "${execPath}" serve --port ${port} --host ${host}`));
+  console.log(
+    dim(`    nssm install CortexServer "${execPath}" serve --port ${port} --host ${host}`),
+  );
   console.log(dim('    nssm set CortexServer Start SERVICE_AUTO_START'));
   console.log(dim('    nssm start CortexServer'));
   console.log(dim('  Or use Task Scheduler:'));
-  console.log(dim(`    schtasks /create /tn "Cortex Server" /tr "\\"${execPath}\\" serve --port ${port} --host ${host}" /sc onlogon /delay 0001:00 /f`));
+  console.log(
+    dim(
+      `    schtasks /create /tn "Cortex Server" /tr "\\"${execPath}\\" serve --port ${port} --host ${host}" /sc onlogon /delay 0001:00 /f`,
+    ),
+  );
 }
 
 async function reloadAndEnable(serviceName: string): Promise<void> {

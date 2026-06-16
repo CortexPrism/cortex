@@ -21,6 +21,11 @@ export function isLinux(): boolean {
   return Deno.build.os === 'linux';
 }
 
+export function isCompiledBinary(): boolean {
+  const name = Deno.execPath().split('/').pop()?.split('\\').pop() || '';
+  return name !== 'deno' && name !== 'deno.exe';
+}
+
 export function getShellCommand(): { cmd: string; args: (command: string) => string[] } {
   if (isWindows()) {
     return {

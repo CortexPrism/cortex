@@ -172,6 +172,8 @@ export interface CortexConfig {
   onboarding?: OnboardingState;
   /** Web authentication settings */
   webAuth?: WebAuth;
+  /** Voice/TTS configuration */
+  voice?: import('../voice/types.ts').VoiceConfig;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {

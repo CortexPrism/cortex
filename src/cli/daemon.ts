@@ -1,7 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { fromFileUrl } from '@std/path';
-import { killDenoProcesses } from '../utils/platform.ts';
+import { isCompiledBinary, killDenoProcesses } from '../utils/platform.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import { checkForUpdates } from '../update/mod.ts';
 import { loadConfig } from '../config/config.ts';
@@ -17,12 +17,6 @@ const PROCESS_DEFS = [
   { name: 'executor', label: 'Cortex Executor', sock: EXECUTOR_SOCK },
   { name: 'scheduler', label: 'Cortex Scheduler', sock: SCHEDULER_SOCK },
 ] as const;
-
-function isCompiledBinary(): boolean {
-  const p = Deno.execPath();
-  const name = p.split('/').pop()?.split('\\').pop() || '';
-  return name !== 'deno' && name !== 'deno.exe';
-}
 
 function getSupervisorEntryPath(): string {
   return fromFileUrl(new URL('../processes/supervisor-process.ts', import.meta.url));
@@ -74,7 +68,7 @@ export async function ensureDaemons(): Promise<void> {
   await autoCheck();
 }
 
-async function stopDaemons(): Promise<void> {
+export async function stopDaemons(): Promise<void> {
   const patterns = [
     'supervisor-process',
     'validator-process',
@@ -91,22 +85,34 @@ async function stopDaemons(): Promise<void> {
   }
 }
 
-async function startDaemon(quiet = false): Promise<void> {
+export async function startDaemonCore(quiet = false): Promise<boolean> {
   if (await pingProcess(VALIDATOR_SOCK)) {
-    console.log(dim('  Daemon supervisor is already running.'));
-    Deno.exit(0);
+    if (!quiet) console.log(dim('  Daemon supervisor is already running.'));
+    return true;
   }
 
   spawnSupervisor('null');
   if (!quiet) console.log(green('  ✓ Cortex daemon supervisor started in background'));
 
+  let alive = false;
   for (let i = 0; i < 10; i++) {
     await new Promise((r) => setTimeout(r, 200));
-    if (await pingProcess(VALIDATOR_SOCK)) break;
+    if (await pingProcess(VALIDATOR_SOCK)) {
+      alive = true;
+      break;
+    }
+  }
+
+  if (!alive && !quiet) {
+    console.log(dim('  Daemon did not confirm startup within 2 seconds'));
   }
 
   await autoCheck();
+  return alive;
+}
 
+async function startDaemon(quiet = false): Promise<void> {
+  await startDaemonCore(quiet);
   Deno.exit(0);
 }
 
@@ -210,7 +216,11 @@ export const daemonCommand = new Command()
           } else if (!opts.noStart) {
             console.log('');
             const platform = Deno.build.os === 'darwin' ? 'macOS' : 'Windows';
-            console.log(dim(`  No manual start needed on ${platform} (services auto-init via launchd / NSSM)`));
+            console.log(
+              dim(
+                `  No manual start needed on ${platform} (services auto-init via launchd / NSSM)`,
+              ),
+            );
           }
 
           Deno.exit(0);
