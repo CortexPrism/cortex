@@ -3,7 +3,20 @@ import {
   ConverseCommand,
   ConverseStreamCommand,
 } from 'npm:@aws-sdk/client-bedrock-runtime';
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+
+function toBedrockContent(content: string | ContentBlock[]): Array<{ text: string }> {
+  if (typeof content === 'string') return [{ text: content }];
+  const texts = content.filter((b): b is { type: 'text'; text: string } => b.type === 'text');
+  return texts.length > 0 ? texts.map((b) => ({ text: b.text })) : [{ text: '' }];
+}
+
+function extractSystemText(options: CompletionOptions): string | undefined {
+  if (typeof options.systemPrompt === 'string' && options.systemPrompt) return options.systemPrompt;
+  const sysMsg = options.messages.find((m) => m.role === 'system');
+  if (!sysMsg) return undefined;
+  return typeof sysMsg.content === 'string' ? sysMsg.content : undefined;
+}
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'anthropic.claude-3-5-sonnet-20240620-v1:0': { in: 3.0, out: 15.0 },
@@ -40,11 +53,10 @@ export class BedrockProvider implements LLMProvider {
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: toBedrockRole(m.role),
-        content: [{ text: m.content }] as Array<{ text: string }>,
+        content: toBedrockContent(m.content),
       }));
 
-    const systemPrompt = options.systemPrompt ??
-      options.messages.find((m) => m.role === 'system')?.content;
+    const systemPrompt = extractSystemText(options);
 
     const command = new ConverseCommand({
       modelId: options.model,
@@ -75,11 +87,10 @@ export class BedrockProvider implements LLMProvider {
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: toBedrockRole(m.role),
-        content: [{ text: m.content }] as Array<{ text: string }>,
+        content: toBedrockContent(m.content),
       }));
 
-    const systemPrompt = options.systemPrompt ??
-      options.messages.find((m) => m.role === 'system')?.content;
+    const systemPrompt = extractSystemText(options);
 
     const command = new ConverseStreamCommand({
       modelId: options.model,

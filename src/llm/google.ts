@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { Part, Content } from 'npm:@google/generative-ai';
+import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'gemini-2.0-flash': { in: 0.10, out: 0.40 },
@@ -18,6 +19,24 @@ const REASONING_BUDGET: Record<string, number> = {
 function toGoogleRole(role: string): 'user' | 'model' {
   if (role === 'assistant') return 'model';
   return 'user';
+}
+
+function toGoogleParts(
+  content: string | ContentBlock[],
+): Part[] {
+  if (typeof content === 'string') return [{ text: content }];
+  return content.map((block): Part => {
+    if (block.type === 'text') return { text: block.text };
+    if (block.type === 'image' || block.type === 'document') {
+      return {
+        inlineData: {
+          mimeType: block.source.mediaType,
+          data: block.source.data,
+        },
+      };
+    }
+    return { text: '' };
+  });
 }
 
 export class GoogleProvider implements LLMProvider {
@@ -46,11 +65,11 @@ export class GoogleProvider implements LLMProvider {
       modelConfig as unknown as Parameters<GoogleGenerativeAI['getGenerativeModel']>[0],
     );
 
-    const contents = options.messages
+    const contents: Content[] = options.messages
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: toGoogleRole(m.role),
-        parts: [{ text: m.content }],
+        parts: toGoogleParts(m.content),
       }));
 
     const result = await model.generateContent({ contents });
@@ -81,14 +100,14 @@ export class GoogleProvider implements LLMProvider {
       modelConfig as unknown as Parameters<GoogleGenerativeAI['getGenerativeModel']>[0],
     );
 
-    const contents = options.messages
+    const contents2: Content[] = options.messages
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: toGoogleRole(m.role),
-        parts: [{ text: m.content }],
+        parts: toGoogleParts(m.content),
       }));
 
-    const result = await model.generateContentStream({ contents });
+    const result = await model.generateContentStream({ contents: contents2 });
 
     let tokensIn = 0;
     let tokensOut = 0;

@@ -11,7 +11,7 @@ import { TogetherProvider } from './together.ts';
 import { BedrockProvider } from './bedrock.ts';
 import { CohereProvider } from './cohere.ts';
 import { KiloProvider } from './kilo.ts';
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider, Message } from './types.ts';
 import type { CortexConfig, ProviderConfig, ProviderKind } from '../config/config.ts';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -445,10 +445,14 @@ export class ThresholdRouter extends BaseRouter {
   }
 
   private chooseModel(
-    messages: { role: string; content: string }[],
+    messages: Message[],
   ): { provider: LLMProvider; model: string; score: number } {
     const prompt = messages.length > 0
-      ? messages.map((m) => `${m.role}: ${m.content}`).join('\n')
+      ? messages.map((m) => {
+        if (typeof m.content === 'string') return `${m.role}: ${m.content}`;
+        const textBlocks = m.content.filter((b): b is { type: 'text'; text: string } => b.type === 'text');
+        return `${m.role}: ${textBlocks.map((b) => b.text).join('\n')}`;
+      }).join('\n')
       : '';
     const score = this.scorer.score(prompt);
     if (score >= this.threshold) {

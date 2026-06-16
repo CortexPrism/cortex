@@ -11,8 +11,13 @@
 ## Features
 
 - **Interactive chat** — streaming CLI chat with 12 LLM providers: Anthropic, OpenAI, Google Gemini,
-  Mistral, Groq, DeepSeek, OpenRouter, xAI, Together AI, AWS Bedrock, Cohere, Ollama
-- **Tool use** — file read, shell execution, web search, code execution — all with approval gates
+  Mistral, Groq, DeepSeek, OpenRouter, xAI, Together AI, AWS Bedrock, Cohere, Ollama. Web UI
+  supports file upload (PDF, images, documents) with inline text extraction and preview rendering
+- **Multimodal input** — upload images and documents to Anthropic and Google Gemini models for
+  native multimodal processing; PDF text auto-extracted via pdf-parse for all providers
+- **Tool use** — file system (read, write, edit, patch, delete, rename, list, tree, info, search,
+  glob, undo/redo), shell execution, web search, web fetch, code execution in sandbox — all with
+  approval gates
 - **Coding sandbox** — ephemeral Docker containers (or subprocess fallback) with resource limits;
   LLM auto-fix loop
 - **Code Runner** — execute code in sandboxed environments directly from the Web UI with language
@@ -21,8 +26,9 @@
   patterns); multi-strategy retrieval with decay scoring
 - **Model router** — RouteLLM-style routing: cascade (cheapest-first escalation) or threshold
   (prompt-scoring) strategies with multi-signal confidence estimation
-- **Web UI + REST API** — built-in HTTP server with WebSocket streaming, Lens timeline, memory
-  search, jobs dashboard, file editor, git workspace, and code runner
+- **Web UI + REST API** — built-in HTTP server with WebSocket streaming, file upload with drag/click,
+  Lens timeline, memory search, jobs dashboard, file editor, git workspace, code runner, and session
+  persistence across page refreshes
 - **Git workspace** — per-agent and global git repos with auto-commit, branch management,
   push/pull/clone, and full git CLI
 - **GitHub integration** — PR creation, issue tracking, repo browsing via CLI, agent tools, and Web

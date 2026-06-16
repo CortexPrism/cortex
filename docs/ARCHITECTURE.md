@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.24.1.
+This document describes the implemented architecture of CortexPrism as of v0.32.0.
 
 ---
 
@@ -358,10 +358,31 @@ LLM response text
 
 | Tool | File | Description |
 |---|---|---|
-| `file_read` | `builtin/file_read.ts` | Read file contents with offset/limit |
-| `shell` | `builtin/shell.ts` | Execute shell command (approval gate) |
-| `web_search` | `builtin/web_search.ts` | DuckDuckGo Instant Answers |
-| `code_exec` | `builtin/code_exec.ts` | Run code in sandbox (approval gate) |
+| `file_read` | `builtin/file_read.ts` | Read file contents; auto-extracts PDF text |
+| `file_write` | `builtin/workspace/file_write.ts` | Write or overwrite a file |
+| `file_edit` | `builtin/workspace/file_edit.ts` | Exact string replacements in files |
+| `file_patch` | `builtin/workspace/file_patch.ts` | Apply unified diff patches |
+| `file_delete` | `builtin/workspace/file_delete.ts` | Delete a file |
+| `file_rename` | `builtin/workspace/file_rename.ts` | Rename or move a file |
+| `file_list` | `builtin/workspace/file_list.ts` | List directory contents with type markers |
+| `file_tree` | `builtin/workspace/file_tree.ts` | Recursive tree view of directories |
+| `file_info` | `builtin/workspace/file_info.ts` | File/directory metadata (size, type, timestamps) |
+| `file_search` | `builtin/workspace/file_search.ts` | Regex search across file contents |
+| `file_glob` | `builtin/workspace/file_glob.ts` | Find files matching glob patterns |
+| `file_undo` | `builtin/workspace/file_undo.ts` | Undo the last file change |
+| `file_redo` | `builtin/workspace/file_redo.ts` | Redo a previously undone change |
+| `shell` | `builtin/shell.ts` | Execute local shell commands (approval gate) |
+| `web_search` | `builtin/web_search.ts` | Web search via DuckDuckGo |
+| `web_fetch` | `builtin/web_fetch.ts` | Fetch URL content as plain text |
+| `code_exec` | `builtin/code_exec.ts` | Run code in isolated Docker sandbox |
+| `sub_agent` | `builtin/sub_agent.ts` | Delegate work to a sub-agent process |
+| `node_dispatch` | `builtin/node_dispatch.ts` | Dispatch tasks to remote distributed nodes |
+| `load_skill` | `builtin/load_skill.ts` | Load a skill by name |
+| `skill_read` | `builtin/skill_read.ts` | Read a skill file |
+| `skill_write` | `builtin/skill_write.ts` | Write a new skill file |
+| `dashboard_manage` | `builtin/dashboard_manage.ts` | Manage dashboard widgets |
+| `speak` | `builtin/speak.ts` | Text-to-speech via configured TTS provider |
+| `listen` | `builtin/listen.ts` | Speech-to-text via configured STT provider |
 
 ### Tool Interface
 
@@ -472,11 +493,16 @@ Token resolution order:
 
 | Tool | Description |
 |---|---|
-| `github_pr_create` | Create a pull request |
-| `github_pr_list` | List pull requests |
-| `github_issue_create` | Create an issue |
-| `github_issue_list` | List issues |
-| `git_push` | Stage all, commit, and push to remote |
+| `github_pr_create` | Create a pull request on GitHub |
+| `github_pr_list` | List pull requests for a repository |
+| `github_issue_create` | Create an issue on GitHub |
+| `github_issue_list` | List issues for a repository |
+| `git_push` | Stage, commit, and push to remote |
+| `sub_agent` | Spawn a specialized sub-agent process (explore, plan, code, research, general) |
+| `node_dispatch` | Delegate tasks to remote connected nodes |
+| `load_skill` | Load a skill by identifier |
+| `skill_read` | Read the contents of a skill |
+| `skill_write` | Create or update a skill |
 
 ### REST API
 

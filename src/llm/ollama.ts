@@ -1,8 +1,34 @@
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
 
 interface OllamaMessage {
   role: string;
   content: string;
+  images?: string[];
+}
+
+interface OllamaResponse {
+  message: { content: string };
+  prompt_eval_count: number;
+  eval_count: number;
+  done: boolean;
+}
+
+function toOllamaMessages(messages: CompletionOptions['messages']): OllamaMessage[] {
+  return messages.map((m) => {
+    if (typeof m.content === 'string') return { role: m.role, content: m.content };
+    const blocks = m.content as ContentBlock[];
+    let text = '';
+    const images: string[] = [];
+    for (const block of blocks) {
+      if (block.type === 'text') text += block.text;
+      if (block.type === 'image') images.push(block.source.data);
+    }
+    return {
+      role: m.role,
+      content: text,
+      ...(images.length > 0 ? { images } : {}),
+    };
+  });
 }
 
 interface OllamaResponse {
@@ -23,10 +49,7 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
-    const messages: OllamaMessage[] = options.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const messages: OllamaMessage[] = toOllamaMessages(options.messages);
 
     if (options.systemPrompt) {
       messages.unshift({ role: 'system', content: options.systemPrompt });
@@ -59,10 +82,7 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
-    const messages: OllamaMessage[] = options.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const messages: OllamaMessage[] = toOllamaMessages(options.messages);
 
     if (options.systemPrompt) {
       messages.unshift({ role: 'system', content: options.systemPrompt });

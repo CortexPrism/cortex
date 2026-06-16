@@ -5,7 +5,7 @@ export const codeExecTool: Tool = {
   definition: {
     name: 'code_exec',
     description:
-      'Execute a code snippet and return the output. Runs in an ephemeral sandbox (Docker if available, subprocess otherwise). Use for calculations, data processing, or verifying logic.',
+      'Execute code in an isolated Docker sandbox. IMPORTANT: the sandbox has NO access to host files or workspace — use file_read/file_write tools to read/write files instead. No pip/apt/pkg managers available; only built-in language runtimes (bash, python3, node, deno). Use for computation and logic, not file operations.',
     capabilities: ['shell:run'],
     params: [
       {
