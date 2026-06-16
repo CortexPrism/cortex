@@ -10,7 +10,6 @@
     "beforeBuildCommand": "deno task build-dashboard"
   },
   "app": {
-    "title": "Cortex",
     "windows": [
       {
         "title": "Cortex Dashboard",
