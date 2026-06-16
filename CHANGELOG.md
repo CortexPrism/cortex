@@ -7,6 +7,38 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.30.1] — 2026-06-16
+
+### Fixed
+
+- **Windows path resolution** — All `import.meta.url` pathname usages replaced with `fromFileUrl`
+  from `@std/path` to fix broken `/C:/Users/...` paths on Windows (affects db migrations, update
+  installer, version detection, daemon spawning, and sub-agent/service spawning)
+- **Windows path separators** — Hardcoded `/` path concatenation replaced with `join()`/`dirname()`
+  in server router, plugins context, inline SPA UI code, file watcher, and plugin install
+- **Windows process management** — Added cross-platform `findDenoProcesses()`,
+  `killDenoProcesses()`, `killProcessById()`, and `killChildProcess()` helpers with PowerShell
+  fallbacks on Windows. Replaced all `pgrep`, `pkill`, and direct `SIGTERM` usages across CLI
+  commands, agent sub-processes, service manager, and daemon supervisor
+- **Windows shell execution** — Hardcoded `sh` commands replaced with `getShellCommand()` which uses
+  PowerShell on Windows (executor process, scheduler process, jobs CLI)
+- **Windows temp directory** — Hardcoded `/tmp/cortex` socket directory replaced with `getTempDir()`
+  fallback. Screenshot temp paths also fixed
+- **Windows home directory** — `Deno.env.get('HOME')` without `USERPROFILE` fallback in plugins and
+  import/migration CLI commands replaced with centralized `resolveHomeDir()`
+- **Windows editor default** — `vi` fallback in soul-cmd replaced with `notepad` on Windows
+- **Workflow engine** — `df` and `free` Unix commands wrapped in try/catch for Windows compatibility
+- **Workspace path validation** — `startsWith('/')` replaced with `isAbsolute()` for correct
+  detection of Windows absolute paths (e.g., `D:\...`); container check handles both `\` and `/`
+- **Server stability** — `Deno.serve()` result awaited with error handler to prevent silent crash on
+  port bind failure; daemon child process stderr piped for error visibility; missed `SIGTERM` in
+  serve restart flow replaced with `killProcessById()`
+- **libSQL database** — `file:` URL backslashes normalized to forward slashes for Windows
+  compatibility
+- **Test suite** — Cross-platform fixes for workspace tests: `fromFileUrl` for SQL migration paths,
+  `join()` for path assertions, `isAbsolute()` for path containment checks, delay after db close for
+  Windows file-locking
+
 ## [0.30.0] — 2026-06-16
 
 ### Added
@@ -83,30 +115,6 @@ Versioning: [Semantic Versioning](https://semver.org/)
   single `-t png`/`-t jpg`
 - **macOS keypress** — Changed from `key code` (numeric codes only) to `keystroke` with AppleScript
   `using {modifiers}` syntax for proper key name support
-- **Windows path resolution** — All 8 `import.meta.url` pathname usages replaced with `fromFileUrl`
-  from `@std/path` to fix broken `/C:/Users/...` paths on Windows. Affected files: `db/migrate.ts`,
-  `update/installer.ts`, `config/version.ts`, `cli/daemon.ts`, `cli/serve.ts`, `agent/sub-agent.ts`,
-  `services/manager.ts`, `processes/supervisor-process.ts`
-- **Windows path separators** — Hardcoded `/` path concatenation replaced with `join()`/`dirname()`
-  in `server/router.ts`, `plugins/context.ts`, `server/ui.ts`, `triggers/watcher.ts`,
-  `cli/plugins-cmd.ts` to handle backslash-separated Windows paths
-- **Windows process management** — Added cross-platform `findDenoProcesses()`,
-  `killDenoProcesses()`, `killProcessById()`, and `killChildProcess()` helpers in
-  `utils/platform.ts` with PowerShell fallbacks on Windows. Replaced all `pgrep`, `pkill`, and
-  direct `SIGTERM` usages in `cli/serve.ts`, `cli/daemon.ts`, `cli/stop.ts`, `agent/sub-agent.ts`,
-  `services/manager.ts`, and `processes/supervisor-process.ts`
-- **Windows shell execution** — Hardcoded `sh` commands in `processes/executor-process.ts`,
-  `processes/scheduler-process.ts`, and `cli/jobs.ts` replaced with `getShellCommand()` which uses
-  PowerShell on Windows
-- **Windows temp directory** — Hardcoded `/tmp/cortex` socket directory replaced with
-  `getTempDir()`-based fallback. Hardcoded `/tmp/` screenshot path in `cli/desktop-cmd.ts` replaced
-  with `getTempDir() + join()`
-- **Windows home directory** — `Deno.env.get('HOME')` without `USERPROFILE` fallback in
-  `plugins/install.ts`, `plugins/update.ts`, `cli/import-cmd.ts`, and `cli/openclaw-migrate.ts`
-  replaced with centralized `resolveHomeDir()` from `utils/platform.ts`
-- **Windows editor default** — `vi` fallback in `cli/soul-cmd.ts` replaced with `notepad` on Windows
-- **Workflow engine** — `df` and `free` commands in `workflow/engine.ts` wrapped in try/catch to
-  prevent crashes on Windows where these Unix commands are unavailable
 
 ## [0.29.0] — 2026-06-16
 
