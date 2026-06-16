@@ -477,6 +477,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('logs');closeMobileSidebar()" id="nav-logs">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Logs
     </button>
+    <button class="nav-item" onclick="showPage('quartermaster');closeMobileSidebar()" id="nav-quartermaster">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span> Quartermaster
+    </button>
   </nav>
 
   <!-- Daemon status -->
@@ -1133,6 +1136,47 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Page: Quartermaster -->
+  <div id="page-quartermaster" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Quartermaster</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Tool Orchestration Learning System — observes agent tool patterns and predicts next actions</p>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-ghost" onclick="loadQuartermaster()" style="font-size:11px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;">
+      <button class="qm-tab active" onclick="switchQmTab('overview')" id="qmtab-overview" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Overview</button>
+      <button class="qm-tab" onclick="switchQmTab('patterns')" id="qmtab-patterns" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Patterns</button>
+      <button class="qm-tab" onclick="switchQmTab('decisions')" id="qmtab-decisions" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Decisions</button>
+    </div>
+    <div id="qm-pane-overview" style="display:flex;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:16px;">
+      <div id="qm-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div id="qm-accuracy-card" class="card" style="padding:16px;">
+          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Prediction Accuracy</h3>
+          <div style="height:160px;"><canvas id="qm-accuracy-chart"></canvas></div>
+        </div>
+        <div id="qm-weights-card" class="card" style="padding:16px;">
+          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Signal Weights</h3>
+          <div id="qm-weights-content"></div>
+        </div>
+      </div>
+      <div id="qm-tool-stats" class="card" style="padding:16px;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Tool Statistics</h3>
+        <div id="qm-tool-stats-content"></div>
+      </div>
+    </div>
+    <div id="qm-pane-patterns" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:8px;">
+      <div id="qm-patterns-content"></div>
+    </div>
+    <div id="qm-pane-decisions" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:8px;">
+      <div id="qm-decisions-content"></div>
+    </div>
+  </div>
+
   <!-- Cron modal (shared by Jobs page) -->
   <div id="cron-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
     <div class="card" style="width:480px;">
@@ -1583,7 +1627,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels'];
+const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster'];
 function showPage(name) {
   currentPage = name;
   try { localStorage.setItem('cortex_page', name); } catch {}
@@ -1609,6 +1653,7 @@ function showPage(name) {
     marketplace: loadMarketplace, soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: loadNodes,
+    quartermaster: loadQuartermaster,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -5747,6 +5792,213 @@ setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);
 setInterval(editorRefreshTree, 30_000);
+// ── Quartermaster Monitoring ─────────────────────────────────────────────────
+let qmAccuracyChart = null;
+
+function switchQmTab(name) {
+  document.querySelectorAll('.qm-tab').forEach(t => {
+    t.classList.toggle('active', false);
+    t.style.borderBottomColor = 'transparent';
+    t.style.color = 'var(--text2)';
+  });
+  const tabBtn = document.getElementById('qmtab-' + name);
+  if (tabBtn) {
+    tabBtn.classList.add('active');
+    tabBtn.style.borderBottomColor = 'var(--accent)';
+    tabBtn.style.color = 'var(--accent)';
+  }
+  ['overview','patterns','decisions'].forEach(p => {
+    const el = document.getElementById('qm-pane-' + p);
+    if (el) el.style.display = p === name ? 'flex' : 'none';
+  });
+  if (name === 'overview') loadQmOverview();
+  if (name === 'patterns') loadQmPatterns();
+  if (name === 'decisions') loadQmDecisions();
+}
+
+async function loadQuartermaster() {
+  const data = await fetch(BASE + '/api/qm/health').then(r => r.json()).catch(() => null);
+  if (data) {
+    window._qmData = data;
+    loadQmOverview();
+  } else {
+    document.getElementById('qm-summary-cards').innerHTML =
+      '<div style="grid-column:1/-1;padding:20px;color:var(--text3);font-size:13px;text-align:center;">No quartermaster data available. The QM activates after 50 tool calls have been observed in a session.</div>';
+  }
+}
+
+function loadQmOverview() {
+  const data = window._qmData;
+  if (!data) return;
+  const s = data.summary || {};
+  const weights = data.weights || [];
+  const toolStats = data.toolStats || [];
+  const trend = data.accuracyTrend || [];
+
+  const cards = document.getElementById('qm-summary-cards');
+  cards.innerHTML = \`
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Mode</div>
+      <div style="font-size:22px;font-weight:700;color:\${s.mode === 'active' ? '#4ade80' : '#fbbf24'};margin-top:4px;">\${s.mode?.toUpperCase() ?? '—'}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Observations</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:4px;">\${s.totalObservations ?? 0}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Predictions</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:4px;">\${s.totalPredictions ?? 0}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Correct</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:4px;">\${s.totalCorrect ?? 0}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Overall Accuracy</div>
+      <div style="font-size:22px;font-weight:700;color:\${(s.accuracy || 0) >= 0.7 ? '#4ade80' : (s.accuracy || 0) >= 0.5 ? '#fbbf24' : '#f87171'};margin-top:4px;">\${((s.accuracy || 0) * 100).toFixed(1)}%</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Recent Accuracy</div>
+      <div style="font-size:22px;font-weight:700;color:\${(s.rollingAccuracy || 0) >= 0.7 ? '#4ade80' : (s.rollingAccuracy || 0) >= 0.5 ? '#fbbf24' : '#f87171'};margin-top:4px;">\${((s.rollingAccuracy || 0) * 100).toFixed(1)}%</div>
+    </div>
+  \`;
+
+  if (trend.length > 0) {
+    const ctx = document.getElementById('qm-accuracy-chart');
+    if (ctx) {
+      if (qmAccuracyChart) qmAccuracyChart.destroy();
+      qmAccuracyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: trend.map(d => d.timestamp.slice(5,16).replace('T',' ')),
+          datasets: [
+            { label: 'Bucket Accuracy', data: trend.map(d => d.accuracy), borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.1)', tension: 0.3, pointRadius: 2, fill: false },
+            { label: 'Rolling Avg', data: trend.map(d => d.rollingAvg), borderColor: '#34d399', borderDash: [4,2], tension: 0.3, pointRadius: 0, fill: false },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#9090a8', font: { size: 10 }, usePointStyle: true } } },
+          scales: {
+            x: { ticks: { color: '#55556a', font: { size: 9 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { min: 0, max: 1, ticks: { color: '#55556a', font: { size: 9 }, callback: v => (v*100).toFixed(0)+'%' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          },
+        },
+      });
+    }
+  }
+
+  const wEl = document.getElementById('qm-weights-content');
+  if (weights.length > 0) {
+    wEl.innerHTML = weights.map(w => {
+      const barH = Math.max(4, Math.round(w.weight * 80));
+      return \`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:90px;font-size:11px;color:var(--text2);text-align:right;">\${w.signalName}</div>
+        <div style="flex:1;height:14px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:\${(w.weight*100).toFixed(0)}%;background:linear-gradient(90deg,#818cf8,#c084fc);border-radius:3px;transition:width 0.5s;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text);font-weight:600;width:34px;">\${(w.weight*100).toFixed(0)}%</div>
+      </div>\`;
+    }).join('');
+  } else {
+    wEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">No weights data.</p>';
+  }
+
+  const tsEl = document.getElementById('qm-tool-stats-content');
+  if (toolStats.length > 0) {
+    tsEl.innerHTML = \`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+      \${toolStats.slice(0,10).map(s => {
+        const rate = s.totalCalls > 0 ? (s.successfulCalls / s.totalCalls * 100).toFixed(0) : '0';
+        const barW = s.totalCalls > 0 ? Math.min(100, Math.round(s.successfulCalls / s.totalCalls * 100)) : 0;
+        return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg3);border-radius:4px;">
+          <div>
+            <div style="font-size:12px;font-weight:500;color:var(--text);">\${s.toolName}</div>
+            <div style="font-size:10px;color:var(--text3);">\${s.totalCalls} calls · \${s.avgDurationMs.toFixed(0)}ms avg</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:600;color:\${Number(rate) >= 80 ? '#4ade80' : Number(rate) >= 50 ? '#fbbf24' : '#f87171'};">\${rate}%</div>
+            <div style="width:60px;height:4px;background:var(--border);border-radius:2px;margin-top:3px;">
+              <div style="height:100%;width:\${barW}%;background:\${Number(rate) >= 80 ? '#4ade80' : Number(rate) >= 50 ? '#fbbf24' : '#f87171'};border-radius:2px;"></div>
+            </div>
+          </div>
+        </div>\`;
+      }).join('')}
+    </div>\`;
+  } else {
+    tsEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">No tool statistics collected yet.</p>';
+  }
+}
+
+async function loadQmPatterns() {
+  const el = document.getElementById('qm-patterns-content');
+  el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Loading…</p>';
+  const data = await fetch(BASE + '/api/qm/health').then(r => r.json()).catch(() => null);
+  if (!data) { el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Failed to load.</p>'; return; }
+  const decisions = data.recentDecisions || [];
+  if (decisions.length === 0) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;">No patterns recorded yet. Patterns are learned after several tool call sequences.</p>';
+    return;
+  }
+  const bySession = {};
+  for (const d of decisions) {
+    const key = d.sessionId || 'unknown';
+    if (!bySession[key]) bySession[key] = { total: 0, correct: 0, modes: {} };
+    bySession[key].total++;
+    if (d.wasCorrect === 1) bySession[key].correct++;
+    bySession[key].modes[d.mode] = (bySession[key].modes[d.mode] || 0) + 1;
+  }
+  el.innerHTML = \`<div style="display:flex;flex-direction:column;gap:10px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Prediction Patterns by Session</div>
+    \${Object.entries(bySession).map(([sid, stats]) => {
+      const acc = stats.total > 0 ? (stats.correct / stats.total * 100).toFixed(0) : '0';
+      const modeStr = Object.entries(stats.modes).map(([m,c]) => m + ':' + c).join(' · ');
+      return \`<div class="card" style="padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:12px;font-weight:500;color:var(--text);">\${sid.slice(-16)}</div>
+            <div style="font-size:10px;color:var(--text3);">\${stats.total} predictions · \${modeStr}</div>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:\${Number(acc) >= 70 ? '#4ade80' : Number(acc) >= 50 ? '#fbbf24' : '#f87171'};">\${acc}%</div>
+        </div>
+        <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:6px;">
+          <div style="height:100%;width:\${acc}%;background:\${Number(acc) >= 70 ? '#4ade80' : Number(acc) >= 50 ? '#fbbf24' : '#f87171'};border-radius:2px;"></div>
+        </div>
+      </div>\`;
+    }).join('')}
+  </div>\`;
+}
+
+async function loadQmDecisions() {
+  const el = document.getElementById('qm-decisions-content');
+  el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Loading…</p>';
+  const decisions = await fetch(BASE + '/api/qm/recent?limit=30').then(r => r.json()).catch(() => []);
+  if (!decisions || decisions.length === 0) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;">No decisions recorded yet.</p>';
+    return;
+  }
+  const modeColors = { automate: '#fbbf24', suggest: '#818cf8', defer: '#55556a' };
+  el.innerHTML = \`<div style="display:flex;flex-direction:column;gap:6px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Recent Decisions</div>
+    \${decisions.map(d => {
+      const correctLabel = d.wasCorrect === null ? '⏳' : d.wasCorrect === 1 ? '✓' : '✗';
+      const correctColor = d.wasCorrect === null ? '#55556a' : d.wasCorrect === 1 ? '#4ade80' : '#f87171';
+      const confPct = ((d.confidence || 0) * 100).toFixed(0);
+      return \`<div class="card" style="padding:8px 12px;display:flex;align-items:center;gap:10px;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:\${modeColors[d.mode] || '#55556a'};flex-shrink:0;" title="\${d.mode}"></span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            \${d.mode === 'defer' ? 'Deferred (no prediction)' : \`Predicted <b>\${d.predictedTool}</b>\`}
+            \${d.actualTool ? \` → actual: <b>\${d.actualTool}</b>\` : ''}
+          </div>
+          <div style="font-size:10px;color:var(--text3);">\${d.confidence ? confPct + '% confidence' : ''}\${d.signalsUsed ? ' · ' + d.signalsUsed.slice(0,3).map(s => s.name).join(', ') : ''}</div>
+        </div>
+        <span style="font-size:14px;font-weight:700;color:\${correctColor};flex-shrink:0;">\${correctLabel}</span>
+      </div>\`;
+    }).join('')}
+  </div>\`;
+}
+// ── End Quartermaster ────────────────────────────────────────────────────────
+
 const initPage = (() => { try { return localStorage.getItem('cortex_page') || 'chat'; } catch { return 'chat'; } })();
 showPage(initPage);
 </script>
