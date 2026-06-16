@@ -1,6 +1,6 @@
 /**
  * Model Quartermaster — Type Definitions
- * 
+ *
  * Intelligent LLM selection based on learned patterns and contextual signals.
  */
 
@@ -61,12 +61,12 @@ export interface RequestContext {
  * Signal weights for model selection
  */
 export interface ModelSignalWeights {
-  historical: number;    // past performance for this task category
-  episodic: number;      // similar requests in episodic memory
-  cost: number;          // cost optimization signal
-  quality: number;       // quality optimization signal  
-  trajectory: number;    // recent model usage patterns
-  reflection: number;    // reflection-based feedback
+  historical: number; // past performance for this task category
+  episodic: number; // similar requests in episodic memory
+  cost: number; // cost optimization signal
+  quality: number; // quality optimization signal
+  trajectory: number; // recent model usage patterns
+  reflection: number; // reflection-based feedback
 }
 
 /**
