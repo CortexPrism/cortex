@@ -1,5 +1,5 @@
 import { getMemoryDb } from '../db/client.ts';
-import type { InValue } from 'npm:@libsql/client';
+import type { InValue } from '../db/client.ts';
 import type { LLMProvider } from '../llm/types.ts';
 import { join } from '@std/path';
 import { BUILTIN_SKILLS } from '../skills/builtin/mod.ts';
