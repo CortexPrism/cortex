@@ -2,6 +2,7 @@ import { Command } from '@cliffy/command';
 import { bold, dim, green, red, yellow } from '@std/fmt/colors';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
+import { isWindows } from '../utils/platform.ts';
 import {
   appendToMemoryFile,
   generatePersonalitySoul,
@@ -70,7 +71,8 @@ export const soulCommand = new Command()
           'MEMORY.md': PATHS.memoryFile,
         };
         const target = pathMap[file.toUpperCase()] ?? pathMap['SOUL.md'];
-        const editor = Deno.env.get('EDITOR') ?? Deno.env.get('VISUAL') ?? 'vi';
+        const defaultEditor = isWindows() ? 'notepad' : 'vi';
+        const editor = Deno.env.get('EDITOR') ?? Deno.env.get('VISUAL') ?? defaultEditor;
         const proc = new Deno.Command(editor, {
           args: [target],
           stdin: 'inherit',

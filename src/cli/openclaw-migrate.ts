@@ -1,5 +1,6 @@
 import { exists } from '@std/fs';
 import { join } from '@std/path';
+import { resolveHomeDir } from '../utils/platform.ts';
 import { dim, green, yellow } from '@std/fmt/colors';
 import { closeSession, createSession } from '../db/sessions.ts';
 import { getSessionDb } from '../db/client.ts';
@@ -46,7 +47,7 @@ export async function importOpenClaw(
   sourcePath: string,
   opts?: { dryRun?: boolean },
 ): Promise<void> {
-  const home = Deno.env.get('HOME') ?? '.';
+  const home = resolveHomeDir();
   const configPath = sourcePath || join(home, '.openclaw');
   const configFile = join(configPath, 'config.yaml');
 

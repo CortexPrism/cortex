@@ -1,27 +1,52 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
+import { fromFileUrl, join } from '@std/path';
+import { findDenoProcesses, isWindows, killProcessById } from '../utils/platform.ts';
 import { startServer } from '../server/server.ts';
 
 async function findServerProcess(
   port: number,
 ): Promise<{ pid: number; host: string } | null> {
-  const pgrep = new Deno.Command('pgrep', { args: ['-f', 'cortex.*main\\.ts.*serve'] });
-  const out = await pgrep.output();
-  if (!out.success) return null;
+  const pids = await findDenoProcesses('cortex.*main\\.[jt]s.*serve');
 
-  const pids = new TextDecoder().decode(out.stdout).trim().split('\n').map(Number)
-    .filter((p) => Boolean(p) && p !== Deno.pid);
   for (const pid of pids) {
     try {
-      const cmdline = await Deno.readTextFile(`/proc/${pid}/cmdline`);
-      const args = cmdline.split('\0');
-      let host = '127.0.0.1';
-      let foundPort = 3000;
-      for (let i = 0; i < args.length; i++) {
-        if (args[i] === '--host' && i + 1 < args.length) host = args[i + 1];
-        if (args[i] === '--port' && i + 1 < args.length) foundPort = Number(args[i + 1]);
+      if (isWindows()) {
+        const psCommand =
+          `Get-CimInstance Win32_Process -Filter "ProcessId=${pid}" | Select-Object CommandLine | ConvertTo-Json`;
+        const proc = new Deno.Command('powershell.exe', {
+          args: ['-NoProfile', '-Command', psCommand],
+          stdout: 'piped',
+          stderr: 'null',
+        });
+        const out = await proc.output();
+        if (!out.success) continue;
+        const json = JSON.parse(new TextDecoder().decode(out.stdout));
+        const cmdline = (json.CommandLine ?? '') as string;
+        const args = cmdline.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
+        let host = '127.0.0.1';
+        let foundPort = 3000;
+        for (let i = 0; i < args.length; i++) {
+          const a = args[i].replace(/^["']|["']$/g, '');
+          if (a === '--host' && i + 1 < args.length) {
+            host = args[i + 1].replace(/^["']|["']$/g, '');
+          }
+          if (a === '--port' && i + 1 < args.length) {
+            foundPort = Number(args[i + 1]);
+          }
+        }
+        if (foundPort === port) return { pid, host };
+      } else {
+        const cmdline = await Deno.readTextFile(`/proc/${pid}/cmdline`);
+        const args = cmdline.split('\0');
+        let host = '127.0.0.1';
+        let foundPort = 3000;
+        for (let i = 0; i < args.length; i++) {
+          if (args[i] === '--host' && i + 1 < args.length) host = args[i + 1];
+          if (args[i] === '--port' && i + 1 < args.length) foundPort = Number(args[i + 1]);
+        }
+        if (foundPort === port) return { pid, host };
       }
-      if (foundPort === port) return { pid, host };
     } catch {
       continue;
     }
@@ -50,7 +75,7 @@ export async function stopBackgroundServer(port = 3000): Promise<boolean> {
   if (!existing) return false;
 
   try {
-    Deno.kill(existing.pid, 'SIGTERM');
+    killProcessById(existing.pid);
     console.log(
       cyan(`  Stopped cortex server (pid ${existing.pid}, http://${existing.host}:${port})`),
     );
@@ -96,9 +121,9 @@ export const serveCommand = new Command()
           }
         }
 
-        const projectRoot = new URL('../../', import.meta.url).pathname;
-        const configPath = `${projectRoot}deno.json`;
-        const mainPath = `${projectRoot}src/main.ts`;
+        const projectRoot = fromFileUrl(new URL('../../', import.meta.url));
+        const configPath = join(projectRoot, 'deno.json');
+        const mainPath = join(projectRoot, 'src', 'main.ts');
         const cmd = new Deno.Command(Deno.execPath(), {
           args: [
             'run',

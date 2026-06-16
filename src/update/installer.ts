@@ -1,4 +1,4 @@
-import { dirname, join } from '@std/path';
+import { dirname, fromFileUrl, join } from '@std/path';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
 import { makeExecutable } from '../utils/permissions.ts';
@@ -105,8 +105,7 @@ async function detectInstallType(): Promise<InstallManifest> {
 
   let installPath = '';
   try {
-    const mainUrl = new URL('../../', import.meta.url);
-    installPath = mainUrl.pathname;
+    installPath = fromFileUrl(new URL('../../', import.meta.url));
   } catch {
     installPath = Deno.cwd();
   }

@@ -3,6 +3,8 @@
  * Manages long-running agent processes as micro-services with
  * health monitoring, auto-restart, and a registry stored in cortex.db.
  */
+import { fromFileUrl } from '@std/path';
+import { isWindows } from '../utils/platform.ts';
 import { getCoreDb } from '../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 
@@ -221,7 +223,7 @@ export async function startService(id: string): Promise<void> {
     args: [
       'run',
       '--allow-all',
-      new URL('../../src/processes/service-entry.ts', import.meta.url).pathname,
+      fromFileUrl(new URL('../../src/processes/service-entry.ts', import.meta.url)),
       '--service-id',
       id,
       '--port',
@@ -295,7 +297,7 @@ export async function stopService(id: string): Promise<void> {
   const runtime = runningServices.get(id);
   if (runtime) {
     try {
-      runtime.process.kill('SIGTERM');
+      runtime.process.kill(isWindows() ? undefined : 'SIGTERM');
     } catch { /* ignore */ }
     runningServices.delete(id);
     stopHealthCheck(id);

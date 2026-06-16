@@ -1,7 +1,11 @@
-export const SOCKET_DIR = Deno.env.get('CORTEX_SOCKET_DIR') ?? '/tmp/cortex';
-export const VALIDATOR_SOCK = `${SOCKET_DIR}/validator.sock`;
-export const EXECUTOR_SOCK = `${SOCKET_DIR}/executor.sock`;
-export const SCHEDULER_SOCK = `${SOCKET_DIR}/scheduler.sock`;
+import { getTempDir, isWindows } from '../utils/platform.ts';
+import { join } from '@std/path';
+
+const defaultSocketDir = isWindows() ? join(getTempDir(), 'cortex') : '/tmp/cortex';
+export const SOCKET_DIR = Deno.env.get('CORTEX_SOCKET_DIR') ?? defaultSocketDir;
+export const VALIDATOR_SOCK = join(SOCKET_DIR, 'validator.sock');
+export const EXECUTOR_SOCK = join(SOCKET_DIR, 'executor.sock');
+export const SCHEDULER_SOCK = join(SOCKET_DIR, 'scheduler.sock');
 
 export type IpcMessageType =
   | 'intent'

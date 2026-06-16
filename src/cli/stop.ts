@@ -1,5 +1,6 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
+import { killDenoProcesses } from '../utils/platform.ts';
 import { stopBackgroundServer } from './serve.ts';
 
 const DAEMON_PATTERNS = [
@@ -13,8 +14,7 @@ async function stopDaemons(): Promise<void> {
   let anyStopped = false;
   for (const pat of DAEMON_PATTERNS) {
     try {
-      const cmd = new Deno.Command('pkill', { args: ['-f', pat] });
-      await cmd.output();
+      await killDenoProcesses(pat);
       console.log(cyan(`  Stopped daemon: ${pat}`));
       anyStopped = true;
     } catch {

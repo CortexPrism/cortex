@@ -1,5 +1,6 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
+import { dirname } from '@std/path';
 import { runMigrations } from '../db/migrate.ts';
 import { getPlugin, installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts';
 import { pluginManager } from '../plugins/manager.ts';
@@ -153,10 +154,7 @@ export const pluginsCommand = new Command()
             });
             console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
           } else {
-            const lastSlash = source.lastIndexOf('/');
-            sourceDir = await Deno.realPath(
-              lastSlash !== -1 ? source.substring(0, lastSlash) : '.',
-            );
+            sourceDir = await Deno.realPath(dirname(source));
             const manifest = JSON.parse(await Deno.readTextFile(source)) as {
               name: string;
               version: string;

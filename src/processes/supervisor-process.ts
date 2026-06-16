@@ -4,6 +4,8 @@ import {
   SCHEDULER_SOCK,
   VALIDATOR_SOCK,
 } from '../ipc/transport.ts';
+import { fromFileUrl } from '@std/path';
+import { isWindows } from '../utils/platform.ts';
 
 interface ProcDef {
   name: string;
@@ -26,7 +28,7 @@ function isCompiledBinary(): boolean {
 }
 
 function getMainEntryPath(): string {
-  return new URL('../main.ts', import.meta.url).pathname;
+  return fromFileUrl(new URL('../main.ts', import.meta.url));
 }
 
 async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
@@ -93,7 +95,7 @@ export async function runSupervisor(): Promise<void> {
     console.log('\n[supervisor] Shutting down...');
     for (const [name, child] of children) {
       try {
-        child.process.kill('SIGTERM');
+        child.process.kill(isWindows() ? undefined : 'SIGTERM');
       } catch { /* ignore */ }
       children.delete(name);
     }

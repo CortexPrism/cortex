@@ -2,6 +2,7 @@ import { getPlugin, listPlugins, updatePlugin } from './registry.ts';
 import { pluginManager } from './manager.ts';
 import { buildGitHubArchiveUrl, downloadFromUrl, downloadPluginPackage } from './install.ts';
 import { join } from '@std/path';
+import { resolveHomeDir } from '../utils/platform.ts';
 import type { PluginManifest, PluginRow } from './types.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
@@ -172,7 +173,7 @@ export async function applyPluginUpdate(
   }
 
   const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
-    `${Deno.env.get('HOME') ?? '.'}/.cortex/data`;
+    join(resolveHomeDir(), '.cortex', 'data');
   const pluginDir = join(dataDir, 'plugins', pluginName);
 
   if (marketplaceSlug) {

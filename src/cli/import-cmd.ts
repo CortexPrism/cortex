@@ -2,6 +2,7 @@ import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { exists } from '@std/fs';
 import { join } from '@std/path';
+import { resolveHomeDir } from '../utils/platform.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { writeEpisodic } from '../memory/store.ts';
 import { addPolicy } from '../security/policy.ts';
@@ -98,7 +99,7 @@ async function importFromFile(filePath: string): Promise<{
 
 async function detectOpenClawDir(): Promise<string | null> {
   const candidates = [
-    join(Deno.env.get('HOME') ?? '.', '.openclaw'),
+    join(resolveHomeDir(), '.openclaw'),
     join(Deno.cwd(), '.openclaw'),
     join(Deno.cwd(), 'openclaw-export.json'),
   ];

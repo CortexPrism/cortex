@@ -253,14 +253,22 @@ export function listWorkflows(): { name: string }[] {
 registerWorkflow(
   new Workflow('health-check')
     .step('check-disk', async (ctx) => {
-      const cmd = new Deno.Command('df', { args: ['-h', '/'] });
-      const out = await cmd.output();
-      ctx.set('disk', new TextDecoder().decode(out.stdout));
+      try {
+        const cmd = new Deno.Command('df', { args: ['-h', '/'] });
+        const out = await cmd.output();
+        ctx.set('disk', new TextDecoder().decode(out.stdout));
+      } catch {
+        ctx.set('disk', '(unavailable on this platform)');
+      }
     })
     .step('check-memory', async (ctx) => {
-      const cmd = new Deno.Command('free', { args: ['-m'] });
-      const out = await cmd.output();
-      ctx.set('memory', new TextDecoder().decode(out.stdout));
+      try {
+        const cmd = new Deno.Command('free', { args: ['-m'] });
+        const out = await cmd.output();
+        ctx.set('memory', new TextDecoder().decode(out.stdout));
+      } catch {
+        ctx.set('memory', '(unavailable on this platform)');
+      }
     })
     .step('summarize', async (ctx) => {
       const disk = ctx.get<string>('disk') ?? 'unknown';

@@ -1,5 +1,6 @@
 import { ensureDir } from '@std/fs';
 import { join, resolve as resolvePath } from '@std/path';
+import { resolveHomeDir } from '../utils/platform.ts';
 import type { PluginKind } from './types.ts';
 import { installPlugin } from './registry.ts';
 
@@ -210,7 +211,7 @@ export async function installFromMarketplace(
   },
 ): Promise<void> {
   const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
-    `${Deno.env.get('HOME') ?? '.'}/.cortex/data`;
+    join(resolveHomeDir(), '.cortex', 'data');
   const pluginDir = join(dataDir, 'plugins', manifest.name);
 
   let localEntryPoint = manifest.entryPoint;
@@ -302,7 +303,7 @@ export async function installFromUrl(
   }
 
   const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
-    `${Deno.env.get('HOME') ?? '.'}/.cortex/data`;
+    join(resolveHomeDir(), '.cortex', 'data');
   const pluginDir = join(dataDir, 'plugins', manifest.name);
   await ensureDir(pluginDir);
 
