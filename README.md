@@ -1,53 +1,121 @@
 # CortexPrism
 
-> An open-source agentic harness system. Hosts, orchestrates, and empowers AI agents with memory,
-> tools, sandboxed code execution, a web UI, reflection, model routing, and layered security.
+> **The open-source AI agent harness with memory, tools, a web UI, and layered security — powered by Deno.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
+[![Version](https://img.shields.io/badge/version-0.32.0-green)](CHANGELOG.md)
+[![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
+
+**CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
+autonomous agent. It provides persistent memory, a rich tool ecosystem, sandboxed code execution, a
+full-featured web UI, and enterprise-grade security — all running locally on your machine or server.
+
+- Works with **12 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
+- Ships as a **single Deno binary** — no Docker required to get started
+- **100% open source** — MIT licensed, no telemetry, data stays on your machine
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [CLI Reference](#cli-reference)
+- [Configuration](#configuration)
+- [Web UI](#web-ui)
+- [Security Model](#security-model)
+- [Plugin System](#plugin-system)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
 ## Features
 
-- **Interactive chat** — streaming CLI chat with 12 LLM providers: Anthropic, OpenAI, Google Gemini,
-  Mistral, Groq, DeepSeek, OpenRouter, xAI, Together AI, AWS Bedrock, Cohere, Ollama. Web UI
-  supports file upload (PDF, images, documents) with inline text extraction and preview rendering
-- **Multimodal input** — upload images and documents to Anthropic and Google Gemini models for
-  native multimodal processing; PDF text auto-extracted via pdf-parse for all providers
-- **Tool use** — file system (read, write, edit, patch, delete, rename, list, tree, info, search,
-  glob, undo/redo), shell execution, web search, web fetch, code execution in sandbox — all with
-  approval gates
-- **Coding sandbox** — ephemeral Docker containers (or subprocess fallback) with resource limits;
-  LLM auto-fix loop
-- **Code Runner** — execute code in sandboxed environments directly from the Web UI with language
-  selection and live output
-- **5-tier memory** — episodic (FTS5 keyword), semantic (vector embeddings), reflection (learned
-  patterns); multi-strategy retrieval with decay scoring
-- **Model router** — RouteLLM-style routing: cascade (cheapest-first escalation) or threshold
-  (prompt-scoring) strategies with multi-signal confidence estimation
-- **Web UI + REST API** — built-in HTTP server with WebSocket streaming, file upload with drag/click,
-  Lens timeline, memory search, jobs dashboard, file editor, git workspace, code runner, and session
-  persistence across page refreshes
-- **Git workspace** — per-agent and global git repos with auto-commit, branch management,
-  push/pull/clone, and full git CLI
-- **GitHub integration** — PR creation, issue tracking, repo browsing via CLI, agent tools, and Web
-  UI
-- **Per-turn reflection** — LLM self-assessment of confidence/quality; meta-pattern consolidation
-- **Scheduled jobs** — SQLite-persisted cron with retry
-- **Security (Parallax model)** — every tool call gated through a policy validator; AES-256-GCM
-  credential vault; regex allow/deny rules
-- **Cortex Lens** — full activity audit log of all sessions, tool calls, and policy decisions
-- **Model Quartermaster** — intelligent LLM selection learns which model to use for each task based
-  on historical performance, cost constraints, and contextual signals; 6-signal prediction engine
-  with adaptive EMA learning; three arbiter strategies (conservative/balanced/aggressive)
+### AI Providers & Model Routing
+
+- **12 LLM providers** — Anthropic Claude, OpenAI GPT, Google Gemini, Mistral, Groq, DeepSeek,
+  OpenRouter, xAI Grok, Together AI, AWS Bedrock, Cohere, Ollama (local models)
+- **Multimodal input** — upload images and documents; native vision support for Anthropic and Google
+  Gemini; PDF text auto-extracted for all providers
+- **Model Quartermaster (MQM)** — intelligent model selection that learns which model performs best
+  for each task type using a 6-signal prediction engine with adaptive EMA learning and three arbiter
+  strategies (conservative / balanced / aggressive)
+- **Model router** — RouteLLM-style cascade (cheapest-first escalation) and threshold
+  (prompt-scoring) routing strategies
+
+### Agent Capabilities
+
+- **Interactive streaming chat** — CLI and Web UI with real-time streaming, session persistence, and
+  session resume
+- **Tool use with approval gates** — every tool call is reviewed by the security policy before
+  execution; agents can request human approval for sensitive operations
+- **Sub-agent orchestration** — agents can spawn specialized child agents (Explorer, Coder,
+  Researcher, Planner, Generalist) for parallel and delegated work
+- **Per-turn reflection** — LLM self-assessment of confidence and quality after each response; meta-
+  pattern consolidation over time
+- **Voice pipeline** — speech-to-text (OpenAI Whisper), text-to-speech (OpenAI TTS / ElevenLabs),
+  energy-based VAD, real-time audio streaming over WebSocket
+
+### Memory System
+
+- **5-tier memory** — episodic (FTS5 full-text search), semantic (vector embeddings), and reflection
+  (learned patterns) with multi-strategy retrieval and decay scoring
+- **Automatic memory injection** — relevant memories are injected into each turn's system prompt
+- **Memory search CLI** — keyword, semantic, and hybrid search from the terminal
+
+### Built-in Tools
+
+| Category | Tools |
+|---|---|
+| File system | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo |
+| Shell | execute shell commands (sandboxed through policy validator) |
+| Web | web_search, web_fetch (returns cleaned plain text) |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop |
+| GitHub | PR creation, issue tracking, repo browsing |
+| Git workspace | status, commit, push, pull, branch, clone |
+| Voice | speak, listen (STT/TTS agent tools) |
+| Sub-agents | spawn typed child agents for parallel and delegated tasks |
+
+### Web UI & REST API
+
+- **Built-in HTTP server** — `cortex serve` starts a WebSocket-powered chat UI on port 3000
+- **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Cortex Lens, Memory, Jobs,
+  Sessions, Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, Logs
+- **File upload** — drag-and-drop or click to attach PDFs, images, and documents in chat
+- **REST API** — full HTTP API for sessions, memory, jobs, git, GitHub, and code execution
+- **Session persistence** — page refresh resumes the active session (full history preserved)
+
+### Security (Parallax Model)
+
+- **Policy validator** — every tool call is evaluated against regex allow/deny rules before execution
+- **AES-256-GCM vault** — encrypted credential storage with PBKDF2 key derivation
+- **Default deny rules** — ships with protection against `rm -rf /`, fork bombs, direct disk writes
+- **Cortex Lens** — full audit log of all sessions, tool calls, LLM calls, and policy decisions
+- **No telemetry** — all data stays on your machine
+
+### Ops & Extensibility
+
+- **Scheduled jobs** — SQLite-persisted cron with automatic retry
+- **Daemon supervisor** — manages validator, executor, and scheduler processes with exponential
+  backoff restart
+- **Plugin system** — WASM and Deno module plugins with sandboxed permissions
+- **Auto-update** — `cortex update` supports source mode and signed binary mode with SHA-256 and
+  optional GPG verification
+- **Desktop app** — Tauri-based desktop wrapper (macOS, Windows, Linux)
 
 ---
 
 ## Requirements
 
-- [Deno 2.x](https://deno.land)
-- Docker (optional, for sandbox isolation — subprocess fallback available)
+| Requirement | Notes |
+|---|---|
+| [Deno 2.x](https://deno.land) | Required — the installer handles this automatically |
+| Docker | Optional — needed for sandboxed code execution; subprocess fallback is available |
+| macOS, Linux, or Windows | All platforms supported |
 
 ---
 
@@ -55,12 +123,21 @@
 
 ### Option 1: One-line installer (recommended)
 
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://cortexprism.io/install.sh | bash
 ```
 
-This installs Deno (if needed), clones Cortex to `~/.cortex`, creates the `cortex` CLI command, and
-runs database migrations. After install, run `cortex setup` to configure your LLM provider.
+**Windows (PowerShell):**
+
+```powershell
+irm https://cortexprism.io/install.ps1 | iex
+```
+
+The installer: checks for / installs Deno, clones Cortex to `~/.cortex`, creates the `cortex` CLI
+alias, and runs database migrations. After install, run `cortex setup` to configure your first LLM
+provider.
 
 ### Option 2: Manual clone
 
@@ -71,17 +148,25 @@ deno run --allow-all src/db/migrate.ts
 deno run --allow-all src/main.ts setup
 ```
 
-To make `cortex` available as a command without the installer, add to your shell profile:
+Add `cortex` to your PATH by appending to your shell profile:
 
 ```bash
-echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
 echo 'alias cortex="deno run --allow-all ~/.cortex/src/main.ts"' >> ~/.bashrc
+source ~/.bashrc
 ```
+
+### Option 3: Pre-compiled binary
+
+Download the latest binary from the [Releases page](https://github.com/CortexPrism/cortex/releases).
+All binaries include SHA-256 checksums and optional GPG signatures.
 
 ### First run
 
-On first run, `cortex setup` prompts you to choose an LLM provider and enter credentials. Config is
-saved to `~/.cortex/config.json`.
+```bash
+cortex setup        # Interactive setup wizard — choose provider, enter API key
+cortex chat         # Start your first chat session
+cortex serve        # Open the Web UI at http://127.0.0.1:3000
+```
 
 ---
 
@@ -97,24 +182,27 @@ Commands:
   run <file>        Execute a code file in the sandbox
   serve             Start the HTTP + WebSocket server with Web UI
   daemon            Manage background processes (validator, executor, scheduler)
-  stop              Stop all background processes (server + daemons)
+  start             Start daemon + server processes
+  restart           Restart daemon + server processes
+  stop              Stop all background processes
+  voice             Manage voice mode (enable, disable, status, set-voice)
   memory            Search and manage memory
   reflect           Inspect and consolidate reflection patterns
   jobs              Manage scheduled jobs
   vault             Encrypted credential vault (store / get / list / delete)
   policy            Security policy rules (list / add / remove / check)
   migrate           Initialise or migrate all databases
-  update            Check for updates and manage Cortex version
-  git               Git workspace operations (status, log, push, pull, branch, etc.)
+  update            Check for and apply updates
+  git               Git workspace operations
   github            GitHub integration (PRs, issues, repos)
-  mqm               Model Quartermaster — intelligent model selection (stats, decisions, weights, accuracy)
+  mqm               Model Quartermaster stats and configuration
 ```
 
 ### `cortex chat`
 
 ```bash
-cortex chat                          # Start a chat session
-cortex chat --model gpt-4o           # Override model
+cortex chat                          # Start a new chat session
+cortex chat --model gpt-4o           # Override the active model
 cortex chat --resume sess_abc123     # Resume an existing session
 cortex chat -s sess_abc123           # Resume (short flag)
 cortex chat --no-stream              # Disable streaming output
@@ -130,165 +218,103 @@ Slash commands inside chat:
 
 ### `cortex run <file>`
 
+Execute a code file in an isolated sandbox with optional LLM auto-fix:
+
 ```bash
-cortex run script.py                 # Run in Docker sandbox (auto-detect language)
-cortex run script.py --no-sandbox    # Run as direct subprocess
-cortex run script.py --fix           # Enable LLM auto-fix loop on failure
+cortex run script.py                    # Run in Docker sandbox (auto-detect language)
+cortex run script.py --no-sandbox       # Run as direct subprocess
+cortex run script.py --fix              # Enable LLM auto-fix loop on failure
 cortex run script.py --fix --max-fix 6  # Up to 6 fix attempts
 ```
 
 Supported languages: `python`, `javascript`, `typescript`, `bash`, `ruby`, `go`, `rust`
 
-### `cortex update`
-
-```bash
-cortex update                          # Check for updates and apply
-cortex update --check                  # Dry-run, show available versions
-cortex update --channel pre            # Include pre-release versions
-cortex update --rollback               # Revert to previous version
-cortex update --status                 # Show current/latest version and channel
-cortex update --force                  # Bypass dirty working tree check (source mode)
-```
-
-Supports both **source mode** (git clone) and **binary mode** (compiled `deno compile` binary).
-Binary downloads are verified against SHA-256 checksums and optionally GPG signatures.
-
-### `cortex git`
-
-Git workspace operations for agent and global workspaces:
-
-```bash
-cortex git status [--agent <id>]       # Show working tree status (branch, staged, unstaged, untracked)
-cortex git log [--agent <id>] [--limit 20]     # Show commit history
-cortex git diff [--agent <id>] [--stat] [--file <path>]  # Show working tree diff
-cortex git add <file...> [--agent <id>]  # Stage files
-cortex git add --all [--agent <id>]      # Stage all changes
-cortex git commit <message> [--agent <id>]  # Create a commit
-cortex git push [--agent <id>] [--remote origin] [--branch <name>]  # Push to remote
-cortex git pull [--agent <id>] [--remote origin] [--branch <name>]  # Pull from remote
-cortex git clone <url> <dest> [--branch <name>]  # Clone a repository
-cortex git branch [--agent <id>]        # List branches
-cortex git branch --create <name> [--agent <id>]  # Create and switch to new branch
-cortex git branch --checkout <name> [--agent <id>]  # Switch branch
-cortex git remote [--agent <id>]        # List remotes
-cortex git remote --add <name> --url <url> [--agent <id>]  # Add remote
-```
-
-### `cortex github`
-
-GitHub integration for managing pull requests, issues, and repositories:
-
-```bash
-cortex github token                     # Check token configuration status
-cortex github pr list <repo> [--state open] [--limit 10]  # List PRs
-cortex github pr get <repo> <number>    # Get PR details
-cortex github pr create <repo> <title> <head> <base> [--body "..."] [--draft]  # Create PR
-cortex github pr merge <repo> <number> [--method merge|squash|rebase]  # Merge PR
-cortex github pr close <repo> <number>  # Close PR without merging
-cortex github issue list <repo> [--state open] [--limit 10]  # List issues
-cortex github issue create <repo> <title> [--body "..."] [--labels a,b]  # Create issue
-cortex github issue close <repo> <number>   # Close issue
-cortex github repo list [--type all|owner|public|private] [--limit 20]  # List repos
-cortex github repo get <repo>           # Get repo details
-cortex github repo branches <repo>      # List repo branches
-```
-
-Requires a GitHub token set via `GITHUB_TOKEN` environment variable, `githubToken` in config, or
-vault entry `github_token`.
-
-### `cortex daemon`
-
-```bash
-cortex daemon start                  # Start supervisor + all daemons in background (auto-restart on crash)
-cortex daemon stop                   # Stop all daemon processes
-cortex daemon restart                # Restart all daemon processes (stop + 1s delay + start)
-cortex daemon run                    # Run supervisor in foreground (for systemd / tmux)
-cortex daemon status                 # Show running/stopped for each daemon process
-```
-
-Three daemon processes are managed:
-
-- **Validator** — approves/rejects tool intents via security policy
-- **Executor** — executes approved tool calls (file ops, shell commands)
-- **Scheduler** — runs cron jobs and periodic memory consolidation
-
-The supervisor auto-restarts any crashed daemon with exponential backoff.
-
 ### `cortex serve`
+
+Start the built-in HTTP + WebSocket server:
 
 ```bash
 cortex serve                         # http://127.0.0.1:3000 (foreground)
 cortex serve --port 8080 --host 0.0.0.0
 cortex serve -d                      # Run in the background (daemon mode)
-cortex serve -d -r                   # Restart background server on the same port
+cortex serve -d -r                   # Restart background server
 cortex serve -s                      # Stop background server
-cortex stop                          # Stop server + daemons
-cortex stop --server-only            # Stop only the HTTP server
-cortex stop --daemon-only            # Stop only the daemon processes
+cortex stop                          # Stop server + all daemons
+cortex stop --server-only
+cortex stop --daemon-only
 ```
 
-Web UI tabs: **Chat** (WebSocket streaming), **Editor** (file editor with CodeMirror), **Git**
-(status, commit, push/pull), **GitHub** (PRs, issues, repo info), **Code Runner** (sandboxed code
-execution), **Lens** (activity timeline), **Memory** (search), **Jobs** (status), **Sessions**,
-**Agents**, **Services**, **Settings**, **Soul** (identity editor), **Plugins**, **Marketplace**,
-**Analytics**, **Logs**
+### `cortex daemon`
 
-REST API endpoints:
-
+```bash
+cortex daemon start                  # Start supervisor in background (auto-restart on crash)
+cortex daemon stop
+cortex daemon restart
+cortex daemon run                    # Run supervisor in foreground (for systemd / tmux)
+cortex daemon status
 ```
-GET    /api/health
-GET    /api/sessions?limit=20
-GET    /api/sessions/:id
-GET    /api/sessions/:id/events
-GET    /api/sessions/:id/messages
-POST   /api/sessions/:id/resume
-DELETE /api/sessions/:id
-GET    /api/jobs?status=pending
-GET    /api/memory/search?q=<query>
-GET    /api/workspace/git/status
-GET    /api/workspace/git/log
-GET    /api/workspace/git/branches
-POST   /api/workspace/git/commit
-POST   /api/workspace/git/push
-POST   /api/workspace/git/pull
-GET    /api/github/token
-GET    /api/github/repos
-GET    /api/github/repos/:owner/:name
-GET    /api/github/repos/:owner/:name/pulls
-GET    /api/github/repos/:owner/:name/issues
-GET    /api/github/repos/:owner/:name/branches
-POST   /api/code/exec
-WS     /ws   (streaming chat)
+
+Three daemon processes: **Validator** (policy enforcement), **Executor** (tool execution),
+**Scheduler** (cron jobs and memory consolidation). The supervisor auto-restarts any crashed daemon
+with exponential backoff.
+
+### `cortex git`
+
+Full git workspace management for agent and global workspaces:
+
+```bash
+cortex git status [--agent <id>]
+cortex git log [--agent <id>] [--limit 20]
+cortex git diff [--agent <id>] [--stat] [--file <path>]
+cortex git add <file...> [--agent <id>]
+cortex git add --all [--agent <id>]
+cortex git commit <message> [--agent <id>]
+cortex git push [--agent <id>] [--remote origin] [--branch <name>]
+cortex git pull [--agent <id>]
+cortex git clone <url> <dest> [--branch <name>]
+cortex git branch [--agent <id>]
+cortex git branch --create <name> [--agent <id>]
+cortex git branch --checkout <name> [--agent <id>]
+cortex git remote --add <name> --url <url> [--agent <id>]
+```
+
+### `cortex github`
+
+GitHub integration — requires `GITHUB_TOKEN` env var, `githubToken` in config, or vault entry
+`github_token`:
+
+```bash
+cortex github pr list <repo> [--state open] [--limit 10]
+cortex github pr create <repo> <title> <head> <base> [--body "..."] [--draft]
+cortex github pr merge <repo> <number> [--method merge|squash|rebase]
+cortex github issue list <repo> [--state open]
+cortex github issue create <repo> <title> [--body "..."] [--labels a,b]
+cortex github repo list [--type all|owner|public|private]
 ```
 
 ### `cortex memory`
 
 ```bash
-cortex memory search "sqlite"        # Keyword + vector search
-cortex memory search "sqlite" --semantic  # Vector only
-cortex memory add "CortexPrism uses SQLite WAL mode"  # Add semantic fact
-```
-
-### `cortex reflect`
-
-```bash
-cortex reflect list                  # Show stored reflection patterns
-cortex reflect consolidate           # Run LLM meta-pattern extraction
+cortex memory search "sqlite"           # Keyword + vector hybrid search
+cortex memory search "sqlite" --semantic # Vector only
+cortex memory add "CortexPrism uses SQLite WAL mode"
 ```
 
 ### `cortex vault`
 
+AES-256-GCM encrypted credential storage:
+
 ```bash
 export CORTEX_VAULT_KEY="your-passphrase"
 
-cortex vault store "openai-key" --service openai  # Prompts for value
+cortex vault store "openai-key" --service openai  # Prompts for the value
 cortex vault get "openai-key"
 cortex vault list
 cortex vault delete "openai-key"
 ```
 
-Vault uses **AES-256-GCM** encryption with **PBKDF2** key derivation (100k iterations, SHA-256). The
-passphrase is never stored — only held in the environment variable at runtime.
+The passphrase is never stored — only held in the environment variable at runtime (PBKDF2 key
+derivation, 100k iterations, SHA-256).
 
 ### `cortex policy`
 
@@ -306,11 +332,43 @@ Default deny rules (seeded on first migrate):
 - `dd\s+if=.*of=/dev/` — direct disk writes
 - `chmod\s+777\s+/` — world-write on root
 
+### `cortex update`
+
+```bash
+cortex update              # Check for updates and apply
+cortex update --check      # Dry-run — show available versions without applying
+cortex update --channel pre # Include pre-release versions
+cortex update --rollback   # Revert to previous version
+cortex update --status     # Show current and latest version
+cortex update --force      # Bypass dirty working tree check (source mode)
+```
+
+Supports **source mode** (git pull) and **binary mode** (download + SHA-256 + optional GPG
+verification).
+
+### `cortex mqm`
+
+```bash
+cortex mqm stats            # Performance statistics per model
+cortex mqm decisions        # Recent routing decisions
+cortex mqm weights          # Current signal weights
+cortex mqm accuracy         # Prediction accuracy metrics
+```
+
+### `cortex voice`
+
+```bash
+cortex voice enable         # Enable voice mode
+cortex voice disable
+cortex voice status
+cortex voice set-voice <voice-id>
+```
+
 ---
 
 ## Configuration
 
-Config file: `~/.cortex/config.json`
+Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 ```json
 {
@@ -318,256 +376,200 @@ Config file: `~/.cortex/config.json`
   "defaultProvider": "anthropic",
   "providers": {
     "anthropic": { "kind": "anthropic", "model": "claude-sonnet-4-5", "apiKey": "sk-..." },
-    "openai": { "kind": "openai", "model": "gpt-4o", "apiKey": "sk-..." },
-    "google": { "kind": "google", "model": "gemini-2.0-flash", "apiKey": "..." },
-    "mistral": { "kind": "mistral", "model": "mistral-large-latest", "apiKey": "..." },
-    "groq": { "kind": "groq", "model": "llama-3.3-70b-versatile", "apiKey": "gsk_..." },
-    "deepseek": { "kind": "deepseek", "model": "deepseek-chat", "apiKey": "sk-..." },
-    "openrouter": { "kind": "openrouter", "model": "openai/gpt-4o", "apiKey": "..." },
-    "xai": { "kind": "xai", "model": "grok-2-latest", "apiKey": "..." },
-    "together": {
-      "kind": "together",
-      "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-      "apiKey": "..."
-    },
-    "bedrock": {
-      "kind": "bedrock",
-      "model": "anthropic.claude-3-5-sonnet-20240620-v1:0",
-      "apiKey": "AKIA...",
-      "secretKey": "...",
-      "baseUrl": "us-east-1"
-    },
-    "cohere": { "kind": "cohere", "model": "command-r-plus", "apiKey": "..." },
-    "ollama": { "kind": "ollama", "model": "llama3.2", "baseUrl": "http://localhost:11434" }
+    "openai":    { "kind": "openai",    "model": "gpt-4o",            "apiKey": "sk-..." },
+    "google":    { "kind": "google",    "model": "gemini-2.0-flash",  "apiKey": "..." },
+    "mistral":   { "kind": "mistral",   "model": "mistral-large-latest", "apiKey": "..." },
+    "groq":      { "kind": "groq",      "model": "llama-3.3-70b-versatile", "apiKey": "gsk_..." },
+    "deepseek":  { "kind": "deepseek",  "model": "deepseek-chat",    "apiKey": "sk-..." },
+    "openrouter":{ "kind": "openrouter","model": "openai/gpt-4o",    "apiKey": "..." },
+    "xai":       { "kind": "xai",       "model": "grok-2-latest",    "apiKey": "..." },
+    "together":  { "kind": "together",  "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "apiKey": "..." },
+    "bedrock":   { "kind": "bedrock",   "model": "us.amazon.nova-pro-v1:0", "region": "us-east-1" },
+    "cohere":    { "kind": "cohere",    "model": "command-r-plus",   "apiKey": "..." },
+    "ollama":    { "kind": "ollama",    "model": "llama3.2",         "baseUrl": "http://localhost:11434" }
   },
-  "agent": {
-    "name": "Cortex",
-    "maxTurns": 50,
-    "streamOutput": true
-  },
-  "router": {
+  "server": { "port": 3000, "host": "127.0.0.1" },
+  "reflection": { "enabled": true },
+  "memory": { "maxHits": 5 },
+  "voice": {
     "enabled": false,
-    "strategy": "cascade",
-    "confidenceThreshold": 0.7,
-    "cascade": [
-      { "provider": "ollama", "model": "llama3.2:3b" },
-      { "provider": "ollama", "model": "llama3.1:8b" },
-      { "provider": "anthropic", "model": "claude-haiku-4-5" }
-    ]
-  },
-  "update": {
-    "channel": "stable",
-    "checkOnStartup": true,
-    "autoUpdate": false,
-    "checkIntervalHours": 24,
-    "githubToken": null,
-    "gpgKeyPath": null
+    "provider": "openai",
+    "defaultVoice": "alloy",
+    "autoTTS": false
   }
 }
 ```
 
-### Data Directory
+### Environment Variables
 
-Default: `~/.cortex/data/`
+| Variable | Purpose |
+|---|---|
+| `CORTEX_DATA_DIR` | Override data directory (default: `~/.cortex/data/`) |
+| `CORTEX_CONFIG_DIR` | Override config directory (default: `~/.cortex/`) |
+| `CORTEX_VAULT_KEY` | Vault decryption passphrase (required to use `cortex vault`) |
+| `GITHUB_TOKEN` | GitHub personal access token for the `github` command |
+| `OPENAI_API_KEY` | OpenAI API key (alternative to config file) |
 
-Override:
+---
 
-```bash
-CORTEX_DATA_DIR=/data/cortex cortex chat
+## Web UI
+
+Start with `cortex serve` and open `http://127.0.0.1:3000`.
+
+| Tab | Description |
+|---|---|
+| **Chat** | WebSocket streaming chat with file upload (PDF, images, documents) |
+| **Editor** | Full file editor powered by CodeMirror |
+| **Git** | Visual git workspace — status, stage, commit, push, pull |
+| **GitHub** | PR management, issue tracking, repository browser |
+| **Code Runner** | Sandboxed code execution with language selection and live output |
+| **Lens** | Cortex Lens — full activity audit timeline |
+| **Memory** | Search episodic and semantic memory |
+| **Jobs** | View and manage scheduled jobs |
+| **Sessions** | Browse and resume past chat sessions |
+| **Agents** | View active and completed sub-agent sessions |
+| **Services** | Monitor running micro-services |
+| **Settings** | Provider configuration, voice settings |
+| **Soul** | Edit the agent's identity / system prompt |
+| **Plugins** | Manage installed plugins |
+
+### REST API
+
+```
+GET    /api/health
+GET    /api/sessions?limit=20
+GET    /api/sessions/:id
+GET    /api/sessions/:id/messages
+POST   /api/sessions/:id/resume
+DELETE /api/sessions/:id
+GET    /api/jobs?status=pending
+GET    /api/memory/search?q=<query>
+GET    /api/workspace/git/status
+POST   /api/workspace/git/commit
+POST   /api/workspace/git/push
+GET    /api/github/repos
+POST   /api/code/exec
+POST   /api/upload
+POST   /api/voice/transcribe
+POST   /api/voice/synthesize
+WS     /ws   (streaming chat)
 ```
 
-### Databases
+---
 
-| File         | Contents                                         |
-| ------------ | ------------------------------------------------ |
-| `cortex.db`  | Core: sessions, jobs, policy rules               |
-| `memory.db`  | 5-tier memory: episodic, semantic, reflection    |
-| `lens.db`    | Audit log: all events, tool calls, policy checks |
-| `vault.db`   | Encrypted credentials                            |
-| `plugins.db` | Plugin registry (future)                         |
-| `sess_*.db`  | Per-session ephemeral message history            |
+## Security Model
+
+CortexPrism uses a **Parallax security model** — all tool calls pass through a multi-layer policy
+system before execution:
+
+```
+Agent → Tool Intent → Policy Validator → Executor
+                             │
+                    [regex allow/deny rules]
+                    [capability level (CPL)]
+                    [optional human approval]
+```
+
+1. **Policy rules** — regex-based allow/deny rules evaluated against every shell command, file path,
+   and network request. Managed with `cortex policy`.
+2. **AES-256-GCM vault** — all credentials stored encrypted; never written to config in plain text
+   once vaulted.
+3. **Cortex Lens** — append-only audit log in `lens.db`; every tool call, LLM call, and policy
+   decision is recorded with timestamp and session context.
+4. **Sandbox isolation** — code execution runs in ephemeral Docker containers with resource limits
+   (CPU, memory, network disabled by default); subprocess fallback for systems without Docker.
+
+See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
+
+---
+
+## Plugin System
+
+CortexPrism supports both **Deno module plugins** and **WASM plugins** with sandboxed permissions.
+
+```bash
+# Install a plugin from the marketplace
+cortex plugins install <plugin-name>
+
+# List installed plugins
+cortex plugins list
+```
+
+See [docs/plugins/](docs/plugins/) for the full plugin development guide, manifest reference, and
+submission standards.
 
 ---
 
 ## Architecture
 
-```
-cortex chat / cortex serve
-       │
-       ▼
-  agent/loop.ts          ← core reasoning + tool loop
-       │
-       ├── memory/        ← inject context, write episodic entries
-       │   ├── store.ts   ← FTS5 keyword + cosine vector retrieval
-       │   └── inject.ts  ← prepend memory hits to system prompt
-       │
-       ├── agent/reflect.ts  ← post-turn self-assessment
-       │
-       ├── tools/executor.ts ← parse tool calls, validate, execute
-       │   └── security/validator.ts  ← Parallax policy gate
-       │
-        ├── llm/router.ts     ← CascadeRouter (optional)
-        │   └── anthropic / openai / google / mistral / groq / deepseek /
-        │       openrouter / xai / together / bedrock / cohere / ollama
-       │
-       └── sandbox/executor.ts  ← Docker / subprocess code execution
-           └── sandbox/autofix.ts  ← LLM fix loop
-```
-
-### Parallax Security Model
-
-Every tool call passes through a 3-stage validator before execution:
+CortexPrism is a single-process Deno application. All state is persisted in SQLite (WAL mode) via
+`@libsql/client`.
 
 ```
-Agent emits <tool_call>
-  → policy check: is this tool allowed?
-  → policy check: is the shell command safe? (pattern match)
-  → policy check: is the domain allowed? (for web_search)
-  → DENY → error returned to agent (no execution)
-  → ALLOW → tool.execute() runs
-  → Lens: policy_check + tool_call events logged
+CLI / Web UI / REST API
+        │
+   agent/loop.ts          ← core agent turn: memory inject → LLM → tool parse → execute
+        │
+   ┌────┼──────────────────────────────────────┐
+   │ memory/   tools/   security/   llm/       │
+   │ server/   sandbox/ scheduler/ voice/      │
+   └────────────────────────────────────────────┘
+        │
+   SQLite databases (WAL mode)
+   cortex.db · memory.db · lens.db · vault.db
 ```
 
-### Memory Retrieval
+| Database | Purpose |
+|---|---|
+| `cortex.db` | Sessions, jobs, policies, services, nodes |
+| `memory.db` | Episodic, semantic, and reflection memory |
+| `lens.db` | Cortex Lens audit log |
+| `vault.db` | Encrypted credential vault |
+| `plugins.db` | Plugin registry |
 
-```
-Query
-  → FTS5 keyword search (episodic + semantic)
-  → cosine vector similarity (embedding model)
-  → merge + re-score: score × 2^(-age_days / half_life_days)
-  → top-K injected into system prompt
-```
+For the full architecture reference, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## Development
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
 
 ```bash
-deno task dev       # Run with --allow-all
-deno task check     # Type-check (zero errors expected — CI also verifies VERSION vs deno.json sync)
-deno task lint      # Lint
-deno task fmt       # Format
-deno task serve     # Start HTTP server on :3000
-deno task test      # Run tests
+# Clone and verify
+git clone https://github.com/CortexPrism/cortex.git
+cd cortex
+deno task check    # Type-check — must pass before any PR
+deno task lint
+deno task fmt
+deno task test
 ```
 
-### Project Structure
+### Reporting Issues
 
-```
-src/
-├── main.ts                      CLI entrypoint — all command registrations
-├── agent/
-│   ├── loop.ts                  Core agent turn loop (tool rounds, memory, reflection)
-│   ├── reflect.ts               Per-turn reflection + consolidation
-│   └── soul.ts                  Agent persona + system prompt builder
-  ├── cli/
-  │   ├── chat.ts                  cortex chat
-  │   ├── daemon.ts                cortex daemon (start/run/status/stop) + ensureDaemons()
-  │   ├── git-cmd.ts               cortex git (status, log, push, pull, branch, etc.)
-  │   ├── github-cmd.ts            cortex github (PRs, issues, repos)
-  │   ├── jobs.ts                  cortex jobs
-  │   ├── update-cmd.ts            cortex update (check/apply/rollback/status)
-  │   ├── memory-cmd.ts            cortex memory
-  │   ├── migrate.ts               cortex migrate
-  │   ├── policy-cmd.ts            cortex policy
-  │   ├── reflect.ts               cortex reflect
-  │   ├── run.ts                   cortex run
-  │   ├── serve.ts                 cortex serve (with --daemon flag)
-  │   ├── service-cmd.ts           cortex service
-  │   ├── sessions.ts              cortex sessions
-  │   ├── setup.ts                 First-run setup wizard
-  │   ├── setup-cmd.ts             cortex setup
-  │   └── vault-cmd.ts             cortex vault
-├── config/
-│   ├── config.ts                CortexConfig interface + load/save
-│   └── paths.ts                 XDG-style data paths
-├── update/
-│   ├── mod.ts                   Public API: checkForUpdates, applyUpdate, getUpdateStatus, rollback
-│   ├── checker.ts               GitHub API client, semver comparison, caching
-│   ├── installer.ts             Binary replacement, git checkout, tarball, manifest management
-│   └── rollback.ts              Health check, backup restoration, grace period cleanup
-├── db/
-│   ├── client.ts                libsql Db wrapper
-│   ├── lens.ts                  Cortex Lens audit log
-│   ├── migrate.ts               Migration runner
-│   ├── sessions.ts              Session persistence
-│   └── migrations/
-│       ├── 001_core.sql         Core schema (sessions, jobs, turns)
-│       ├── 002_memory.sql       5-tier memory schema + FTS5
-│       ├── 003_lens.sql         Lens audit events
-│       ├── 004_vault.sql        Credential vault + access log
-│       ├── 005_plugins.sql      Plugin registry
-│       ├── 006_session.sql      Per-session message store
-│       ├── 007_jobs_v2.sql      Jobs scheduler columns
-│       ├── 008_memory_embeddings.sql  Embedding + decay columns
-│       └── 009_policy.sql       Policy rules + default deny seeds
-├── llm/
-│   ├── types.ts                 LLMProvider interface
-│   ├── anthropic.ts             Anthropic Claude provider
-│   ├── openai.ts                OpenAI provider
-│   ├── openai-compatible.ts     Reusable base for OpenAI-compatible providers
-│   ├── google.ts                Google Gemini provider
-│   ├── mistral.ts               Mistral AI provider
-│   ├── groq.ts                  Groq provider
-│   ├── deepseek.ts              DeepSeek provider
-│   ├── openrouter.ts            OpenRouter provider
-│   ├── xai.ts                   xAI (Grok) provider
-│   ├── together.ts              Together AI provider
-│   ├── bedrock.ts               AWS Bedrock provider
-│   ├── cohere.ts                Cohere provider
-│   ├── ollama.ts                Ollama local provider
-│   └── router.ts                buildProvider + CascadeRouter / ThresholdRouter + buildRouter
-├── memory/
-│   ├── embeddings.ts            EmbeddingProvider (Ollama / OpenAI / Stub)
-│   ├── inject.ts                Inject memory hits into system prompt
-│   └── store.ts                 Write / search episodic + semantic memory
-├── sandbox/
-│   ├── executor.ts              Docker / subprocess sandbox runner
-│   └── autofix.ts               LLM auto-fix loop
-├── workspace/
-│   ├── events.ts                File change event bus
-│   ├── git.ts                   Full git porcelain (status, log, push, pull, branch, remote)
-│   ├── github.ts                GitHub API client (PRs, issues, repos, branches)
-│   ├── mod.ts                   Module exports
-│   └── paths.ts                 Workspace path resolution + traversal protection
-├── processes/
-│   ├── supervisor-process.ts    Daemon supervisor (auto-restart children on crash)
-│   ├── validator-process.ts     Tool intent validator daemon
-│   ├── executor-process.ts      Tool execution daemon
-│   ├── scheduler-process.ts     Cron job scheduler daemon
-│   ├── sub-agent-entry.ts       Sub-agent child process entry point
-│   └── service-entry.ts         Micro-service child process entry point
-├── scheduler/
-│   └── scheduler.ts             SQLite-persisted job scheduler
-├── security/
-│   ├── policy.ts                Policy rule engine (checkPolicy)
-│   ├── validator.ts             Parallax tool/shell/domain validator
-│   └── vault.ts                 AES-256-GCM credential vault
-├── server/
-│   ├── router.ts                REST API route handlers
-│   ├── server.ts                Deno.serve HTTP + WebSocket dispatcher
-│   ├── ui.ts                    Inline single-file Web UI (Tailwind CDN)
-│   └── ws.ts                    WebSocket session handler
-└── tools/
-    ├── executor.ts              Parse tool calls, validate, execute, log
-    ├── registry.ts              ToolRegistry (register + get)
-    ├── types.ts                 Tool / ToolContext interfaces
-    └── builtin/
-        ├── code_exec.ts         code_exec tool (sandbox)
-        ├── file_read.ts         file_read tool
-        ├── shell.ts             shell tool (with approval gate)
-        ├── web_search.ts        web_search tool (DuckDuckGo)
-        └── github/
-            ├── index.ts         GitHub tool exports
-            ├── pr_create.ts     github_pr_create tool
-            ├── pr_list.ts       github_pr_list tool
-            ├── issue_create.ts  github_issue_create tool
-            ├── issue_list.ts    github_issue_list tool
-            └── git_push.ts      git_push tool (stage + commit + push)
-```
+- **Bug reports** — use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md)
+- **Feature requests** — use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
+- **Security vulnerabilities** — see [SECURITY.md](SECURITY.md) for the private disclosure process
+
+---
+
+## Roadmap
+
+- [ ] MCP (Model Context Protocol) server — expose CortexPrism as an MCP server to other clients
+- [ ] Distributed cluster mode — Hub + Node agent distribution across machines
+- [ ] Enhanced desktop app with tray support and native notifications
+- [ ] Projects system — workspace-scoped context and memory isolation
+- [ ] Workflow engine — visual no-code agentic workflow builder
+- [ ] Extended LLM provider coverage and streaming improvements
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+[MIT](LICENSE) — free for personal and commercial use.
+
+---
+
+<p align="center">
+  Built with <a href="https://deno.land">Deno</a> · TypeScript strict mode · SQLite · No telemetry
+</p>

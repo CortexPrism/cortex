@@ -1,5 +1,11 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
-  - name: Documentation
+  - name: Documentation & README
     url: https://github.com/CortexPrism/cortex#readme
-    about: Read the project README and contributing guide
+    about: Read the project README, CLI reference, and contributing guide
+  - name: Security Vulnerability
+    url: mailto:security@cortexprism.io
+    about: "Report a security issue privately — do NOT open a public issue"
+  - name: GitHub Discussions (Questions & Ideas)
+    url: https://github.com/CortexPrism/cortex/discussions
+    about: Ask a question, share a use case, or discuss ideas with the community
