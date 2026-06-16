@@ -23,6 +23,7 @@ import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 import { loadSkillTool } from '../tools/builtin/load_skill.ts';
 import { skillWriteTool } from '../tools/builtin/skill_write.ts';
 import { skillReadTool } from '../tools/builtin/skill_read.ts';
+import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
 import {
   formatSkillsAsAvailableList,
   getAllHumanSkills,
@@ -184,6 +185,7 @@ export const chatCommand = new Command()
         load_skill: loadSkillTool,
         skill_write: skillWriteTool,
         skill_read: skillReadTool,
+        dashboard_manage: dashboardManageTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {

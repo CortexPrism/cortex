@@ -23,6 +23,321 @@ const PROVIDER_OPTIONS_HTML = PROVIDER_OPTIONS.map((p) =>
   `<option value="${p.kind}">${p.label}</option>`
 ).join('');
 
+const DASHBOARD_JS = `
+console.log("[Dashboard] Script loaded, starting init...");
+var WIDGET_DEFS = {
+  "kpi-grid":{label:"KPI Cards",icon:"\uD83D\uDCCA",defaultW:4,defaultH:1},
+  "server-info":{label:"Server Info",icon:"\uD83D\uDD50",defaultW:2,defaultH:1},
+  "system-resources":{label:"System Resources",icon:"\uD83D\uDCBB",defaultW:2,defaultH:2},
+  "daemon-status":{label:"Daemon Status",icon:"\u26A1",defaultW:2,defaultH:2},
+  "memory-stats":{label:"Memory Stats",icon:"\uD83E\uDDE0",defaultW:2,defaultH:1},
+  "recent-sessions":{label:"Recent Sessions",icon:"\uD83D\uDCAC",defaultW:2,defaultH:2},
+  "daily-tokens-chart":{label:"Token Chart",icon:"\uD83D\uDCC8",defaultW:2,defaultH:2},
+  "recent-lens":{label:"Recent Activity",icon:"\uD83D\uDCCB",defaultW:2,defaultH:2},
+  "model-breakdown":{label:"Model Breakdown",icon:"\uD83E\uDD16",defaultW:2,defaultH:2},
+  "agent-breakdown":{label:"Agent Breakdown",icon:"\uD83D\uDC64",defaultW:2,defaultH:2},
+  "custom":{label:"Custom HTML",icon:"\uD83C\uDFA8",defaultW:2,defaultH:2}
+};
+var dashboardConfig=null,dashboardEditMode=false,dashboardCharts={};
+
+async function initDashboard(){
+  console.log("[Dashboard] initDashboard running");
+  dashboardEditMode=false;
+  var btn=document.getElementById("dashboard-edit-btn");
+  if(btn)btn.textContent="Edit";else console.log("[Dashboard] No edit btn");
+  var c=document.getElementById("dashboard-content");
+  if(c)c.classList.remove("dashboard-edit-mode");else console.log("[Dashboard] No content div");
+  try{
+    var r=await fetch("/api/dashboard/config");
+    dashboardConfig=await r.json();
+    console.log("[Dashboard] Config loaded:", dashboardConfig);
+  }catch(e){
+    console.log("[Dashboard] Config fetch error:", e);
+    dashboardConfig=null;
+  }
+  if(!dashboardConfig||!dashboardConfig.widgets||!dashboardConfig.widgets.length){
+    console.log("[Dashboard] Using default widgets");
+    dashboardConfig={widgets:[
+      {id:"dw-kpi",type:"kpi-grid",row:1,col:1,width:4,height:1},
+      {id:"dw-srv",type:"server-info",row:2,col:1,width:2,height:1},
+      {id:"dw-daemon",type:"daemon-status",row:2,col:3,width:2,height:2},
+      {id:"dw-mem",type:"memory-stats",row:3,col:1,width:2,height:1},
+      {id:"dw-sys",type:"system-resources",row:4,col:1,width:2,height:2},
+      {id:"dw-sessions",type:"recent-sessions",row:4,col:3,width:2,height:2},
+      {id:"dw-tokens",type:"daily-tokens-chart",row:6,col:1,width:2,height:2},
+      {id:"dw-lens",type:"recent-lens",row:6,col:3,width:2,height:2}
+    ]};
+  }
+  renderWidgets();
+}
+
+async function saveConfig(){
+  try{await fetch("/api/dashboard/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(dashboardConfig)})}catch(e){console.log("[Dashboard] Save error:",e)}
+}
+
+function renderWidgets(){
+  console.log("[Dashboard] Rendering widgets");
+  var c=document.getElementById("dashboard-content");if(!c)return;
+  Object.keys(dashboardCharts).forEach(function(k){if(dashboardCharts[k]){dashboardCharts[k].destroy();delete dashboardCharts[k]}});
+  var ws=dashboardConfig.widgets;
+  if(!ws||!ws.length){c.innerHTML="<div class=widget-empty-state><p>No widgets</p><span class=sub>Click Edit to add widgets</span></div>";return}
+  var h="<div class=dashboard-grid>";
+  for(var i=0;i<ws.length;i++){
+    var w=ws[i];var de=WIDGET_DEFS[w.type]||{label:w.type,icon:"\uD83D\uDCE6"};
+    h+="<div class=widget id=widget-"+w.id+" draggable=true style=grid-column:span+"+w.width+";grid-row:span+"+w.height+" data-wid="+w.id+">"
+    h+="<div class=widget-header><span>"+de.icon+" "+(w.title||de.label)+"</span>"
+    h+="<div class=widget-actions><span class=drag-handle>\u283F</span>"
+    h+="<button class=widget-remove data-rid="+w.id+">\u2715</button></div></div>"
+    h+="<div class=widget-body id=body-"+w.id+"><div class=widget-loading>Loading...</div></div></div>"
+  }
+  h+="</div><div class=widget-add-bar><button class=add-btn onclick=showPicker()>+ Add Widget</button></div>"
+  c.innerHTML=h;
+  console.log("[Dashboard] Widget HTML set");
+  if(dashboardEditMode)c.classList.add("dashboard-edit-mode");
+  for(var i=0;i<ws.length;i++)loadWidget(ws[i]);
+  setupDragDrop();
+  setupClicks();
+  console.log("[Dashboard] Render complete");
+}
+
+function setupClicks(){
+  var c=document.getElementById("dashboard-content");if(!c)return;
+  c.querySelectorAll(".widget-remove").forEach(function(el){el.onclick=function(){removeWidget(el.dataset.rid)}});
+}
+
+function setupDragDrop(){
+  var els=document.querySelectorAll(".dashboard-grid .widget[draggable=true]");
+  for(var i=0;i<els.length;i++){
+    els[i].addEventListener("dragstart",onDragStart);
+    els[i].addEventListener("dragover",onDragOver);
+    els[i].addEventListener("dragleave",onDragLeave);
+    els[i].addEventListener("drop",onDrop);
+    els[i].addEventListener("dragend",onDragEnd);
+  }
+}
+
+var dragSource=null;
+function onDragStart(e){if(!dashboardEditMode){e.dataTransfer.effectAllowed="none";e.preventDefault();return}dragSource=e.currentTarget.dataset.wid;e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",dragSource);e.currentTarget.style.opacity="0.4"}
+function onDragOver(e){if(!dashboardEditMode)return;e.preventDefault();e.dataTransfer.dropEffect="move";e.currentTarget.classList.add("drag-over")}
+function onDragLeave(e){e.currentTarget.classList.remove("drag-over")}
+function onDrop(e){
+  e.preventDefault();e.currentTarget.classList.remove("drag-over");
+  var target=e.currentTarget.dataset.wid;if(!dragSource||dragSource===target)return;
+  var ws=dashboardConfig.widgets;var si=-1,ti=-1;
+  for(var i=0;i<ws.length;i++){if(ws[i].id===dragSource)si=i;if(ws[i].id===target)ti=i}
+  if(si===-1||ti===-1)return;
+  // Swap positions in array (CSS grid auto-flow follows array order)
+  var tmp=ws[si];ws[si]=ws[ti];ws[ti]=tmp;
+  saveConfig();renderWidgets();
+}
+function onDragEnd(e){e.currentTarget.style.opacity="";document.querySelectorAll(".widget.drag-over").forEach(function(e){e.classList.remove("drag-over")});dragSource=null}
+
+function toggleEdit(){
+  dashboardEditMode=!dashboardEditMode;
+  var btn=document.getElementById("dashboard-edit-btn");
+  var c=document.getElementById("dashboard-content");
+  if(btn)btn.textContent=dashboardEditMode?"Done":"Edit";
+  c.classList.toggle("dashboard-edit-mode",dashboardEditMode);
+  if(dashboardEditMode){if(!c.querySelector(".widget-add-bar"))renderWidgets()}else saveConfig()
+}
+
+function showPicker(){
+  var c=document.getElementById("dashboard-content");if(!c||!dashboardEditMode)return;
+  var ex=c.querySelector(".widget-picker");if(ex){ex.remove();return}
+  var p=document.createElement("div");p.className="widget-picker";p.style.cssText="padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg2)";
+  p.innerHTML="<div style=display:flex;align-items:center;justify-content:space-between;margin-bottom:8px><span style=font-size:12px;font-weight:600;color:var(--text2)>Add Widget</span><button class=btn onclick=this.parentElement.parentElement.remove()>\u2715</button></div>";
+  var div=document.createElement("div");div.style.cssText="display:flex;flex-wrap:wrap;gap:6px";
+  var keys=Object.keys(WIDGET_DEFS).filter(function(k){return k!=="custom"});
+  for(var i=0;i<keys.length;i++){
+    var d=WIDGET_DEFS[keys[i]];var btn=document.createElement("button");
+    btn.className="btn";btn.style.cssText="font-size:11px;padding:6px 10px;background:rgba(99,102,241,0.12);color:var(--accent2)";
+    btn.textContent=d.icon+" "+d.label;
+    btn.onclick=(function(k){return function(){addWidget(k)}})(keys[i]);
+    div.appendChild(btn);
+  }
+  p.appendChild(div);c.insertBefore(p,c.firstChild);
+}
+
+function addWidget(type){
+  var def=WIDGET_DEFS[type];if(!def)return;
+  var id="dw-"+Date.now().toString(36);var mr=0;
+  for(var i=0;i<dashboardConfig.widgets.length;i++){var b=dashboardConfig.widgets[i].row+dashboardConfig.widgets[i].height-1;if(b>mr)mr=b}
+  dashboardConfig.widgets.push({id:id,type:type,row:mr+1,col:1,width:def.defaultW,height:def.defaultH});
+  saveConfig();renderWidgets();
+}
+function removeWidget(id){dashboardConfig.widgets=dashboardConfig.widgets.filter(function(w){return w.id!==id});saveConfig();renderWidgets()}
+
+function loadWidget(w){
+  var body=document.getElementById("body-"+w.id);if(!body)return;
+  var fns={
+    "kpi-grid":renderKpiGrid,"server-info":renderServerInfo,"system-resources":renderSysRes,"daemon-status":renderDaemon,
+    "memory-stats":renderMemStats,"recent-sessions":renderSessions,"daily-tokens-chart":renderTokenChart,
+    "recent-lens":renderLensEvents,"model-breakdown":renderModelBreak,"agent-breakdown":renderAgentBreak,
+    "custom":renderCustom
+  };
+  var fn=fns[w.type];if(fn)fn(body,w.id,w);else body.innerHTML="<div class=empty>Unknown</div>";
+}
+
+async function fetchJSON(url,fallback){try{return await fetch(url).then(function(r){return r.json()})}catch(e){console.log("[Dashboard] fetch error",url,e);return fallback}}
+
+async function renderKpiGrid(body){
+  var sys=await fetchJSON("/api/system",{});var ana=await fetchJSON("/api/analytics?days=1",{});var t=ana.totals||{};
+  body.innerHTML="<div class=kpi-grid>"
+    +"<div class=kpi><div class=kpi-num>"+fmtNum(sys.activeSessions||0)+"</div><div class=kpi-label>Active Sessions</div></div>"
+    +"<div class=kpi><div class=kpi-num style=color:#818cf8>"+fmtNum(t.total_tokens_in||0)+"</div><div class=kpi-label>Tokens In (24h)</div></div>"
+    +"<div class=kpi><div class=kpi-num style=color:#34d399>"+fmtNum(t.total_tokens_out||0)+"</div><div class=kpi-label>Tokens Out (24h)</div></div>"
+    +"<div class=kpi><div class=kpi-num style=color:#4ade80>"+fmtCost(t.total_cost||0)+"</div><div class=kpi-label>Est. Cost (24h)</div></div></div>"
+}
+
+async function renderServerInfo(body){
+  var sys=await fetchJSON("/api/system",{});var upH=Math.floor((sys.uptime||0)/3600),upM=Math.floor(((sys.uptime||0)%3600)/60);
+  body.innerHTML="<div class=kpi-grid>"
+    +"<div class=kpi><div class=kpi-num style=color:#22d3ee>"+upH+"h "+upM+"m</div><div class=kpi-label>Server Uptime</div></div>"
+    +"<div class=kpi><div class=kpi-num style=color:#fbbf24;font-size:0.9em>"+esc(sys.provider||"—")+"</div><div class=kpi-label>LLM Provider</div><div style=font-size:9px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap>"+esc(sys.model||"—")+"</div></div>"
+    +"<div class=kpi><div class=kpi-num style=color:#4ade80>v"+esc(sys.version||"—")+"</div><div class=kpi-label>Cortex Build</div></div>"
+    +"<div class=kpi><div class=kpi-num style=color:#10b981>●</div><div class=kpi-label>System Status</div></div></div>"
+}
+
+async function renderSysRes(body){
+  var sys=await fetchJSON("/api/system",{});var mem=sys.memory||{},disk=sys.disk||{};
+  var mp=mem.total?((mem.used/mem.total)*100).toFixed(1):0;var dp=disk.total?((disk.used/disk.total)*100).toFixed(1):0;
+  function fb(v){if(!v)return"0 B";var u=["B","KB","MB","GB","TB"],i=0;while(v>=1024&&i<4){v/=1024;i++}return v.toFixed(1)+" "+u[i]}
+  body.innerHTML="<div class=stat-row><span class=stat-label>Memory</span><span>"+fb(mem.used)+" / "+fb(mem.total)+" ("+mp+"%)</span></div>"
+    +"<div class=bar><div class=bar-fill style=width:"+mp+"%;background:"+(mp>85?"#f87171":mp>60?"#f59e0b":"#06b6d4")+"></div></div>"
+    +"<div class=stat-row><span class=stat-label>Disk</span><span>"+fb(disk.used)+" / "+fb(disk.total)+" ("+dp+"%)</span></div>"
+    +"<div class=bar><div class=bar-fill style=width:"+dp+"%;background:"+(dp>85?"#f87171":dp>60?"#f59e0b":"#06b6d4")+"></div></div>"
+    +"<div style=display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px>"
+    +"<div style=padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;text-align:center>"
+    +"<div style=font-size:10px;color:var(--text3);margin-bottom:3px;font-family:monospace>CPU CORES</div>"
+    +"<div style=font-size:18px;font-weight:700;color:var(--accent2);font-family:monospace>"+(sys.cpuCores||"N/A")+"</div></div>"
+    +"<div style=padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;text-align:center>"
+    +"<div style=font-size:10px;color:var(--text3);margin-bottom:3px;font-family:monospace>PLATFORM</div>"
+    +"<div style=font-size:14px;font-weight:600;color:var(--accent2);font-family:monospace>"+esc(sys.platform||"LINUX").toUpperCase()+"</div></div></div>"
+}
+
+async function renderDaemon(body){
+  var st=await fetchJSON("/api/status",{});var d=st.daemons||{};
+  var daemons=[
+    {key:"validator",label:"Validator",desc:"Policy enforcement daemon"},
+    {key:"executor",label:"Executor",desc:"Agent task execution daemon"},
+    {key:"scheduler",label:"Scheduler",desc:"Cron and job scheduling daemon"}
+  ];
+  var onlineCount=daemons.filter(function(dd){return d[dd.key]}).length;
+  var allOn=onlineCount===daemons.length;
+  var statusLine="<div style=margin-bottom:12px;padding:8px 12px;border-radius:6px;font-size:11px;font-family:monospace;border-left:3px solid "+(allOn?"#10b981":"#f59e0b")+";background:"+(allOn?"rgba(16,185,129,0.1)":"rgba(245,158,11,0.1)")+">";
+  statusLine+=allOn?"<span style=color:#10b981>✓ ALL SYSTEMS OPERATIONAL</span>":"<span style=color:#fbbf24>⚠ "+onlineCount+"/"+daemons.length+" DAEMONS ONLINE</span>";
+  statusLine+="</div>";
+  body.innerHTML=statusLine+daemons.map(function(dd){
+    var on=d[dd.key];
+    return"<div style=display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:6px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;>"
+    +"<div style=display:flex;align-items:center;gap:10px>"
+    +"<div style=width:8px;height:8px;border-radius:50%;background:"+(on?"#10b981":"#ef4444")+";box-shadow:0 0 8px "+(on?"rgba(16,185,129,0.4)":"rgba(239,68,68,0.4)")+"></div>"
+    +"<div><div style=font-size:12px;font-weight:500;color:var(--text)>"+dd.label+"</div><div style=font-size:10px;color:var(--text3)>"+dd.desc+"</div></div></div>"
+    +"<span style=font-size:10px;font-weight:600;letter-spacing:0.05em;color:"+(on?"#10b981":"#ef4444")+";padding:3px 8px;background:"+(on?"rgba(16,185,129,0.12)":"rgba(239,68,68,0.12)")+";border-radius:4px;font-family:monospace>"
+    +(on?"ONLINE":"OFFLINE")+"</span></div>"
+  }).join("")
+}
+
+async function renderMemStats(body){
+  var s=await fetchJSON("/api/memory/stats",{});
+  body.innerHTML="<div class=stat-row><span class=stat-label>Episodic</span><span>"+fmtNum(s.episodic||0)+"</span></div>"
+    +"<div class=stat-row><span class=stat-label>Semantic</span><span>"+fmtNum(s.semantic||0)+"</span></div>"
+    +"<div class=stat-row><span class=stat-label>Reflections</span><span>"+fmtNum(s.reflection||0)+"</span></div>"
+    +"<div class=stat-row><span class=stat-label>Procedural</span><span>"+fmtNum(s.procedural||0)+"</span></div>"
+}
+
+async function renderSessions(body){
+  var list=await fetchJSON("/api/sessions?limit=8",[]);
+  if(!list.length){body.innerHTML="<div class=empty>No sessions</div>";return}
+  var cs={active:"#4ade80",idle:"#fbbf24",closed:"#6b7280",archived:"#6b7280"};
+  body.innerHTML=list.map(function(s){
+    var c=cs[s.status]||"#6b7280";
+    var ts=new Date(s.started_at).toLocaleDateString([],{month:"short",day:"numeric"});
+    return "<div class=list-item><span class=dot style=background:"+c+"></span><span class=list-text>"+esc(s.id.slice(-10))+"</span><span class=list-meta>"+ts+"</span></div>"
+  }).join("")
+}
+
+async function renderTokenChart(body,wid){
+  var ana=await fetchJSON("/api/analytics?days=14",{});var daily=ana.daily||[];
+  if(!daily.length){body.innerHTML="<div class=empty>No data</div>";return}
+  body.innerHTML="<div style=height:140px><canvas id=ch-"+wid+"></canvas></div>";
+  var cv=document.getElementById("ch-"+wid);if(!cv)return;var ctx=cv.getContext("2d");if(!ctx)return;
+  if(dashboardCharts[wid])dashboardCharts[wid].destroy();
+  dashboardCharts[wid]=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:daily.map(function(d){return d.date.slice(5)}),
+      datasets:[
+        {label:"Tokens In",data:daily.map(function(d){return d.tokens_in}),backgroundColor:"rgba(99,102,241,0.6)",borderColor:"#818cf8",borderWidth:1},
+        {label:"Tokens Out",data:daily.map(function(d){return d.tokens_out}),backgroundColor:"rgba(52,211,153,0.6)",borderColor:"#34d399",borderWidth:1}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:"#6b7280",font:{size:9}},grid:{display:false}},
+        y:{ticks:{color:"#6b7280",font:{size:9}},grid:{color:"rgba(255,255,255,0.04)"}}
+      }
+    }
+  })
+}
+
+async function renderLensEvents(body){
+  var evts=await fetchJSON("/api/lens/recent?limit=10",[]);
+  if(!evts.length){body.innerHTML="<div class=empty>No recent activity</div>";return}
+  body.innerHTML=evts.map(function(e){
+    var ts=new Date(e.started_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    var txt=esc((e.summary||e.event_type||"").slice(0,45));
+    return "<div class=list-item><span class=list-meta>"+ts+"</span><span class=list-text>"+txt+"</span></div>"
+  }).join("")
+}
+
+async function renderModelBreak(body){
+  var ana=await fetchJSON("/api/analytics?days=7",{});var models=ana.models||[];
+  if(!models.length){body.innerHTML="<div class=empty>No model data</div>";return}
+  body.innerHTML=models.slice(0,8).map(function(m){
+    var n=esc(m.model.length>18?m.model.slice(0,18)+"..":m.model);
+    var toks=m.tokens_in+m.tokens_out;
+    var ts=toks>=1e6?(toks/1e6).toFixed(1)+"M":toks>=1e3?(toks/1e3).toFixed(0)+"K":toks;
+    return "<div class=stat-row><span class=stat-label title=\\""+esc(m.model)+"\\">"+n+"</span><span style=width:30px;text-align:right;color:var(--text3)>"+fmtNum(m.calls)+"</span><span style=width:50px;text-align:right;font-family:monospace>"+ts+"</span><span style=width:50px;text-align:right;font-family:monospace;color:var(--accent-green)>"+fmtCost(m.cost_usd)+"</span></div>"
+  }).join("")
+}
+
+async function renderAgentBreak(body){
+  var ana=await fetchJSON("/api/analytics?days=7",{});var agents=ana.perAgent||[];
+  if(!agents.length){body.innerHTML="<div class=empty>No agent data</div>";return}
+  body.innerHTML=agents.slice(0,8).map(function(a){
+    var n=esc(a.agent_id.length>16?a.agent_id.slice(0,16)+"..":a.agent_id);
+    return "<div class=stat-row><span class=stat-label title=\\""+esc(a.agent_id)+"\\">"+n+"</span><span style=width:25px;text-align:right;color:var(--text3)>"+a.sessions+"</span><span style=width:50px;text-align:right;font-family:monospace;color:var(--accent-green)>"+fmtCost(a.cost_usd)+"</span></div>"
+  }).join("")
+}
+
+function renderCustom(body, wid, w){
+  var content=w.content||"<div style=text-align:center;color:var(--text3);padding:20px>Custom widget — add <code>content</code> via dashboard config</div>";
+  var safe=sanitizeHtml(content);
+  body.innerHTML=safe;
+  if(w.refresh&&Number(w.refresh)>0){
+    var interval=Math.max(5,Number(w.refresh))*1000;
+    setInterval(function(){
+      var el=document.getElementById("body-"+wid);
+      if(el){var fresh=w.content||"";el.innerHTML=sanitizeHtml(fresh)}
+    },interval)
+  }
+}
+function sanitizeHtml(html){
+  return String(html||"")
+    .replace(new RegExp("<script[\\\\s\\\\S]*?<\\\\/script>","gi"),"")
+    .replace(new RegExp("\\\\bon\\\\w+\\\\s*=","gi"),"data-blocked-");
+}
+
+function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(1)+"m";return"$"+v.toFixed(4)}
+function fmtBytes(b){if(!b)return"0 B";var u=["B","KB","MB","GB","TB"],i=0;while(b>=1024&&i<4){b/=1024;i++}return b.toFixed(1)+" "+u[i]}
+
+initDashboard();
+
+`;
+
 const HTML = `<!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
@@ -418,6 +733,40 @@ const HTML = `<!DOCTYPE html>
       #agent-panel { transition:right 0.25s ease; }
     }
   }
+
+  /* Dashboard */
+  .dashboard-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:16px 20px; }
+  .widget { background:var(--bg3); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; transition:border-color 0.2s; }
+  .widget:hover { border-color:rgba(255,255,255,0.12); }
+  .widget-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--text2); flex-shrink:0; }
+  .widget-body { flex:1; overflow-y:auto; padding:10px 12px; font-size:12px; min-height:60px; }
+  .widget-actions { display:none; gap:4px; align-items:center; }
+  .dashboard-edit-mode .widget-actions { display:flex; }
+  .dashboard-edit-mode .widget { border-color:rgba(6,182,212,0.3); cursor:grab; }
+  .dashboard-edit-mode .widget.drag-over { border-color:var(--accent2); box-shadow:0 0 0 2px rgba(6,182,212,0.3); }
+  .drag-handle { cursor:grab; color:var(--text3); padding:2px; font-size:14px; user-select:none; }
+  .widget-remove { cursor:pointer; color:var(--text3); background:transparent; border:none; padding:2px 5px; border-radius:4px; font-size:13px; }
+  .widget-remove:hover { background:rgba(239,68,68,0.15); color:#f87171; }
+  .widget-add-bar { padding:8px 20px 4px; display:none; }
+  .dashboard-edit-mode .widget-add-bar { display:block; }
+  .widget-picker { padding:12px 20px; border-bottom:1px solid var(--border); background:var(--bg2); }
+  .widget-loading { text-align:center; padding:16px; color:var(--text3); font-size:12px; }
+  .widget-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--text3); text-align:center; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:8px; }
+  .kpi { text-align:center; padding:8px; background:var(--bg2); border-radius:8px; }
+  .kpi-num { font-size:1.3em; font-weight:600; color:var(--accent2); font-family:'JetBrains Mono',monospace; }
+  .kpi-label { font-size:10px; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em; }
+  .stat-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .stat-row:last-child { border-bottom:none; }
+  .stat-label { color:var(--text3); }
+  .bar { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin:2px 0 8px; }
+  .bar-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+  .list-item { display:flex; align-items:center; gap:6px; padding:3px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .list-item:last-child { border-bottom:none; }
+  .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .list-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2); }
+  .list-meta { color:var(--text3); font-size:10px; flex-shrink:0; }
+  .empty { text-align:center; padding:20px; color:var(--text3); font-size:12px; }
 </style>
 </head>
 <body>
@@ -453,11 +802,11 @@ const HTML = `<!DOCTYPE html>
 
     <!-- Core -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Core <span class="nav-section-toggle">▼</span></div>
-    <button class="nav-item active" onclick="showPage('chat');closeMobileSidebar()" id="nav-chat">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Chat
+    <button class="nav-item active" onclick="showPage('dashboard');closeMobileSidebar()" id="nav-dashboard">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Dashboard
     </button>
-    <button class="nav-item" onclick="showPage('status');closeMobileSidebar()" id="nav-status">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Status
+    <button class="nav-item" onclick="showPage('chat');closeMobileSidebar()" id="nav-chat">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Chat
     </button>
 
     <!-- Intelligence -->
@@ -522,6 +871,10 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('marketplace');closeMobileSidebar()" id="nav-marketplace">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Marketplace
     </button>
+
+    <!-- Plugin Panels (dynamic) -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
+    <div id="plugin-panels-nav"></div>
 
     <!-- Plugin Panels (dynamic) -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
@@ -1006,6 +1359,22 @@ const HTML = `<!DOCTYPE html>
           </tr></thead>
           <tbody id="agent-table-body"></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Dashboard -->
+  <div id="page-dashboard" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <h1 style="font-size:15px;font-weight:600;">Dashboard</h1>
+      <span style="font-size:12px;color:var(--text3);">Customizable widget overview</span>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" onclick="loadDashboard()" style="font-size:11px;padding:5px 10px;">Refresh</button>
+      <button class="btn" id="dashboard-edit-btn" onclick="toggleEdit()" style="font-size:11px;padding:5px 10px;background:rgba(99,102,241,0.12);color:var(--accent2);">Edit</button>
+    </div>
+    <div id="dashboard-content" style="flex:1;overflow-y:auto;">
+      <div class="widget-empty-state">
+        <p>Loading dashboard...</p>
       </div>
     </div>
   </div>
@@ -1843,17 +2212,29 @@ function renderRecentPages() {
     const recent = JSON.parse(localStorage.getItem('cortex_recent_pages') || '[]');
     if (!recent.length) { section.style.display = 'none'; return; }
     section.style.display = 'block';
-    const titles = { chat:'Chat', status:'Status', memory:'Memory', skills:'Skills', lens:'Activity',
+    const titles = { chat:'Chat', memory:'Memory', skills:'Skills', lens:'Activity',
       editor:'Editor', git:'Git', github:'GitHub', coderunner:'Code Runner', agents:'Agents',
       services:'Services', nodes:'Nodes', jobs:'Jobs', sessions:'Sessions', settings:'Settings',
       soul:'Soul', policies:'Policies', plugins:'Plugins', marketplace:'Marketplace',
-      analytics:'Analytics', logs:'Logs', quartermaster:'Quartermaster', modelqm:'Model Intel' };
+      dashboard:'Dashboard', analytics:'Analytics', logs:'Logs', quartermaster:'Quartermaster', modelqm:'Model Intel' };
     list.innerHTML = recent.map(p => \`<button class="nav-item compact" onclick="showPage('\${p}');closeMobileSidebar()">\${titles[p] || p}</button>\`).join('');
   } catch {}
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster','modelqm'];
+const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster','modelqm'];
+
+function loadDashboard() {
+  var c = document.getElementById('dashboard-content');
+  if (!c) return;
+  if (window.__db) { window.__db(); return; }
+  window.__db = initDashboard;
+  ${DASHBOARD_JS}
+  window.toggleEdit = toggleEdit;
+  window.showPicker = showPicker;
+  window.addWidget = addWidget;
+  window.removeWidget = removeWidget;
+}
 function showPage(name) {
   currentPage = name;
   try {
@@ -1878,7 +2259,7 @@ function showPage(name) {
   if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
 
   const loaders = {
-    status: loadStatus, lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
+    lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings, plugins: loadPlugins,
     marketplace: loadMarketplace, soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
@@ -1886,6 +2267,7 @@ function showPage(name) {
     nodes: loadNodes,
     quartermaster: loadQuartermaster,
     modelqm: loadModelQm,
+    dashboard: loadDashboard,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -4459,9 +4841,9 @@ function toggleLogAutoRefresh() {
 
 // ── Command palette ──────────────────────────
 const CMD_PAGES = [
+  { id:'dashboard', label:'Dashboard', icon:'📊', desc:'System overview, daemon status, and widgets' },
   { id:'chat', label:'Chat', icon:'💬', desc:'Start a chat session' },
   { id:'editor', label:'Editor', icon:'✏', desc:'Web file editor (CodeMirror)' },
-  { id:'status', label:'Status', icon:'🏠', desc:'System overview and daemon status' },
   { id:'memory', label:'Memory', icon:'📚', desc:'Browse episodic, semantic, and graph memory' },
   { id:'skills', label:'Skills', icon:'⚡', desc:'Procedural memory — learned skill patterns' },
   { id:'lens', label:'Activity', icon:'🔭', desc:'Real-time audit log of agent events' },
@@ -4473,7 +4855,7 @@ const CMD_PAGES = [
   { id:'soul', label:'Soul', icon:'❤', desc:'Agent identity (SOUL.md, USER.md, MEMORY.md)' },
   { id:'policies', label:'Policies', icon:'🛡', desc:'Security policy rules' },
   { id:'plugins', label:'Plugins', icon:'🧩', desc:'ESM, MCP, and WASM plugin registry' },
-  { id:'analytics', label:'Analytics', icon:'📊', desc:'Token usage, cost, session statistics' },
+  { id:'analytics', label:'Analytics', icon:'📈', desc:'Token usage, cost, session statistics' },
   { id:'logs', label:'Logs', icon:'📋', desc:'Filterable event log' },
 ];
 
@@ -6679,7 +7061,7 @@ window.addEventListener('hashchange', () => {
   const hash = location.hash.replace('#', '');
   if (hash && PAGES.includes(hash)) { showPage(hash); }
   else {
-    const saved = (() => { try { return localStorage.getItem('cortex_page') || 'chat'; } catch { return 'chat'; } })();
+    const saved = (() => { try { return localStorage.getItem('cortex_page') || 'dashboard'; } catch { return 'dashboard'; } })();
     showPage(saved);
   }
   renderRecentPages();

@@ -750,6 +750,25 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ daily, models, totals, perAgent });
   }
 
+  // GET /api/dashboard/config
+  if (req.method === 'GET' && path === '/api/dashboard/config') {
+    const configPath = PATHS.configDir + '/dashboard.json';
+    let config = { widgets: [] };
+    try { config = JSON.parse(await Deno.readTextFile(configPath)); } catch { /* defaults */ }
+    return json(config);
+  }
+
+  // PUT /api/dashboard/config
+  if (req.method === 'PUT' && path === '/api/dashboard/config') {
+    try {
+      const body = await req.json();
+      await Deno.writeTextFile(PATHS.configDir + '/dashboard.json', JSON.stringify(body, null, 2));
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message);
+    }
+  }
+
   // DELETE /api/sessions/:id
   const delSessionMatch = path.match(/^\/api\/sessions\/([^/]+)$/);
   if (req.method === 'DELETE' && delSessionMatch) {

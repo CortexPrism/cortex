@@ -26,6 +26,7 @@ import { fileReadTool } from '../tools/builtin/file_read.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
+import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
 import {
   fileDeleteTool,
   fileEditTool,
@@ -159,6 +160,7 @@ async function main(): Promise<void> {
       github_issue_create: githubIssueCreateTool,
       github_issue_list: githubIssueListTool,
       git_push: gitPushTool,
+      dashboard_manage: dashboardManageTool,
     };
     const allowedTools = config.config.tools?.length
       ? config.config.tools
