@@ -7,6 +7,40 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.28.0] — 2026-06-16
+
+### Added
+
+- **Soul system expansion** — Overhauled agent identity system with richer defaults, more personality
+  options, and new CLI commands:
+  - **Expanded DEFAULT_SOUL** — Now 10 sections (Identity, Behavior, Output Format, Tool Usage,
+    Memory, Sub-Agents, Safety & Ethics, Learning & Adaptation, Limitations) with detailed behavioral
+    guidance for tool usage, output formatting, and ethical conduct
+  - **USER.md template** — Expanded with Goals & Objectives, Current Projects, Technical Environment,
+    Communication preferences, and Learning Interests sections
+  - **MEMORY.md template** — Restructured with About the User, Project Context, Key Decisions,
+    Preferences, and Ongoing Work sections
+  - **4 new personality templates** — Creative, Analyst, Teacher, and Minimalist, bringing the total
+    to 7 personality options during setup
+  - **`cortex soul templates`** — List all available personality templates with descriptions
+  - **`cortex soul apply-template <name>`** — Apply a personality template to SOUL.md
+  - **`cortex soul validate`** — Validate SOUL.md structure against recommended sections
+  - **Template consolidation** — All personality templates centralized in `src/agent/soul.ts`,
+    eliminating 3 duplicate copies across the codebase
+
+### Changed
+
+- **Soul fallback** — DEFAULT_SOUL runtime fallback kept concise (~15 lines) while the expanded
+  template is used exclusively for file initialization, preventing behavioral regression for agents
+  without a custom SOUL.md
+- **Personality spelling** — Standardized on American English "Behavior" across all templates
+
+### Fixed
+
+- **Security**: Prototype-safe template name validation using `Object.hasOwn()` instead of `in`
+  operator
+- **Performance**: Replaced unnecessary dynamic imports with static imports in CLI and server
+
 ## [0.27.0] — 2026-06-16
 
 ### Added

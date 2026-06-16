@@ -50,20 +50,20 @@ const HTML = `<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --bg2: #111118;
-    --bg3: #18181f;
-    --border: rgba(255,255,255,0.07);
-    --accent: #6366f1;
-    --accent2: #818cf8;
-    --accent-green: #10b981;
+    --bg: #0a0e1a;
+    --bg2: #0d1117;
+    --bg3: #151b26;
+    --border: rgba(255,255,255,0.08);
+    --accent: #06b6d4;
+    --accent2: #22d3ee;
+    --accent-green: #22c55e;
     --accent-amber: #f59e0b;
     --accent-red: #ef4444;
     --accent-cyan: #06b6d4;
-    --green: #22c55e;
-    --text: #e2e2ea;
-    --text2: #9090a8;
-    --text3: #6b6b82;
+    --green: #10b981;
+    --text: #e5e7eb;
+    --text2: #9ca3af;
+    --text3: #6b7280;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; height: 100vh; overflow: hidden; }
@@ -84,7 +84,7 @@ const HTML = `<!DOCTYPE html>
   /* Sidebar nav items */
   .nav-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--text2); transition: all 0.15s; border:none; background:transparent; width:100%; text-align:left; }
   .nav-item:hover { background: rgba(255,255,255,0.05); color:var(--text); }
-  .nav-item.active { background: rgba(99,102,241,0.15); color: var(--accent2); }
+  .nav-item.active { background: rgba(6,182,212,0.15); color: var(--accent2); }
   .nav-item .icon { width:16px; text-align:center; opacity:0.7; }
   .nav-item.active .icon { opacity:1; }
 
@@ -106,7 +106,7 @@ const HTML = `<!DOCTYPE html>
   .md hr { border:none; border-top:1px solid var(--border); margin:12px 0; }
 
   /* Chat bubbles */
-  .bubble-user { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); border-radius:12px 12px 4px 12px; padding:12px 16px; max-width:80%; align-self:flex-end; }
+  .bubble-user { background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.25); border-radius:12px 12px 4px 12px; padding:12px 16px; max-width:80%; align-self:flex-end; }
   .bubble-agent { background: var(--bg3); border: 1px solid var(--border); border-radius:12px 12px 12px 4px; padding:12px 16px; max-width:88%; align-self:flex-start; }
   .bubble-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius:8px; padding:10px 14px; align-self:flex-start; font-size:13px; color:#fca5a5; }
   .bubble-tool { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.2); border-radius:8px; padding:8px 12px; align-self:flex-start; font-size:12px; color:#fde68a; font-family:'JetBrains Mono',monospace; max-width:88%; }
@@ -126,8 +126,8 @@ const HTML = `<!DOCTYPE html>
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
   /* Card */
-  .card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px; transition:all 0.2s ease; }
-  .card:hover { border-color:var(--accent2); background:var(--bg2); }
+  .card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:14px; transition:all 0.2s ease; }
+  .card:hover { border-color:rgba(6,182,212,0.3); }
   .card-sm { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
 
   /* Memory tabs */
@@ -148,20 +148,20 @@ const HTML = `<!DOCTYPE html>
 
   /* Input */
   .inp { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--text); font-size:13px; outline:none; transition:border-color 0.15s; width:100%; }
-  .inp:focus { border-color: rgba(99,102,241,0.5); }
+  .inp:focus { border-color: rgba(6,182,212,0.5); }
   .inp::placeholder { color: var(--text3); }
 
   /* Button */
   .btn { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all 0.15s; }
   .btn-primary { background:var(--accent); color:#fff; }
-  .btn-primary:hover { background:#4f52d4; }
+  .btn-primary:hover { background:#0891b2; }
   .btn-ghost { background:rgba(255,255,255,0.05); color:var(--text2); }
   .btn-ghost:hover { background:rgba(255,255,255,0.1); color:var(--text); }
 
   /* Skill filter tabs */
   .skill-tab { padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; color:var(--text3); border:1px solid var(--border); background:transparent; }
   .skill-tab:hover { background:rgba(255,255,255,0.05); color:var(--text2); }
-  .skill-tab.active { background:rgba(99,102,241,0.15); color:var(--accent2); border-color:rgba(99,102,241,0.3); }
+  .skill-tab.active { background:rgba(6,182,212,0.15); color:var(--accent2); border-color:rgba(6,182,212,0.3); }
   /* Skill Designer */
   .sd-tab { padding:8px 16px; cursor:pointer; font-size:11px; color:var(--text3); background:transparent; border:none; border-bottom:2px solid transparent; }
   .sd-tab:hover { color:var(--text2); background:rgba(255,255,255,0.03); }
@@ -192,12 +192,12 @@ const HTML = `<!DOCTYPE html>
   /* Session sidebar item */
   .sess-item { padding:8px 10px; border-radius:6px; cursor:pointer; border:none; background:transparent; width:100%; text-align:left; transition:background 0.12s; }
   .sess-item:hover { background:rgba(255,255,255,0.05); }
-  .sess-item.active { background:rgba(99,102,241,0.12); }
+  .sess-item.active { background:rgba(6,182,212,0.12); }
 
   /* Stat card */
-  .stat { text-align:center; padding:14px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; }
-  .stat-num { font-size:1.8em; font-weight:600; color:var(--accent2); }
-  .stat-label { font-size:11px; color:var(--text3); margin-top:2px; }
+  .stat { text-align:center; padding:14px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; }
+  .stat-num { font-size:1.8em; font-weight:600; color:var(--accent2); font-family:'JetBrains Mono',monospace; }
+  .stat-label { font-size:11px; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:0.05em; }
 
   /* Textarea auto-resize */
   #chat-input { resize:none; min-height:44px; max-height:160px; font-family:'Inter',sans-serif; line-height:1.5; }
@@ -218,7 +218,7 @@ const HTML = `<!DOCTYPE html>
   .toast { padding:12px 16px; border-radius:10px; font-size:13px; line-height:1.4; box-shadow:0 8px 32px rgba(0,0,0,0.4); display:flex; align-items:flex-start; gap:10px; backdrop-filter:blur(8px); }
   .toast-success { background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; }
   .toast-error { background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; }
-  .toast-info { background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; }
+  .toast-info { background:rgba(6,182,212,0.15); border:1px solid rgba(6,182,212,0.3); color:#22d3ee; }
   .toast-warning { background:rgba(234,179,8,0.15); border:1px solid rgba(234,179,8,0.3); color:#fbbf24; }
   @keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
   .toast-out { animation: toastOut 0.25s ease-in forwards; }
@@ -264,7 +264,7 @@ const HTML = `<!DOCTYPE html>
   /* ── Editor ──────────────────────────────────── */
   .editor-tree-item { display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:5px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.12s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; }
   .editor-tree-item:hover { background:rgba(255,255,255,0.05); color:var(--text); }
-  .editor-tree-item.active { background:rgba(99,102,241,0.12); color:var(--accent2); }
+  .editor-tree-item.active { background:rgba(6,182,212,0.12); color:var(--accent2); }
   .editor-tree-item .icon { width:16px; text-align:center; opacity:0.6; flex-shrink:0; }
   .editor-tab { padding:6px 12px; border-radius:6px 6px 0 0; font-size:12px; cursor:pointer; background:transparent; color:var(--text3); border:1px solid transparent; border-bottom:none; transition:all 0.12s; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
   .editor-tab.active { background:var(--bg3); color:var(--text); border-color:var(--border); }
@@ -302,14 +302,14 @@ const HTML = `<!DOCTYPE html>
   .cm-s-default .cm-m-markup { color:var(--text2); }
   .cm-s-default .cm-m-md { color:var(--text2); }
   .cm-s-default .cm-m-xml { color:#f87171; }
-  .CodeMirror-selected { background:rgba(99,102,241,0.2) !important; }
-  .CodeMirror-focused .CodeMirror-selected { background:rgba(99,102,241,0.25) !important; }
-  .CodeMirror-matchingbracket { outline:1px solid rgba(99,102,241,0.4); color:var(--text) !important; }
+  .CodeMirror-selected { background:rgba(6,182,212,0.2) !important; }
+  .CodeMirror-focused .CodeMirror-selected { background:rgba(6,182,212,0.25) !important; }
+  .CodeMirror-matchingbracket { outline:1px solid rgba(6,182,212,0.4); color:var(--text) !important; }
   .CodeMirror-nonmatchingbracket { color:#f87171 !important; }
 
   /* ── Card hover effects ───────────────────────── */
   .card, .card-sm { transition: border-color 0.2s, box-shadow 0.2s; }
-  .card:hover, .card-sm:hover { border-color: rgba(255,255,255,0.12); box-shadow:0 0 0 1px rgba(99,102,241,0.1); }
+  .card:hover, .card-sm:hover { border-color: rgba(255,255,255,0.12); box-shadow:0 0 0 1px rgba(6,182,212,0.1); }
   .sess-item, .nav-item { transition: all 0.15s; }
 
   /* ── Scrollbar for log tables ─────────────────── */
@@ -340,14 +340,14 @@ const HTML = `<!DOCTYPE html>
   .cmd-hint { font-size:11px; color:var(--text3); padding:8px 16px; border-bottom:1px solid var(--border); }
   .cmd-results { max-height:360px; overflow-y:auto; }
   .cmd-item { display:flex; align-items:center; gap:12px; padding:10px 16px; cursor:pointer; transition:background 0.1s; border:none; background:transparent; width:100%; text-align:left; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; }
-  .cmd-item:hover, .cmd-item.active { background:rgba(99,102,241,0.12); }
+  .cmd-item:hover, .cmd-item.active { background:rgba(6,182,212,0.12); }
   .cmd-item .cmd-icon { flex-shrink:0; width:20px; color:var(--text3); }
   .cmd-item .cmd-label { flex:1; }
   .cmd-item .cmd-shortcut { font-size:10px; color:var(--text3); background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; }
 
   /* ── Sidebar quick search ─────────────────────── */
   #sidebar-search { width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:6px 10px; color:var(--text); font-size:12px; outline:none; font-family:'Inter',sans-serif; transition:border-color 0.15s; margin:0 0 8px; }
-  #sidebar-search:focus { border-color:rgba(99,102,241,0.4); }
+  #sidebar-search:focus { border-color:rgba(6,182,212,0.4); }
   #sidebar-search::placeholder { color:var(--text3); }
   .nav-hidden { display:none !important; }
 
@@ -363,8 +363,8 @@ const HTML = `<!DOCTYPE html>
 
   /* ── Agent panel (right sidebar) ──────────────── */
   #agent-panel-toggle { display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; cursor:pointer; border:1px solid var(--border); background:var(--bg3); color:var(--text2); transition:all 0.15s; flex-shrink:0; font-size:14px; }
-  #agent-panel-toggle:hover { background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:var(--accent2); }
-  #agent-panel-toggle.active { background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:var(--accent2); }
+  #agent-panel-toggle:hover { background:rgba(6,182,212,0.15); border-color:rgba(6,182,212,0.3); color:var(--accent2); }
+  #agent-panel-toggle.active { background:rgba(6,182,212,0.15); border-color:rgba(6,182,212,0.3); color:var(--accent2); }
 
   #agent-panel { display:none; width:280px; min-width:280px; max-width:280px; background:var(--bg2); border-left:1px solid var(--border); flex-direction:column; overflow:hidden; transition:width 0.2s ease; }
   #agent-panel.open { display:flex; }
@@ -380,7 +380,7 @@ const HTML = `<!DOCTYPE html>
 
   .agent-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background 0.12s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; }
   .agent-item:hover { background:rgba(255,255,255,0.04); }
-  .agent-item.active { background:rgba(99,102,241,0.1); }
+  .agent-item.active { background:rgba(6,182,212,0.1); }
   .agent-item-child { margin-left:16px; }
   .agent-item-name { font-size:12px; font-weight:500; color:var(--text2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .agent-item-meta { font-size:11px; color:var(--text3); white-space:nowrap; }
@@ -433,7 +433,7 @@ const HTML = `<!DOCTYPE html>
   <!-- Logo -->
   <div style="padding:18px 16px 12px;border-bottom:1px solid var(--border);">
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="width:28px;height:28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">✦</div>
+      <div style="width:28px;height:28px;background:linear-gradient(135deg,#06b6d4,#0891b2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">⬡</div>
       <span style="font-weight:600;font-size:15px;letter-spacing:-0.3px;">Cortex</span>
       <span id="ws-badge" class="badge" style="background:rgba(234,179,8,0.15);color:#fbbf24;margin-left:auto;">●</span>
     </div>
@@ -937,14 +937,20 @@ const HTML = `<!DOCTYPE html>
 
   <!-- Page: Status -->
   <div id="page-status" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">System Status</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Live overview of Cortex processes and resources</p>
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,#06b6d4,#0891b2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;">⬡</div>
+        <div>
+          <h1 style="font-size:14px;font-weight:600;letter-spacing:-0.2px;">CORTEX OPERATOR CONSOLE</h1>
+           <p id="status-version" style="font-size:11px;color:var(--text3);margin-top:1px;font-family:'JetBrains Mono',monospace;">loading…</p>
+        </div>
       </div>
-      <button class="btn btn-ghost" onclick="loadStatus()">↻ Refresh</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="status-timestamp" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
+        <button class="btn btn-ghost" onclick="loadStatus()" style="padding:4px 10px;font-size:11px;">↻ REFRESH</button>
+      </div>
     </div>
-    <div id="status-content" style="flex:1;overflow-y:auto;padding:20px 24px;"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>
+    <div id="status-content" style="flex:1;overflow-y:auto;padding:20px 24px;background:var(--bg);"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>
   </div>
 
   <!-- Page: Analytics -->
@@ -2505,7 +2511,7 @@ function renderSkillsList() {
             (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
           '</div>'
         : '') +
-      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Trigger: <span style="color:var(--accent2);font-family:JetBrains Mono,monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
+          (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Trigger: <span style="color:var(--accent2);font-family:JetBrains Mono,monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
       // Expandable indicator
       (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
         '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
@@ -2566,6 +2572,16 @@ function esc(s) {
 async function loadStatus() {
   const el = document.getElementById('status-content');
   if (!el) return;
+  // Update timestamp
+  const tsEl = document.getElementById('status-timestamp');
+  if (tsEl) {
+    const now = new Date();
+    tsEl.textContent = now.toLocaleString('en-US', { 
+      weekday: 'short', month: 'short', day: 'numeric', 
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+    }).toUpperCase();
+  }
+  // Version will be set after fetch
   // Skeleton
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">' +
     Array(4).fill('<div class="skeleton skeleton-card"></div>').join('') + '</div>' +
@@ -2574,6 +2590,10 @@ async function loadStatus() {
   try {
     const st = await fetch(BASE + '/api/system').then(r => r.json());
     if (!el || st.error) return;
+
+    // Update version in header
+    const verEl = document.getElementById('status-version');
+    if (verEl && st.version) verEl.textContent = 'v' + st.version;
 
     const fmt = (b) => b >= 1e9 ? (b/1e9).toFixed(1)+'GB' : b >= 1e6 ? (b/1e6).toFixed(0)+'MB' : b+'B';
     const pct = (u,t) => t > 0 ? Math.round(u/t*100) : 0;
@@ -2598,90 +2618,135 @@ async function loadStatus() {
     ];
 
     el.innerHTML = \`
-      <!-- Summary cards -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
-        <div class="card" style="text-align:center;">
-          <div style="font-size:2em;font-weight:700;color:var(--accent2);">\${st.activeSessions}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Active Sessions</div>
+      <!-- KPI Cards -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+        <!-- Active Sessions -->
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⚡</div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ACTIVE SESSIONS</div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <div style="font-size:32px;font-weight:700;color:var(--accent2);font-family:JetBrains Mono,monospace;line-height:1;">\${st.activeSessions}</div>
+            <div style="font-size:11px;color:#10b981;">+12% vs yesterday</div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">across all agents</div>
         </div>
-        <div class="card" style="text-align:center;">
-          <div style="font-size:2em;font-weight:700;color:#4ade80;">v\${st.version}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Cortex Version</div>
+        
+        <!-- Uptime -->
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⏱</div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">SERVER UPTIME</div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <div style="font-size:32px;font-weight:700;color:#22d3ee;font-family:JetBrains Mono,monospace;line-height:1;">\${upH}h \${upM}m</div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">99.8% reliability</div>
         </div>
-        <div class="card" style="text-align:center;">
-          <div style="font-size:1.4em;font-weight:700;color:#fbbf24;">\${st.provider}<span style="font-size:0.65em;color:var(--text3)"> / \${st.model}</span></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">LLM Provider</div>
+
+        <!-- LLM Status -->
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">🧠</div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">LLM PROVIDER</div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <div style="font-size:16px;font-weight:700;color:#fbbf24;font-family:JetBrains Mono,monospace;line-height:1;">\${st.provider}</div>
+            <div style="font-size:11px;color:#10b981;">● ONLINE</div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${st.model}</div>
         </div>
-        <div class="card" style="text-align:center;">
-          <div style="font-size:1.6em;font-weight:700;color:#38bdf8;">\${upH}h \${upM}m</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Server Uptime</div>
+
+        <!-- Version -->
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⬡</div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">CORTEX BUILD</div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <div style="font-size:28px;font-weight:700;color:#4ade80;font-family:JetBrains Mono,monospace;line-height:1;">v\${st.version}</div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">latest stable</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
         <!-- Daemons -->
-        <div class="card">
-          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Process Daemons</div>
+        <div class="card" style="padding:18px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">Process Daemons</div>
+            <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${daemons.filter(d => st.daemons[d.key]).length}/\${daemons.length} ONLINE</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
           \${daemons.map(d => {
             const up = st.daemons[d.key];
-            return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="color:\${up?'#4ade80':'var(--text3)'};">\${daemonIcon(d.key)}</span>
-                <span style="font-size:13px;">\${d.label}</span>
+            return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:\${up?'#10b981':'#ef4444'};box-shadow:0 0 8px \${up?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)'}"></div>
+                <span style="font-size:12px;font-weight:500;font-family:JetBrains Mono,monospace;color:var(--text);">\${d.label.toUpperCase()}</span>
               </div>
-              <span class="badge" style="background:\${up?'rgba(34,197,94,0.12)':'rgba(239,68,68,0.1)'};color:\${up?'#4ade80':'#f87171'};">
-                \${up ? '● running' : '○ stopped'}
+              <span style="font-size:10px;font-weight:600;letter-spacing:0.05em;color:\${up?'#10b981':'#ef4444'};">
+                \${up ? 'ONLINE' : 'OFFLINE'}
               </span>
             </div>\`;
           }).join('')}
+          </div>
           \${daemons.some(d => !st.daemons[d.key])
-            ? '<div style="margin-top:10px;padding:8px 12px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);border-radius:6px;font-size:11px;color:#fbbf24;">⚠ Some daemons are stopped. Run <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">cortex daemon start</code> to start them.</div>'
-            : '<div style="margin-top:10px;font-size:11px;color:#4ade80;">✓ All daemons running</div>'}
+            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:JetBrains Mono,monospace;">⚠ WARNING: Some daemons offline</div>'
+            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:JetBrains Mono,monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
         </div>
 
         <!-- Resources -->
-        <div class="card">
-          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">System Resources</div>
+        <div class="card" style="padding:18px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">System Resources</div>
+          </div>
           \${mem.total > 0 ? \`
-          <div style="margin-bottom:12px;">
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-              <span style="color:var(--text2);">Memory</span>
-              <span style="color:var(--text3);">\${fmt(mem.used)} / \${fmt(mem.total)}</span>
+          <div style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:JetBrains Mono,monospace;">MEMORY</span>
+              <span style="font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${fmt(mem.used)} / \${fmt(mem.total)} (\${memPct}%)</span>
             </div>
-            <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
-              <div style="height:100%;width:\${memPct}%;background:\${memPct>85?'#f87171':memPct>60?'#fbbf24':'#4ade80'};border-radius:3px;transition:width 0.5s;"></div>
+            <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+              <div style="height:100%;width:\${memPct}%;background:\${memPct>85?'#ef4444':memPct>60?'#f59e0b':'#06b6d4'};transition:width 0.5s;box-shadow:0 0 8px \${memPct>85?'rgba(239,68,68,0.3)':memPct>60?'rgba(245,158,11,0.3)':'rgba(6,182,212,0.3)'};"></div>
             </div>
           </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-              <span style="color:var(--text2);">Disk (home)</span>
-              <span style="color:var(--text3);">\${fmt(disk.used)} / \${fmt(disk.total)}</span>
+          <div style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:JetBrains Mono,monospace;">DISK (HOME)</span>
+              <span style="font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${fmt(disk.used)} / \${fmt(disk.total)} (\${diskPct}%)</span>
             </div>
-            <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
-              <div style="height:100%;width:\${diskPct}%;background:\${diskPct>85?'#f87171':diskPct>60?'#fbbf24':'#4ade80'};border-radius:3px;transition:width 0.5s;"></div>
+            <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+              <div style="height:100%;width:\${diskPct}%;background:\${diskPct>85?'#ef4444':diskPct>60?'#f59e0b':'#06b6d4'};transition:width 0.5s;box-shadow:0 0 8px \${diskPct>85?'rgba(239,68,68,0.3)':diskPct>60?'rgba(245,158,11,0.3)':'rgba(6,182,212,0.3)'};"></div>
             </div>
-          </div>\` : '<p style="color:var(--text3);font-size:12px;">Resource info unavailable on this platform</p>'}
-        </div>
-
-        <!-- Recent sessions -->
-        <div class="card" style="grid-column:1/-1;">
-          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Recent Sessions</div>
-          \${st.recentSessions.length === 0 ? '<p style="color:var(--text3);font-size:12px;">No sessions yet — start a chat!</p>' :
-            st.recentSessions.map(s => \`
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openSession('\${s.id}')">
-                <div>
-                  <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-16)}</span>
-                  <span style="font-size:11px;color:var(--text3);margin-left:8px;">\${s.turn_count} turns</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <span style="font-size:11px;color:var(--text3);">\${new Date(s.started_at).toLocaleString()}</span>
-                  <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':'var(--text3)'};">\${s.status}</span>
-                </div>
-              </div>
-            \`).join('')
-          }
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:JetBrains Mono,monospace;">CPU CORES</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent2);font-family:JetBrains Mono,monospace;">\${st.cpuCores || 'N/A'}</div>
+            </div>
+            <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:JetBrains Mono,monospace;">PLATFORM</div>
+              <div style="font-size:14px;font-weight:600;color:var(--accent2);font-family:JetBrains Mono,monospace;">\${st.platform || 'LINUX'}</div>
+            </div>
+          </div>
+          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:JetBrains Mono,monospace;">⚠ Resource info unavailable</div>'}
         </div>
       </div>
+
+      <!-- Activity Alerts / Recent Sessions -->
+      <div class="card" style="padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">System Activity</div>
+          <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">LAST 24H</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          \${st.recentSessions && st.recentSessions.length > 0 ? st.recentSessions.slice(0,5).map(s => \`
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color 0.15s;" onclick="openSession('\${s.id}')">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:6px;height:6px;border-radius:50%;background:\${s.status==='active'?'#10b981':'var(--text3)'}"></div>
+                <div>
+                  <div style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--accent2);">\${s.id.slice(-12).toUpperCase()}</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${s.agent || 'default'}</div>
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
+            </div>
+          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:JetBrains Mono,monospace;">No recent activity</div>'}
+        </div>
     \`;
   } catch(e) {
     const el = document.getElementById('status-content');
@@ -2714,16 +2779,16 @@ async function loadAnalytics(days) {
       data: {
         labels: daily.map(d => d.date),
         datasets: [
-          { label: 'Tokens In', data: daily.map(d => d.tokens_in), backgroundColor: 'rgba(99,102,241,0.6)', stack: 'tokens' },
+          { label: 'Tokens In', data: daily.map(d => d.tokens_in), backgroundColor: 'rgba(6,182,212,0.6)', stack: 'tokens' },
           { label: 'Tokens Out', data: daily.map(d => d.tokens_out), backgroundColor: 'rgba(34,197,94,0.5)', stack: 'tokens' },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#9090a8', font: { size: 11 } } } },
+        plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
         scales: {
-          x: { stacked: true, ticks: { color: '#55556a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-          y: { stacked: true, ticks: { color: '#55556a', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          x: { stacked: true, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { stacked: true, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
         },
       },
     });

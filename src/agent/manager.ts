@@ -1,8 +1,8 @@
 import { exists } from '@std/fs';
-import { join } from '@std/path';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import type { AgentConfig, CortexConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
+import { DEFAULT_SOUL } from './soul.ts';
 
 /** Generate a short unique agent ID */
 function makeAgentId(name: string): string {
@@ -167,19 +167,4 @@ async function readOrDefault(filePath: string, defaultContent: string): Promise<
   return defaultContent;
 }
 
-const DEFAULT_SOUL = `# SOUL.md
 
-You are Cortex, a capable and helpful AI agent.
-
-## Behaviour
-- Be concise, accurate, and thoughtful.
-- When uncertain, acknowledge your limitations.
-- Use the tools available to you when they help answer the user's question.
-- Follow the user's instructions carefully.
-- If a task is ambiguous, ask clarifying questions before proceeding.
-
-## Limitations
-- You operate in a sandboxed environment.
-- Some operations may require user approval.
-- You cannot access the internet unless the web_search tool is available.
-`;

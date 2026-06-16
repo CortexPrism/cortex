@@ -1,7 +1,15 @@
 import { Command } from '@cliffy/command';
-import { bold, dim, green, yellow } from '@std/fmt/colors';
+import { bold, dim, green, red, yellow } from '@std/fmt/colors';
 import { PATHS } from '../config/paths.ts';
-import { appendToMemoryFile, initSoulFiles, loadSoulContext } from '../agent/soul.ts';
+import { exists } from '@std/fs';
+import {
+  appendToMemoryFile,
+  generatePersonalitySoul,
+  initSoulFiles,
+  loadSoulContext,
+  TEMPLATE_DESCRIPTIONS,
+  validateSoul,
+} from '../agent/soul.ts';
 
 export const soulCommand = new Command()
   .name('soul')
@@ -81,5 +89,64 @@ export const soulCommand = new Command()
       .action(async (_opts: void, note: string) => {
         await appendToMemoryFile(note);
         console.log(green('  ✓ Appended to MEMORY.md'));
+      }),
+  )
+  .command(
+    'templates',
+    new Command()
+      .description('List available personality templates')
+      .action(() => {
+        console.log(bold('\n  Available Personality Templates\n'));
+        for (const [key, desc] of Object.entries(TEMPLATE_DESCRIPTIONS)) {
+          console.log(`  ${bold(key.padEnd(16))}${dim(desc)}`);
+        }
+        console.log(
+          dim('\n  Use a template during setup or apply one with:\n') +
+          dim('    cortex soul apply-template <name>\n'),
+        );
+      }),
+  )
+  .command(
+    'apply-template',
+    new Command()
+      .description('Apply a personality template to SOUL.md')
+      .arguments('<template:string>')
+      .action(async (_opts: void, template: string) => {
+        if (!Object.hasOwn(TEMPLATE_DESCRIPTIONS, template)) {
+          console.log(red(`  Unknown template: "${template}"`));
+          console.log(dim('  Run `cortex soul templates` to see available templates.\n'));
+          return;
+        }
+        try {
+          const soul = generatePersonalitySoul(template);
+          await Deno.mkdir(PATHS.configDir, { recursive: true });
+          await Deno.writeTextFile(PATHS.soulFile, soul);
+          console.log(green(`  ✓ Applied "${template}" template to SOUL.md\n`));
+        } catch (err) {
+          console.log(red(`  Failed to apply template: ${err}\n`));
+        }
+      }),
+  )
+  .command(
+    'validate',
+    new Command()
+      .description('Validate soul file structure')
+      .action(async () => {
+        if (!(await exists(PATHS.soulFile))) {
+          console.log(yellow('\n  No SOUL.md found. Run `cortex soul init` first.\n'));
+          return;
+        }
+        const content = await Deno.readTextFile(PATHS.soulFile);
+        const { valid, warnings } = validateSoul(content);
+        if (valid) {
+          console.log(green('\n  ✓ SOUL.md looks good.\n'));
+        } else {
+          console.log(yellow(`\n  SOUL.md has ${warnings.length} suggestion(s):\n`));
+          for (const w of warnings) console.log(`  ${yellow('⚠')} ${w}`);
+          console.log(
+            dim('\n  Hint: run `cortex soul apply-template <name>` or `cortex soul edit`') +
+            dim('\n  to add the missing sections.\n'),
+          );
+        }
       }),
   );

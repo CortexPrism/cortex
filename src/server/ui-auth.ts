@@ -248,6 +248,22 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
             <div style="font-weight: 600; font-size: 14px;">Developer</div>
             <div style="color: #9090a8; font-size: 12px; margin-top: 4px;">Technical, direct, code-aware</div>
           </button>
+          <button class="personality-btn" data-value="creative" onclick="selectPersonality(this)" style="background: #18181f; border: 1px solid rgba(255,255,255,0.07); padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;">
+            <div style="font-weight: 600; font-size: 14px;">Creative</div>
+            <div style="color: #9090a8; font-size: 12px; margin-top: 4px;">Imaginative, expressive, lateral thinking</div>
+          </button>
+          <button class="personality-btn" data-value="analyst" onclick="selectPersonality(this)" style="background: #18181f; border: 1px solid rgba(255,255,255,0.07); padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;">
+            <div style="font-weight: 600; font-size: 14px;">Analyst</div>
+            <div style="color: #9090a8; font-size: 12px; margin-top: 4px;">Logical, structured, evidence-based</div>
+          </button>
+          <button class="personality-btn" data-value="teacher" onclick="selectPersonality(this)" style="background: #18181f; border: 1px solid rgba(255,255,255,0.07); padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;">
+            <div style="font-weight: 600; font-size: 14px;">Teacher</div>
+            <div style="color: #9090a8; font-size: 12px; margin-top: 4px;">Patient, explanatory, mentoring</div>
+          </button>
+          <button class="personality-btn" data-value="minimalist" onclick="selectPersonality(this)" style="background: #18181f; border: 1px solid rgba(255,255,255,0.07); padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;">
+            <div style="font-weight: 600; font-size: 14px;">Minimalist</div>
+            <div style="color: #9090a8; font-size: 12px; margin-top: 4px;">Brief, concise, no fluff</div>
+          </button>
         </div>
         <button class="btn btn-primary" onclick="submitPersonality()" style="width: 100%;" id="personality-btn" disabled>Continue</button>
       </div>
