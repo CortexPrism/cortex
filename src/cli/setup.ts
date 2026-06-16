@@ -77,6 +77,13 @@ const PROVIDER_LABELS: Record<string, { label: string; defaultModel: string }> =
 };
 
 export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig> {
+  if (!Deno.stdin.isTerminal()) {
+    console.log(yellow('Interactive setup requires a terminal.'));
+    console.log(dim('Run `cortex setup` in a terminal to configure your LLM provider.'));
+    await runMigrations();
+    return config;
+  }
+
   const useColors = !Deno.noColor;
   const noAnim = Deno.env.get('CORTEX_NO_ANIMATIONS') === '1';
 
