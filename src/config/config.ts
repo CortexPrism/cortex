@@ -49,6 +49,17 @@ export interface RouterConfig {
   threshold?: RouterThresholdConfig;
 }
 
+export interface ModelSelectionConfig {
+  enabled: boolean;
+  mode: 'conservative' | 'balanced' | 'aggressive';
+  observeThreshold: number;
+  costBudget?: number;
+  qualityThreshold?: number;
+  allowedProviders?: ProviderKind[];
+  enforceConfidence: number;
+  suggestConfidence: number;
+}
+
 /** Defines a named, selectable agent with its own identity, model, tools, and behaviour. */
 export interface AgentConfig {
   id: string;
@@ -144,6 +155,8 @@ export interface CortexConfig {
     streamOutput: boolean;
   };
   router: RouterConfig;
+  /** Model Quartermaster — intelligent model selection */
+  modelSelection?: ModelSelectionConfig;
   /** Named agent registry */
   agents: Record<string, AgentConfig>;
   /** Currently selected/default agent ID */
@@ -189,6 +202,13 @@ const DEFAULT_CONFIG: CortexConfig = {
     strategy: 'cascade',
     confidenceThreshold: 0.7,
     cascade: [],
+  },
+  modelSelection: {
+    enabled: false,
+    mode: 'balanced',
+    observeThreshold: 50,
+    enforceConfidence: 0.85,
+    suggestConfidence: 0.65,
   },
   agents: {},
   defaultAgent: 'default',

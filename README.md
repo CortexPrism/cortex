@@ -32,6 +32,9 @@
 - **Security (Parallax model)** — every tool call gated through a policy validator; AES-256-GCM
   credential vault; regex allow/deny rules
 - **Cortex Lens** — full activity audit log of all sessions, tool calls, and policy decisions
+- **Model Quartermaster** — intelligent LLM selection learns which model to use for each task based on
+  historical performance, cost constraints, and contextual signals; 6-signal prediction engine with
+  adaptive EMA learning; three arbiter strategies (conservative/balanced/aggressive)
 
 ---
 
@@ -80,6 +83,7 @@ Commands:
   update            Check for updates and manage Cortex version
   git               Git workspace operations (status, log, push, pull, branch, etc.)
   github            GitHub integration (PRs, issues, repos)
+  mqm               Model Quartermaster — intelligent model selection (stats, decisions, weights, accuracy)
 ```
 
 ### `cortex chat`

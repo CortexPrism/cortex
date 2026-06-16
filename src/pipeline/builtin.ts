@@ -322,6 +322,105 @@ class LoopDetectionMiddleware implements PipelineHook {
   }
 }
 
+class ModelQuartermasterHook implements PipelineHook {
+  name = '@cortex/model-quartermaster';
+  stages: PipelineStage[] = ['pre-llm', 'post-llm'];
+  priority = 5;
+  async = true;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    try {
+      const {
+        observeModel,
+        predictModel,
+        buildRequestContext,
+        getCandidateModels,
+      } = await import('../model-quartermaster/mod.ts');
+      const { loadConfig } = await import('../config/config.ts');
+
+      const config = await loadConfig();
+      if (!config.modelSelection?.enabled) return {};
+
+      if (ctx.stage === 'pre-llm') {
+        const candidates = getCandidateModels(config.providers);
+        if (candidates.length === 0) return {};
+
+        const requestContext = buildRequestContext(
+          ctx.state.userMessage,
+          ctx.assessment,
+          [],
+          0,
+        );
+
+        const prediction = await predictModel(
+          requestContext,
+          candidates,
+          ctx.sessionId,
+          ctx.turnId,
+          {
+            mode: config.modelSelection.mode,
+            costBudgetUsd: config.modelSelection.costBudget,
+            qualityThreshold: config.modelSelection.qualityThreshold,
+            allowedProviders: config.modelSelection.allowedProviders,
+            enforceConfidence: config.modelSelection.enforceConfidence,
+            suggestConfidence: config.modelSelection.suggestConfidence,
+          },
+        );
+
+        if (prediction) {
+          const updates: Record<string, unknown> = {
+            mqmPredictedProvider: prediction.provider,
+            mqmPredictedModel: prediction.model,
+            mqmPredictionMode: prediction.mode,
+            mqmPredictionConfidence: prediction.confidence,
+          };
+          ctx.setState(updates as Partial<typeof ctx.state>);
+
+          if (prediction.mode === 'suggest') {
+            const msg =
+              `[MQM suggestion: model "${prediction.provider}/${prediction.model}" ` +
+              `(confidence: ${(prediction.confidence * 100).toFixed(0)}%) ` +
+              `- est. quality: ${(prediction.estimatedQuality * 100).toFixed(0)}%]`;
+            return {
+              injectMessages: [{
+                role: 'system' as const,
+                content: msg,
+              }],
+            };
+          }
+        }
+      } else if (ctx.stage === 'post-llm') {
+        const state = ctx.state as Record<string, unknown>;
+        const reqCtx = state.mqmRequestContext as Parameters<typeof observeModel>[0]['requestContext'] | undefined;
+        const modelUsed = state.mqmModelUsed as { provider: Parameters<typeof observeModel>[0]['provider']; model: string } | undefined;
+
+        if (reqCtx && modelUsed) {
+          await observeModel({
+            turnId: ctx.turnId,
+            sessionId: ctx.sessionId,
+            provider: modelUsed.provider,
+            model: modelUsed.model,
+            requestContext: reqCtx,
+            result: {
+              success: !state.mqmError,
+              confidence: (state.mqmConfidence as number) ?? 0,
+              tokensIn: (ctx.state.tokensUsed as number) ?? 0,
+              tokensOut: 0,
+              costUsd: ctx.state.costUsd,
+              durationMs: (state.mqmDurationMs as number) ?? 0,
+              qualityScore: (state.mqmQualityScore as number) ?? 0,
+            },
+          });
+        }
+      }
+    } catch {
+      // MQM failures must never block the pipeline
+    }
+    return {};
+  }
+}
+
 class QuartermasterHook implements PipelineHook {
   name = '@cortex/quartermaster';
   stages: PipelineStage[] = ['pre-tool', 'post-tool'];
@@ -384,6 +483,7 @@ export function registerBuiltinHooks(): void {
   registerHook(new ContentSafetyHook(), 'core');
   registerHook(new InjectionDetectorHook(), 'core');
   registerHook(new SummarizationMiddleware(), 'core');
+  registerHook(new ModelQuartermasterHook(), 'core');
   registerHook(new QuartermasterHook(), 'core');
   registerHook(new ToolOutputSandboxHook(), 'core');
   registerHook(new PreCompletionChecklistMiddleware(), 'core');

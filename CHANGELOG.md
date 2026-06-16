@@ -7,6 +7,48 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.27.0] — 2026-06-16
+
+### Added
+
+- **Model Quartermaster — Intelligent LLM Selection System** (`src/model-quartermaster/`) — A
+  learning-based model selection engine that dynamically routes requests to the most appropriate LLM
+  based on task characteristics, historical performance, cost constraints, and learned patterns.
+  Registered as a pipeline hook (`@cortex/model-quartermaster`, priority 5) at `pre-llm` and
+  `post-llm` stages. Key components:
+  - **6-signal prediction engine** — historical performance by task category, episodic memory hits,
+    cost optimization, quality estimation, trajectory patterns (recent model usage), and reflection
+    feedback are fused via weighted combination to predict the best model before each LLM call
+  - **Three-mode decision system** — predictions above 0.85 confidence use `enforce` mode (override
+    model selection); above 0.65 use `suggest` (hint injected to system prompt); otherwise `defer`
+    to default provider
+  - **Adaptive learning** — signal weights update via EMA (`new = old + lr × (reward - old)`) with
+    decaying learning rate (0.05 → 0.995 decay), driven by quality and cost efficiency feedback
+  - **Observation-first startup** — MQM starts in observe-only mode until 50 LLM calls are observed,
+    then activates and begins making predictions
+  - **Three arbiter strategies** — `conservative` (prefers cheaper models, high confidence required),
+    `balanced` (standard thresholds for cost/quality balance), `aggressive` (prioritizes quality,
+    lower thresholds)
+  - **Task categorization** — Automatic classification of requests into `code`, `analysis`,
+    `creative`, `factual`, or `conversation` categories using heuristic keyword matching
+  - **Context fingerprinting** — Multi-feature context extraction (message length, code detection,
+    question count, complexity estimation) for pattern matching and signal scoring
+  - **SQLite schema** (`019_model_quartermaster.sql`) — 5 tables: `mqm_model_stats`,
+    `mqm_signal_weights`, `mqm_decisions`, `mqm_session_state`, `mqm_patterns` with full audit trail
+    per decision
+  - **Lens audit events** — 5 new event types (`mqm_prediction`, `mqm_observation`,
+    `mqm_weight_updated`, `mqm_pattern_learned`, `mqm_mode_changed`) logged for observability
+  - **Configuration** — `modelSelection` config section in `cortex.json` with `enabled`, `mode`,
+    `observeThreshold`, `enforceConfidence`, `suggestConfidence`, `costBudget`, `qualityThreshold`,
+    and `allowedProviders` settings
+  - **Pipeline integration** — New `pre-llm` and `post-llm` hook stages feed MQM predictions into
+    the agent loop, with automatic provider/model override for enforce decisions
+
+- **Pipeline hook stages** — Added `pre-llm` and `post-llm` stages to the pipeline system, enabling
+  hooks to run immediately before and after every LLM call within the agent loop
+
+---
+
 ## [0.26.0] — 2026-06-16
 
 ### Added
