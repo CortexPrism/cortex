@@ -122,7 +122,14 @@ export async function loadManifest(): Promise<InstallManifest> {
   try {
     if (await exists(MANIFEST_PATH)) {
       const raw = await Deno.readTextFile(MANIFEST_PATH);
-      return JSON.parse(raw) as InstallManifest;
+      const manifest = JSON.parse(raw) as InstallManifest;
+      if (isWindows() && manifest.installPath && /^\/[A-Z]:/.test(manifest.installPath)) {
+        manifest.installPath = manifest.installPath.slice(1);
+      }
+      if (isWindows() && manifest.binaryPath && /^\/[A-Z]:/.test(manifest.binaryPath)) {
+        manifest.binaryPath = manifest.binaryPath.slice(1);
+      }
+      return manifest;
     }
   } catch {
     // ignore

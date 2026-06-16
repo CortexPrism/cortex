@@ -4,7 +4,7 @@ import { exists } from '@std/fs';
 const REPO_OWNER = 'CortexPrism';
 const REPO_NAME = 'cortex';
 const GITHUB_API = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases`;
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface ReleaseInfo {
   tagName: string;
