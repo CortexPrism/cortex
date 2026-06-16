@@ -1266,7 +1266,8 @@ const HTML = `<!DOCTYPE html>
             </div>
             <div>
               <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Examples <span style="color:var(--text3);">(newline-separated)</span></label>
-              <textarea class="inp" id="sd-meta-examples" style="font-size:11px;height:80px;resize:none;" placeholder="Example 1&#10;Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
+              <textarea class="inp" id="sd-meta-examples" style="font-size:11px;height:80px;resize:none;" placeholder="Example 1
+Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
             </div>
             <div>
               <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Prerequisites <span style="color:var(--text3);">(comma-separated)</span></label>
@@ -5375,7 +5376,7 @@ function sdSwitchTab(tab) {
 function sdUpdateMetadataUI() {
   document.getElementById('sd-meta-tags').value = sdMetadata.tags?.join(', ') || '';
   document.getElementById('sd-meta-difficulty').value = sdMetadata.difficulty || '';
-  document.getElementById('sd-meta-examples').value = (sdMetadata.examples || []).join('\\n') || '';
+  document.getElementById('sd-meta-examples').value = (sdMetadata.examples || []).join('\n') || '';
   document.getElementById('sd-meta-prerequisites').value = (sdMetadata.prerequisites || []).join(', ') || '';
   sdUpdateMetadataPreview();
 }
@@ -5385,7 +5386,7 @@ function sdUpdateMetadataFromUI() {
     .split(',').map(t => t.trim()).filter(t => t);
   sdMetadata.difficulty = document.getElementById('sd-meta-difficulty').value;
   sdMetadata.examples = document.getElementById('sd-meta-examples').value
-    .split('\\n').map(e => e.trim()).filter(e => e);
+    .split('\n').map(e => e.trim()).filter(e => e);
   sdMetadata.prerequisites = document.getElementById('sd-meta-prerequisites').value
     .split(',').map(p => p.trim()).filter(p => p);
   sdMarkDirty();
@@ -5399,7 +5400,7 @@ function sdUpdateMetadataPreview() {
   if (sdMetadata.tags?.length) lines.push('tags: ' + sdMetadata.tags.join(', '));
   if (sdMetadata.examples?.length) lines.push('examples: ' + (sdMetadata.examples.length) + ' example(s)');
   if (sdMetadata.prerequisites?.length) lines.push('prerequisites: ' + (sdMetadata.prerequisites.length) + ' prerequisite(s)');
-  preview.textContent = lines.length ? lines.join('\\n') : '(no metadata set)';
+  preview.textContent = lines.length ? lines.join('\n') : '(no metadata set)';
 }
 
 // ── Resize handle ──
