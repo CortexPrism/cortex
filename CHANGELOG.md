@@ -7,6 +7,36 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+---
+
+## [0.31.0] — 2026-06-16
+
+### Added
+
+- **Unified service installation** (`src/cli/install.ts`) — `cortex install` and `cortex uninstall`
+  top-level commands that install both the daemon supervisor and web UI server as system services in
+  a single step
+- **Server service installation** (`src/cli/serve.ts`) — `cortex serve install` and
+  `cortex serve uninstall` subcommands for installing only the web UI server as a system service
+- **`--with-server` flag** (`src/cli/daemon.ts`) — `cortex daemon install --with-server` installs both
+  the daemon and server services together
+- **Shared service helper** (`src/cli/service-helper.ts`) — cross-platform service management module
+  generating systemd user units (Linux), launchd agents (macOS), and NSSM/Task Scheduler
+  instructions (Windows) for both daemon and server, with correct per-platform binary path and
+  home directory resolution
+- **Server service templates** — `deploy/cortex-server.service` (systemd user unit) and
+  `deploy/com.cortexprism.server.plist` (launchd agent) for manual deployment
+- **Extended Windows installer** (`deploy/install-service.bat`) — now installs both daemon and server
+  with `--daemon-only`/`--server-only` flags for selective installation via NSSM or Task Scheduler
+
+### Changed
+
+- **Daemon service install** (`src/cli/daemon.ts`) — refactored to use shared service helper;
+  macOS launchd plist now writes the correct `HOME` value from environment instead of requiring
+  a manual placeholder edit
+- **macOS launchd agent** (`deploy/com.cortexprism.plist`) — now dynamically writes `HOME`
+  environment variable at install time
+
 ## [0.30.1] — 2026-06-16
 
 ### Fixed
