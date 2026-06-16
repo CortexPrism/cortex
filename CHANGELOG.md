@@ -90,11 +90,11 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Windows path separators** — Hardcoded `/` path concatenation replaced with `join()`/`dirname()`
   in `server/router.ts`, `plugins/context.ts`, `server/ui.ts`, `triggers/watcher.ts`,
   `cli/plugins-cmd.ts` to handle backslash-separated Windows paths
-- **Windows process management** — Added cross-platform `findDenoProcesses()`, `killDenoProcesses()`,
-  `killProcessById()`, and `killChildProcess()` helpers in `utils/platform.ts` with PowerShell
-  fallbacks on Windows. Replaced all `pgrep`, `pkill`, and direct `SIGTERM` usages in `cli/serve.ts`,
-  `cli/daemon.ts`, `cli/stop.ts`, `agent/sub-agent.ts`, `services/manager.ts`, and
-  `processes/supervisor-process.ts`
+- **Windows process management** — Added cross-platform `findDenoProcesses()`,
+  `killDenoProcesses()`, `killProcessById()`, and `killChildProcess()` helpers in
+  `utils/platform.ts` with PowerShell fallbacks on Windows. Replaced all `pgrep`, `pkill`, and
+  direct `SIGTERM` usages in `cli/serve.ts`, `cli/daemon.ts`, `cli/stop.ts`, `agent/sub-agent.ts`,
+  `services/manager.ts`, and `processes/supervisor-process.ts`
 - **Windows shell execution** — Hardcoded `sh` commands in `processes/executor-process.ts`,
   `processes/scheduler-process.ts`, and `cli/jobs.ts` replaced with `getShellCommand()` which uses
   PowerShell on Windows
