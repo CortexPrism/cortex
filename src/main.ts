@@ -38,6 +38,7 @@ import { gitCommand } from './cli/git-cmd.ts';
 import { githubCommand } from './cli/github-cmd.ts';
 import { quartermasterCommand } from './cli/quartermaster-cmd.ts';
 import { mqmCommand } from './cli/model-qm-cmd.ts';
+import { installCommand, uninstallCommand } from './cli/install.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -115,6 +116,8 @@ const program = new Command()
   .command('eval', evalCommand)
   .command('models', modelsCommand)
   .command('qm', quartermasterCommand)
-  .command('mqm', mqmCommand);
+  .command('mqm', mqmCommand)
+  .command('install', installCommand)
+  .command('uninstall', uninstallCommand);
 
 await program.parse(Deno.args);
