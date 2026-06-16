@@ -99,6 +99,11 @@ export async function applyUpdate(
     let manifest = await loadManifest();
     const channel = channelOverride || config.update.channel;
 
+    // Clear stale cache to force fresh fetch
+    try {
+      await Deno.remove(PATHS.updateCache);
+    } catch { /* ignore */ }
+
     const checkResult = await checkerCheckForUpdates(
       manifest.version,
       config.update.githubToken,
