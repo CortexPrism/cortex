@@ -463,6 +463,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
       steps?: Array<
         { step: number; action: string; tool?: string; params?: Record<string, unknown> }
       >;
+      metadata?: {
+        tags?: string[];
+        difficulty?: string;
+        examples?: string[];
+        prerequisites?: string[];
+      };
     };
     if (!body.name?.trim()) return err('Missing name', 400);
     const id = await storeSkill({
@@ -484,6 +490,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
         }],
       origin: 'human',
       content: body.content ?? undefined,
+      metadata: body.metadata ? {
+        tags: body.metadata.tags,
+        difficulty: (body.metadata.difficulty as 'beginner' | 'intermediate' | 'advanced' | undefined) || undefined,
+        examples: body.metadata.examples,
+        prerequisites: body.metadata.prerequisites,
+      } : undefined,
     });
     return json({ ok: true, id });
   }

@@ -1257,20 +1257,24 @@ const HTML = `<!DOCTYPE html>
         <div id="sd-tab-meta" style="flex:1;overflow-y:auto;padding:16px;display:none;">
           <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;">
             <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique, no spaces)</span></label>
-              <input class="inp" id="sd-name" placeholder="my-skill-name" />
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Difficulty <span style="color:var(--text3);">(beginner, intermediate, advanced)</span></label>
+              <input class="inp" id="sd-meta-difficulty" placeholder="intermediate" onchange="sdUpdateMetadataFromUI()" />
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label>
-              <input class="inp" id="sd-desc" placeholder="What this skill does and when to use it" />
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tags <span style="color:var(--text3);">(comma-separated)</span></label>
+              <input class="inp" id="sd-meta-tags" placeholder="design, frontend, ui" onchange="sdUpdateMetadataFromUI()" />
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label>
-              <input class="inp" id="sd-trigger" placeholder="Phrase that triggers this skill (optional)" />
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Examples <span style="color:var(--text3);">(newline-separated)</span></label>
+              <textarea class="inp" id="sd-meta-examples" style="font-size:11px;height:80px;resize:none;" placeholder="Example 1&#10;Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Prerequisites <span style="color:var(--text3);">(comma-separated)</span></label>
+              <input class="inp" id="sd-meta-prerequisites" placeholder="JavaScript knowledge, API familiarity" onchange="sdUpdateMetadataFromUI()" />
             </div>
             <div style="font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
-              <b>Frontmatter preview:</b>
-              <pre id="sd-frontmatter-preview" style="background:var(--bg2);padding:10px;border-radius:4px;margin-top:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;"></pre>
+              <b>Metadata preview:</b>
+              <pre id="sd-meta-preview" style="background:var(--bg2);padding:10px;border-radius:4px;margin-top:6px;font-size:10px;overflow-x:auto;white-space:pre-wrap;">(no metadata set)</pre>
             </div>
           </div>
         </div>
@@ -1562,6 +1566,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels'];
 function showPage(name) {
   currentPage = name;
+  try { localStorage.setItem('cortex_page', name); } catch {}
   PAGES.forEach(p => {
     document.getElementById('page-' + p).style.display = 'none';
     document.getElementById('page-' + p).classList.remove('page-fade-in');
@@ -1590,8 +1595,9 @@ function showPage(name) {
 
 // ── Sessions sidebar ────────────────────────────────────────
 async function loadSessionsSidebar() {
-  const sessions = await fetch(BASE + '/api/sessions?limit=15').then(r => r.json()).catch(() => []);
   const el = document.getElementById('sessions-sidebar');
+  if (!el) return;
+  const sessions = await fetch(BASE + '/api/sessions?limit=15').then(r => r.json()).catch(() => []);
   el.innerHTML = '';
   for (const s of sessions) {
     const btn = document.createElement('button');
@@ -5283,6 +5289,7 @@ loadAgentPanel();
 let sdEditName = '';
 let sdSteps = [];
 let sdDirty = false;
+let sdMetadata = { tags: [], difficulty: '', examples: [], prerequisites: [] };
 
 function openSkillDesigner(editName) {
   sdEditName = editName || '';
@@ -5293,30 +5300,50 @@ function openSkillDesigner(editName) {
   document.getElementById('sd-status').textContent = '';
   document.getElementById('sd-dirty').style.display = 'none';
 
-  if (editName) {
-    fetch(BASE + '/api/skills/detail?name=' + encodeURIComponent(editName))
-      .then(r => r.json()).then(s => {
-        document.getElementById('sd-name').value = s.name || '';
-        document.getElementById('sd-desc').value = s.description || '';
-        document.getElementById('sd-trigger').value = s.trigger_pattern || '';
-        document.getElementById('sd-editor').value = s.content || '';
-        try { sdSteps = JSON.parse(s.steps || '[]'); } catch(e) { sdSteps = []; }
-        sdRenderSteps();
-        sdUpdatePreview();
-        sdUpdateFrontmatter();
-        sdDirty = false;
-        document.getElementById('sd-dirty').style.display = 'none';
-      }).catch(e => alert('Failed to load skill: ' + e.message));
-  } else {
-    document.getElementById('sd-name').value = '';
-    document.getElementById('sd-desc').value = '';
-    document.getElementById('sd-trigger').value = '';
-    document.getElementById('sd-editor').value = '';
-    sdSteps = [];
-    sdRenderSteps();
-    sdUpdatePreview();
-    sdUpdateFrontmatter();
-  }
+   if (editName) {
+     fetch(BASE + '/api/skills/detail?name=' + encodeURIComponent(editName))
+       .then(r => r.json()).then(s => {
+         document.getElementById('sd-name').value = s.name || '';
+         document.getElementById('sd-desc').value = s.description || '';
+         document.getElementById('sd-trigger').value = s.trigger_pattern || '';
+         document.getElementById('sd-editor').value = s.content || '';
+         try { sdSteps = JSON.parse(s.steps || '[]'); } catch(e) { sdSteps = []; }
+         
+         // Load metadata
+         try {
+           sdMetadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata || {});
+         } catch(e) {
+           sdMetadata = {};
+         }
+         sdMetadata.tags = sdMetadata.tags || [];
+         sdMetadata.difficulty = sdMetadata.difficulty || '';
+         sdMetadata.examples = sdMetadata.examples || [];
+         sdMetadata.prerequisites = sdMetadata.prerequisites || [];
+         
+         // Update UI
+         document.getElementById('sd-name').value = s.name || '';
+         document.getElementById('sd-desc').value = s.description || '';
+         document.getElementById('sd-trigger').value = s.trigger_pattern || '';
+         document.getElementById('sd-editor').value = s.content || '';
+         sdUpdateMetadataUI();
+         sdRenderSteps();
+         sdUpdatePreview();
+         sdUpdateFrontmatter();
+         sdDirty = false;
+         document.getElementById('sd-dirty').style.display = 'none';
+       }).catch(e => alert('Failed to load skill: ' + e.message));
+   } else {
+     document.getElementById('sd-name').value = '';
+     document.getElementById('sd-desc').value = '';
+     document.getElementById('sd-trigger').value = '';
+     document.getElementById('sd-editor').value = '';
+     sdMetadata = { tags: [], difficulty: '', examples: [], prerequisites: [] };
+     sdUpdateMetadataUI();
+     sdSteps = [];
+     sdRenderSteps();
+     sdUpdatePreview();
+     sdUpdateFrontmatter();
+   }
 
   document.getElementById('skill-designer').style.display = 'flex';
   sdSwitchTab('content');
@@ -5342,6 +5369,37 @@ function sdSwitchTab(tab) {
     const el = document.getElementById('sd-tab-' + t);
     if (el) el.style.display = t === tab ? (t === 'steps' ? 'flex' : 'block') : 'none';
   });
+}
+
+// ── Metadata ──
+function sdUpdateMetadataUI() {
+  document.getElementById('sd-meta-tags').value = sdMetadata.tags?.join(', ') || '';
+  document.getElementById('sd-meta-difficulty').value = sdMetadata.difficulty || '';
+  document.getElementById('sd-meta-examples').value = (sdMetadata.examples || []).join('\\n') || '';
+  document.getElementById('sd-meta-prerequisites').value = (sdMetadata.prerequisites || []).join(', ') || '';
+  sdUpdateMetadataPreview();
+}
+
+function sdUpdateMetadataFromUI() {
+  sdMetadata.tags = document.getElementById('sd-meta-tags').value
+    .split(',').map(t => t.trim()).filter(t => t);
+  sdMetadata.difficulty = document.getElementById('sd-meta-difficulty').value;
+  sdMetadata.examples = document.getElementById('sd-meta-examples').value
+    .split('\\n').map(e => e.trim()).filter(e => e);
+  sdMetadata.prerequisites = document.getElementById('sd-meta-prerequisites').value
+    .split(',').map(p => p.trim()).filter(p => p);
+  sdMarkDirty();
+  sdUpdateMetadataPreview();
+}
+
+function sdUpdateMetadataPreview() {
+  const preview = document.getElementById('sd-meta-preview');
+  const lines = [];
+  if (sdMetadata.difficulty) lines.push('difficulty: ' + sdMetadata.difficulty);
+  if (sdMetadata.tags?.length) lines.push('tags: ' + sdMetadata.tags.join(', '));
+  if (sdMetadata.examples?.length) lines.push('examples: ' + (sdMetadata.examples.length) + ' example(s)');
+  if (sdMetadata.prerequisites?.length) lines.push('prerequisites: ' + (sdMetadata.prerequisites.length) + ' prerequisite(s)');
+  preview.textContent = lines.length ? lines.join('\\n') : '(no metadata set)';
 }
 
 // ── Resize handle ──
@@ -5571,12 +5629,17 @@ async function skillDesignerSave() {
     return;
   }
   document.getElementById('sd-status').textContent = 'Saving...';
+  
+  // Collect metadata from UI
+  sdUpdateMetadataFromUI();
+  
   const body = {
     name: name,
     description: document.getElementById('sd-desc').value.trim() || undefined,
     triggerPattern: document.getElementById('sd-trigger').value.trim() || undefined,
     content: document.getElementById('sd-editor').value || undefined,
     steps: sdCollectSteps(),
+    metadata: sdMetadata && (sdMetadata.tags?.length || sdMetadata.difficulty || sdMetadata.examples?.length || sdMetadata.prerequisites?.length) ? sdMetadata : undefined,
   };
   const res = await fetch(BASE + '/api/skills', {
     method: 'POST',
@@ -5658,7 +5721,8 @@ setInterval(loadDaemonStatus, 15_000);
 setInterval(loadSessionsSidebar, 30_000);
 setInterval(loadAgentSelector, 30_000);
 setInterval(editorRefreshTree, 30_000);
-showPage('chat');
+const initPage = (() => { try { return localStorage.getItem('cortex_page') || 'chat'; } catch { return 'chat'; } })();
+showPage(initPage);
 </script>
 
 </body>
