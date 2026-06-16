@@ -1842,6 +1842,64 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ summary, weights, toolStats, recentDecisions, accuracyTrend });
   }
 
+  // ── Model Quartermaster Monitoring API ──────────────────────
+
+  // GET /api/mqm/summary?session=<id>
+  if (req.method === 'GET' && path === '/api/mqm/summary') {
+    const { getMqmSummary, getMqmAccuracyTrend } = await import(
+      '../model-quartermaster/monitor.ts'
+    );
+    const { getModelSignalWeights, getAllModelStats } = await import(
+      '../model-quartermaster/store.ts'
+    );
+    const sessionId = url.searchParams.get('session') ?? undefined;
+    const [summary, stats, accuracyTrend, weights] = await Promise.all([
+      getMqmSummary(sessionId),
+      getAllModelStats(),
+      getMqmAccuracyTrend(24),
+      getModelSignalWeights(),
+    ]);
+    return json({ summary, stats, accuracyTrend, weights });
+  }
+
+  // GET /api/mqm/accuracy?hours=24
+  if (req.method === 'GET' && path === '/api/mqm/accuracy') {
+    const { getMqmAccuracyTrend } = await import('../model-quartermaster/monitor.ts');
+    const hours = parseInt(url.searchParams.get('hours') ?? '24');
+    const trend = await getMqmAccuracyTrend(hours);
+    return json(trend);
+  }
+
+  // GET /api/mqm/stats
+  if (req.method === 'GET' && path === '/api/mqm/stats') {
+    const { getAllModelStats } = await import('../model-quartermaster/store.ts');
+    const stats = await getAllModelStats();
+    return json(stats);
+  }
+
+  // GET /api/mqm/decisions?limit=20
+  if (req.method === 'GET' && path === '/api/mqm/decisions') {
+    const { getAllRecentDecisions } = await import('../model-quartermaster/store.ts');
+    const limit = parseInt(url.searchParams.get('limit') ?? '20');
+    const decisions = await getAllRecentDecisions(limit);
+    return json(decisions);
+  }
+
+  // GET /api/mqm/weights
+  if (req.method === 'GET' && path === '/api/mqm/weights') {
+    const { getModelSignalWeights } = await import('../model-quartermaster/store.ts');
+    const weights = await getModelSignalWeights();
+    return json(weights);
+  }
+
+  // POST /api/mqm/weights
+  if (req.method === 'POST' && path === '/api/mqm/weights') {
+    const body = await req.json() as { signal: string; weight: number };
+    const { updateSignalWeight } = await import('../model-quartermaster/store.ts');
+    await updateSignalWeight(body.signal, body.weight);
+    return json({ success: true });
+  }
+
   // ── Onboarding API Endpoints ──────────────────────────────
 
   // POST /api/onboarding/provider

@@ -478,7 +478,10 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Logs
     </button>
     <button class="nav-item" onclick="showPage('quartermaster');closeMobileSidebar()" id="nav-quartermaster">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span> Quartermaster
+      <span class="icon">📊</span>Quartermaster
+    </button>
+    <button class="nav-item" onclick="showPage('modelqm');closeMobileSidebar()" id="nav-modelqm">
+      <span class="icon">🧠</span>Model Intel
     </button>
   </nav>
 
@@ -1177,6 +1180,63 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Model Quartermaster page -->
+  <div id="page-modelqm" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Model Intelligence</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Model Quartermaster — learns which LLM to use for each task based on historical performance</p>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span id="mqm-auto-refresh" style="font-size:10px;color:var(--text3);">Auto-refresh: 5s</span>
+        <button class="btn btn-ghost" onclick="loadModelQm()" style="font-size:11px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;">
+      <button class="mqm-tab active" onclick="switchMqmTab('overview')" id="mqmtab-overview" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Overview</button>
+      <button class="mqm-tab" onclick="switchMqmTab('models')" id="mqmtab-models" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Models</button>
+      <button class="mqm-tab" onclick="switchMqmTab('accuracy')" id="mqmtab-accuracy" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Accuracy</button>
+    </div>
+    <div id="mqm-pane-overview" style="display:flex;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:16px;">
+      <div id="mqm-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div id="mqm-weights-card" class="card" style="padding:16px;">
+          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Signal Weights</h3>
+          <div id="mqm-weights-content"></div>
+        </div>
+        <div id="mqm-topmodels-card" class="card" style="padding:16px;">
+          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Top Models</h3>
+          <div id="mqm-topmodels-content"></div>
+        </div>
+      </div>
+      <div id="mqm-recent-decisions-card" class="card" style="padding:16px;flex:1;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Recent Decisions</h3>
+        <div id="mqm-decisions-content"></div>
+      </div>
+    </div>
+    <div id="mqm-pane-models" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:10px;">
+      <div id="mqm-models-filter" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--text3);">Filter by category:</span>
+        <button class="mqm-cat-btn active" onclick="filterMqmModels('all')" id="mqm-cat-all" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">All</button>
+        <button class="mqm-cat-btn" onclick="filterMqmModels('code')" id="mqm-cat-code" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Code</button>
+        <button class="mqm-cat-btn" onclick="filterMqmModels('analysis')" id="mqm-cat-analysis" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Analysis</button>
+        <button class="mqm-cat-btn" onclick="filterMqmModels('creative')" id="mqm-cat-creative" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Creative</button>
+        <button class="mqm-cat-btn" onclick="filterMqmModels('factual')" id="mqm-cat-factual" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Factual</button>
+      </div>
+      <div id="mqm-models-content"></div>
+    </div>
+    <div id="mqm-pane-accuracy" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:16px;">
+      <div class="card" style="padding:16px;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Prediction Accuracy (24h)</h3>
+        <div style="height:220px;"><canvas id="mqm-accuracy-chart"></canvas></div>
+      </div>
+      <div class="card" style="padding:16px;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Accuracy by Category</h3>
+        <div id="mqm-category-accuracy"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Cron modal (shared by Jobs page) -->
   <div id="cron-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
     <div class="card" style="width:480px;">
@@ -1627,7 +1687,7 @@ document.getElementById('chat-input').addEventListener('input', function() {
 });
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster'];
+const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster','modelqm'];
 function showPage(name) {
   currentPage = name;
   try { localStorage.setItem('cortex_page', name); } catch {}
@@ -1654,6 +1714,7 @@ function showPage(name) {
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: loadNodes,
     quartermaster: loadQuartermaster,
+    modelqm: loadModelQm,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -5998,6 +6059,256 @@ async function loadQmDecisions() {
   </div>\`;
 }
 // ── End Quartermaster ────────────────────────────────────────────────────────
+
+// ── Model Quartermaster UI ──────────────────────────────────────────────────
+let mqmChart = null;
+let mqmAutoRefresh = null;
+let mqmData = null;
+
+async function loadModelQm() {
+  document.getElementById('mqm-summary-cards').innerHTML =
+    '<div style="grid-column:1/-1;padding:20px;color:var(--text3);font-size:13px;text-align:center;">Loading…</div>';
+  const data = await fetch(BASE + '/api/mqm/summary').then(r => r.json()).catch(() => null);
+  if (data) {
+    mqmData = data;
+    loadMqmOverview();
+  } else {
+    document.getElementById('mqm-summary-cards').innerHTML =
+      '<div style="grid-column:1/-1;padding:20px;color:var(--text3);font-size:13px;text-align:center;">No model quartermaster data available. MQM activates after 50 LLM calls have been observed in a session.</div>';
+  }
+  startMqmAutoRefresh();
+}
+
+function startMqmAutoRefresh() {
+  if (mqmAutoRefresh) clearInterval(mqmAutoRefresh);
+  mqmAutoRefresh = setInterval(() => {
+    if (currentPage === 'modelqm') loadModelQm();
+  }, 5000);
+}
+
+function loadMqmOverview() {
+  const data = mqmData;
+  if (!data) return;
+  const s = data.summary || {};
+  const weights = data.weights || {};
+  const stats = data.stats || [];
+  const accuracyTrend = data.accuracyTrend || [];
+
+  const cards = document.getElementById('mqm-summary-cards');
+  const accPct = ((s.accuracy || 0) * 100).toFixed(1);
+  const accColor = (s.accuracy || 0) >= 0.7 ? '#4ade80' : (s.accuracy || 0) >= 0.5 ? '#fbbf24' : '#f87171';
+  cards.innerHTML = \`
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Mode</div>
+      <div style="font-size:22px;font-weight:700;color:\${s.mode === 'active' ? '#4ade80' : '#fbbf24'};margin-top:4px;">\${(s.mode || 'observe').toUpperCase()}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Observations</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:4px;">\${s.totalObservations ?? 0}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Predictions</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:4px;">\${s.totalPredictions ?? 0}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Accuracy</div>
+      <div style="font-size:22px;font-weight:700;color:\${accColor};margin-top:4px;">\${accPct}%</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Avg Cost</div>
+      <div style="font-size:22px;font-weight:700;color:var(--text);margin-top:4px;">\$\${(s.avgCostUsd || 0).toFixed(4)}</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;">Avg Quality</div>
+      <div style="font-size:22px;font-weight:700;color:\${(s.avgQuality || 0) >= 0.7 ? '#4ade80' : (s.avgQuality || 0) >= 0.5 ? '#fbbf24' : '#f87171'};margin-top:4px;">\${((s.avgQuality || 0) * 100).toFixed(0)}%</div>
+    </div>
+  \`;
+
+  const wEl = document.getElementById('mqm-weights-content');
+  const entries = Object.entries(weights || {});
+  if (entries.length > 0) {
+    wEl.innerHTML = entries.map(([name, weight]) => \`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:90px;font-size:11px;color:var(--text2);text-align:right;">\${name}</div>
+        <div style="flex:1;height:14px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:\${(Number(weight)*100).toFixed(0)}%;background:linear-gradient(90deg,#818cf8,#c084fc);border-radius:3px;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text);font-weight:600;width:34px;">\${(Number(weight)*100).toFixed(0)}%</div>
+      </div>
+    \`).join('');
+  } else {
+    wEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">No weights data.</p>';
+  }
+
+  const tmEl = document.getElementById('mqm-topmodels-content');
+  const topModels = s.topModels || [];
+  if (topModels.length > 0) {
+    tmEl.innerHTML = topModels.slice(0, 5).map(m => \`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg3);border-radius:4px;margin-bottom:6px;">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text);">\${m.provider}/\${m.model}</div>
+          <div style="font-size:10px;color:var(--text3);">\${m.usageCount} uses</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:13px;font-weight:600;color:\${m.avgQuality >= 0.7 ? '#4ade80' : m.avgQuality >= 0.5 ? '#fbbf24' : '#f87171'};">\${(m.avgQuality * 100).toFixed(0)}%</div>
+          <div style="font-size:10px;color:var(--text3);">quality</div>
+        </div>
+      </div>
+    \`).join('');
+  } else {
+    tmEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">No model usage data yet.</p>';
+  }
+
+  const dEl = document.getElementById('mqm-decisions-content');
+  const decisions = await fetch(BASE + '/api/mqm/decisions?limit=8').then(r => r.json()).catch(() => []);
+  if (decisions && decisions.length > 0) {
+    const modeColors = { enforce: '#4ade80', suggest: '#818cf8', defer: '#55556a' };
+    dEl.innerHTML = \`<div style="display:flex;flex-direction:column;gap:6px;">
+      \${decisions.map(d => {
+        const correctLabel = d.wasCorrect === null ? '⏳' : (d.wasCorrect || 0) >= 0.7 ? '✓' : '✗';
+        const correctColor = d.wasCorrect === null ? '#55556a' : (d.wasCorrect || 0) >= 0.7 ? '#4ade80' : '#f87171';
+        const confPct = ((d.confidence || 0) * 100).toFixed(0);
+        return \`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:\${modeColors[d.mode] || '#55556a'};flex-shrink:0;" title="\${d.mode}"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              \${d.mode === 'defer' ? 'Deferred (no prediction)' : \`Predicted <b>\${d.predictedProvider || '?'}/\${d.predictedModel || '?'}</b>\`}
+              \${d.actualModel ? \` → actual: <b>\${d.actualProvider || '?'}/\${d.actualModel}</b>\` : ''}
+            </div>
+            <div style="font-size:10px;color:var(--text3);">\${confPct}% confidence · est.cost \$\${(d.estimatedCost || 0).toFixed(4)}</div>
+          </div>
+          <span style="font-size:14px;font-weight:700;color:\${correctColor};flex-shrink:0;">\${correctLabel}</span>
+        </div>\`;
+      }).join('')}
+    </div>\`;
+  } else {
+    dEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">No decisions recorded yet.</p>';
+  }
+
+  window._mqmStats = stats;
+  window._mqmTrend = accuracyTrend;
+}
+
+async function loadMqmModels() {
+  const el = document.getElementById('mqm-models-content');
+  el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Loading…</p>';
+  const stats = await fetch(BASE + '/api/mqm/stats').then(r => r.json()).catch(() => []);
+  window._mqmStats = stats;
+  renderMqmModels(stats, 'all');
+}
+
+function filterMqmModels(cat) {
+  document.querySelectorAll('.mqm-cat-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mqm-cat-' + cat)?.classList.add('active');
+  const stats = window._mqmStats || [];
+  renderMqmModels(stats, cat);
+}
+
+function renderMqmModels(stats, cat) {
+  const el = document.getElementById('mqm-models-content');
+  const filtered = cat === 'all' ? stats : stats.filter(s => s.taskCategory === cat);
+  if (filtered.length === 0) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:20px;">No data for this category yet.</p>';
+    return;
+  }
+  const byModel = {};
+  for (const s of filtered) {
+    const key = s.provider + '/' + s.model;
+    if (!byModel[key]) byModel[key] = { ...s, key, categories: {} };
+    byModel[key].categories[s.taskCategory] = s;
+  }
+  el.innerHTML = \`<div style="display:flex;flex-direction:column;gap:8px;">
+    \${Object.values(byModel).map(m => {
+      const rate = m.totalCalls > 0 ? (m.successfulCalls / m.totalCalls * 100).toFixed(0) : '0';
+      const barW = Math.min(100, Math.round(Number(rate)));
+      return \`<div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:12px;font-weight:500;color:var(--text);min-width:160px;">\${m.key}</div>
+        <div style="font-size:10px;color:var(--text3);min-width:40px;">\${m.totalCalls} calls</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="font-size:10px;color:var(--text3);min-width:40px;">succ: \${rate}%</div>
+            <div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:\${barW}%;background:\${Number(rate) >= 80 ? '#4ade80' : Number(rate) >= 50 ? '#fbbf24' : '#f87171'};border-radius:3px;"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <div style="font-size:10px;color:var(--text3);min-width:40px;">qual: \${(m.avgQuality * 100).toFixed(0)}%</div>
+            <div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:\${(m.avgQuality * 100).toFixed(0)}%;background:linear-gradient(90deg,#818cf8,#c084fc);border-radius:3px;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);min-width:80px;text-align:right;">\$\${m.avgCost.toFixed(5)} avg</div>
+      </div>\`;
+    }).join('')}
+  </div>\`;
+}
+
+async function loadMqmAccuracy() {
+  const trend = await fetch(BASE + '/api/mqm/accuracy?hours=24').then(r => r.json()).catch(() => []);
+  const ctx = document.getElementById('mqm-accuracy-chart');
+  if (!ctx || trend.length === 0) return;
+  if (mqmChart) mqmChart.destroy();
+  mqmChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: trend.map(d => d.timestamp.slice(5,16).replace('T',' ')),
+      datasets: [{
+        label: 'Accuracy', data: trend.map(d => d.accuracy),
+        borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.1)',
+        tension: 0.3, pointRadius: 2, fill: true,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#9090a8', font: { size: 10 }, usePointStyle: true } } },
+      scales: {
+        x: { ticks: { color: '#55556a', font: { size: 9 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { min: 0, max: 1, ticks: { color: '#55556a', font: { size: 9 }, callback: v => (v*100).toFixed(0)+'%' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      },
+    },
+  });
+
+  const catEl = document.getElementById('mqm-category-accuracy');
+  const stats = window._mqmStats || [];
+  if (stats.length === 0) {
+    catEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">No category data available.</p>';
+    return;
+  }
+  const byCat = {};
+  for (const s of stats) {
+    if (!byCat[s.taskCategory]) byCat[s.taskCategory] = { total: 0, successes: 0, quality: 0 };
+    byCat[s.taskCategory].total += s.totalCalls;
+    byCat[s.taskCategory].successes += s.successfulCalls;
+    byCat[s.taskCategory].quality += s.avgQuality;
+  }
+  catEl.innerHTML = \`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;">
+    \${Object.entries(byCat).map(([cat, data]) => {
+      const acc = data.total > 0 ? (data.successes / data.total * 100).toFixed(0) : '0';
+      const barW = data.total > 0 ? Math.min(100, Math.round(data.successes / data.total * 100)) : 0;
+      return \`<div style="padding:10px;background:var(--bg3);border-radius:6px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);text-transform:capitalize;">\${cat}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">\${data.total} calls</div>
+        <div style="height:6px;background:var(--border);border-radius:3px;margin-top:6px;">
+          <div style="height:100%;width:\${barW}%;background:\${Number(acc) >= 80 ? '#4ade80' : Number(acc) >= 50 ? '#fbbf24' : '#f87171'};border-radius:3px;"></div>
+        </div>
+        <div style="font-size:10px;color:\${Number(acc) >= 80 ? '#4ade80' : Number(acc) >= 50 ? '#fbbf24' : '#f87171'};margin-top:3px;">\${acc}% success</div>
+      </div>\`;
+    }).join('')}
+  </div>\`;
+}
+
+function switchMqmTab(name) {
+  document.querySelectorAll('.mqm-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('mqmtab-' + name)?.classList.add('active');
+  ['overview','models','accuracy'].forEach(p => {
+    const el = document.getElementById('mqm-pane-' + p);
+    if (el) el.style.display = p === name ? 'flex' : 'none';
+  });
+  if (name === 'models') loadMqmModels();
+  if (name === 'accuracy') loadMqmAccuracy();
+}
+// ── End Model Quartermaster UI ──────────────────────────────────────────────
 
 const initPage = (() => { try { return localStorage.getItem('cortex_page') || 'chat'; } catch { return 'chat'; } })();
 showPage(initPage);
