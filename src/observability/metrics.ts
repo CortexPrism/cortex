@@ -290,3 +290,54 @@ registerMetric({
   type: 'gauge',
   labelNames: ['node_id'],
 });
+
+// ── Quartermaster metrics ────────────────────────────────
+
+registerMetric({
+  name: 'cortex_qm_predictions_total',
+  help: 'Total quartermaster predictions',
+  type: 'counter',
+  labelNames: ['mode', 'session'],
+});
+
+registerMetric({
+  name: 'cortex_qm_predictions_correct',
+  help: 'Correct quartermaster predictions',
+  type: 'counter',
+  labelNames: ['mode', 'session'],
+});
+
+registerMetric({
+  name: 'cortex_qm_observations_total',
+  help: 'Total quartermaster tool observations',
+  type: 'counter',
+  labelNames: ['tool', 'success', 'session'],
+});
+
+registerMetric({
+  name: 'cortex_qm_accuracy',
+  help: 'Rolling prediction accuracy (0-1)',
+  type: 'gauge',
+  labelNames: ['session'],
+});
+
+registerMetric({
+  name: 'cortex_qm_weights',
+  help: 'Current signal weight values',
+  type: 'gauge',
+  labelNames: ['signal_name'],
+});
+
+registerMetric({
+  name: 'cortex_qm_patterns_total',
+  help: 'Total learned patterns',
+  type: 'gauge',
+  labelNames: [],
+});
+
+registerMetric({
+  name: 'cortex_qm_confidence',
+  help: 'Distribution of prediction confidence scores',
+  type: 'histogram',
+  labelNames: ['mode'],
+});

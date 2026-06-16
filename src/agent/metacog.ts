@@ -154,8 +154,7 @@ function analyseTask(message: string): TaskSignals {
       /\b(migrate|refactor|upgrade|change.*schema)\b/i.test(message),
     requiresUserInput: MISSING_INFO_PATTERNS.some((p) => p.test(message)) && wordCount < 15,
     isSimple: wordCount < 12 && !MULTI_STEP_PATTERNS.some((p) => p.test(message)),
-    isAmbiguous:
-      AMBIGUITY_PATTERNS.some((p) => p.test(message.trim())) ||
+    isAmbiguous: AMBIGUITY_PATTERNS.some((p) => p.test(message.trim())) ||
       (wordCount < 8 && PRONOUN_PATTERN.test(message.trim()) &&
         !CODE_KEYWORDS.some((kw) => lower.includes(kw))),
     isDestructive: DESTRUCTIVE_PATTERNS.some((p) => p.test(message)),

@@ -1775,6 +1775,73 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(rows);
   }
 
+  // ── Quartermaster Monitoring API ──────────────────────────
+
+  // GET /api/qm/summary?session=<id>
+  if (req.method === 'GET' && path === '/api/qm/summary') {
+    const { getQmSummary, getQmAccuracyTrend } = await import(
+      '../quartermaster/monitor.ts'
+    );
+    const { getSignalWeights } = await import('../quartermaster/mod.ts');
+    const sessionId = url.searchParams.get('session') ?? undefined;
+    const [summary, weights, accuracyTrend] = await Promise.all([
+      getQmSummary(sessionId),
+      getSignalWeights(),
+      getQmAccuracyTrend(sessionId),
+    ]);
+    return json({ summary, weights, accuracyTrend });
+  }
+
+  // GET /api/qm/accuracy?session=<id>
+  if (req.method === 'GET' && path === '/api/qm/accuracy') {
+    const { getQmAccuracyTrend } = await import('../quartermaster/monitor.ts');
+    const sessionId = url.searchParams.get('session') ?? undefined;
+    const trend = await getQmAccuracyTrend(sessionId);
+    return json(trend);
+  }
+
+  // GET /api/qm/recent?session=<id>&limit=20
+  if (req.method === 'GET' && path === '/api/qm/recent') {
+    const { getDecisions } = await import('../quartermaster/mod.ts');
+    const sessionId = url.searchParams.get('session') ?? '';
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    const decisions = await getDecisions(sessionId, limit);
+    return json(decisions);
+  }
+
+  // GET /api/qm/weights
+  if (req.method === 'GET' && path === '/api/qm/weights') {
+    const { getSignalWeights } = await import('../quartermaster/mod.ts');
+    const weights = await getSignalWeights();
+    return json(weights);
+  }
+
+  // GET /api/qm/stats
+  if (req.method === 'GET' && path === '/api/qm/stats') {
+    const { getToolStats } = await import('../quartermaster/mod.ts');
+    const stats = await getToolStats();
+    return json(stats);
+  }
+
+  // GET /api/qm/health
+  if (req.method === 'GET' && path === '/api/qm/health') {
+    const { getQmSummary, getQmAccuracyTrend } = await import(
+      '../quartermaster/monitor.ts'
+    );
+    const { getSignalWeights, getToolStats, getDecisions } = await import(
+      '../quartermaster/mod.ts'
+    );
+    const sessionId = url.searchParams.get('session') ?? undefined;
+    const [summary, weights, toolStats, recentDecisions, accuracyTrend] = await Promise.all([
+      getQmSummary(sessionId),
+      getSignalWeights(),
+      getToolStats(),
+      getDecisions(sessionId ?? '', 10),
+      getQmAccuracyTrend(sessionId),
+    ]);
+    return json({ summary, weights, toolStats, recentDecisions, accuracyTrend });
+  }
+
   // ── Onboarding API Endpoints ──────────────────────────────
 
   // POST /api/onboarding/provider

@@ -36,6 +36,7 @@ import { modelsCommand } from './cli/models-cmd.ts';
 import { runMcpServerStdio } from './mcp/server.ts';
 import { gitCommand } from './cli/git-cmd.ts';
 import { githubCommand } from './cli/github-cmd.ts';
+import { quartermasterCommand } from './cli/quartermaster-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -111,6 +112,7 @@ const program = new Command()
   .command('desktop', desktopCommand)
   .command('node', nodeCommand)
   .command('eval', evalCommand)
-  .command('models', modelsCommand);
+  .command('models', modelsCommand)
+  .command('qm', quartermasterCommand);
 
 await program.parse(Deno.args);

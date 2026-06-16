@@ -7,9 +7,42 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
-## [Unreleased]
+## [0.26.0] — 2026-06-16
 
 ### Added
+
+- **Quartermaster — Tool Orchestration Learning System** (`src/quartermaster/`) — A background
+  subsystem that learns when and how to select tools by observing the agent's reasoning trajectory.
+  Registered as a pipeline hook (`@cortex/quartermaster`, priority 6) at both `pre-tool` and
+  `post-tool` stages. Key components:
+  - **5-signal prediction engine** — trajectory history, episodic memory hits, tool success
+    statistics, task context (metacog), and reflection confidence are fused via weighted combination
+    to predict the next tool before the LLM decides
+  - **Three-mode decision system** — predictions above 0.9 confidence for safe read-only tools use
+    `automate` mode; above 0.6 use `suggest` (hint injected to LLM); otherwise `defer` to LLM
+  - **Adaptive learning** — signal weights update via EMA (`new = old + lr × (reward - old)`) with
+    decaying learning rate, driven by reflection feedback on prediction accuracy
+  - **Observation-first startup** — Quartermaster starts in observe-only mode (always DEFER) until
+    50 tool calls are observed, then activates
+  - **Context fingerprinting** — 12-feature vector (tool round, file count, error context,
+    metacog-derived flags, session age) for pattern matching without query text dependency
+  - **SQLite schema** (`018_quartermaster.sql`) — 5 tables: `qm_patterns`, `qm_signal_weights`,
+    `qm_tool_stats`, `qm_decisions`, `qm_session_state` with full audit trail per decision
+  - **CLI commands** (`cortex qm`) — `patterns`, `weights`, `stats`, `decisions`, `trace <turn>`,
+    `dashboard` (ASCII visualization with accuracy bars and trends), `accuracy`, `reset`,
+    `reset-all`
+  - **REST API** — `GET /api/qm/summary`, `/api/qm/accuracy`, `/api/qm/recent`, `/api/qm/weights`,
+    `/api/qm/stats`, `/api/qm/health` exposing live monitoring data
+  - **Prometheus metrics** — 7 new metrics (`cortex_qm_predictions_total`,
+    `cortex_qm_predictions_correct`, `cortex_qm_observations_total`, `cortex_qm_accuracy`,
+    `cortex_qm_weights`, `cortex_qm_patterns_total`, `cortex_qm_confidence`) registered in
+    `/metrics` endpoint
+  - **Lens audit events** — 5 new event types (`qm_prediction`, `qm_decision_evaluated`,
+    `qm_weight_updated`, `qm_pattern_learned`, `qm_mode_changed`) logged for session replay and
+    observability
+  - **Tool output parsing robustness** — New `extractBareToolCalls()` fallback parser handles LLM
+    outputs missing `<tool_call>` wrapper tags by extracting bare JSON `{"tool": ..., "args": ...}`
+    objects, improving tool call reliability across all providers
 
 - **Proper skill steps** — All 12 builtin skills now define 5 concrete, actionable steps instead of
   storing the full markdown content as a single step. Each step has `action` (what to do) and
