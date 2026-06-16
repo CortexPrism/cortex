@@ -103,9 +103,17 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
   await Deno.writeFile(destPath, new Uint8Array(data));
 }
 
-async function extractTarball(tarPath: string, destDir: string): Promise<void> {
+async function extractTarball(
+  tarPath: string,
+  destDir: string,
+  stripComponents = 0,
+): Promise<void> {
+  const args = ['xzf', tarPath, '-C', destDir];
+  if (stripComponents > 0) {
+    args.push(`--strip-components=${stripComponents}`);
+  }
   const cmd = new Deno.Command('tar', {
-    args: ['xzf', tarPath, '-C', destDir],
+    args,
     stdout: 'piped',
     stderr: 'piped',
   });
@@ -252,7 +260,7 @@ export async function installSourceUpdate(
 
     try {
       await downloadFile(url, archivePath);
-      await extractTarball(archivePath, manifest.installPath);
+      await extractTarball(archivePath, manifest.installPath, 1);
     } finally {
       try {
         await Deno.remove(tmpDir, { recursive: true });

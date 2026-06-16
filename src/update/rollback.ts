@@ -1,4 +1,5 @@
 import { exists } from '@std/fs';
+import { join } from '@std/path';
 import type { InstallManifest } from './installer.ts';
 import { loadManifest, saveManifest } from './installer.ts';
 
@@ -29,12 +30,12 @@ async function healthCheckBinary(binaryPath: string, expectedVersion: string): P
 
 async function healthCheckSource(installPath: string, expectedVersion: string): Promise<boolean> {
   try {
-    const versionFilePath = `${installPath}/VERSION`;
+    const versionFilePath = join(installPath, 'VERSION');
     if (await exists(versionFilePath)) {
       const content = await Deno.readTextFile(versionFilePath);
       return content.trim() === expectedVersion;
     }
-    const denoJsonPath = `${installPath}/deno.json`;
+    const denoJsonPath = join(installPath, 'deno.json');
     if (await exists(denoJsonPath)) {
       const content = JSON.parse(await Deno.readTextFile(denoJsonPath));
       return content.version === expectedVersion;
@@ -56,7 +57,7 @@ export async function rollbackUpdate(): Promise<RollbackResult> {
   try {
     const manifest = await loadManifest();
 
-    if (!manifest.prevVersion || !manifest.prevBinaryPath) {
+    if (!manifest.prevVersion) {
       return {
         success: false,
         version: manifest.version,
@@ -65,11 +66,11 @@ export async function rollbackUpdate(): Promise<RollbackResult> {
     }
 
     if (manifest.type === 'binary') {
-      if (!(await exists(manifest.prevBinaryPath))) {
+      if (!manifest.prevBinaryPath || !(await exists(manifest.prevBinaryPath))) {
         return {
           success: false,
           version: manifest.version,
-          error: `Backup binary not found at ${manifest.prevBinaryPath}`,
+          error: `Backup binary not found at ${manifest.prevBinaryPath || 'unknown'}`,
         };
       }
 
@@ -95,10 +96,62 @@ export async function rollbackUpdate(): Promise<RollbackResult> {
       };
     }
 
+    const gitDir = join(manifest.installPath, '.git');
+    if (!(await exists(gitDir))) {
+      return {
+        success: false,
+        version: manifest.version,
+        error: 'Source rollback requires a git repository. Check out the previous version manually.',
+      };
+    }
+
+    const prevTag = `v${manifest.prevVersion}`;
+
+    const fetchCmd = new Deno.Command('git', {
+      args: ['fetch', '--tags', 'origin'],
+      cwd: manifest.installPath,
+      stdout: 'piped',
+      stderr: 'piped',
+    });
+    const fetchResult = await fetchCmd.output();
+    if (fetchResult.code !== 0) {
+      return {
+        success: false,
+        version: manifest.version,
+        error: `Rollback: git fetch failed`,
+      };
+    }
+
+    const checkoutCmd = new Deno.Command('git', {
+      args: ['checkout', prevTag],
+      cwd: manifest.installPath,
+      stdout: 'piped',
+      stderr: 'piped',
+    });
+    const checkoutResult = await checkoutCmd.output();
+    if (checkoutResult.code !== 0) {
+      return {
+        success: false,
+        version: manifest.version,
+        error: `Rollback: git checkout ${prevTag} failed`,
+      };
+    }
+
+    const rollbackVersion = manifest.prevVersion;
+    manifest.version = rollbackVersion;
+    manifest.prevVersion = undefined;
+    manifest.prevBinaryPath = undefined;
+    manifest.updatedAt = new Date().toISOString();
+    await saveManifest(manifest);
+
+    if (await healthCheck(manifest)) {
+      return { success: true, version: rollbackVersion };
+    }
+
     return {
       success: false,
-      version: manifest.version,
-      error: 'Source mode rollback must be done manually via git',
+      version: rollbackVersion,
+      error: 'Rollback applied but health check failed',
     };
   } catch (err) {
     return {
