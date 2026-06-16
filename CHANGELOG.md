@@ -59,6 +59,48 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Pipeline hook stages** — Added `pre-llm` and `post-llm` stages to the pipeline system, enabling
   hooks to run immediately before and after every LLM call within the agent loop
 
+### Fixed
+
+- **Release artifact binary naming** — Compiled binaries inside platform-specific tarballs were
+  named `cortex-x86_64-linux` (etc.), but the installer expected `cortex`. The `cortex update` command
+  failed with "Extracted binary not found" for all binary installs. Fixed by compiling with
+  `--output cortex` and keeping platform names only on the archive filename.
+
+- **Source-mode tarball extraction** — When `git checkout` fails during a source-mode update,
+  the GitHub tarball fallback extracted files into a nested subdirectory (`cortex-0.26.0/`) instead
+  of the install root. Health checks compared the wrong VERSION file and falsely reported failure.
+  Fixed by passing `--strip-components=1` to `tar` for source tarball fallbacks.
+
+- **Source-mode rollback** — Rollback for source installs was a stub that always returned
+  "must be done manually via git". Additionally, the rollback guard required `prevBinaryPath` (always
+  empty for source mode), blocking all source rollbacks. Implemented full source rollback via
+  `git checkout v${prevVersion}` with fetch, checkout, manifest update, and health check.
+
+- **Install script fixes** (`docs/design/install.sh`) — The one-line installer failed in three ways:
+  (1) `deno task setup` referenced a non-existent task (changed to `deno run --allow-all
+  src/db/migrate.ts`); (2) the `cortex` command was never created on PATH after install — added a
+  wrapper script at `~/.deno/bin/cortex`; (3) the quick-start instructions required manually
+  `cd`-ing to the install directory instead of using the `cortex` command directly.
+
+- **Setup wizard non-TTY guard** — Running `cortex setup` without a terminal (e.g., from a piped
+  installer) caused the Cliffy prompt to hang or show the web onboarding prompt unexpectedly. Added
+  an early return when `Deno.stdin.isTerminal()` is false, running only migrations and printing a
+  hint.
+
+- **Welcome screen hang** — The "Press Enter to begin" prompt used raw stdin mode with a buggy
+  listener that passed the byte count `n` to `new Uint8Array(n)` instead of the actual buffer data.
+  Enter keypresses were never detected, causing an indefinite hang. Fixed by using cooked-mode
+  `Deno.stdin.read(buf)` directly.
+
+- **Welcome screen rendering artifacts** — The previous Unicode block-letter ASCII logo used `\r`-based
+  typewriter animation that garbled rendering on many terminals, displaying partial text like "CORT"
+  instead of "CORTEX". Replaced with a simpler block-character banner (▄█░▀) in the style of
+  OpenClaw, printed line-by-line without carriage-return tricks.
+
+- **Health check path construction** — `healthCheckSource()` built file paths with string
+  concatenation (`${installPath}/VERSION`) instead of `join()`, producing double-slash paths.
+  Fixed by using `join()` from `@std/path`.
+
 ---
 
 ## [0.26.0] — 2026-06-16
