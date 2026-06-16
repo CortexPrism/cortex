@@ -109,7 +109,7 @@ export const serveCommand = new Command()
           const existing = await findServerProcess(opts.port);
           if (existing) {
             try {
-              Deno.kill(existing.pid, 'SIGTERM');
+              killProcessById(existing.pid);
               console.log(cyan(`  Stopped existing server (pid ${existing.pid})`));
               await new Promise((r) => setTimeout(r, 1000));
             } catch {
@@ -137,8 +137,8 @@ export const serveCommand = new Command()
             opts.host,
           ],
           cwd: projectRoot,
-          stdout: 'null',
-          stderr: 'null',
+          stdout: 'piped',
+          stderr: 'piped',
           stdin: 'null',
         });
 
@@ -156,7 +156,7 @@ export const serveCommand = new Command()
           );
         } else {
           console.log(red(`  ✕ Server failed to start on ${opts.host}:${opts.port}`));
-          console.log(dim('    Run without --daemon to see error output'));
+          console.log(dim('    Check logs above or run without --daemon to see errors'));
           Deno.exit(1);
         }
 
