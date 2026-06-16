@@ -11,9 +11,8 @@ export interface BuiltinSkill {
 import { cortexDevSkill } from './cortex-dev.ts';
 import { frontendDesignSkill } from './frontend-design.ts';
 
-export const BUILTIN_SKILLS: BuiltinSkill[] = [
-  cortexDevSkill,
-  frontendDesignSkill,
-];
+// Builtin skills are optional and can be loaded from .cortex/skills/ instead
+// Users can add cortex-dev and frontend-design to their skills directory if needed
+export const BUILTIN_SKILLS: BuiltinSkill[] = [];
 
 export { cortexDevSkill, frontendDesignSkill };
