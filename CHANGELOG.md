@@ -26,9 +26,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
     decaying learning rate (0.05 → 0.995 decay), driven by quality and cost efficiency feedback
   - **Observation-first startup** — MQM starts in observe-only mode until 50 LLM calls are observed,
     then activates and begins making predictions
-  - **Three arbiter strategies** — `conservative` (prefers cheaper models, high confidence required),
-    `balanced` (standard thresholds for cost/quality balance), `aggressive` (prioritizes quality,
-    lower thresholds)
+  - **Three arbiter strategies** — `conservative` (prefers cheaper models, high confidence
+    required), `balanced` (standard thresholds for cost/quality balance), `aggressive` (prioritizes
+    quality, lower thresholds)
   - **Task categorization** — Automatic classification of requests into `code`, `analysis`,
     `creative`, `factual`, or `conversation` categories using heuristic keyword matching
   - **Context fingerprinting** — Multi-feature context extraction (message length, code detection,
@@ -43,6 +43,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
     and `allowedProviders` settings
   - **Pipeline integration** — New `pre-llm` and `post-llm` hook stages feed MQM predictions into
     the agent loop, with automatic provider/model override for enforce decisions
+
+- **Server UI Quartermaster dashboard** (`src/server/ui.ts`) — New "Quartermaster" nav tab in the
+  Monitoring section with three sub-tab panes:
+  - **Overview** — 6 stat cards (mode badge, observations, predictions, correct, overall/recent
+    accuracy), Chart.js line chart for accuracy trends (bucket + rolling average), horizontal signal
+    weight bars with gradient fill, and grid of top-10 tool stats with color-coded success rate bars
+  - **Patterns** — Session-level prediction accuracy grouped by session ID with bar charts and
+    automate/suggest/defer mode breakdowns
+  - **Decisions** — Reverse-chronological decision log with color-coded mode dots, predicted vs
+    actual tool display, confidence percentages, signal names, and correctness indicators (✓/✗/⏳)
+  - Fetches `/api/qm/health` and `/api/qm/recent` endpoints, follows existing `switchMemoryTab`
+    sub-tab pattern, and auto-loads on nav click via `showPage()` loader dispatch
 
 - **Pipeline hook stages** — Added `pre-llm` and `post-llm` stages to the pipeline system, enabling
   hooks to run immediately before and after every LLM call within the agent loop
