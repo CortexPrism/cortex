@@ -7,6 +7,48 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.29.0] — 2026-06-16
+
+### Added
+
+- **Dashboard as default landing page** — Dashboard now opens first on load instead of Chat,
+  providing an immediate system overview. Dashboard moved from "Monitoring" to "Core" nav section
+  with active-state highlighting on load.
+- **Navigation consolidation** — Removed standalone Status page; all Status content (system
+  overview, KPI cards, daemon status, system resources, activity feed) merged into the Dashboard
+  as configurable widgets. Sidebar simplified with Dashboard as the primary Core entry.
+- **Three new Dashboard widgets** covering the old Status page functionality:
+  - **Server Info** (2×1) — Uptime, LLM Provider/Model, Cortex Build version, System Status
+  - **Enhanced System Resources** (2×2, up from 2×1) — Memory/Disk bars plus CPU Cores and
+    Platform panels
+  - **Enhanced Daemon Status** (2×2, up from 1×1) — Detailed daemon cards with status dots,
+    descriptions, online count, and operational-status warning banner
+- **Dashboard Config REST API** (`GET`/`PUT /api/dashboard/config`) — Persists widget layout to
+  `~/.cortex/dashboard.json`, enabling programmatic dashboard manipulation
+- **`dashboard_manage` LLM tool** — Agent-accessible tool for CRUD operations on dashboard widgets
+  directly through chat. Supports `list`, `add`, `remove`, and `update` operations. Registered in
+  all four execution contexts (CLI chat, WebSocket/dashboard chat, services, sub-agents).
+- **Custom HTML widget type** — LLM agents can craft fully custom dashboard widgets with arbitrary
+  HTML and inline CSS via the `dashboard_manage` tool. Supports optional `title` override and
+  `refresh` interval (min 5s). Script tags and event handlers are stripped for safety. Hidden from
+  the manual UI widget picker (agent-only creation).
+
+### Changed
+
+- **Default dashboard layout** reconfigured to 8 widgets: KPI Cards, Server Info, Daemon Status
+  (2-row), Memory Stats, System Resources (2-row), Recent Sessions (2-row), Token Chart, and
+  Recent Activity
+- **Memory Stats widget** widened from 1×1 to 2×1 for better readability
+- **Command palette** (Ctrl+K) entry for Status merged into Dashboard entry
+
+### Fixed
+
+- **Drag-and-drop in Dashboard** — Fixed swap logic to exchange widget positions in the array
+  instead of invisible `row`/`col` metadata fields, which previously produced zero visual change
+  because CSS grid auto-flow follows array order, not metadata
+- **Drag-start prevention** — Strengthened edit-mode guard by setting `effectAllowed = "none"` in
+  addition to `preventDefault()` for browsers that ignore `preventDefault` on `dragstart`
+
 ## [0.28.0] — 2026-06-16
 
 ### Added
