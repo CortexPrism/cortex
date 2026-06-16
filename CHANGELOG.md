@@ -83,6 +83,30 @@ Versioning: [Semantic Versioning](https://semver.org/)
   single `-t png`/`-t jpg`
 - **macOS keypress** — Changed from `key code` (numeric codes only) to `keystroke` with AppleScript
   `using {modifiers}` syntax for proper key name support
+- **Windows path resolution** — All 8 `import.meta.url` pathname usages replaced with `fromFileUrl`
+  from `@std/path` to fix broken `/C:/Users/...` paths on Windows. Affected files: `db/migrate.ts`,
+  `update/installer.ts`, `config/version.ts`, `cli/daemon.ts`, `cli/serve.ts`, `agent/sub-agent.ts`,
+  `services/manager.ts`, `processes/supervisor-process.ts`
+- **Windows path separators** — Hardcoded `/` path concatenation replaced with `join()`/`dirname()`
+  in `server/router.ts`, `plugins/context.ts`, `server/ui.ts`, `triggers/watcher.ts`,
+  `cli/plugins-cmd.ts` to handle backslash-separated Windows paths
+- **Windows process management** — Added cross-platform `findDenoProcesses()`, `killDenoProcesses()`,
+  `killProcessById()`, and `killChildProcess()` helpers in `utils/platform.ts` with PowerShell
+  fallbacks on Windows. Replaced all `pgrep`, `pkill`, and direct `SIGTERM` usages in `cli/serve.ts`,
+  `cli/daemon.ts`, `cli/stop.ts`, `agent/sub-agent.ts`, `services/manager.ts`, and
+  `processes/supervisor-process.ts`
+- **Windows shell execution** — Hardcoded `sh` commands in `processes/executor-process.ts`,
+  `processes/scheduler-process.ts`, and `cli/jobs.ts` replaced with `getShellCommand()` which uses
+  PowerShell on Windows
+- **Windows temp directory** — Hardcoded `/tmp/cortex` socket directory replaced with
+  `getTempDir()`-based fallback. Hardcoded `/tmp/` screenshot path in `cli/desktop-cmd.ts` replaced
+  with `getTempDir() + join()`
+- **Windows home directory** — `Deno.env.get('HOME')` without `USERPROFILE` fallback in
+  `plugins/install.ts`, `plugins/update.ts`, `cli/import-cmd.ts`, and `cli/openclaw-migrate.ts`
+  replaced with centralized `resolveHomeDir()` from `utils/platform.ts`
+- **Windows editor default** — `vi` fallback in `cli/soul-cmd.ts` replaced with `notepad` on Windows
+- **Workflow engine** — `df` and `free` commands in `workflow/engine.ts` wrapped in try/catch to
+  prevent crashes on Windows where these Unix commands are unavailable
 
 ## [0.29.0] — 2026-06-16
 

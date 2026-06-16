@@ -1,3 +1,5 @@
+import { fromFileUrl } from '@std/path';
+import { isWindows } from '../utils/platform.ts';
 import { loadConfig } from '../config/config.ts';
 import type { ProviderKind } from '../config/config.ts';
 import { getDefaultAgent, loadAgentIdentity } from './manager.ts';
@@ -112,7 +114,7 @@ export async function* spawnSubAgent(
     args: [
       'run',
       '--allow-all',
-      new URL('../../src/processes/sub-agent-entry.ts', import.meta.url).pathname,
+      fromFileUrl(new URL('../../src/processes/sub-agent-entry.ts', import.meta.url)),
       '--id',
       id,
     ],
@@ -141,7 +143,7 @@ export async function* spawnSubAgent(
 
   for await (const line of lineReader) {
     if (Date.now() - startTime > timeout) {
-      child.kill('SIGTERM');
+      child.kill(isWindows() ? undefined : 'SIGTERM');
       yield { type: 'error', error: `Sub-agent timed out after ${timeout}ms` };
       return;
     }

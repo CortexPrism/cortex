@@ -2,6 +2,7 @@ import { EXECUTOR_SOCK, listenMessages } from '../ipc/transport.ts';
 import type { ExecuteMessage, ExecuteResultMessage, IpcMessage } from '../ipc/transport.ts';
 import { logEvent } from '../db/lens.ts';
 import { runMigrations } from '../db/migrate.ts';
+import { getShellCommand } from '../utils/platform.ts';
 
 type ActionHandler = (
   params: Record<string, unknown>,
@@ -23,8 +24,9 @@ const HANDLERS: Record<string, ActionHandler> = {
 
   async shell(params) {
     const command = params.command as string;
-    const proc = new Deno.Command('sh', {
-      args: ['-c', command],
+    const { cmd, args } = getShellCommand();
+    const proc = new Deno.Command(cmd, {
+      args: args(command),
       stdout: 'piped',
       stderr: 'piped',
     });

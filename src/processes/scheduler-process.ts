@@ -5,6 +5,7 @@ import { nextCronDate } from '../scheduler/cron.ts';
 import { getCoreDb } from '../db/client.ts';
 import { listenMessages, SCHEDULER_SOCK } from '../ipc/transport.ts';
 import type { IpcMessage } from '../ipc/transport.ts';
+import { getShellCommand } from '../utils/platform.ts';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -41,8 +42,9 @@ async function runDueJobs(): Promise<void> {
           await reschedule(job.id, job.schedule);
         }
       } else {
-        const proc = new Deno.Command('sh', {
-          args: ['-c', job.command],
+        const { cmd, args } = getShellCommand();
+        const proc = new Deno.Command(cmd, {
+          args: args(job.command),
           stdout: 'piped',
           stderr: 'piped',
         });

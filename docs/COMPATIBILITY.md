@@ -86,6 +86,7 @@ Code signing is required for distribution outside of developer mode.
 3. **Docker on macOS/Windows**: Requires Docker Desktop installation. WSL2 required on Windows.
 4. **Key press modifiers**: Limited support on macOS and Windows compared to Linux `xdotool`.
 5. **Code signing**: Desktop app bundles are unsigned by default — requires manual approval on macOS and Windows.
+6. **IPC sockets on Windows**: The daemon process supervisor uses Unix domain sockets for IPC. On Windows, set the `CORTEX_SOCKET_DIR` environment variable to a writeable directory (defaults to `%TEMP%\cortex`). Unix socket support requires Windows 10 build 17063 or later.
 
 ## Minimum Requirements
 

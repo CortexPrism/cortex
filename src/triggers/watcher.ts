@@ -1,5 +1,6 @@
 import { handleTriggerEvent, listTriggers } from './manager.ts';
 import type { TriggerEvent } from './types.ts';
+import { basename } from '@std/path';
 
 const watchers: Map<
   string,
@@ -64,7 +65,7 @@ async function startWatcher(triggerName: string): Promise<void> {
       if (events.length > 0 && !(events as string[]).includes(kind)) continue;
 
       for (const path of fsEvent.paths) {
-        const filename = path.split('/').pop() ?? '';
+        const filename = basename(path);
 
         if (patterns && patterns.length > 0) {
           const matches = patterns.some((pattern) => {

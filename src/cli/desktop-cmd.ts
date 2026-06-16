@@ -2,6 +2,8 @@ import { Command } from '@cliffy/command';
 import { executeDesktopAction, getDockerfile, getEntrypointScript } from '../desktop/automation.ts';
 import { Input } from '@cliffy/prompt';
 import { dim, green } from '@std/fmt/colors';
+import { getTempDir } from '../utils/platform.ts';
+import { join } from '@std/path';
 
 const desktopCommand = new Command()
   .name('desktop')
@@ -40,7 +42,7 @@ desktopCommand
   .action(async () => {
     const result = await executeDesktopAction({ action: 'screenshot', format: 'png' });
     if (result.success && result.screenshot) {
-      const path = `/tmp/cortex-screenshot-${Date.now()}.png`;
+      const path = join(getTempDir(), `cortex-screenshot-${Date.now()}.png`);
       await Deno.writeFile(path, result.screenshot);
       console.log(green(`Screenshot saved: ${path} (${result.durationMs}ms)`));
     } else {

@@ -1,5 +1,5 @@
 import { ensureDir, exists } from '@std/fs';
-import { basename, join } from '@std/path';
+import { basename, fromFileUrl, join } from '@std/path';
 import {
   closeAll,
   getCoreDb,
@@ -19,7 +19,7 @@ interface MigrationTarget {
 }
 
 async function readSql(filename: string): Promise<string> {
-  const path = join(new URL('.', import.meta.url).pathname, 'migrations', filename);
+  const path = join(fromFileUrl(new URL('.', import.meta.url)), 'migrations', filename);
   return await Deno.readTextFile(path);
 }
 

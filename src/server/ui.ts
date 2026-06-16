@@ -2092,7 +2092,7 @@ function connect() {
       case 'file_change':
         if (currentPage === 'editor') {
           editorRefreshTree();
-          if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split('/').pop()) {
+          if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split(/[\\/]/).pop()) {
             editorOpenFile(editorCurrentFile);
           }
         }

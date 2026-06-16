@@ -58,6 +58,8 @@ import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
+import { dirname, join } from '@std/path';
+import { resolveHomeDir } from '../utils/platform.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
 import {
   deleteAgent,
@@ -247,7 +249,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     } catch { /* non-linux */ }
     try {
       const dfRaw = await new Deno.Command('df', {
-        args: ['-B1', Deno.env.get('HOME') ?? '/'],
+        args: ['-B1', Deno.env.get('HOME') ?? resolveHomeDir()],
         stdout: 'piped',
       }).output();
       const dfText = new TextDecoder().decode(dfRaw.stdout);
@@ -752,7 +754,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/dashboard/config
   if (req.method === 'GET' && path === '/api/dashboard/config') {
-    const configPath = PATHS.configDir + '/dashboard.json';
+    const configPath = join(PATHS.configDir, 'dashboard.json');
     let config = { widgets: [] };
     try {
       config = JSON.parse(await Deno.readTextFile(configPath));
@@ -764,7 +766,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'PUT' && path === '/api/dashboard/config') {
     try {
       const body = await req.json();
-      await Deno.writeTextFile(PATHS.configDir + '/dashboard.json', JSON.stringify(body, null, 2));
+      await Deno.writeTextFile(
+        join(PATHS.configDir, 'dashboard.json'),
+        JSON.stringify(body, null, 2),
+      );
       return json({ ok: true });
     } catch (e) {
       return err((e as Error).message);
@@ -1231,7 +1236,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const relPath = workspaceRelPath(wsGlobalFilesMatch, 1);
     const targetPath = resolveWorkspacePath('global', relPath, 'global');
     const { content } = await req.json() as { content: string };
-    const parent = targetPath.substring(0, targetPath.lastIndexOf('/'));
+    const parent = dirname(targetPath);
     if (parent) await Deno.mkdir(parent, { recursive: true });
     await Deno.writeTextFile(targetPath, content);
     return json({ ok: true, path: targetPath });
@@ -1283,7 +1288,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const relPath = workspaceRelPath(wsAgentFilesMatch);
     const targetPath = resolveWorkspacePath(agentId, relPath, 'agent');
     const { content } = await req.json() as { content: string };
-    const parent = targetPath.substring(0, targetPath.lastIndexOf('/'));
+    const parent = dirname(targetPath);
     if (parent) await Deno.mkdir(parent, { recursive: true });
     await Deno.writeTextFile(targetPath, content);
     return json({ ok: true, path: targetPath });

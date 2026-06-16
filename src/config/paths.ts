@@ -1,15 +1,5 @@
 import { join } from '@std/path';
-
-function resolveHomeDir(): string {
-  const home = Deno.env.get('HOME') ??
-    Deno.env.get('USERPROFILE') ??
-    (() => {
-      const drive = Deno.env.get('HOMEDRIVE');
-      const path = Deno.env.get('HOMEPATH');
-      return drive && path ? `${drive}${path}` : '.';
-    })();
-  return home;
-}
+import { resolveHomeDir } from '../utils/platform.ts';
 
 function resolveDataDir(): string {
   const envOverride = Deno.env.get('CORTEX_DATA_DIR');

@@ -1,5 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
+import { fromFileUrl } from '@std/path';
+import { killDenoProcesses } from '../utils/platform.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import { checkForUpdates } from '../update/mod.ts';
 import { loadConfig } from '../config/config.ts';
@@ -17,7 +19,7 @@ function isCompiledBinary(): boolean {
 }
 
 function getSupervisorEntryPath(): string {
-  return new URL('../processes/supervisor-process.ts', import.meta.url).pathname;
+  return fromFileUrl(new URL('../processes/supervisor-process.ts', import.meta.url));
 }
 
 function spawnSupervisor(stdio: 'null' | 'inherit'): void {
@@ -75,8 +77,7 @@ async function stopDaemons(): Promise<void> {
   ];
   for (const pat of patterns) {
     try {
-      const cmd = new Deno.Command('pkill', { args: ['-f', pat] });
-      await cmd.output();
+      await killDenoProcesses(pat);
       console.log(cyan(`  Stopped: ${pat}`));
     } catch {
       console.log(dim(`  Not running: ${pat}`));

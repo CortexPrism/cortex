@@ -2,6 +2,7 @@ import { getPluginsDb } from '../db/client.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { ensureDir } from '@std/fs';
+import { join } from '@std/path';
 import type { PluginConfigStore, PluginContext, PluginLogger, PluginStateStore } from './types.ts';
 
 function createLogger(pluginName: string): PluginLogger {
@@ -90,7 +91,7 @@ function createConfigStore(pluginName: string): PluginConfigStore {
 }
 
 export async function createPluginContext(pluginName: string): Promise<PluginContext> {
-  const pluginDir = `${PATHS.dataDir}/plugins/${pluginName}`;
+  const pluginDir = join(PATHS.dataDir, 'plugins', pluginName);
   await ensureDir(pluginDir);
 
   return {

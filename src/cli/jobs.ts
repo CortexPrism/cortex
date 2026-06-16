@@ -11,6 +11,7 @@ import {
 } from '../scheduler/scheduler.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { runConsolidation } from '../memory/consolidate.ts';
+import { getShellCommand } from '../utils/platform.ts';
 
 function statusColor(status: string): string {
   switch (status) {
@@ -140,8 +141,9 @@ export const jobsCommand = new Command()
 
               console.log(green(`  ✓ Done: ${job.name}`));
             } else {
-              const proc = new Deno.Command('sh', {
-                args: ['-c', job.command],
+              const { cmd, args } = getShellCommand();
+              const proc = new Deno.Command(cmd, {
+                args: args(job.command),
                 stdout: 'piped',
                 stderr: 'piped',
               });
