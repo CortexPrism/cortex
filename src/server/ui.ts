@@ -5687,11 +5687,14 @@ async function skillDesignerExport() {
 
 // Live preview on typing
 let sdPreviewTimer;
-document.getElementById('sd-editor').addEventListener('input', function() {
-  sdMarkDirty();
-  clearTimeout(sdPreviewTimer);
-  sdPreviewTimer = setTimeout(sdUpdatePreview, 200);
-});
+const sdEditorEl = document.getElementById('sd-editor');
+if (sdEditorEl) {
+  sdEditorEl.addEventListener('input', function() {
+    sdMarkDirty();
+    clearTimeout(sdPreviewTimer);
+    sdPreviewTimer = setTimeout(sdUpdatePreview, 200);
+  });
+}
 
 // Ctrl+S
 document.addEventListener('keydown', function(e) {
@@ -5712,10 +5715,13 @@ document.addEventListener('keydown', function(e) {
 
 // Metadata live update
 ['sd-name','sd-desc','sd-trigger'].forEach(function(id) {
-  document.getElementById(id).addEventListener('input', function() {
-    sdMarkDirty();
-    sdUpdateFrontmatter();
-  });
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', function() {
+      sdMarkDirty();
+      sdUpdateFrontmatter();
+    });
+  }
 });
 
 setInterval(loadDaemonStatus, 15_000);
