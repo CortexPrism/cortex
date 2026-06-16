@@ -24,7 +24,11 @@ function isProviderKind(v: string): v is ProviderKind {
   return PROVIDER_KINDS.includes(v as ProviderKind);
 }
 
-function formatProvider(kind: ProviderKind, cfg: ProviderConfig, defaultProvider: ProviderKind): string {
+function formatProvider(
+  kind: ProviderKind,
+  cfg: ProviderConfig,
+  defaultProvider: ProviderKind,
+): string {
   const isDefault = kind === defaultProvider;
   const providerName = bold(isDefault ? green(kind) : cyan(kind));
   const model = cfg.model ? yellow(cfg.model) : dim('(not configured)');

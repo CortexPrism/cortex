@@ -1,10 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import {
-  type SkillStep,
-  deleteSkill,
-  getSkillByName,
-  storeSkill,
-} from '../../memory/skills.ts';
+import { deleteSkill, getSkillByName, type SkillStep, storeSkill } from '../../memory/skills.ts';
 
 export const skillWriteTool: Tool = {
   definition: {

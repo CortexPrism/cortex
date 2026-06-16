@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const planComplexTasksSkill: BuiltinSkill = {
   name: 'plan-complex-tasks',
-  description: 'Break down complex requests into concrete sub-goals and tasks. Use when a user asks to do something multi-faceted.',
+  description:
+    'Break down complex requests into concrete sub-goals and tasks. Use when a user asks to do something multi-faceted.',
   tags: ['reasoning', 'planning', 'decomposition'],
   difficulty: 'intermediate',
   examples: [
     'User: "Build a dashboard with auth, database, and API"',
     'User: "Refactor the codebase and optimize performance"',
-    'User: "Set up CI/CD and deploy to production"'
+    'User: "Set up CI/CD and deploy to production"',
   ],
   prerequisites: ['Understanding of project scope'],
+  steps: [
+    {
+      step: 1,
+      action: 'Identify the goal',
+      description: 'Clarify what the user wants to achieve and the end state',
+    },
+    {
+      step: 2,
+      action: 'Decompose into sub-goals',
+      description: 'Break into 5-7 concrete, independently testable parts',
+    },
+    {
+      step: 3,
+      action: 'Order by dependency',
+      description: 'Determine what must happen first and what can be parallel',
+    },
+    {
+      step: 4,
+      action: 'Estimate scope',
+      description: 'Verify each sub-goal is reasonable and can be completed',
+    },
+    {
+      step: 5,
+      action: 'Communicate the plan',
+      description: 'Show the user the breakdown before starting execution',
+    },
+  ],
   content: `# Plan Complex Tasks
 
 When facing a complex request, decompose it into smaller, independent sub-goals.

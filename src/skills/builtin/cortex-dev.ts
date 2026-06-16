@@ -2,14 +2,15 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const cortexDevSkill: BuiltinSkill = {
   name: 'cortex-dev',
-  description: 'Project-wide development guidelines for CortexPrism — architecture, conventions, workflow',
+  description:
+    'Project-wide development guidelines for CortexPrism — architecture, conventions, workflow',
   tags: ['development', 'backend', 'architecture', 'conventions'],
   difficulty: 'intermediate',
   examples: [
     'Adding a new CLI command to the system',
     'Creating a new LLM provider integration',
     'Implementing a database migration',
-    'Building a new agent subsystem'
+    'Building a new agent subsystem',
   ],
   content: `# CortexPrism Development Guidelines
 

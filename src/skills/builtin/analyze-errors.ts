@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const analyzeErrorsSkill: BuiltinSkill = {
   name: 'analyze-errors',
-  description: 'Understand error messages and trace them to root causes. Use when code, API, or tool returns error.',
+  description:
+    'Understand error messages and trace them to root causes. Use when code, API, or tool returns error.',
   tags: ['debugging', 'errors', 'diagnostics', 'troubleshooting'],
   difficulty: 'intermediate',
   examples: [
     '"TypeError: Cannot read property of null" → missing validation',
     '"SQLITE_CONSTRAINT" → unique key violation',
-    '"Connection refused" → service not running'
+    '"Connection refused" → service not running',
   ],
   prerequisites: ['Error message interpretation basics'],
+  steps: [
+    {
+      step: 1,
+      action: 'Extract error information',
+      description: 'Get error type, message, and stack trace from output',
+    },
+    {
+      step: 2,
+      action: 'Categorize the error',
+      description: "Determine if it's input, system, logic, or external error",
+    },
+    {
+      step: 3,
+      action: 'Trace the root cause',
+      description: 'Identify what triggered it, which line, and violated precondition',
+    },
+    {
+      step: 4,
+      action: 'Identify the fix strategy',
+      description: 'Choose: validation, code fix, config change, or fallback',
+    },
+    {
+      step: 5,
+      action: 'Prevent recurrence',
+      description: 'Add test case, improve error message, or update docs',
+    },
+  ],
   content: `# Analyze Errors
 
 Extract maximum information from error messages.

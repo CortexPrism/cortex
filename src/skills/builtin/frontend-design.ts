@@ -10,10 +10,11 @@ export const frontendDesignSkill: BuiltinSkill = {
     'Building a polished landing page with distinctive typography and animations',
     'Creating a dashboard with custom data visualization and micro-interactions',
     'Designing a React component library with cohesive aesthetic direction',
-    'Building a responsive web application with unique visual identity'
+    'Building a responsive web application with unique visual identity',
   ],
   prerequisites: ['HTML/CSS knowledge', 'JavaScript familiarity'],
-  content: `This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+  content:
+    `This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
 

@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const implementDatabaseChangesSkill: BuiltinSkill = {
   name: 'implement-database-changes',
-  description: 'Safely modify database schema and data. Use when adding tables, columns, or data migrations.',
+  description:
+    'Safely modify database schema and data. Use when adding tables, columns, or data migrations.',
   tags: ['development', 'database', 'migrations', 'data'],
   difficulty: 'advanced',
   examples: [
     'Add new column to users table',
     'Create index for performance',
-    'Migrate data from old to new schema'
+    'Migrate data from old to new schema',
   ],
   prerequisites: ['SQL basics', 'Database safety practices'],
+  steps: [
+    {
+      step: 1,
+      action: 'Pre-change verification',
+      description: 'Create backup, verify rollback plan, analyze performance impact',
+    },
+    {
+      step: 2,
+      action: 'Write idempotent migration',
+      description: 'Use IF NOT EXISTS, one change per file, include version number',
+    },
+    {
+      step: 3,
+      action: 'Test on development database',
+      description: 'Run migration, verify schema, test rollback',
+    },
+    {
+      step: 4,
+      action: 'Test on staging with production data',
+      description: 'Measure duration, verify correctness, test rollback',
+    },
+    {
+      step: 5,
+      action: 'Deploy safely',
+      description: 'Off-peak time, monitor for errors, verify schema and data integrity',
+    },
+  ],
   content: `# Implement Database Changes
 
 Database changes are risky. Use this pattern to stay safe.

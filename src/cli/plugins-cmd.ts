@@ -7,6 +7,7 @@ import { deserializeCapabilities } from '../plugins/registry.ts';
 import { verifyEntryPointIntegrity } from '../plugins/integrity.ts';
 import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
 import { applyPluginUpdate, checkAllUpdates, checkPluginUpdate } from '../plugins/update.ts';
+import { installFromMarketplace, installFromUrl } from '../plugins/install.ts';
 import type { PluginCapability, PluginKind } from '../plugins/types.ts';
 import { resolve } from '@std/path';
 
@@ -66,7 +67,6 @@ export const pluginsCommand = new Command()
       .arguments('<source:string>')
       .action(async (_: void, source: string) => {
         await runMigrations();
-        let manifest: unknown;
         let sourceDir: string | undefined;
         if (source.startsWith('marketplace:')) {
           const rest = source.slice('marketplace:'.length);
@@ -85,54 +85,107 @@ export const pluginsCommand = new Command()
             console.log(red(`  Marketplace fetch failed: ${res.status} ${res.statusText}`));
             return;
           }
-          manifest = await res.json();
+          const manifest = await res.json() as {
+            name: string;
+            version: string;
+            description?: string;
+            kind: string;
+            entryPoint: string;
+            runtime?: string;
+            capabilities?: string[];
+            author?: string;
+            homepage?: string;
+            license?: string;
+            hash?: string;
+          };
+          await installFromMarketplace(slug, host, manifest);
+          console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
         } else if (source.startsWith('http://') || source.startsWith('https://')) {
           const res = await fetch(source);
           if (!res.ok) {
             console.log(red(`  Fetch failed: ${res.status}`));
             return;
           }
-          manifest = await res.json();
+          const manifest = await res.json() as {
+            name: string;
+            version: string;
+            description?: string;
+            kind: string;
+            entryPoint: string;
+            runtime?: string;
+            capabilities?: string[];
+            author?: string;
+            homepage?: string;
+            license?: string;
+            hash?: string;
+          };
+          await installFromUrl(source, manifest);
+          console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
         } else {
-          // Detect the directory containing cortex.json so relative
-          // entry points (e.g. "mod.ts") can be resolved to absolute paths.
           const sourceStat = await Deno.stat(source).catch(() => null);
           if (sourceStat?.isDirectory) {
             sourceDir = await Deno.realPath(source);
-            manifest = JSON.parse(await Deno.readTextFile(`${sourceDir}/cortex.json`));
+            const manifest = JSON.parse(await Deno.readTextFile(`${sourceDir}/cortex.json`)) as {
+              name: string;
+              version: string;
+              description?: string;
+              kind: string;
+              entryPoint: string;
+              runtime?: string;
+              capabilities?: string[];
+              author?: string;
+              homepage?: string;
+              license?: string;
+            };
+            await installPlugin({
+              name: manifest.name,
+              version: manifest.version,
+              description: manifest.description ?? '',
+              kind: (manifest.kind as PluginKind) || 'esm',
+              entryPoint: sourceDir
+                ? resolveEntryPoint(manifest.entryPoint, sourceDir)
+                : manifest.entryPoint,
+              runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
+              capabilities: (manifest.capabilities ?? []) as never[],
+              author: manifest.author,
+              homepage: manifest.homepage,
+              license: manifest.license,
+            });
+            console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
           } else {
             const lastSlash = source.lastIndexOf('/');
             sourceDir = await Deno.realPath(
               lastSlash !== -1 ? source.substring(0, lastSlash) : '.',
             );
-            manifest = JSON.parse(await Deno.readTextFile(source));
+            const manifest = JSON.parse(await Deno.readTextFile(source)) as {
+              name: string;
+              version: string;
+              description?: string;
+              kind: string;
+              entryPoint: string;
+              runtime?: string;
+              capabilities?: string[];
+              author?: string;
+              homepage?: string;
+              license?: string;
+            };
+            await installPlugin({
+              name: manifest.name,
+              version: manifest.version,
+              description: manifest.description ?? '',
+              kind: (manifest.kind as PluginKind) || 'esm',
+              entryPoint: sourceDir
+                ? resolveEntryPoint(manifest.entryPoint, sourceDir)
+                : manifest.entryPoint,
+              runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
+              capabilities: (manifest.capabilities ?? []) as never[],
+              author: manifest.author,
+              homepage: manifest.homepage,
+              license: manifest.license,
+            });
+            console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
           }
         }
-        const m = manifest as {
-          name: string;
-          version: string;
-          description?: string;
-          kind: string;
-          entryPoint: string;
-          runtime?: string;
-          capabilities?: string[];
-          author?: string;
-          homepage?: string;
-          license?: string;
-        };
-        await installPlugin({
-          name: m.name,
-          version: m.version,
-          description: m.description ?? '',
-          kind: (m.kind as PluginKind) || 'esm',
-          entryPoint: sourceDir ? resolveEntryPoint(m.entryPoint, sourceDir) : m.entryPoint,
-          runtime: (m.runtime as 'deno' | 'wasm') || 'deno',
-          capabilities: (m.capabilities ?? []) as never[],
-          author: m.author,
-          homepage: m.homepage,
-          license: m.license,
-        });
-        console.log(green(`  ✓ Installed: ${m.name}@${m.version}`));
       }),
   )
   .command(

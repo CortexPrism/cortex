@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const testCodeReliabilitySkill: BuiltinSkill = {
   name: 'test-code-reliability',
-  description: 'Write tests to catch bugs early and ensure code works. Use when implementing features or fixing bugs.',
+  description:
+    'Write tests to catch bugs early and ensure code works. Use when implementing features or fixing bugs.',
   tags: ['development', 'testing', 'quality', 'reliability'],
   difficulty: 'intermediate',
   examples: [
     'Happy path works → add error case tests',
     'Feature works locally → add edge case tests',
-    'Fix a bug → add test that would catch it'
+    'Fix a bug → add test that would catch it',
   ],
   prerequisites: ['Testing basics'],
+  steps: [
+    {
+      step: 1,
+      action: 'Write happy path test',
+      description: 'Test normal usage with valid inputs',
+    },
+    {
+      step: 2,
+      action: 'Write error case tests',
+      description: 'Test each error path with invalid inputs',
+    },
+    {
+      step: 3,
+      action: 'Write edge case tests',
+      description: 'Test boundary conditions: empty, null, max, min',
+    },
+    {
+      step: 4,
+      action: 'Test integration',
+      description: 'Verify components work together in real workflows',
+    },
+    {
+      step: 5,
+      action: 'Verify all tests pass',
+      description: 'Run locally and on CI, ensure reasonable execution time',
+    },
+  ],
   content: `# Test Code Reliability
 
 Tests are safety nets. Good tests catch problems before users do.

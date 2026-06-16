@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const useEpisodicMemorySkill: BuiltinSkill = {
   name: 'use-episodic-memory',
-  description: 'Store and retrieve session history, conversations, and past events. Use to find previous solutions or understand context.',
+  description:
+    'Store and retrieve session history, conversations, and past events. Use to find previous solutions or understand context.',
   tags: ['memory', 'learning', 'history', 'context'],
   difficulty: 'beginner',
   examples: [
     'Check: "Have we solved this before? What did we do?"',
     'Review: "What error did we hit last time?"',
-    'Retrieve: "How did we structure this previously?"'
+    'Retrieve: "How did we structure this previously?"',
   ],
   prerequisites: ['Understanding of session history'],
+  steps: [
+    {
+      step: 1,
+      action: 'Query memory for relevant events',
+      description: 'Search for similar past sessions, errors, or approaches',
+    },
+    {
+      step: 2,
+      action: 'Extract key details',
+      description: 'Pull out relevant context, solutions, and outcomes',
+    },
+    {
+      step: 3,
+      action: 'Adapt past approach',
+      description: 'Apply the previous solution to the current task',
+    },
+    {
+      step: 4,
+      action: 'Verify it works',
+      description: "Test the adapted approach and confirm it's still valid",
+    },
+    {
+      step: 5,
+      action: 'Store learning',
+      description: "Note what's different this time and update memory",
+    },
+  ],
   content: `# Use Episodic Memory
 
 Episodic memory is the session history—events, conversations, actions, outcomes.

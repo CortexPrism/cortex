@@ -1,5 +1,7 @@
 import { getPlugin, listPlugins, updatePlugin } from './registry.ts';
 import { pluginManager } from './manager.ts';
+import { buildGitHubArchiveUrl, downloadFromUrl, downloadPluginPackage } from './install.ts';
+import { join } from '@std/path';
 import type { PluginManifest, PluginRow } from './types.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
@@ -145,10 +147,12 @@ export async function applyPluginUpdate(
   const previousVersion = plugin.version;
 
   let manifest: PluginManifest | null = null;
+  let marketplaceSlug: string | null = null;
   const source = check.source;
   if (source?.includes(MARKETPLACE_HOST)) {
     const slugMatch = source.match(/\/plugins\/([^/]+)$/);
     if (slugMatch) {
+      marketplaceSlug = slugMatch[1];
       const res = await fetch(`${API_BASE}/plugins/${slugMatch[1]}/download`);
       if (res.ok) manifest = await res.json() as PluginManifest;
     }
@@ -163,16 +167,47 @@ export async function applyPluginUpdate(
 
   const wasEnabled = plugin.enabled === 1;
 
-  // Disable and unload current version
   if (wasEnabled) {
     await pluginManager.disable(pluginName);
   }
 
-  // Update the stored manifest
+  const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
+    `${Deno.env.get('HOME') ?? '.'}/.cortex/data`;
+  const pluginDir = join(dataDir, 'plugins', pluginName);
+
+  if (marketplaceSlug) {
+    let downloaded = false;
+    try {
+      await downloadPluginPackage(marketplaceSlug, new URL(API_BASE).hostname, pluginDir);
+      downloaded = true;
+    } catch {
+      // Marketplace /package unavailable — try GitHub fallback
+    }
+    if (!downloaded && manifest.homepage) {
+      const ghUrl = buildGitHubArchiveUrl(manifest.homepage);
+      if (ghUrl) {
+        try {
+          await downloadFromUrl(ghUrl, pluginDir);
+        } catch {
+          console.warn(
+            `[plugins] Could not download updated package for "${pluginName}", keeping existing files`,
+          );
+        }
+      }
+    }
+  }
+
+  const entryPoint = (manifest.entryPoint.startsWith('https://') ||
+      manifest.entryPoint.startsWith('http://') ||
+      manifest.entryPoint.startsWith('file://') ||
+      manifest.entryPoint.startsWith('/'))
+    ? manifest.entryPoint
+    : `file://${join(pluginDir, manifest.entryPoint)}`;
+
   await updatePlugin(pluginName, {
     version: manifest.version,
     prev_version: plugin.version,
-    entry: manifest.entryPoint,
+    entry: entryPoint,
     manifest_json: JSON.stringify(manifest),
     declared_permissions: JSON.stringify(manifest.capabilities),
     effective_permissions: JSON.stringify(manifest.capabilities),
@@ -182,7 +217,6 @@ export async function applyPluginUpdate(
     updated_at: new Date().toISOString(),
   });
 
-  // Re-enable if it was enabled
   if (wasEnabled) {
     await pluginManager.enable(pluginName);
   }
@@ -191,8 +225,8 @@ export async function applyPluginUpdate(
 }
 
 function compareVersions(a: string, b: string): number {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
+  const pa = a.split('.').map(parseVersionPart);
+  const pb = b.split('.').map(parseVersionPart);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const va = pa[i] || 0;
     const vb = pb[i] || 0;
@@ -200,4 +234,9 @@ function compareVersions(a: string, b: string): number {
     if (va < vb) return -1;
   }
   return 0;
+}
+
+function parseVersionPart(part: string): number {
+  const num = parseInt(part, 10);
+  return isNaN(num) ? 0 : num;
 }

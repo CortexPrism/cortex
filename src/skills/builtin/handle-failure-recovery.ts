@@ -2,16 +2,44 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const handleFailureRecoverySkill: BuiltinSkill = {
   name: 'handle-failure-recovery',
-  description: 'Recover from errors and adapt plans when things fail. Use when a tool fails, API returns error, or step doesn\'t work.',
+  description:
+    "Recover from errors and adapt plans when things fail. Use when a tool fails, API returns error, or step doesn't work.",
   tags: ['reasoning', 'failure', 'recovery', 'resilience'],
   difficulty: 'intermediate',
   examples: [
     'Database migration fails - roll back and investigate',
     'API timeout - retry with backoff',
     'Type error in code - fix and re-run tests',
-    'Permission denied - use different approach'
+    'Permission denied - use different approach',
   ],
   prerequisites: ['Error handling basics'],
+  steps: [
+    {
+      step: 1,
+      action: 'Understand the failure',
+      description: "Identify what failed, the error message, and if it's reversible",
+    },
+    {
+      step: 2,
+      action: 'Assess impact',
+      description: 'Determine if task is blocked, if workaround exists, if rollback is needed',
+    },
+    {
+      step: 3,
+      action: 'Adapt the plan',
+      description: 'Try different approach, use fallback method, or break into smaller steps',
+    },
+    {
+      step: 4,
+      action: 'Execute & validate',
+      description: 'Implement workaround, verify it works, check for side effects',
+    },
+    {
+      step: 5,
+      action: 'Document & learn',
+      description: 'Record what prevented failure and how to avoid next time',
+    },
+  ],
   content: `# Handle Failure & Recovery
 
 Failures are data. Don't panic—use them to learn and adapt.

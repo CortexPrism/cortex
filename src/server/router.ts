@@ -490,12 +490,16 @@ export async function handleApi(req: Request): Promise<Response | null> {
         }],
       origin: 'human',
       content: body.content ?? undefined,
-      metadata: body.metadata ? {
-        tags: body.metadata.tags,
-        difficulty: (body.metadata.difficulty as 'beginner' | 'intermediate' | 'advanced' | undefined) || undefined,
-        examples: body.metadata.examples,
-        prerequisites: body.metadata.prerequisites,
-      } : undefined,
+      metadata: body.metadata
+        ? {
+          tags: body.metadata.tags,
+          difficulty:
+            (body.metadata.difficulty as 'beginner' | 'intermediate' | 'advanced' | undefined) ||
+            undefined,
+          examples: body.metadata.examples,
+          prerequisites: body.metadata.prerequisites,
+        }
+        : undefined,
     });
     return json({ ok: true, id });
   }
@@ -530,7 +534,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const desc = body.description?.trim() ?? '';
     const trigger = body.triggerPattern?.trim();
     const content = body.content ?? '';
-    let frontmatter = '---\nname: ' + name + '\ndescription: ' + (desc.length > 80 ? '>-\n  ' + desc : desc || '...');
+    let frontmatter = '---\nname: ' + name + '\ndescription: ' +
+      (desc.length > 80 ? '>-\n  ' + desc : desc || '...');
     if (trigger) frontmatter += '\ntrigger_pattern: ' + trigger;
     frontmatter += '\n---\n\n';
     const dir = join(Deno.cwd(), '.cortex', 'skills', name);
@@ -1377,21 +1382,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
       homepage?: string;
       runtime?: string;
       license?: string;
+      hash?: string;
     };
-    const { installPlugin } = await import('../plugins/registry.ts');
+    const { installFromMarketplace } = await import('../plugins/install.ts');
     try {
-      await installPlugin({
-        name: manifest.name,
-        version: manifest.version,
-        description: manifest.description ?? '',
-        kind: (manifest.kind as 'esm' | 'mcp' | 'wasm') || 'esm',
-        entryPoint: manifest.entryPoint,
-        runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
-        capabilities: (manifest.capabilities ?? []) as never[],
-        author: manifest.author,
-        homepage: manifest.homepage,
-        license: manifest.license,
-      });
+      await installFromMarketplace(slug, new URL(MARKETPLACE_BASE).hostname, manifest);
       return json({ ok: true, name: manifest.name });
     } catch (e) {
       return json({ error: (e as Error).message }, 400);

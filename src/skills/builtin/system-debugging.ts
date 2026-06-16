@@ -11,7 +11,7 @@ export const systemDebuggingSkill: BuiltinSkill = {
     'Diagnosing tool execution errors',
     'Tracing memory issues',
     'Investigating performance bottlenecks',
-    'Debugging policy violations and security issues'
+    'Debugging policy violations and security issues',
   ],
   prerequisites: ['System architecture knowledge', 'Error analysis experience'],
   content: `# System Debugging & Diagnostics

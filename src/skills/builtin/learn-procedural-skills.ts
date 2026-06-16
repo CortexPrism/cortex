@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const learnProceduralSkillsSkill: BuiltinSkill = {
   name: 'learn-procedural-skills',
-  description: 'Capture reusable step-by-step procedures from successful executions. Use after completing a repeatable task.',
+  description:
+    'Capture reusable step-by-step procedures from successful executions. Use after completing a repeatable task.',
   tags: ['memory', 'learning', 'skills', 'procedures'],
   difficulty: 'intermediate',
   examples: [
     'After 3 successful migrations: Create "add-database-migration" skill',
     'After 2 successful deployments: Create "deploy-to-production" skill',
-    'After multiple API integrations: Create "integrate-rest-api" skill'
+    'After multiple API integrations: Create "integrate-rest-api" skill',
   ],
   prerequisites: ['Multiple successful task completions'],
+  steps: [
+    {
+      step: 1,
+      action: 'Identify the repeating pattern',
+      description: 'Verify task was completed successfully 2+ times with clear, consistent steps',
+    },
+    {
+      step: 2,
+      action: 'Extract numbered steps',
+      description: 'Create 5-7 actionable steps with decision points and clear outcomes',
+    },
+    {
+      step: 3,
+      action: 'Document trigger conditions',
+      description: 'Specify when skill should be used and what must exist first',
+    },
+    {
+      step: 4,
+      action: 'Validate reliability',
+      description: 'Confirm success rate > 80% and document failure cases',
+    },
+    {
+      step: 5,
+      action: 'Register the skill',
+      description: 'Add to skills system with tags and make available for reuse',
+    },
+  ],
   content: `# Learn Procedural Skills
 
 Turn successful workflows into reusable skills that agents can apply to new tasks.
