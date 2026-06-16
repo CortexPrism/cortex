@@ -187,13 +187,14 @@ export async function cleanupOldBackups(): Promise<void> {
 }
 
 function schedulePeriodicCleanup(): void {
-  setInterval(async () => {
+  const timerId = setInterval(async () => {
     try {
       await cleanupOldBackups();
     } catch {
       // ignore timer errors
     }
   }, 60 * 60 * 1000);
+  Deno.unrefTimer(timerId);
 }
 
 schedulePeriodicCleanup();
