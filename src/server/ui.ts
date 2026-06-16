@@ -3668,25 +3668,25 @@ async function loadPlugins() {
   if (!el) return;
   if (!plugins.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><p style="color:var(--text3);font-size:13px;">No plugins installed.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Click "+ Install Plugin" to add an ESM, MCP, or WASM plugin.</p></div>'; return; }
   el.innerHTML = plugins.map(p => {
-    const caps = JSON.parse(p.capabilities || '[]');
+    const caps = JSON.parse(p.declared_permissions || '[]');
     return \`<div class="card" style="display:flex;align-items:flex-start;gap:14px;">
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
-          <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">\${esc(p.kind)}</span>
+          <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">\${esc(p.type)}</span>
           <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">v\${esc(p.version)}</span>
           <span class="badge" style="background:\${p.enabled?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${p.enabled?'#4ade80':'var(--text3)'};">\${p.enabled?'enabled':'disabled'}</span>
         </div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">\${esc(p.description ?? '')}</div>
-        <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry_point)}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry)}</div>
         \${caps.length ? \`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">\${caps.map(c => \`<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);">\${esc(c)}</span>\`).join('')}</div>\` : ''}
-        \${p.author ? \`<div style="font-size:11px;color:var(--text3);margin-top:4px;">by \${esc(p.author)}\${p.homepage?' · <a href="'+esc(p.homepage)+'" target="_blank" style="color:var(--accent2);">homepage</a>':''}</div>\` : ''}
+        \${p.author ? \`<div style="font-size:11px;color:var(--text3);margin-top:4px;">by \${esc(p.author)}\${p.source?' · <a href="'+esc(p.source)+'" target="_blank" style="color:var(--accent2);">homepage</a>':''}</div>\` : ''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         \${p.enabled
-          ? \`<button class="btn btn-ghost" style="font-size:12px;" onclick="togglePlugin('\${p.id}', false)">Disable</button>\`
-          : \`<button class="btn btn-ghost" style="font-size:12px;" onclick="togglePlugin('\${p.id}', true)">Enable</button>\`}
-        <button class="btn" style="font-size:12px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePlugin('\${p.id}')">Remove</button>
+          ? \`<button class="btn btn-ghost" style="font-size:12px;" onclick="togglePlugin('\${p.name}', false)">Disable</button>\`
+          : \`<button class="btn btn-ghost" style="font-size:12px;" onclick="togglePlugin('\${p.name}', true)">Enable</button>\`}
+        <button class="btn" style="font-size:12px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePlugin('\${p.name}')">Remove</button>
       </div>
     </div>\`;
   }).join('');

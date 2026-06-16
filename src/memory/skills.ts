@@ -443,22 +443,26 @@ export function formatSkillsAsAvailableList(skills: Skill[]): string {
   if (skills.length === 0) return '';
 
   const entries = skills.map((s) => {
-    const metadata = s.metadata && typeof s.metadata === 'string' 
+    const metadata = s.metadata && typeof s.metadata === 'string'
       ? JSON.parse(s.metadata) as SkillMetadata
       : (s.metadata as SkillMetadata | undefined);
-    
+
     const tags = metadata?.tags?.slice(0, 3).join(', ') ?? '';
     const difficulty = metadata?.difficulty ?? '';
     const meta = [];
     if (tags) meta.push(`tags: ${tags}`);
     if (difficulty) meta.push(`difficulty: ${difficulty}`);
-    
+
     return `  <skill>\n    <name>${s.name}</name>\n    <description>${
       (s.description ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    }</description>${meta.length > 0 ? '\n    <metadata>' + meta.join(', ') + '</metadata>' : ''}\n  </skill>`;
+    }</description>${
+      meta.length > 0 ? '\n    <metadata>' + meta.join(', ') + '</metadata>' : ''
+    }\n  </skill>`;
   });
 
-  return `\n\n## Available Skills\n\nYou have access to the following specialized skills. Use \`load_skill\` to get full instructions for any skill.\n\n<available_skills>\n${entries.join('\n')}\n</available_skills>\n\n**Skill Selection Tips**:\n- Development tasks → use \`cortex-dev\` for architecture and code conventions\n- UI/design tasks → use \`frontend-design\` for distinctive, production-grade interfaces\n- Unknown skill → use \`load_skill\` to read detailed instructions and examples`;
+  return `\n\n## Available Skills\n\nYou have access to the following specialized skills. Use \`load_skill\` to get full instructions for any skill.\n\n<available_skills>\n${
+    entries.join('\n')
+  }\n</available_skills>\n\n**Skill Selection Tips**:\n- Development tasks → use \`cortex-dev\` for architecture and code conventions\n- UI/design tasks → use \`frontend-design\` for distinctive, production-grade interfaces\n- Unknown skill → use \`load_skill\` to read detailed instructions and examples`;
 }
 
 export async function registerBuiltinSkills(skillsDir?: string): Promise<number> {
@@ -470,7 +474,7 @@ export async function registerBuiltinSkills(skillsDir?: string): Promise<number>
       await storeSkill({
         name: skill.name,
         description: skill.description,
-        steps: [{ step: 1, action: skill.content, description: skill.content }],
+        steps: skill.steps || [{ step: 1, action: skill.content, description: skill.content }],
         origin: 'human',
         content: skill.content,
         metadata: {

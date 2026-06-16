@@ -10,7 +10,7 @@ export const agentReasoningSkill: BuiltinSkill = {
     'Breaking a user request into sub-goals and tasks',
     'Planning when to use tools vs. reasoning',
     'Handling failures and replanning',
-    'Evaluating confidence in decisions'
+    'Evaluating confidence in decisions',
   ],
   prerequisites: ['Agent loop understanding'],
   content: `# Agent Reasoning & Planning Patterns

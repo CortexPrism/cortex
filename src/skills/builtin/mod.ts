@@ -1,7 +1,14 @@
+export interface SkillStep {
+  step: number;
+  action: string;
+  description: string;
+}
+
 export interface BuiltinSkill {
   name: string;
   description: string;
   content: string;
+  steps?: SkillStep[];
   tags?: string[];
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
   examples?: string[];
@@ -51,22 +58,22 @@ export const BUILTIN_SKILLS: BuiltinSkill[] = [
 
 // Legacy skills (from KiloCode IDE extension) - available for reference/loading if needed
 export {
-  cortexDevSkill,
-  frontendDesignSkill,
   agentReasoningSkill,
-  memorySystemsSkill,
-  systemDebuggingSkill,
-  toolIntegrationSkill,
-  planComplexTasksSkill,
-  handleFailureRecoverySkill,
-  reflectOnOutcomesSkill,
-  useEpisodicMemorySkill,
-  extractSemanticKnowledgeSkill,
-  learnProceduralSkillsSkill,
-  diagnoseAgentFailuresSkill,
-  profilePerformanceSkill,
   analyzeErrorsSkill,
+  cortexDevSkill,
   designToolInterfaceSkill,
-  testCodeReliabilitySkill,
+  diagnoseAgentFailuresSkill,
+  extractSemanticKnowledgeSkill,
+  frontendDesignSkill,
+  handleFailureRecoverySkill,
   implementDatabaseChangesSkill,
+  learnProceduralSkillsSkill,
+  memorySystemsSkill,
+  planComplexTasksSkill,
+  profilePerformanceSkill,
+  reflectOnOutcomesSkill,
+  systemDebuggingSkill,
+  testCodeReliabilitySkill,
+  toolIntegrationSkill,
+  useEpisodicMemorySkill,
 };

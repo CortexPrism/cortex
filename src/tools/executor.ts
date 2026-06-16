@@ -7,26 +7,63 @@ const TOOL_CALL_RE = /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
 
 const MAX_OUTPUT_LENGTH = 8_000;
 
+function parseToolCallJson(raw: string): ToolCallRequest | null {
+  try {
+    const parsed = JSON.parse(raw) as {
+      tool?: string;
+      name?: string;
+      args?: Record<string, unknown>;
+      arguments?: Record<string, unknown>;
+    };
+    const toolName = parsed.tool ?? parsed.name ?? '';
+    const args = parsed.args ?? parsed.arguments ?? {};
+    if (toolName) return { toolName, args };
+  } catch {
+    // malformed JSON — skip
+  }
+  return null;
+}
+
+function extractBareToolCalls(text: string): ToolCallRequest[] {
+  const calls: ToolCallRequest[] = [];
+  const regex = /\{\s*"(tool|name)"\s*:/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const start = match.index;
+    let depth = 0;
+    let end = start;
+    let inString = false;
+    let escaped = false;
+    for (let i = start; i < text.length; i++) {
+      const ch = text[i];
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') depth++;
+      if (ch === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+    }
+    if (end > start) {
+      const call = parseToolCallJson(text.slice(start, end));
+      if (call) calls.push(call);
+    }
+  }
+
+  return calls;
+}
+
 export function parseToolCalls(text: string): ToolCallRequest[] {
   const calls: ToolCallRequest[] = [];
   let match: RegExpExecArray | null;
-  TOOL_CALL_RE.lastIndex = 0;
 
+  TOOL_CALL_RE.lastIndex = 0;
   while ((match = TOOL_CALL_RE.exec(text)) !== null) {
-    try {
-      const parsed = JSON.parse(match[1]) as {
-        tool?: string;
-        name?: string;
-        args?: Record<string, unknown>;
-        arguments?: Record<string, unknown>;
-      };
-      const toolName = parsed.tool ?? parsed.name ?? '';
-      const args = parsed.args ?? parsed.arguments ?? {};
-      if (toolName) calls.push({ toolName, args });
-    } catch {
-      // malformed JSON — skip
-    }
+    const call = parseToolCallJson(match[1]);
+    if (call) calls.push(call);
   }
+
+  calls.push(...extractBareToolCalls(text));
 
   return calls;
 }

@@ -1,11 +1,10 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { runMigrations } from '../db/migrate.ts';
-import { installPlugin } from '../plugins/registry.ts';
+import { installFromMarketplace } from '../plugins/install.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
 import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
 import { pluginManager } from '../plugins/manager.ts';
-import type { PluginKind } from '../plugins/types.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
 const API_BASE = `https://${MARKETPLACE_HOST}/api/marketplace`;
@@ -235,6 +234,7 @@ export const marketplaceCommand = new Command()
             author?: string;
             homepage?: string;
             license?: string;
+            hash?: string;
           };
 
           // Show permission preview
@@ -301,18 +301,7 @@ export const marketplaceCommand = new Command()
             }
           }
 
-          await installPlugin({
-            name: manifest.name,
-            version: manifest.version,
-            description: manifest.description ?? '',
-            kind: (manifest.kind as PluginKind) || 'esm',
-            entryPoint: manifest.entryPoint,
-            runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
-            capabilities: (manifest.capabilities ?? []) as never[],
-            author: manifest.author,
-            homepage: manifest.homepage,
-            license: manifest.license,
-          });
+          await installFromMarketplace(slug, MARKETPLACE_HOST, manifest);
 
           console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
           console.log(dim(`  Enable it with: cortex plugins enable ${manifest.name}\n`));

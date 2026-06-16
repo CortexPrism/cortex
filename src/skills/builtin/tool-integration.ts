@@ -11,7 +11,7 @@ export const toolIntegrationSkill: BuiltinSkill = {
     'Integrating with external APIs',
     'Designing tool parameters for clarity',
     'Handling tool errors gracefully',
-    'Testing tool reliability'
+    'Testing tool reliability',
   ],
   prerequisites: ['TypeScript knowledge', 'System architecture understanding'],
   content: `# Tool Integration & Building

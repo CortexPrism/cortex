@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const diagnoseAgentFailuresSkill: BuiltinSkill = {
   name: 'diagnose-agent-failures',
-  description: 'Systematically troubleshoot when agents hang, timeout, or fail. Use when agent stops responding or returns error.',
+  description:
+    'Systematically troubleshoot when agents hang, timeout, or fail. Use when agent stops responding or returns error.',
   tags: ['debugging', 'diagnostics', 'system', 'troubleshooting'],
   difficulty: 'advanced',
   examples: [
     'Agent hangs → check if database query is slow',
     'Timeout after 10s → identify which tool is blocking',
-    'Memory grows unbounded → find memory leak'
+    'Memory grows unbounded → find memory leak',
   ],
   prerequisites: ['System architecture knowledge'],
+  steps: [
+    {
+      step: 1,
+      action: 'Observe symptoms',
+      description: 'Is it consistent or intermittent? Specific task or all? Error or silent hang?',
+    },
+    {
+      step: 2,
+      action: 'Narrow the scope',
+      description: 'Is it system vs. agent? Task-specific? Tool-specific?',
+    },
+    {
+      step: 3,
+      action: 'Check dependencies',
+      description: 'Verify database, APIs, and network connectivity',
+    },
+    {
+      step: 4,
+      action: 'Review recent changes',
+      description: 'Check for code, data volume, tool, or config changes',
+    },
+    {
+      step: 5,
+      action: 'Reproduce & isolate',
+      description: 'Create minimal test case and add logging to pinpoint cause',
+    },
+  ],
   content: `# Diagnose Agent Failures
 
 When agents fail, use a systematic approach to find the root cause.

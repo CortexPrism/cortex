@@ -11,7 +11,7 @@ export const memorySystemsSkill: BuiltinSkill = {
     'Building semantic knowledge from experiences',
     'Extracting reusable skills from sessions',
     'Using memory to inform decisions',
-    'Organizing knowledge hierarchically'
+    'Organizing knowledge hierarchically',
   ],
   prerequisites: ['Understanding of memory systems'],
   content: `# Memory Systems in Cortex

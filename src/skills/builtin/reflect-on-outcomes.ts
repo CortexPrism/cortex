@@ -2,15 +2,43 @@ import type { BuiltinSkill } from './mod.ts';
 
 export const reflectOnOutcomesSkill: BuiltinSkill = {
   name: 'reflect-on-outcomes',
-  description: 'After completing a task, reflect on what worked and what to improve. Use after finishing a significant piece of work.',
+  description:
+    'After completing a task, reflect on what worked and what to improve. Use after finishing a significant piece of work.',
   tags: ['reasoning', 'reflection', 'learning', 'improvement'],
   difficulty: 'beginner',
   examples: [
     'After building a feature: "What surprised me? What took longer than expected?"',
     'After debugging: "What could have caught this earlier?"',
-    'After deployment: "What went smoothly? What was painful?"'
+    'After deployment: "What went smoothly? What was painful?"',
   ],
   prerequisites: ['Task completion experience'],
+  steps: [
+    {
+      step: 1,
+      action: 'Assess the outcome',
+      description: 'Evaluate if result met expectations and identify any gaps',
+    },
+    {
+      step: 2,
+      action: 'Note surprises',
+      description: 'Record unexpected outcomes and assumptions that proved wrong',
+    },
+    {
+      step: 3,
+      action: 'Analyze timing',
+      description: 'Compare actual vs estimated time and identify hidden complexity',
+    },
+    {
+      step: 4,
+      action: 'Identify improvements',
+      description: 'Find what could prevent similar issues and what to automate',
+    },
+    {
+      step: 5,
+      action: 'Capture the key learning',
+      description: 'Summarize in one sentence what was learned',
+    },
+  ],
   content: `# Reflect on Outcomes
 
 After executing a plan, spend 2-3 minutes reflecting. This builds agent memory.

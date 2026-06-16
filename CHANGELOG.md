@@ -7,6 +7,34 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Proper skill steps** — All 12 builtin skills now define 5 concrete, actionable steps instead of
+  storing the full markdown content as a single step. Each step has `action` (what to do) and
+  `description` (how to do it). Steps are displayed in the skill designer UI and available to agents
+  via the steps API.
+
+### Changed
+
+- **BuiltinSkill interface** — Added optional `steps?: SkillStep[]` field. Skills can now define
+  ordered procedures. `registerBuiltinSkills()` uses defined steps or falls back to single-step
+  format for backward compatibility.
+
+### Fixed
+
+- **Skill designer UI null reference errors** — Added existence checks before calling
+  `addEventListener()` on DOM elements. Skill designer HTML is now verified to exist before
+  JavaScript tries to attach listeners, preventing "Cannot read properties of null" errors.
+- **Skill designer metadata field restoration** — Restored original metadata fields (`sd-name`,
+  `sd-desc`, `sd-trigger`, `sd-frontmatter-preview`) alongside new metadata fields. Fixed "Cannot
+  set properties of null" error when editing skills.
+- **Steps tab display** — Steps now render as individual cards instead of a single massive block
+  containing the full markdown content.
+
+---
+
 ## [0.25.0] — 2026-06-15
 
 ### Added
@@ -31,15 +59,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - **OpenAI-compatible** (`src/llm/openai-compatible.ts`) — `reasoning_effort` parameter (DeepSeek
     R1, Grok-3, etc.)
 
-- **Context window display** — new `contextWindow` field on `ProviderConfig` (informational, shown in
-  `models list` and `models show`, not enforced at API level)
+- **Context window display** — new `contextWindow` field on `ProviderConfig` (informational, shown
+  in `models list` and `models show`, not enforced at API level)
 
 - **Built-in skills system** (`src/skills/builtin/`, `src/memory/skills.ts`) — Skills now ship with
   the application as embedded TypeScript modules. `registerBuiltinSkills()` auto-loads built-in
   skills (`cortex-dev`, `frontend-design`) and filesystem skills from `.cortex/skills/` into the
   database at startup. Skills are injected into the system prompt at session start as an
-  `<available_skills>` XML block, rather than only appearing reactively per-turn. CLI chat and server
-  both call `registerBuiltinSkills()` on startup.
+  `<available_skills>` XML block, rather than only appearing reactively per-turn. CLI chat and
+  server both call `registerBuiltinSkills()` on startup.
 
 - **Skill designer** (`src/server/ui.ts`) — Full-screen split-pane skill editor replacing the basic
   modal. Three tabbed panels: Content (Markdown editor with live preview), Metadata (name,
@@ -70,8 +98,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed
 
-- Skills directory path: `.kilo/skills/` references removed from the Cortex skills system. All
-  skill loading and export now use `.cortex/skills/`.
+- Skills directory path: `.kilo/skills/` references removed from the Cortex skills system. All skill
+  loading and export now use `.cortex/skills/`.
 
 ---
 

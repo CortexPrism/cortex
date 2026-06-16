@@ -17,7 +17,8 @@ export const skillReadTool: Tool = {
       {
         name: 'origin',
         type: 'string',
-        description: 'Filter by origin: "human" or "llm". Only used when listing (no name provided).',
+        description:
+          'Filter by origin: "human" or "llm". Only used when listing (no name provided).',
         required: false,
         enum: ['human', 'llm'],
       },
@@ -77,13 +78,16 @@ export const skillReadTool: Tool = {
       const listing = skills.map((s) => {
         const rate = Math.round(s.success_rate * 100);
         const originLabel = s.origin === 'human' ? 'human-authored' : 'learned';
-        return `- **${s.name}** (${originLabel}, ${rate}% success): ${s.description ?? '(no description)'} [trigger: ${s.trigger_pattern ?? 'any'}]`;
+        return `- **${s.name}** (${originLabel}, ${rate}% success): ${
+          s.description ?? '(no description)'
+        } [trigger: ${s.trigger_pattern ?? 'any'}]`;
       }).join('\n');
 
       return {
         toolName: 'skill_read',
         success: true,
-        output: `## Skills (${skills.length})\n\n${listing}\n\nUse \`skill_read\` with \`name\` to inspect a specific skill, or \`load_skill\` to load full instructions.`,
+        output:
+          `## Skills (${skills.length})\n\n${listing}\n\nUse \`skill_read\` with \`name\` to inspect a specific skill, or \`load_skill\` to load full instructions.`,
         durationMs: 0,
       };
     } catch (err) {
