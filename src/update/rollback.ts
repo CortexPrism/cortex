@@ -101,7 +101,8 @@ export async function rollbackUpdate(): Promise<RollbackResult> {
       return {
         success: false,
         version: manifest.version,
-        error: 'Source rollback requires a git repository. Check out the previous version manually.',
+        error:
+          'Source rollback requires a git repository. Check out the previous version manually.',
       };
     }
 

@@ -39,10 +39,10 @@ mqmCommand
         : '0';
       console.log(
         `  ${pad(s.provider + '/' + s.model, 42)} ${pad(s.taskCategory, 14)} ` +
-        `calls: ${String(s.totalCalls).padStart(4)}  ` +
-        `success: ${successRate}%  ` +
-        `quality: ${s.avgQuality.toFixed(3)}  ` +
-        `cost: $${s.avgCost.toFixed(4)}`,
+          `calls: ${String(s.totalCalls).padStart(4)}  ` +
+          `success: ${successRate}%  ` +
+          `quality: ${s.avgQuality.toFixed(3)}  ` +
+          `cost: $${s.avgCost.toFixed(4)}`,
       );
     }
     console.log();
@@ -60,22 +60,19 @@ mqmCommand
     }
     console.log(`\n${decisions.length} decision(s):\n`);
     for (const d of decisions) {
-      const correctStr = d.wasCorrect === null
-        ? 'pending'
-        : d.wasCorrect >= 0.7 ? 'good' : 'poor';
+      const correctStr = d.wasCorrect === null ? 'pending' : d.wasCorrect >= 0.7 ? 'good' : 'poor';
       console.log(
         `  ${d.mode.padEnd(8)} conf: ${d.confidence.toFixed(3)}  ` +
-        `predicted: ${(d.predictedProvider ?? 'none')}/${(d.predictedModel ?? 'none')}`,
+          `predicted: ${(d.predictedProvider ?? 'none')}/${(d.predictedModel ?? 'none')}`,
       );
       console.log(
         `    actual: ${(d.actualProvider ?? 'none')}/${(d.actualModel ?? 'none')}  ` +
-        `correct: ${correctStr}  est.cost: $${d.estimatedCost.toFixed(4)}  ` +
-        `actual: $${d.actualCost.toFixed(4)}`,
+          `correct: ${correctStr}  est.cost: $${d.estimatedCost.toFixed(4)}  ` +
+          `actual: $${d.actualCost.toFixed(4)}`,
       );
       if (d.signals.length > 0) {
-        const sigStr = d.signals.slice(0, 4).map((s) =>
-          `${s.name}:${s.contributed.toFixed(2)}`
-        ).join('  ');
+        const sigStr = d.signals.slice(0, 4).map((s) => `${s.name}:${s.contributed.toFixed(2)}`)
+          .join('  ');
         console.log(`    signals: ${sigStr}`);
       }
       console.log();
@@ -118,9 +115,9 @@ mqmCommand
       const ts = t.timestamp.slice(5, 16).replace('T', ' ');
       console.log(
         `  ${ts}  ${(t.accuracy * 100).toFixed(0).padStart(3)}% ` +
-        `${bar(t.accuracy, 10)}  ` +
-        `pred: ${String(t.totalPredictions).padStart(3)}  ` +
-        `correct: ${String(t.correctPredictions).padStart(3)}`,
+          `${bar(t.accuracy, 10)}  ` +
+          `pred: ${String(t.totalPredictions).padStart(3)}  ` +
+          `correct: ${String(t.correctPredictions).padStart(3)}`,
       );
     }
     console.log();
@@ -186,11 +183,12 @@ mqmCommand
         console.log(`    [${cat}]`);
         for (const s of catStats.slice(0, 3)) {
           const rate = s.totalCalls > 0
-            ? ((s.successfulCalls / s.totalCalls) * 100).toFixed(0) : '0';
+            ? ((s.successfulCalls / s.totalCalls) * 100).toFixed(0)
+            : '0';
           console.log(
             `      ${s.provider}/${s.model.padEnd(30)} ` +
-            `${String(s.totalCalls).padStart(3)} calls  ${rate}% succ  ` +
-            `q:${s.avgQuality.toFixed(2)}`,
+              `${String(s.totalCalls).padStart(3)} calls  ${rate}% succ  ` +
+              `q:${s.avgQuality.toFixed(2)}`,
           );
         }
       }

@@ -53,8 +53,8 @@
 curl -fsSL https://cortexprism.io/install.sh | bash
 ```
 
-This installs Deno (if needed), clones Cortex to `~/.cortex`, creates the `cortex` CLI command,
-and runs database migrations. After install, run `cortex setup` to configure your LLM provider.
+This installs Deno (if needed), clones Cortex to `~/.cortex`, creates the `cortex` CLI command, and
+runs database migrations. After install, run `cortex setup` to configure your LLM provider.
 
 ### Option 2: Manual clone
 
@@ -66,6 +66,7 @@ deno run --allow-all src/main.ts setup
 ```
 
 To make `cortex` available as a command without the installer, add to your shell profile:
+
 ```bash
 echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
 echo 'alias cortex="deno run --allow-all ~/.cortex/src/main.ts"' >> ~/.bashrc
@@ -73,8 +74,8 @@ echo 'alias cortex="deno run --allow-all ~/.cortex/src/main.ts"' >> ~/.bashrc
 
 ### First run
 
-On first run, `cortex setup` prompts you to choose an LLM provider and enter credentials.
-Config is saved to `~/.cortex/config.json`.
+On first run, `cortex setup` prompts you to choose an LLM provider and enter credentials. Config is
+saved to `~/.cortex/config.json`.
 
 ---
 
