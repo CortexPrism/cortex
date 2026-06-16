@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert';
 import { Db } from '../src/db/client.ts';
-import { join } from '@std/path';
+import { fromFileUrl, join } from '@std/path';
 
 Deno.test('file_edit_log table can be created and queried', async () => {
   const tmpDir = await Deno.makeTempDir();
@@ -9,7 +9,13 @@ Deno.test('file_edit_log table can be created and queried', async () => {
   await db.init();
 
   const sql = await Deno.readTextFile(
-    join(new URL('..', import.meta.url).pathname, 'src/db/migrations/011_workspace.sql'),
+    join(
+      fromFileUrl(new URL('..', import.meta.url)),
+      'src',
+      'db',
+      'migrations',
+      '011_workspace.sql',
+    ),
   );
   await db.exec(sql);
 

@@ -33,9 +33,16 @@ export function resolveWorkspacePath(
 
   let withinAllowed = false;
   for (const base of allowed) {
-    if (candidate === base || candidate.startsWith(base + '/')) {
+    if (candidate === base) {
       withinAllowed = true;
       break;
+    }
+    if (candidate.length > base.length) {
+      const sep = candidate[base.length];
+      if ((sep === '/' || sep === '\\') && candidate.startsWith(base)) {
+        withinAllowed = true;
+        break;
+      }
     }
   }
 
