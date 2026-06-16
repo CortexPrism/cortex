@@ -1,6 +1,6 @@
 /**
  * Model Quartermaster — Public API
- * 
+ *
  * Main entry point for intelligent model selection.
  */
 
@@ -28,7 +28,7 @@ import {
   emitMqmObservationEvent,
   emitMqmPredictionEvent,
 } from './monitor.ts';
-import { ModelArbiter, type ArbiterConfig } from './arbiter.ts';
+import { type ArbiterConfig, ModelArbiter } from './arbiter.ts';
 
 /**
  * Observation threshold to switch from observe to active mode
@@ -97,21 +97,21 @@ function updateTrajectory(
  */
 export async function observeModel(obs: ModelObservation): Promise<void> {
   await ensureModelQuartermaster();
-  
+
   // Update trajectory
   updateTrajectory(obs.sessionId, obs.turnId, obs.provider, obs.model);
-  
+
   // Log observation to database
   await logModelObservation(obs);
-  
+
   // Emit event
   emitMqmObservationEvent(obs);
-  
+
   // Check if we should transition to active mode
   const state = await getSessionState(obs.sessionId);
   const oldMode = state?.mode ?? 'observe';
-  const observationCount = (state?.observationCount ?? 0);
-  
+  const observationCount = state?.observationCount ?? 0;
+
   if (oldMode === 'observe' && observationCount >= OBSERVE_THRESHOLD) {
     await upsertSessionState(obs.sessionId, { mode: 'active' });
     emitMqmModeChangeEvent(obs.sessionId, oldMode, 'active');
@@ -129,29 +129,29 @@ export async function predictModel(
   arbiterConfig?: Partial<ArbiterConfig>,
 ): Promise<ModelPrediction | undefined> {
   await ensureModelQuartermaster();
-  
+
   // Check if we're in active mode
   const state = await getSessionState(sessionId);
   if (!state || state.mode === 'observe') {
     return undefined; // Still in observe-only mode
   }
-  
+
   // Add recent models to context
   const recentModels = getRecentModels(sessionId, turnId);
   const enrichedContext = { ...context, recentModels };
-  
+
   // Use arbiter to make decision
   const arbiter = new ModelArbiter(arbiterConfig);
   const decision = await arbiter.decide(enrichedContext, candidates, sessionId, turnId);
-  
+
   // Emit event
   emitMqmPredictionEvent(decision);
-  
+
   // Update prediction count
   await upsertSessionState(sessionId, {
     predictionCount: (state.predictionCount ?? 0) + 1,
   });
-  
+
   // Return prediction if not defer
   if (decision.mode !== 'defer' && decision.predictedProvider && decision.predictedModel) {
     return {
@@ -164,7 +164,7 @@ export async function predictModel(
       estimatedQuality: 0, // TODO: compute from signals
     };
   }
-  
+
   return undefined;
 }
 
@@ -175,12 +175,12 @@ export async function learnFromReflection(
   feedback: ModelReflectionFeedback,
 ): Promise<void> {
   await ensureModelQuartermaster();
-  
+
   const state = await getSessionState(feedback.sessionId);
   const correctCount = state?.correctCount ?? 0;
-  
+
   await applyModelFeedback(feedback, correctCount);
-  
+
   // Update correct count if this was a good choice
   if (feedback.wasGoodChoice) {
     await upsertSessionState(feedback.sessionId, {
@@ -223,6 +223,6 @@ export type {
 };
 
 export { buildRequestContext };
-export { ModelArbiter, type ArbiterConfig };
+export { type ArbiterConfig, ModelArbiter };
 export * from './monitor.ts';
 export * from './store.ts';

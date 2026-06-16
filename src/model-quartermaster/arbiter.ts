@@ -1,6 +1,6 @@
 /**
  * Model Quartermaster — Authoritative Decision Agent
- * 
+ *
  * High-level decision making with constraints and strategies.
  */
 
@@ -36,7 +36,7 @@ const DEFAULT_CONFIG: ArbiterConfig = {
  */
 export class ModelArbiter {
   private config: Required<ArbiterConfig>;
-  
+
   constructor(config: Partial<ArbiterConfig> = {}) {
     this.config = {
       ...DEFAULT_CONFIG,
@@ -48,7 +48,7 @@ export class ModelArbiter {
       allowedProviders: config.allowedProviders ?? undefined,
     } as Required<ArbiterConfig>;
   }
-  
+
   /**
    * Make a model selection decision
    */
@@ -60,26 +60,26 @@ export class ModelArbiter {
   ): Promise<ModelDecision> {
     // 1. Apply constraints to filter candidates
     const filtered = this.applyConstraints(candidates, sessionId);
-    
+
     if (filtered.length === 0) {
       // No candidates after filtering - defer to default
       return this.createDeferDecision(sessionId, turnId);
     }
-    
+
     // 2. Get MQM prediction
     const weights = await getModelSignalWeights();
     const signals = await gatherModelSignals(context, filtered);
     const predictions = fuseModelSignals(signals, weights, filtered);
     const topPrediction = getTopModelPrediction(predictions);
-    
+
     if (!topPrediction) {
       // No prediction - defer
       return this.createDeferDecision(sessionId, turnId);
     }
-    
+
     // 3. Apply strategy to determine final mode
     const decision = this.applyStrategy(topPrediction, context);
-    
+
     // 4. Create and log decision
     const modelDecision: Omit<ModelDecision, 'id' | 'createdAt'> = {
       turnId,
@@ -95,16 +95,16 @@ export class ModelArbiter {
       estimatedCost: decision.estimatedCost,
       actualCost: 0,
     };
-    
+
     const decisionId = await logModelDecision(modelDecision);
-    
+
     return {
       ...modelDecision,
       id: decisionId,
       createdAt: new Date().toISOString(),
     };
   }
-  
+
   /**
    * Apply constraints to filter candidates
    */
@@ -113,23 +113,21 @@ export class ModelArbiter {
     sessionId: string,
   ): ModelCandidate[] {
     let filtered = [...candidates];
-    
+
     // Filter by allowed providers
     if (this.config.allowedProviders && this.config.allowedProviders.length > 0) {
-      filtered = filtered.filter((c) =>
-        this.config.allowedProviders!.includes(c.provider)
-      );
+      filtered = filtered.filter((c) => this.config.allowedProviders!.includes(c.provider));
     }
-    
+
     // TODO: Filter by cost budget if specified
     // Would need to check session state for current spending
-    
+
     // TODO: Filter unhealthy providers
     // Would need provider health tracking
-    
+
     return filtered;
   }
-  
+
   /**
    * Apply decision strategy based on mode
    */
@@ -140,15 +138,15 @@ export class ModelArbiter {
     switch (this.config.mode) {
       case 'conservative':
         return this.conservativeStrategy(prediction, context);
-        
+
       case 'balanced':
         return this.balancedStrategy(prediction, context);
-        
+
       case 'aggressive':
         return this.aggressiveStrategy(prediction, context);
     }
   }
-  
+
   /**
    * Conservative strategy: Prefer cheaper models, high confidence required
    */
@@ -165,7 +163,7 @@ export class ModelArbiter {
       return { ...prediction, mode: 'defer' };
     }
   }
-  
+
   /**
    * Balanced strategy: Balance cost and quality
    */
@@ -182,7 +180,7 @@ export class ModelArbiter {
       return { ...prediction, mode: 'defer' };
     }
   }
-  
+
   /**
    * Aggressive strategy: Prioritize quality, lower confidence threshold
    */
@@ -202,7 +200,7 @@ export class ModelArbiter {
       return { ...prediction, mode: 'defer' };
     }
   }
-  
+
   /**
    * Create a defer decision (no override)
    */

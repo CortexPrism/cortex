@@ -1,14 +1,11 @@
 /**
  * Model Quartermaster — Adaptive Learning
- * 
+ *
  * Update signal weights based on prediction accuracy using EMA (Exponential Moving Average).
  */
 
 import type { ModelReflectionFeedback, ModelSignalWeights } from './types.ts';
-import {
-  getModelSignalWeights,
-  updateSignalWeight,
-} from './store.ts';
+import { getModelSignalWeights, updateSignalWeight } from './store.ts';
 
 /**
  * Learning parameters
@@ -26,16 +23,16 @@ export async function applyModelFeedback(
   correctPredictions = 0,
 ): Promise<void> {
   const weights = await getModelSignalWeights();
-  
+
   // Calculate learning rate with decay
   const learningRate = Math.max(
     MIN_LEARNING_RATE,
     INITIAL_LEARNING_RATE * Math.pow(LEARNING_RATE_DECAY, correctPredictions),
   );
-  
+
   // Compute reward based on quality and cost efficiency
   const reward = computeReward(feedback);
-  
+
   if (feedback.suggestedSignalAdjustments) {
     // Use explicit adjustments if provided
     await applyExplicitAdjustments(
@@ -60,7 +57,7 @@ function computeReward(feedback: ModelReflectionFeedback): number {
   // Combine quality and cost efficiency
   const qualityWeight = 0.7;
   const costWeight = 0.3;
-  
+
   return (
     feedback.qualityAchieved * qualityWeight +
     Math.min(feedback.costEfficiency / 100, 1.0) * costWeight
@@ -76,7 +73,7 @@ async function applyExplicitAdjustments(
 ): Promise<void> {
   for (const [signalName, targetWeight] of Object.entries(adjustments)) {
     if (targetWeight === undefined) continue;
-    
+
     // Move gradually toward target using learning rate
     const current = await getSignalWeight(signalName);
     const newWeight = clamp(
@@ -84,7 +81,7 @@ async function applyExplicitAdjustments(
       WEIGHT_BOUNDS.min,
       WEIGHT_BOUNDS.max,
     );
-    
+
     await updateSignalWeight(signalName, newWeight);
   }
 }
@@ -102,7 +99,7 @@ async function applyRewardBasedUpdates(
     // Reinforce signals that contributed to good choice
     // Increase historical and quality weights slightly
     const signalsToReinforce = ['historical', 'quality', 'reflection'];
-    
+
     for (const signal of signalsToReinforce) {
       const current = weights[signal as keyof typeof weights];
       const newWeight = clamp(
@@ -110,14 +107,14 @@ async function applyRewardBasedUpdates(
         WEIGHT_BOUNDS.min,
         WEIGHT_BOUNDS.max,
       );
-      
+
       await updateSignalWeight(signal, newWeight);
     }
   } else {
     // Bad choice - reduce confidence in signals that led to it
     // Decrease weights slightly for all signals
     const penalty = -learningRate * 0.5;
-    
+
     for (const signal of Object.keys(weights)) {
       const current = weights[signal as keyof typeof weights];
       const newWeight = clamp(
@@ -125,11 +122,11 @@ async function applyRewardBasedUpdates(
         WEIGHT_BOUNDS.min,
         WEIGHT_BOUNDS.max,
       );
-      
+
       await updateSignalWeight(signal, newWeight);
     }
   }
-  
+
   // Normalize weights to ensure they sum to ~1.0
   await normalizeWeights();
 }
@@ -149,9 +146,9 @@ async function normalizeWeights(): Promise<void> {
   const weights = await getModelSignalWeights();
   const signals = Object.keys(weights) as Array<keyof typeof weights>;
   const sum = signals.reduce((acc, key) => acc + weights[key], 0);
-  
+
   if (sum === 0) return; // Avoid division by zero
-  
+
   for (const signal of signals) {
     const normalized = weights[signal] / sum;
     await updateSignalWeight(signal, normalized);

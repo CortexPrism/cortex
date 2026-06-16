@@ -1,6 +1,6 @@
 /**
  * Model Quartermaster — Database Operations
- * 
+ *
  * Storage layer for model selection decisions, observations, and learning state.
  */
 
@@ -9,10 +9,10 @@ import type { InValue } from '../db/client.ts';
 import type {
   ModelDecision,
   ModelObservation,
+  ModelPattern,
   ModelSignalWeights,
   ModelStats,
   MqmSessionState,
-  ModelPattern,
 } from './types.ts';
 import type { ProviderKind } from '../config/config.ts';
 
@@ -32,12 +32,12 @@ export async function getModelSignalWeights(): Promise<ModelSignalWeights> {
     signal_name: string;
     weight: number;
   }>('SELECT signal_name, weight FROM mqm_signal_weights');
-  
+
   const weights: Record<string, number> = {};
   for (const row of rows) {
     weights[row.signal_name] = row.weight;
   }
-  
+
   return {
     historical: weights['historical'] ?? 0.25,
     episodic: weights['episodic'] ?? 0.20,
@@ -79,7 +79,7 @@ export async function resetSignalWeights(): Promise<void> {
     ['trajectory', 0.10],
     ['reflection', 0.05],
   ];
-  
+
   for (const [signal, weight] of defaults) {
     await db.run(
       `UPDATE mqm_signal_weights
@@ -93,11 +93,13 @@ export async function resetSignalWeights(): Promise<void> {
 /**
  * Log a model selection decision
  */
-export async function logModelDecision(decision: Omit<ModelDecision, 'id' | 'createdAt'>): Promise<string> {
+export async function logModelDecision(
+  decision: Omit<ModelDecision, 'id' | 'createdAt'>,
+): Promise<string> {
   const db = await getCoreDb();
   const id = mqmId();
   const now = new Date().toISOString();
-  
+
   await db.run(
     `INSERT INTO mqm_decisions
        (id, turn_id, session_id, mode, predicted_provider, predicted_model,
@@ -121,7 +123,7 @@ export async function logModelDecision(decision: Omit<ModelDecision, 'id' | 'cre
       now,
     ] as InValue[],
   );
-  
+
   return id;
 }
 
@@ -172,7 +174,7 @@ export async function getRecentDecisions(
      LIMIT ?`,
     [sessionId, limit],
   );
-  
+
   return rows.map((r) => ({
     id: r.id,
     turnId: r.turn_id,
@@ -217,7 +219,7 @@ export async function getAllRecentDecisions(limit = 20): Promise<ModelDecision[]
      LIMIT ?`,
     [limit],
   );
-  
+
   return rows.map((r) => ({
     id: r.id,
     turnId: r.turn_id,
@@ -241,7 +243,7 @@ export async function getAllRecentDecisions(limit = 20): Promise<ModelDecision[]
  */
 export async function logModelObservation(obs: ModelObservation): Promise<void> {
   const db = await getCoreDb();
-  
+
   // Update model stats
   await upsertModelStats(
     obs.provider,
@@ -249,10 +251,10 @@ export async function logModelObservation(obs: ModelObservation): Promise<void> 
     obs.requestContext.taskCategory,
     obs.result,
   );
-  
+
   // Update session state
   await incrementSessionObservations(obs.sessionId);
-  
+
   // Update pattern if it exists, or create new one
   await upsertModelPattern(obs);
 }
@@ -268,7 +270,7 @@ async function upsertModelStats(
 ): Promise<void> {
   const db = await getCoreDb();
   const now = new Date().toISOString();
-  
+
   const existing = await db.get<{
     total_calls: number;
     successful_calls: number;
@@ -281,7 +283,7 @@ async function upsertModelStats(
      WHERE provider = ? AND model = ? AND task_category = ?`,
     [provider, model, taskCategory],
   );
-  
+
   if (!existing) {
     await db.run(
       `INSERT INTO mqm_model_stats
@@ -302,10 +304,12 @@ async function upsertModelStats(
   } else {
     const newTotal = existing.total_calls + 1;
     const newSuccess = existing.successful_calls + (result.success ? 1 : 0);
-    const newAvgQuality = (existing.avg_quality * existing.total_calls + result.qualityScore) / newTotal;
+    const newAvgQuality = (existing.avg_quality * existing.total_calls + result.qualityScore) /
+      newTotal;
     const newAvgCost = (existing.avg_cost_usd * existing.total_calls + result.costUsd) / newTotal;
-    const newAvgDuration = (existing.avg_duration_ms * existing.total_calls + result.durationMs) / newTotal;
-    
+    const newAvgDuration = (existing.avg_duration_ms * existing.total_calls + result.durationMs) /
+      newTotal;
+
     await db.run(
       `UPDATE mqm_model_stats
        SET total_calls = ?, successful_calls = ?, avg_quality = ?,
@@ -335,7 +339,7 @@ export async function getModelStats(
   taskCategory?: string,
 ): Promise<ModelStats[]> {
   const db = await getCoreDb();
-  
+
   let query = `
     SELECT provider, model, task_category, total_calls, successful_calls,
            avg_quality, avg_cost_usd, avg_duration_ms, last_used
@@ -343,14 +347,14 @@ export async function getModelStats(
     WHERE provider = ? AND model = ?
   `;
   const params: InValue[] = [provider, model];
-  
+
   if (taskCategory) {
     query += ' AND task_category = ?';
     params.push(taskCategory);
   }
-  
+
   query += ' ORDER BY total_calls DESC';
-  
+
   const rows = await db.all<{
     provider: string;
     model: string;
@@ -362,7 +366,7 @@ export async function getModelStats(
     avg_duration_ms: number;
     last_used: string | null;
   }>(query, params);
-  
+
   return rows.map((r) => ({
     provider: r.provider as ProviderKind,
     model: r.model,
@@ -381,7 +385,7 @@ export async function getModelStats(
  */
 export async function getAllModelStats(): Promise<ModelStats[]> {
   const db = await getCoreDb();
-  
+
   const rows = await db.all<{
     provider: string;
     model: string;
@@ -398,7 +402,7 @@ export async function getAllModelStats(): Promise<ModelStats[]> {
      FROM mqm_model_stats
      ORDER BY total_calls DESC`,
   );
-  
+
   return rows.map((r) => ({
     provider: r.provider as ProviderKind,
     model: r.model,
@@ -418,14 +422,14 @@ export async function getAllModelStats(): Promise<ModelStats[]> {
 async function upsertModelPattern(obs: ModelObservation): Promise<void> {
   const db = await getCoreDb();
   const now = new Date().toISOString();
-  
+
   // Create simplified fingerprint (just key features)
   const fingerprint = JSON.stringify({
     hasCode: obs.requestContext.hasCode,
     complexity: Math.floor(obs.requestContext.taskComplexity * 10) / 10,
     messageLength: Math.floor(obs.requestContext.messageLength / 100) * 100,
   });
-  
+
   const existing = await db.get<{
     id: string;
     hit_count: number;
@@ -438,7 +442,7 @@ async function upsertModelPattern(obs: ModelObservation): Promise<void> {
        AND provider = ? AND model = ?`,
     [obs.requestContext.taskCategory, fingerprint, obs.provider, obs.model],
   );
-  
+
   if (!existing) {
     await db.run(
       `INSERT INTO mqm_patterns
@@ -459,9 +463,10 @@ async function upsertModelPattern(obs: ModelObservation): Promise<void> {
     );
   } else {
     const newHitCount = existing.hit_count + 1;
-    const newAvgQuality = (existing.avg_quality * existing.hit_count + obs.result.qualityScore) / newHitCount;
+    const newAvgQuality = (existing.avg_quality * existing.hit_count + obs.result.qualityScore) /
+      newHitCount;
     const newAvgCost = (existing.avg_cost * existing.hit_count + obs.result.costUsd) / newHitCount;
-    
+
     await db.run(
       `UPDATE mqm_patterns
        SET hit_count = ?, avg_quality = ?, avg_cost = ?, last_used = ?
@@ -510,7 +515,7 @@ export async function upsertSessionState(
 ): Promise<void> {
   const db = await getCoreDb();
   const existing = await getSessionState(sessionId);
-  
+
   if (!existing) {
     await db.run(
       `INSERT INTO mqm_session_state
@@ -530,7 +535,7 @@ export async function upsertSessionState(
   } else {
     const sets: string[] = [];
     const args: InValue[] = [];
-    
+
     if (updates.observationCount !== undefined) {
       sets.push('observation_count = ?');
       args.push(updates.observationCount);
@@ -555,7 +560,7 @@ export async function upsertSessionState(
       sets.push('cost_spent_usd = ?');
       args.push(updates.costSpentUsd);
     }
-    
+
     if (sets.length > 0) {
       args.push(sessionId);
       await db.run(
@@ -572,7 +577,7 @@ export async function upsertSessionState(
 async function incrementSessionObservations(sessionId: string): Promise<void> {
   const state = await getSessionState(sessionId);
   const newCount = (state?.observationCount ?? 0) + 1;
-  
+
   await upsertSessionState(sessionId, {
     observationCount: newCount,
     mode: newCount >= 50 ? 'active' : 'observe',
@@ -589,7 +594,7 @@ export async function incrementSessionPredictions(
   const state = await getSessionState(sessionId);
   const newPredictionCount = (state?.predictionCount ?? 0) + 1;
   const newCorrectCount = (state?.correctCount ?? 0) + (wasCorrect ? 1 : 0);
-  
+
   await upsertSessionState(sessionId, {
     predictionCount: newPredictionCount,
     correctCount: newCorrectCount,
@@ -601,7 +606,7 @@ export async function incrementSessionPredictions(
  */
 export async function resetAllMqmData(): Promise<void> {
   const db = await getCoreDb();
-  
+
   await db.run('DELETE FROM mqm_decisions');
   await db.run('DELETE FROM mqm_model_stats');
   await db.run('DELETE FROM mqm_patterns');

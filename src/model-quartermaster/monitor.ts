@@ -1,17 +1,12 @@
 /**
  * Model Quartermaster — Observability & Monitoring
- * 
+ *
  * Event emission and summary statistics for MQM.
  */
 
 import { getCoreDb } from '../db/client.ts';
 import { logEvent } from '../db/lens.ts';
-import type {
-  AccuracyPoint,
-  ModelDecision,
-  ModelObservation,
-  MqmSummary,
-} from './types.ts';
+import type { AccuracyPoint, ModelDecision, ModelObservation, MqmSummary } from './types.ts';
 import type { ProviderKind } from '../config/config.ts';
 
 /**
@@ -134,7 +129,7 @@ export function emitMqmModeChangeEvent(
 export async function getMqmAccuracyTrend(hours: number): Promise<AccuracyPoint[]> {
   const db = await getCoreDb();
   const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-  
+
   const rows = await db.all<{
     hour: string;
     total: number;
@@ -150,7 +145,7 @@ export async function getMqmAccuracyTrend(hours: number): Promise<AccuracyPoint[
      ORDER BY hour ASC`,
     [since],
   );
-  
+
   return rows.map((r) => ({
     timestamp: r.hour,
     accuracy: r.total > 0 ? r.correct / r.total : 0,
@@ -164,13 +159,13 @@ export async function getMqmAccuracyTrend(hours: number): Promise<AccuracyPoint[
  */
 export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
   const db = await getCoreDb();
-  
+
   // Get session state
   let mode: 'observe' | 'active' = 'observe';
   let totalObservations = 0;
   let totalPredictions = 0;
   let correctPredictions = 0;
-  
+
   if (sessionId) {
     const sessionState = await db.get<{
       mode: string;
@@ -183,7 +178,7 @@ export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
        WHERE session_id = ?`,
       [sessionId],
     );
-    
+
     if (sessionState) {
       mode = sessionState.mode as 'observe' | 'active';
       totalObservations = sessionState.observation_count;
@@ -205,7 +200,7 @@ export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
          SUM(CASE WHEN mode = 'active' THEN 1 ELSE 0 END) as active_count
        FROM mqm_session_state`,
     );
-    
+
     if (globalState) {
       totalObservations = globalState.total_obs ?? 0;
       totalPredictions = globalState.total_pred ?? 0;
@@ -213,24 +208,24 @@ export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
       mode = (globalState.active_count ?? 0) > 0 ? 'active' : 'observe';
     }
   }
-  
+
   const accuracy = totalPredictions > 0 ? correctPredictions / totalPredictions : 0;
-  
+
   // Get average cost and quality
   const statsQuery = sessionId
     ? `SELECT AVG(avg_cost_usd) as avg_cost, AVG(avg_quality) as avg_quality
        FROM mqm_model_stats`
     : `SELECT AVG(avg_cost_usd) as avg_cost, AVG(avg_quality) as avg_quality
        FROM mqm_model_stats`;
-  
+
   const stats = await db.get<{
     avg_cost: number;
     avg_quality: number;
   }>(statsQuery);
-  
+
   const avgCostUsd = stats?.avg_cost ?? 0;
   const avgQuality = stats?.avg_quality ?? 0;
-  
+
   // Get top models
   const topModelsRows = await db.all<{
     provider: string;
@@ -244,14 +239,14 @@ export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
      ORDER BY total_calls DESC
      LIMIT 5`,
   );
-  
+
   const topModels = topModelsRows.map((r) => ({
     provider: r.provider as ProviderKind,
     model: r.model,
     usageCount: r.total_calls,
     avgQuality: r.avg_quality,
   }));
-  
+
   // Get signal weights
   const weightsRows = await db.all<{
     signal_name: string;
@@ -259,12 +254,12 @@ export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
   }>(
     `SELECT signal_name, weight FROM mqm_signal_weights`,
   );
-  
+
   const signalWeights: Record<string, number> = {};
   for (const row of weightsRows) {
     signalWeights[row.signal_name] = row.weight;
   }
-  
+
   return {
     mode,
     totalObservations,

@@ -378,8 +378,7 @@ class ModelQuartermasterHook implements PipelineHook {
           ctx.setState(updates as Partial<typeof ctx.state>);
 
           if (prediction.mode === 'suggest') {
-            const msg =
-              `[MQM suggestion: model "${prediction.provider}/${prediction.model}" ` +
+            const msg = `[MQM suggestion: model "${prediction.provider}/${prediction.model}" ` +
               `(confidence: ${(prediction.confidence * 100).toFixed(0)}%) ` +
               `- est. quality: ${(prediction.estimatedQuality * 100).toFixed(0)}%]`;
             return {
@@ -392,8 +391,13 @@ class ModelQuartermasterHook implements PipelineHook {
         }
       } else if (ctx.stage === 'post-llm') {
         const state = ctx.state as Record<string, unknown>;
-        const reqCtx = state.mqmRequestContext as Parameters<typeof observeModel>[0]['requestContext'] | undefined;
-        const modelUsed = state.mqmModelUsed as { provider: Parameters<typeof observeModel>[0]['provider']; model: string } | undefined;
+        const reqCtx = state.mqmRequestContext as
+          | Parameters<typeof observeModel>[0]['requestContext']
+          | undefined;
+        const modelUsed = state.mqmModelUsed as {
+          provider: Parameters<typeof observeModel>[0]['provider'];
+          model: string;
+        } | undefined;
 
         if (reqCtx && modelUsed) {
           await observeModel({

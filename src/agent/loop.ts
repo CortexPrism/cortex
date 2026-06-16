@@ -565,7 +565,13 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }).catch(() => {}),
       extractAndStoreEntities(`${userMessage} ${response}`, sessionId).catch(() => {}),
       options.enableReflection && response
-        ? reflectOnTurn(userMessage, response, effectiveProvider, effectiveModel, options.reasoningEffort)
+        ? reflectOnTurn(
+          userMessage,
+          response,
+          effectiveProvider,
+          effectiveModel,
+          options.reasoningEffort,
+        )
           .then((r) => storeReflection(sessionId, r))
           .catch(() => {})
         : Promise.resolve(),

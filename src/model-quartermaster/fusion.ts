@@ -1,6 +1,6 @@
 /**
  * Model Quartermaster — Signal Fusion
- * 
+ *
  * Combine multiple signal scores to generate model predictions.
  */
 
@@ -37,7 +37,7 @@ export function fuseModelSignals(
       estimatedQuality: number;
     }
   >();
-  
+
   const signalEntries: Array<{
     name: keyof ModelSignalWeights;
     scores: Array<{ provider: ProviderKind; model: string; score: number }>;
@@ -49,7 +49,7 @@ export function fuseModelSignals(
     { name: 'trajectory', scores: signalScores.trajectory },
     { name: 'reflection', scores: signalScores.reflection },
   ];
-  
+
   // Collect all models (candidates + any from signals)
   const allModels = new Set<string>();
   for (const candidate of candidates) {
@@ -60,7 +60,7 @@ export function fuseModelSignals(
       allModels.add(`${s.provider}:${s.model}`);
     }
   }
-  
+
   // Calculate weighted scores for each model
   for (const modelKey of allModels) {
     const [provider, model] = modelKey.split(':') as [ProviderKind, string];
@@ -68,7 +68,7 @@ export function fuseModelSignals(
     let total = 0;
     let estimatedCost = 0;
     let estimatedQuality = 0;
-    
+
     for (const { name, scores } of signalEntries) {
       const match = scores.find((s) => s.provider === provider && s.model === model);
       if (match) {
@@ -76,7 +76,7 @@ export function fuseModelSignals(
         const contributed = weight * match.score;
         contributions.push({ name, contributed });
         total += contributed;
-        
+
         // Aggregate cost and quality estimates
         if (name === 'cost') {
           estimatedCost = match.score; // Cost signal is inverted (1.0 = cheap)
@@ -86,7 +86,7 @@ export function fuseModelSignals(
         }
       }
     }
-    
+
     modelScores.set(modelKey, {
       provider,
       model,
@@ -96,12 +96,12 @@ export function fuseModelSignals(
       estimatedQuality,
     });
   }
-  
+
   // Convert to predictions
   const predictions: ModelPrediction[] = [];
   for (const [_, data] of modelScores) {
     const confidence = Math.min(1, Math.max(0, data.total));
-    
+
     let mode: ModelPrediction['mode'];
     if (confidence >= ENFORCE_CONFIDENCE) {
       mode = 'enforce';
@@ -110,7 +110,7 @@ export function fuseModelSignals(
     } else {
       mode = 'defer';
     }
-    
+
     predictions.push({
       provider: data.provider,
       model: data.model,
@@ -121,7 +121,7 @@ export function fuseModelSignals(
       estimatedQuality: data.estimatedQuality,
     });
   }
-  
+
   // Sort by confidence (highest first)
   return predictions.sort((a, b) => b.confidence - a.confidence);
 }
