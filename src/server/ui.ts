@@ -56,13 +56,24 @@ const HTML = `<!DOCTYPE html>
     --border: rgba(255,255,255,0.07);
     --accent: #6366f1;
     --accent2: #818cf8;
+    --accent-green: #10b981;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-cyan: #06b6d4;
     --green: #22c55e;
     --text: #e2e2ea;
     --text2: #9090a8;
-    --text3: #55556a;
+    --text3: #6b6b82;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; height: 100vh; overflow: hidden; }
+  body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:0.03; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") repeat; }
+
+  /* Consistent heading classes */
+  .h1 { font-size:15px; font-weight:600; }
+  .h2 { font-size:13px; font-weight:600; }
+  .h3 { font-size:12px; font-weight:500; }
+  .sub { font-size:12px; color:var(--text3); margin-top:2px; }
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -101,13 +112,17 @@ const HTML = `<!DOCTYPE html>
   .bubble-tool { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.2); border-radius:8px; padding:8px 12px; align-self:flex-start; font-size:12px; color:#fde68a; font-family:'JetBrains Mono',monospace; max-width:88%; }
 
   /* Typing indicator */
-  .typing-dot { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation: bounce 1.2s infinite; }
+  .typing-dot { width:6px; height:6px; background:var(--accent2); border-radius:50%; }
   .typing-dot:nth-child(2) { animation-delay:0.2s; }
   .typing-dot:nth-child(3) { animation-delay:0.4s; }
   @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+  @media (prefers-reduced-motion: no-preference) {
+    .typing-dot { animation: bounce 1.2s infinite; }
+    .status-pulse { animation: pulse 2s infinite; }
+    .skeleton { animation: shimmer 1.5s infinite; }
+  }
 
   /* Status dot pulse */
-  .status-pulse { animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
   /* Card */
@@ -191,7 +206,7 @@ const HTML = `<!DOCTYPE html>
   .divider { height:1px; background:var(--border); margin:8px 0; }
 
   /* ── Skeleton loading ─────────────────────────── */
-  .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, rgba(255,255,255,0.06) 50%, var(--bg3) 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; border-radius:6px; }
+  .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, rgba(255,255,255,0.06) 50%, var(--bg3) 75%); background-size:200% 100%; border-radius:6px; }
   @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
   .skeleton-line { height:14px; margin-bottom:8px; width:100%; }
   .skeleton-line:nth-child(2) { width:85%; }
@@ -200,7 +215,7 @@ const HTML = `<!DOCTYPE html>
 
   /* ── Toast notifications ──────────────────────── */
   #toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; max-width:360px; }
-  .toast { padding:12px 16px; border-radius:10px; font-size:13px; line-height:1.4; box-shadow:0 8px 32px rgba(0,0,0,0.4); animation: toastIn 0.25s ease-out; display:flex; align-items:flex-start; gap:10px; backdrop-filter:blur(8px); }
+  .toast { padding:12px 16px; border-radius:10px; font-size:13px; line-height:1.4; box-shadow:0 8px 32px rgba(0,0,0,0.4); display:flex; align-items:flex-start; gap:10px; backdrop-filter:blur(8px); }
   .toast-success { background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.3); color:#4ade80; }
   .toast-error { background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; }
   .toast-info { background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; }
@@ -208,16 +223,24 @@ const HTML = `<!DOCTYPE html>
   @keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
   .toast-out { animation: toastOut 0.25s ease-in forwards; }
   @keyframes toastOut { from { transform:translateX(0); opacity:1; } to { transform:translateX(100%); opacity:0; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .toast { animation: toastIn 0.25s ease-out; }
+  }
 
   /* ── Responsive sidebar ───────────────────────── */
   .sidebar-overlay { display:none; }
   @media (max-width:768px) {
-    .sidebar { position:fixed; left:-260px; top:0; bottom:0; z-index:50; transition:left 0.25s ease; }
+    .sidebar { position:fixed; left:-260px; top:0; bottom:0; z-index:50; }
     .sidebar.open { left:0; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:49; }
     .sidebar-overlay.open { display:block; }
     .main-area { margin-left:0 !important; }
     #hamburger { display:flex !important; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @media (max-width:768px) {
+      .sidebar { transition:left 0.25s ease; }
+    }
   }
   #hamburger { display:none; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; cursor:pointer; border:none; background:rgba(255,255,255,0.05); color:var(--text2); transition:background 0.15s; flex-shrink:0; }
   #hamburger:hover { background:rgba(255,255,255,0.1); color:var(--text); }
@@ -233,17 +256,25 @@ const HTML = `<!DOCTYPE html>
   .md pre .copy-btn:hover { background:rgba(255,255,255,0.15); color:var(--text); }
 
   /* ── Fade transitions ─────────────────────────── */
-  .page-fade-in { animation: fadeIn 0.2s ease-out; }
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .page-fade-in { animation: fadeIn 0.2s ease-out; }
+  }
 
   /* ── Editor ──────────────────────────────────── */
   .editor-tree-item { display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:5px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.12s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; }
   .editor-tree-item:hover { background:rgba(255,255,255,0.05); color:var(--text); }
   .editor-tree-item.active { background:rgba(99,102,241,0.12); color:var(--accent2); }
   .editor-tree-item .icon { width:16px; text-align:center; opacity:0.6; flex-shrink:0; }
-  .editor-tab { padding:6px 12px; border-radius:6px 6px 0 0; font-size:12px; cursor:pointer; background:transparent; color:var(--text3); border:1px solid transparent; border-bottom:none; transition:all 0.12s; white-space:nowrap; }
+  .editor-tab { padding:6px 12px; border-radius:6px 6px 0 0; font-size:12px; cursor:pointer; background:transparent; color:var(--text3); border:1px solid transparent; border-bottom:none; transition:all 0.12s; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
   .editor-tab.active { background:var(--bg3); color:var(--text); border-color:var(--border); }
   .editor-tab:hover:not(.active) { color:var(--text2); }
+  .editor-tab .editor-tab-icon { width:12px; height:12px; opacity:0.5; flex-shrink:0; }
+  .editor-tab.active .editor-tab-icon { opacity:0.8; }
+  .editor-tab .editor-tab-modified { width:8px; height:8px; border-radius:50%; background:var(--accent-amber); flex-shrink:0; }
+  .editor-tab .editor-tab-close { width:16px; height:16px; border-radius:3px; display:none; align-items:center; justify-content:center; font-size:10px; color:var(--text3); cursor:pointer; flex-shrink:0; margin-left:2px; }
+  .editor-tab:hover .editor-tab-close { display:flex; }
+  .editor-tab .editor-tab-close:hover { background:rgba(239,68,68,0.2); color:var(--accent-red); }
   #editor-container { position:relative; }
   .CodeMirror { position:absolute; top:0; left:0; right:0; bottom:0; height:auto !important; font-size:13px; font-family:'JetBrains Mono',monospace; background:var(--bg3) !important; color:var(--text) !important; }
   .CodeMirror-gutters { background:var(--bg2) !important; border-right:1px solid var(--border) !important; }
@@ -286,7 +317,13 @@ const HTML = `<!DOCTYPE html>
   .log-table-scroll::-webkit-scrollbar { width:6px; }
 
   /* ── Sidebar section headers ──────────────────── */
-  .nav-section { padding:12px 12px 4px; font-size:10px; color:var(--text3); font-weight:600; letter-spacing:0.08em; text-transform:uppercase; }
+  .nav-section { padding:12px 12px 4px; font-size:10px; color:var(--text3); font-weight:600; letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
+  .nav-section:hover { color:var(--text2); }
+  .nav-section .nav-section-toggle { font-size:8px; transition:transform 0.15s; }
+  .nav-section.collapsed .nav-section-toggle { transform:rotate(-90deg); }
+  .nav-section.collapsed + .nav-item,
+  .nav-section.collapsed ~ .nav-item.nav-in-section { display:none !important; }
+  .nav-section + .nav-item[style*="display:none"] ~ .nav-item { display:none !important; }
   .nav-item { position:relative; padding-left:12px; }
   .nav-item .icon { width:18px; text-align:center; opacity:0.6; }
   .nav-item.active .icon { opacity:1; }
@@ -313,6 +350,16 @@ const HTML = `<!DOCTYPE html>
   #sidebar-search:focus { border-color:rgba(99,102,241,0.4); }
   #sidebar-search::placeholder { color:var(--text3); }
   .nav-hidden { display:none !important; }
+
+  /* ── Confirm dialog ──────────────────────────── */
+  .confirm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center; }
+  .confirm-overlay.open { display:flex; }
+  .confirm-box { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:24px; width:420px; max-width:90vw; box-shadow:0 24px 80px rgba(0,0,0,0.5); }
+  .confirm-box h2 { font-size:14px; font-weight:600; margin-bottom:8px; }
+  .confirm-box p { font-size:13px; color:var(--text2); margin-bottom:20px; line-height:1.5; }
+  .confirm-box .confirm-actions { display:flex; gap:8px; justify-content:flex-end; }
+  .btn-danger { background:var(--accent-red); color:#fff; }
+  .btn-danger:hover { background:#dc2626; }
 
   /* ── Agent panel (right sidebar) ──────────────── */
   #agent-panel-toggle { display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; cursor:pointer; border:1px solid var(--border); background:var(--bg3); color:var(--text2); transition:all 0.15s; flex-shrink:0; font-size:14px; }
@@ -363,20 +410,25 @@ const HTML = `<!DOCTYPE html>
   .agent-empty { text-align:center; padding:24px 16px; color:var(--text3); font-size:12px; }
 
   @media (max-width:768px) {
-    #agent-panel { position:fixed; right:-280px; top:0; bottom:0; z-index:50; transition:right 0.25s ease; }
+    #agent-panel { position:fixed; right:-280px; top:0; bottom:0; z-index:50; }
     #agent-panel.open { right:0; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @media (max-width:768px) {
+      #agent-panel { transition:right 0.25s ease; }
+    }
   }
 </style>
 </head>
 <body>
 
-<div style="display:flex;height:100vh;overflow:hidden;">
+<div style="display:flex;height:100vh;overflow:hidden;" role="application">
 
 <!-- ── Sidebar overlay (mobile) ─────────────────────────── -->
-<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()" role="presentation"></div>
 
 <!-- ── Sidebar ──────────────────────────────────────────── -->
-<aside id="sidebar" class="sidebar" style="width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+<aside id="sidebar" class="sidebar" style="width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;" role="navigation" aria-label="Main navigation">
 
   <!-- Logo -->
   <div style="padding:18px 16px 12px;border-bottom:1px solid var(--border);">
@@ -391,10 +443,16 @@ const HTML = `<!DOCTYPE html>
   <!-- Nav -->
   <nav style="padding:6px 8px;flex:1;overflow-y:auto;">
     <!-- Quick search -->
-    <input id="sidebar-search" placeholder="Search pages…" oninput="filterNav(this.value)" />
+    <input id="sidebar-search" placeholder="Search pages…" oninput="filterNav(this.value)" aria-label="Search navigation pages" />
+
+    <!-- Recent pages -->
+    <div id="recent-pages-section" style="display:none;">
+      <div class="nav-section">Recent</div>
+      <div id="recent-pages-list"></div>
+    </div>
 
     <!-- Core -->
-    <div class="nav-section">Core</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Core <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item active" onclick="showPage('chat');closeMobileSidebar()" id="nav-chat">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Chat
     </button>
@@ -403,7 +461,7 @@ const HTML = `<!DOCTYPE html>
     </button>
 
     <!-- Intelligence -->
-    <div class="nav-section">Intelligence</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Intelligence <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('memory');closeMobileSidebar()" id="nav-memory">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Memory
     </button>
@@ -415,7 +473,7 @@ const HTML = `<!DOCTYPE html>
     </button>
 
     <!-- Tools -->
-    <div class="nav-section">Tools</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Tools <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('editor');closeMobileSidebar()" id="nav-editor">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Editor
     </button>
@@ -430,7 +488,7 @@ const HTML = `<!DOCTYPE html>
     </button>
 
     <!-- Management -->
-    <div class="nav-section">Management</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Management <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('agents');closeMobileSidebar()" id="nav-agents">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Agents
     </button>
@@ -448,7 +506,7 @@ const HTML = `<!DOCTYPE html>
     </button>
 
     <!-- Configuration -->
-    <div class="nav-section">Configuration</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Configuration <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
     </button>
@@ -466,11 +524,11 @@ const HTML = `<!DOCTYPE html>
     </button>
 
     <!-- Plugin Panels (dynamic) -->
-    <div class="nav-section">Plugin Panels</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
     <div id="plugin-panels-nav"></div>
 
     <!-- Monitoring -->
-    <div class="nav-section">Monitoring</div>
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Monitoring <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
     </button>
@@ -493,15 +551,15 @@ const HTML = `<!DOCTYPE html>
 </aside>
 
 <!-- ── Main area ─────────────────────────────────────────── -->
-<main class="main-area" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
+<main class="main-area" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;" role="main" aria-label="Content area">
 
   <!-- Page: Chat -->
   <div id="page-chat" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
 
     <!-- Chat header -->
     <div style="padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:12px;flex-shrink:0;">
-      <button id="hamburger" onclick="toggleSidebar()" data-tip="Toggle sidebar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <button id="hamburger" onclick="toggleSidebar()" data-tip="Toggle sidebar" aria-label="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span id="chat-agent-name" style="font-size:13px;font-weight:500;color:var(--accent2);"></span>
       <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
@@ -967,6 +1025,11 @@ const HTML = `<!DOCTYPE html>
     <div id="sessions-detail-view" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
       <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-ghost" onclick="backToSessions()" style="padding:5px 10px;">← Back</button>
+        <nav id="session-breadcrumb" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px;" aria-label="Breadcrumb">
+          <span style="color:var(--text2);">Sessions</span>
+          <span>/</span>
+          <span id="session-breadcrumb-id" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;"></span>
+        </nav>
         <span id="session-detail-title" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);"></span>
         <span id="session-detail-meta" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;"></span>
         <span id="session-detail-children" style="font-size:11px;display:flex;align-items:center;gap:6px;"></span>
@@ -1308,7 +1371,19 @@ const HTML = `<!DOCTYPE html>
 </main>
 </div>
 
-<div id="toast-container"></div>
+<div id="toast-container" role="status" aria-live="polite"></div>
+
+<!-- ── Confirm dialog ───────────────────────────── -->
+<div id="confirm-overlay" class="confirm-overlay" onclick="closeConfirmDialog(event)">
+  <div class="confirm-box" onclick="event.stopPropagation()" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-message"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirm-cancel-btn" onclick="closeConfirmDialog()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn"></button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Command palette (Ctrl+K) ──────────────────── -->
 <div id="cmd-palette" onclick="closeCmdPalette(event)">
@@ -1440,6 +1515,38 @@ function toast(message, type = 'info', duration = 3000) {
     setTimeout(() => el.remove(), 250);
   }, duration);
 }
+
+// ── Confirm dialog ──────────────────────────
+let _confirmResolve = null;
+
+function confirmAction(title, message, actionLabel = 'Delete') {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    document.getElementById('confirm-ok-btn').textContent = actionLabel;
+    document.getElementById('confirm-overlay').classList.add('open');
+    document.getElementById('confirm-cancel-btn').focus();
+  });
+}
+
+function closeConfirmDialog(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(false); _confirmResolve = null; }
+}
+
+document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(true); _confirmResolve = null; }
+});
+
+// Close confirm on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('confirm-overlay').classList.contains('open')) {
+    closeConfirmDialog();
+  }
+});
 
 // ── Sidebar toggle (responsive) ─────────────────
 function toggleSidebar() {
@@ -1684,13 +1791,70 @@ document.getElementById('chat-input').addEventListener('keydown', (e) => {
 document.getElementById('chat-input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+  // Save draft
+  try { localStorage.setItem('cortex_message_draft', this.value); } catch {}
 });
+
+// Restore message draft on page load
+(function restoreDraft() {
+  try {
+    const draft = localStorage.getItem('cortex_message_draft');
+    if (draft) {
+      const el = document.getElementById('chat-input');
+      el.value = draft;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    }
+  } catch {}
+})();
+
+// Clear draft when message is sent (in sendMessage)
+const _origSendMessage = sendMessage;
+sendMessage = function() {
+  try { localStorage.removeItem('cortex_message_draft'); } catch {}
+  _origSendMessage();
+};
+
+// ── Recent pages tracking ─────────────────
+const MAX_RECENT = 5;
+function trackRecentPage(name) {
+  if (name === 'chat') return;
+  try {
+    let recent = JSON.parse(localStorage.getItem('cortex_recent_pages') || '[]');
+    recent = recent.filter(p => p !== name);
+    recent.unshift(name);
+    if (recent.length > MAX_RECENT) recent = recent.slice(0, MAX_RECENT);
+    localStorage.setItem('cortex_recent_pages', JSON.stringify(recent));
+    renderRecentPages();
+  } catch {}
+}
+
+function renderRecentPages() {
+  const section = document.getElementById('recent-pages-section');
+  const list = document.getElementById('recent-pages-list');
+  if (!section || !list) return;
+  try {
+    const recent = JSON.parse(localStorage.getItem('cortex_recent_pages') || '[]');
+    if (!recent.length) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    const titles = { chat:'Chat', status:'Status', memory:'Memory', skills:'Skills', lens:'Activity',
+      editor:'Editor', git:'Git', github:'GitHub', coderunner:'Code Runner', agents:'Agents',
+      services:'Services', nodes:'Nodes', jobs:'Jobs', sessions:'Sessions', settings:'Settings',
+      soul:'Soul', policies:'Policies', plugins:'Plugins', marketplace:'Marketplace',
+      analytics:'Analytics', logs:'Logs', quartermaster:'Quartermaster', modelqm:'Model Intel' };
+    list.innerHTML = recent.map(p => \`<button class="nav-item compact" onclick="showPage('\${p}');closeMobileSidebar()">\${titles[p] || p}</button>\`).join('');
+  } catch {}
+}
 
 // ── Navigation ──────────────────────────────────────────────
 const PAGES = ['chat','editor','git','github','coderunner','status','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster','modelqm'];
 function showPage(name) {
   currentPage = name;
-  try { localStorage.setItem('cortex_page', name); } catch {}
+  try {
+    localStorage.setItem('cortex_page', name);
+    if (location.hash !== '#' + name) history.pushState(null, '', '#' + name);
+  } catch {}
+  trackRecentPage(name);
   PAGES.forEach(p => {
     document.getElementById('page-' + p).style.display = 'none';
     document.getElementById('page-' + p).classList.remove('page-fade-in');
@@ -1699,9 +1863,10 @@ function showPage(name) {
   });
   const page = document.getElementById('page-' + name);
   page.style.display = 'flex';
-  // Trigger reflow then add animation class
-  void page.offsetWidth;
-  page.classList.add('page-fade-in');
+  // Use requestAnimationFrame for reliable animation trigger
+  requestAnimationFrame(() => {
+    page.classList.add('page-fade-in');
+  });
   // Show hamburger only on non-chat pages
   const ham = document.getElementById('hamburger');
   if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
@@ -1717,6 +1882,19 @@ function showPage(name) {
     modelqm: loadModelQm,
   };
   if (loaders[name]) loaders[name]();
+}
+
+// ── Skeleton loading utilities ──────────────
+function showSkeleton(container, count = 3, type = 'card') {
+  if (typeof container === 'string') container = document.getElementById(container);
+  if (!container) return;
+  if (type === 'card') {
+    container.innerHTML = Array.from({length: count}, () => '<div class="skeleton skeleton-card"></div>').join('');
+  } else if (type === 'lines') {
+    container.innerHTML = Array.from({length: count}, () => '<div class="skeleton skeleton-line"></div>').join('');
+  } else if (type === 'table') {
+    container.innerHTML = '<div class="skeleton" style="height:200px;border-radius:8px;"></div>';
+  }
 }
 
 // ── Sessions sidebar ────────────────────────────────────────
@@ -2067,8 +2245,9 @@ async function loadMemoryHealth() {
 // ── Jobs ────────────────────────────────────────────────────
 const JOB_COLORS = { pending:'#fbbf24', running:'#38bdf8', completed:'#4ade80', failed:'#f87171', cancelled:'#6b7280' };
 async function loadJobs() {
-  const jobs = await fetch(BASE + '/api/jobs').then(r => r.json()).catch(() => []);
   const el = document.getElementById('jobs-list');
+  showSkeleton(el, 3, 'card');
+  const jobs = await fetch(BASE + '/api/jobs').then(r => r.json()).catch(() => []);
   if (!jobs.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p style="color:var(--text3);font-size:13px;">No jobs scheduled.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Create a job from the Cron page or via the CLI.</p></div>'; return; }
 
   el.innerHTML = '';
@@ -2173,8 +2352,9 @@ async function submitSkillForm() {
   }
 }
 
-function deleteSkill(name) {
-  if (!confirm('Delete skill "' + name + '"?')) return;
+async function deleteSkill(name) {
+  const ok = await confirmAction('Delete Skill', 'Delete skill "' + name + '"?', 'Delete');
+  if (!ok) return;
   fetch(BASE + '/api/skills?name=' + encodeURIComponent(name), { method: 'DELETE' })
     .then(r => r.json()).then(() => loadSkills()).catch(e => alert('Failed: ' + e.message));
 }
@@ -2587,6 +2767,8 @@ function fmtNum(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e
 let allSessions = [];
 
 async function loadSessionsList() {
+  const el = document.getElementById('sessions-table');
+  showSkeleton(el, 6, 'card');
   const agentFilter = document.getElementById('sess-agent-filter')?.value ?? '';
   const url = BASE + '/api/sessions?limit=50' + (agentFilter ? '&agentId=' + encodeURIComponent(agentFilter) : '');
   allSessions = await fetch(url).then(r => r.json()).catch(() => []);
@@ -2756,7 +2938,8 @@ async function exportSession(id) {
 }
 
 async function deleteSession(id) {
-  if (!confirm(\`Delete session \${id.slice(-12)}? This removes all its Lens events.\`)) return;
+  const ok = await confirmAction('Delete Session', \`Delete session \${id.slice(-12)}? This removes all its Lens events.\`, 'Delete');
+  if (!ok) return;
   const res = await fetch(\`\${BASE}/api/sessions/\${id}\`, { method: 'DELETE' });
   if (res.ok) toast('Session deleted', 'success');
   loadSessionsList();
@@ -3590,7 +3773,8 @@ async function selectAgent(id) {
 }
 
 async function deleteAgent(id) {
-  if (!confirm(\`Delete agent "\${id}"? This cannot be undone.\`)) return;
+  const ok = await confirmAction('Delete Agent', \`Delete agent "\${id}"? This cannot be undone.\`, 'Delete');
+  if (!ok) return;
   const res = await fetch(BASE + '/api/agents/' + encodeURIComponent(id), { method: 'DELETE' });
   if (res.ok) { toast('Agent deleted', 'success'); loadAgents(); }
   else {
@@ -3748,7 +3932,8 @@ async function loadServices() {
 
 async function serviceAction(id, action) {
   if (action === 'delete') {
-    if (!confirm('Delete this service? This cannot be undone.')) return;
+    const ok = await confirmAction('Delete Service', 'Delete this service? This cannot be undone.', 'Delete');
+    if (!ok) return;
     const res = await fetch(BASE + '/api/services/' + encodeURIComponent(id), { method: 'DELETE' });
     if (res.ok) {
       toast('Service deleted', 'success');
@@ -3825,7 +4010,8 @@ async function togglePlugin(name, enable) {
   loadPluginPanels();
 }
 async function deletePlugin(name) {
-  if (!confirm('Remove this plugin?')) return;
+  const ok = await confirmAction('Remove Plugin', 'Remove this plugin?', 'Remove');
+  if (!ok) return;
   const res = await fetch(\`\${BASE}/api/plugins/\${name}\`, { method: 'DELETE' });
   if (res.ok) toast('Plugin removed', 'success');
   loadPlugins();
@@ -4162,7 +4348,8 @@ async function cancelJobUI(id) {
   loadCronJobs();
 }
 async function deleteJobUI(id) {
-  if (!confirm('Delete this job?')) return;
+  const ok = await confirmAction('Delete Job', 'Delete this job?', 'Delete');
+  if (!ok) return;
   const res = await fetch(\`\${BASE}/api/jobs/\${id}\`, { method: 'DELETE' });
   if (res.ok) toast('Job deleted', 'success');
   loadCronJobs();
@@ -4308,6 +4495,22 @@ function closeCmdPalette(event) {
   document.getElementById('cmd-palette').classList.remove('open');
 }
 
+// ── Sidebar section collapse ────────────
+function toggleSidebarSection(event) {
+  const section = event.currentTarget;
+  section.classList.toggle('collapsed');
+  const expanded = !section.classList.contains('collapsed');
+  section.setAttribute('aria-expanded', String(expanded));
+  // Hide/show all following nav-items until next section
+  let next = section.nextElementSibling;
+  while (next && !next.classList.contains('nav-section') && !next.id) {
+    if (next.classList.contains('nav-item')) {
+      next.style.display = expanded ? '' : 'none';
+    }
+    next = next.nextElementSibling;
+  }
+}
+
 // ── Sidebar search ──────────────────────────
 function filterNav(query) {
   const items = document.querySelectorAll('.nav-item');
@@ -4332,22 +4535,63 @@ function filterNav(query) {
 
 // ── Keyboard shortcuts ──────────────────────
 document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault();
+  // Esc: close modals and panels
+  if (e.key === 'Escape') {
     const palette = document.getElementById('cmd-palette');
     if (palette.classList.contains('open')) {
       closeCmdPalette({ target: palette });
-    } else {
-      openCmdPalette();
+      return;
+    }
+    if (document.getElementById('confirm-overlay').classList.contains('open')) {
+      closeConfirmDialog({ target: document.getElementById('confirm-overlay') });
+      return;
+    }
+    if (document.getElementById('skill-designer').style.display !== 'none') {
+      closeSkillDesigner();
+      return;
+    }
+    if (document.getElementById('new-agent-modal').style.display === 'flex') {
+      hideAgentModal();
+      return;
+    }
+    if (document.getElementById('cron-modal').style.display === 'flex') {
+      hideCronModal();
+      return;
+    }
+    if (document.getElementById('plugin-modal').style.display === 'flex') {
+      hideInstallModal();
+      return;
     }
   }
-  if (e.key === 'Escape') {
-    closeCmdPalette({ target: document.getElementById('cmd-palette') });
+  // Ctrl+K / Cmd+K: command palette
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    const palette = document.getElementById('cmd-palette');
+    palette.classList.contains('open') ? closeCmdPalette({ target: palette }) : openCmdPalette();
   }
+  // Ctrl+S / Cmd+S: save in editor
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    if (currentPage === 'editor' && editorInstance) { e.preventDefault(); editorSave(); }
+    if (document.getElementById('skill-designer').style.display !== 'none') { e.preventDefault(); skillDesignerSave(); }
+    if (currentPage === 'soul') { e.preventDefault(); saveSoulFile(); }
+  }
+  // / focus chat input (when not in an input)
+  if (e.key === '/' && document.activeElement === document.body) {
+    e.preventDefault();
+    showPage('chat');
+    document.getElementById('chat-input').focus();
+  }
+  // Ctrl+B: toggle sidebar
+  if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+    e.preventDefault();
+    toggleSidebar();
+  }
+  // Enter in command palette
   if (e.key === 'Enter') {
     const active = document.querySelector('.cmd-item.active');
     if (active) active.click();
   }
+  // Arrow navigation in command palette
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     const palette = document.getElementById('cmd-palette');
     if (!palette.classList.contains('open')) return;
@@ -4363,7 +4607,43 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Editor ──────────────────────────────────────────────────
+// ── Focus trapping for modals ──────────────
+function trapFocus(container, onClose) {
+  const focusable = container.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  function handler(e) {
+    if (e.key !== 'Tab') return;
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
+
+  container.addEventListener('keydown', handler);
+  // Return cleanup function
+  return () => container.removeEventListener('keydown', handler);
+}
+
+// Apply focus trapping to agent modal
+let _agentModalCleanup = null;
+const _origShowAgentForm = showNewAgentForm;
+showNewAgentForm = function(editId) {
+  _origShowAgentForm(editId);
+  setTimeout(() => {
+    const modal = document.getElementById('new-agent-modal');
+    if (_agentModalCleanup) _agentModalCleanup();
+    _agentModalCleanup = trapFocus(modal.querySelector('.card'));
+    document.getElementById('ag-name')?.focus();
+  }, 100);
+};
+const _origHideAgentModal = hideAgentModal;
+hideAgentModal = function() {
+  if (_agentModalCleanup) { _agentModalCleanup(); _agentModalCleanup = null; }
+  _origHideAgentModal();
+};
 let editorInstance = null;
 let editorFileTree = [];
 let editorOpenFiles = [];
@@ -4423,9 +4703,10 @@ function renderEditorTree() {
   }).join('');
 }
 
-function editorSwitchWorkspace(value) {
+async function editorSwitchWorkspace(value) {
   if (editorInstance && editorContentDirty) {
-    if (!confirm('Unsaved changes will be lost. Switch workspace?')) {
+    const ok = await confirmAction('Unsaved Changes', 'Unsaved changes will be lost. Switch workspace?', 'Switch');
+    if (!ok) {
       document.getElementById('editor-workspace-select').value = editorWorkspace;
       return;
     }
@@ -4437,9 +4718,8 @@ function editorSwitchWorkspace(value) {
 
 async function editorOpenFile(fileName) {
   if (editorInstance && editorContentDirty) {
-    if (!confirm('Save changes to ' + editorCurrentFile + '?')) {
-      // Discard
-    } else {
+    const ok = await confirmAction('Unsaved Changes', 'Save changes to ' + editorCurrentFile + '?', 'Save');
+    if (ok) {
       await editorSave();
     }
   }
@@ -4468,12 +4748,22 @@ function editorAddTab(fileName) {
   renderEditorTabs();
 }
 
+function fileIcon(f) {
+  const ext = f.split('.').pop();
+  const icons = { js:'⬡', ts:'⬡', jsx:'⬡', tsx:'⬡', py:'◇', rb:'◇', rs:'◇', go:'◇',
+    md:'≡', yaml:'≡', yml:'≡', toml:'≡', json:'≡', css:'◐', html:'◇', svg:'◇',
+    sql:'◈', sh:'▷', bash:'▷', zsh:'▷', txt:'≡' };
+  return '<span class="editor-tab-icon">' + (icons[ext] || '▢') + '</span>';
+}
+
 function renderEditorTabs() {
   const bar = document.getElementById('editor-tabs');
   bar.innerHTML = editorOpenFiles.map(f =>
     '<span class="editor-tab' + (f === editorCurrentFile ? ' active' : '') + '" onclick="editorSwitchTab(\\'' + esc(f) + '\\')">' +
+    fileIcon(f) +
     esc(f) +
-    (editorOpenFiles.length > 1 ? '<span style="margin-left:6px;cursor:pointer;opacity:0.5;" onclick="event.stopPropagation();editorCloseTab(\\'' + esc(f) + '\\')">✕</span>' : '') +
+    (editorContentDirty && f === editorCurrentFile ? '<span class="editor-tab-modified"></span>' : '') +
+    (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\\'' + esc(f) + '\\')">✕</span>' : '') +
     '</span>'
   ).join('');
   renderEditorTree();
@@ -4601,7 +4891,8 @@ async function editorSave() {
 
 async function editorDeleteFile() {
   if (!editorCurrentFile) return;
-  if (!confirm('Delete ' + editorCurrentFile + '?')) return;
+  const ok = await confirmAction('Delete File', 'Delete ' + editorCurrentFile + '?', 'Delete');
+  if (!ok) return;
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   const url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(editorCurrentFile)
@@ -5333,7 +5624,8 @@ async function archiveSessionPanel(id) {
 }
 
 async function deleteSessionPanel(id) {
-  if (!confirm('Delete session ' + id.slice(-12) + '?')) return;
+  const ok = await confirmAction('Delete Session', 'Delete session ' + id.slice(-12) + '?', 'Delete');
+  if (!ok) return;
   const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id), { method: 'DELETE' });
   if (res.ok) {
     if (sessionId === id) { sessionId = null; document.getElementById('chat-session-id').textContent = ''; saveSession(); }
@@ -5476,9 +5768,10 @@ function openSkillDesigner(editName) {
   setTimeout(() => document.getElementById('sd-editor').focus(), 100);
 }
 
-function closeSkillDesigner() {
+async function closeSkillDesigner() {
   if (sdDirty) {
-    if (!confirm('You have unsaved changes. Discard?')) return;
+    const ok = await confirmAction('Unsaved Changes', 'You have unsaved changes. Discard?', 'Discard');
+    if (!ok) return;
   }
   document.getElementById('skill-designer').style.display = 'none';
   loadSkills();
@@ -6310,8 +6603,22 @@ function switchMqmTab(name) {
 }
 // ── End Model Quartermaster UI ──────────────────────────────────────────────
 
-const initPage = (() => { try { return localStorage.getItem('cortex_page') || 'chat'; } catch { return 'chat'; } })();
-showPage(initPage);
+// Handle browser back/forward
+window.addEventListener('hashchange', () => {
+  const page = location.hash.replace('#', '');
+  if (page && PAGES.includes(page)) showPage(page);
+});
+
+// Restore page from hash, then localStorage, then default
+(function restorePage() {
+  const hash = location.hash.replace('#', '');
+  if (hash && PAGES.includes(hash)) { showPage(hash); }
+  else {
+    const saved = (() => { try { return localStorage.getItem('cortex_page') || 'chat'; } catch { return 'chat'; } })();
+    showPage(saved);
+  }
+  renderRecentPages();
+})();
 </script>
 
 </body>
