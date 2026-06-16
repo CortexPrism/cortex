@@ -1,4 +1,4 @@
-import { join, normalize, resolve } from '@std/path';
+import { isAbsolute, join, normalize, resolve } from '@std/path';
 import { ensureDir } from '@std/fs';
 import { PATHS } from '../config/paths.ts';
 
@@ -23,7 +23,7 @@ export function resolveWorkspacePath(
   const globalDir = getGlobalWorkspaceDir();
   const rootDir = workspace === 'agent' ? agentDir : globalDir;
 
-  const candidate = rawPath.startsWith('/')
+  const candidate = isAbsolute(rawPath)
     ? normalize(resolve(rawPath))
     : normalize(resolve(join(rootDir, rawPath)));
 

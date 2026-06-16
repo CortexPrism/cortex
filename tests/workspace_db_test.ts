@@ -60,5 +60,7 @@ Deno.test('file_edit_log table can be created and queried', async () => {
   assertEquals(ws.agent_id, 'agent-1');
 
   db.close();
-  await Deno.remove(tmpDir, { recursive: true });
+  // On Windows, libsql may hold file locks briefly after close()
+  await new Promise((r) => setTimeout(r, 100));
+  await Deno.remove(tmpDir, { recursive: true }).catch(() => {});
 });
