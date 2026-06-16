@@ -1,11 +1,11 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { fromFileUrl, join } from '@std/path';
-import { findDenoProcesses, isWindows, killProcessById } from '../utils/platform.ts';
+import { findDenoProcesses, isCompiledBinary, isWindows, killProcessById } from '../utils/platform.ts';
 import { startServer } from '../server/server.ts';
 import { installServerService, uninstallServerService } from './service-helper.ts';
 
-async function findServerProcess(
+export async function findServerProcess(
   port: number,
 ): Promise<{ pid: number; host: string } | null> {
   const pids = await findDenoProcesses('cortex.*main\\.[jt]s.*serve');
@@ -71,6 +71,48 @@ async function waitForServer(host: string, port: number, timeoutMs: number): Pro
   return false;
 }
 
+export async function startServerBackground(port: number, host: string): Promise<boolean> {
+  if (isCompiledBinary()) {
+    const cmd = new Deno.Command(Deno.execPath(), {
+      args: ['serve', '--port', String(port), '--host', host],
+      stdout: 'piped',
+      stderr: 'piped',
+      stdin: 'null',
+    });
+    cmd.spawn();
+  } else {
+    const projectRoot = fromFileUrl(new URL('../../', import.meta.url));
+    const configPath = join(projectRoot, 'deno.json');
+    const mainPath = join(projectRoot, 'src', 'main.ts');
+    const cmd = new Deno.Command(Deno.execPath(), {
+      args: [
+        'run',
+        '--allow-all',
+        `--config=${configPath}`,
+        mainPath,
+        'serve',
+        '--port',
+        String(port),
+        '--host',
+        host,
+      ],
+      cwd: projectRoot,
+      stdout: 'piped',
+      stderr: 'piped',
+      stdin: 'null',
+    });
+    cmd.spawn();
+  }
+
+  const alive = await waitForServer(host, port, 5000);
+  if (alive) {
+    console.log(green(`  ✓ Cortex server started in background (http://${host}:${port})`));
+  } else {
+    console.log(red(`  ✕ Server failed to start on ${host}:${port}`));
+  }
+  return alive;
+}
+
 export async function stopBackgroundServer(port = 3000): Promise<boolean> {
   const existing = await findServerProcess(port);
   if (!existing) return false;
@@ -90,26 +132,6 @@ export async function stopBackgroundServer(port = 3000): Promise<boolean> {
 export const serveCommand = new Command()
   .name('serve')
   .description('Start the Cortex HTTP + WebSocket server with Web UI')
-  .command(
-    'install',
-    new Command()
-      .description('Install server as a system service (systemd / launchd / NSSM)')
-      .option('-p, --port <port:number>', 'Server port', { default: 3000 })
-      .option('-H, --host <host:string>', 'Server bind host', { default: '127.0.0.1' })
-      .action(async (opts: { port: number; host: string }) => {
-        await installServerService({ port: opts.port, host: opts.host });
-        Deno.exit(0);
-      }),
-  )
-  .command(
-    'uninstall',
-    new Command()
-      .description('Uninstall server system service')
-      .action(async () => {
-        await uninstallServerService();
-        Deno.exit(0);
-      }),
-  )
   .option('-p, --port <port:number>', 'Port to listen on', { default: 3000 })
   .option('-H, --host <host:string>', 'Host to bind to', { default: '127.0.0.1' })
   .option('-d, --daemon', 'Run the server in the background')
@@ -142,42 +164,9 @@ export const serveCommand = new Command()
           }
         }
 
-        const projectRoot = fromFileUrl(new URL('../../', import.meta.url));
-        const configPath = join(projectRoot, 'deno.json');
-        const mainPath = join(projectRoot, 'src', 'main.ts');
-        const cmd = new Deno.Command(Deno.execPath(), {
-          args: [
-            'run',
-            '--allow-all',
-            `--config=${configPath}`,
-            mainPath,
-            'serve',
-            '--port',
-            String(opts.port),
-            '--host',
-            opts.host,
-          ],
-          cwd: projectRoot,
-          stdout: 'piped',
-          stderr: 'piped',
-          stdin: 'null',
-        });
-
-        try {
-          cmd.spawn();
-        } catch (err) {
-          console.log(red(`  Failed to start server: ${(err as Error).message}`));
-          Deno.exit(1);
-        }
-
-        const alive = await waitForServer(opts.host, opts.port, 5000);
-        if (alive) {
-          console.log(
-            green(`  ✓ Cortex server started in background (http://${opts.host}:${opts.port})`),
-          );
-        } else {
-          console.log(red(`  ✕ Server failed to start on ${opts.host}:${opts.port}`));
-          console.log(dim('    Check logs above or run without --daemon to see errors'));
+        const alive = await startServerBackground(opts.port, opts.host);
+        if (!alive) {
+          console.log(dim('    Check logs or run without --daemon to see errors'));
           Deno.exit(1);
         }
 
@@ -186,4 +175,24 @@ export const serveCommand = new Command()
 
       await startServer({ port: opts.port, host: opts.host });
     },
+  )
+  .command(
+    'install',
+    new Command()
+      .description('Install server as a system service (systemd / launchd / NSSM)')
+      .option('-p, --port <port:number>', 'Server port', { default: 3000 })
+      .option('-H, --host <host:string>', 'Server bind host', { default: '127.0.0.1' })
+      .action(async (opts: { port: number; host: string }) => {
+        await installServerService({ port: opts.port, host: opts.host });
+        Deno.exit(0);
+      }),
+  )
+  .command(
+    'uninstall',
+    new Command()
+      .description('Uninstall server system service')
+      .action(async () => {
+        await uninstallServerService();
+        Deno.exit(0);
+      }),
   );

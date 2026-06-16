@@ -83,7 +83,9 @@ export const installCommand = new Command()
         } else {
           console.log('');
           const platform = Deno.build.os === 'darwin' ? 'macOS' : 'Windows';
-          console.log(dim(`  No manual start needed on ${platform} (services auto-init via launchd / NSSM)`));
+          console.log(
+            dim(`  No manual start needed on ${platform} (services auto-init via launchd / NSSM)`),
+          );
         }
       }
 
