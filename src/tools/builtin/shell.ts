@@ -1,4 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
+import { getShellCommand, isWindows } from '../../utils/platform.ts';
 
 const TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 32 * 1024;
@@ -9,6 +10,10 @@ const BLOCKED = [
   /dd\s+if=/,
   /:\s*\(\s*\)\s*\{.*\}/,
   />\s*\/dev\/(s?d[a-z]|nvme)/,
+  /del\s+\/f\s+\/s\s+\/q\s+\w:\\/i,
+  /format\s+\w:/i,
+  /rmdir\s+\/s\s+\/q\s+\w:\\/i,
+  /Remove-Item\s+-Recurse\s+-Force\s+\w:\\/i,
 ];
 
 function isSafe(cmd: string): boolean {
@@ -68,15 +73,26 @@ export const shellTool: Tool = {
     }
 
     try {
-      const proc = new Deno.Command('sh', {
-        args: ['-c', command],
+      const shell = getShellCommand();
+      const proc = new Deno.Command(shell.cmd, {
+        args: shell.args(command),
         cwd,
         stdout: 'piped',
         stderr: 'piped',
       });
 
       const child = proc.spawn();
-      const timer = setTimeout(() => child.kill('SIGTERM'), timeout);
+      const timer = setTimeout(() => {
+        try {
+          if (isWindows()) {
+            child.kill();
+          } else {
+            child.kill('SIGTERM');
+          }
+        } catch {
+          // already exited
+        }
+      }, timeout);
 
       const { code, stdout, stderr } = await child.output();
       clearTimeout(timer);

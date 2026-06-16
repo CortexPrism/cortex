@@ -7,6 +7,82 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.30.0] — 2026-06-16
+
+### Added
+
+- **Cross-platform support (macOS & Windows)** — CortexPrism now runs natively on all three major
+  platforms alongside existing Linux support:
+  - **Platform detection utility** (`src/utils/platform.ts`) — `isWindows()`, `isMacOS()`,
+    `isLinux()`, `getShellCommand()`, `getExeSuffix()` helpers used throughout the codebase
+  - **Cross-platform shell execution** (`src/tools/builtin/shell.ts`) — PowerShell on Windows
+    (`-NoProfile -Command`), `sh` on Unix. Expanded safety filter with Windows-specific blocked
+    commands (`del /f /s /q C:\`, `format`, `Remove-Item -Recurse -Force`)
+  - **Cross-platform file permissions** (`src/utils/permissions.ts`) — `makeExecutable()` and
+    `makePrivate()` abstractions that are no-ops on Windows, `chmod` on Unix. All `Deno.chmod()`
+    call sites migrated
+  - **Windows home directory resolution** (`src/config/paths.ts`) — `HOMEDRIVE`/`HOMEPATH` fallback
+    in addition to `HOME`/`USERPROFILE`
+  - **Cross-platform sandbox runners** (`src/sandbox/executor.ts`) — `.exe` suffixed binaries on
+    Windows, platform-aware `killProcess()` helper (SIGTERM on Unix, bare kill on Windows),
+    platform-specific Docker Desktop installation messages
+  - **Cross-platform git hooks** (`src/triggers/git-hooks.ts`) — `$(date -Iseconds)` replaced with
+    Deno-generated ISO timestamps
+  - **Cross-platform update installer** (`src/update/installer.ts`) — `powershell Expand-Archive` for
+    zip extraction on Windows, `tar.exe` on Windows, `getExeSuffix()` for binary naming
+
+- **Desktop automation — macOS** (`src/desktop/darwin.ts`) — `screencapture` for screenshots,
+  `osascript` for keystrokes, `pbpaste`/`pbcopy` for clipboard, `cliclick` for mouse actions and
+  drags. Full `DesktopAutomation` interface implementation
+
+- **Desktop automation — Windows** (`src/desktop/windows.ts`) — PowerShell + .NET
+  `System.Windows.Forms`/`System.Drawing` for screenshots, mouse positioning, clicks, drags,
+  keystrokes, and clipboard. Full `DesktopAutomation` interface implementation
+
+- **Desktop automation abstraction** (`src/desktop/types.ts`) — `DesktopAutomation` interface with
+  `executeDesktopAction()`, `getDockerfile()`, `getEntrypointScript()`. Platform-dispatching facade
+  in `src/desktop/automation.ts` selects the correct implementation at runtime via `Deno.build.os`
+
+- **Daemon service installation** (`src/cli/daemon.ts`) — `cortex daemon install` and
+  `cortex daemon uninstall` commands for all platforms:
+  - **Linux**: `systemctl --user` via `~/.config/systemd/user/cortex-daemon.service`
+  - **macOS**: `launchctl load/unload` via `~/Library/LaunchAgents/com.cortexprism.daemon.plist`
+  - **Windows**: NSSM-based service or directs to `deploy/install-service.bat`
+
+- **Deployment configs** — `deploy/cortex-daemon.service` (systemd user unit), `deploy/com.cortexprism.plist`
+  (launchd agent), `deploy/install-service.bat` (Windows NSSM/Task Scheduler setup)
+
+- **CI/CD expansion** (`.github/workflows/ci.yml`, `.github/workflows/release.yml`) — Test matrix
+  expanded to `[ubuntu-latest, macos-latest, windows-latest]`. Tauri build job added with platform
+  matrix (deb/dmg/msi)
+
+- **Platform documentation** — `docs/install/macos.md`, `docs/install/windows.md`,
+  `docs/COMPATIBILITY.md` (feature parity matrix across all platforms)
+
+- **Windows installer** (`install.ps1`) — PowerShell-based installer: clones repo, installs Deno if
+  missing, creates `cortex.bat` wrapper, adds to user PATH
+
+- **Package distribution manifests** — Homebrew formula (`packaging/homebrew/cortex.rb`), Chocolatey
+  nuspec + install script (`packaging/chocolatey/`), Scoop bucket (`packaging/scoop/cortex.json`),
+  winget manifest (`packaging/winget/`)
+
+- **Code signing guide** (`packaging/CODE_SIGNING.md`) — macOS codesign/notarization + Windows
+  signtool instructions for desktop app distribution
+
+### Changed
+
+- Desktop automation refactored from single Linux-only `automation.ts` to platform-dispatching
+  architecture with three independent implementations sharing a common `DesktopAutomation` interface.
+  Public API (`executeDesktopAction`, `getDockerfile`, `getEntrypointScript`) unchanged for backward
+  compatibility
+
+### Fixed
+
+- **macOS screenshot args** — `screencapture` format flag was duplicated in argv. Fixed to pass
+  single `-t png`/`-t jpg`
+- **macOS keypress** — Changed from `key code` (numeric codes only) to `keystroke` with AppleScript
+  `using {modifiers}` syntax for proper key name support
+
 ## [0.29.0] — 2026-06-16
 
 ### Added

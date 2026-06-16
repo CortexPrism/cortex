@@ -2,6 +2,7 @@ import { exists } from '@std/fs';
 import { join } from '@std/path';
 import type { InstallManifest } from './installer.ts';
 import { loadManifest, saveManifest } from './installer.ts';
+import { makeExecutable } from '../utils/permissions.ts';
 
 const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
 
@@ -76,7 +77,7 @@ export async function rollbackUpdate(): Promise<RollbackResult> {
 
       await Deno.rename(manifest.binaryPath, `${manifest.binaryPath}.failed`);
       await Deno.rename(manifest.prevBinaryPath, manifest.binaryPath);
-      await Deno.chmod(manifest.binaryPath, 0o755);
+      await makeExecutable(manifest.binaryPath);
 
       const rollbackVersion = manifest.prevVersion;
       manifest.version = rollbackVersion;

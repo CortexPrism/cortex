@@ -1,0 +1,14 @@
+[Unit]
+Description=Cortex Daemon Supervisor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cortex daemon run
+Restart=always
+RestartSec=5
+Environment="HOME=%h"
+
+[Install]
+WantedBy=default.target
