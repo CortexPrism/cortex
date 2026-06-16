@@ -102,7 +102,7 @@ export const soulCommand = new Command()
         }
         console.log(
           dim('\n  Use a template during setup or apply one with:\n') +
-          dim('    cortex soul apply-template <name>\n'),
+            dim('    cortex soul apply-template <name>\n'),
         );
       }),
   )
@@ -145,7 +145,7 @@ export const soulCommand = new Command()
           for (const w of warnings) console.log(`  ${yellow('⚠')} ${w}`);
           console.log(
             dim('\n  Hint: run `cortex soul apply-template <name>` or `cortex soul edit`') +
-            dim('\n  to add the missing sections.\n'),
+              dim('\n  to add the missing sections.\n'),
           );
         }
       }),

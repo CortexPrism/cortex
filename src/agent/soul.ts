@@ -309,5 +309,7 @@ export const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function generatePersonalitySoul(personality: string): string {
-  return PERSONALITY_TEMPLATES[Object.hasOwn(PERSONALITY_TEMPLATES, personality) ? personality : 'developer']!;
+  return PERSONALITY_TEMPLATES[
+    Object.hasOwn(PERSONALITY_TEMPLATES, personality) ? personality : 'developer'
+  ]!;
 }

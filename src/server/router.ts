@@ -754,7 +754,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/dashboard/config') {
     const configPath = PATHS.configDir + '/dashboard.json';
     let config = { widgets: [] };
-    try { config = JSON.parse(await Deno.readTextFile(configPath)); } catch { /* defaults */ }
+    try {
+      config = JSON.parse(await Deno.readTextFile(configPath));
+    } catch { /* defaults */ }
     return json(config);
   }
 

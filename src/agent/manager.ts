@@ -166,5 +166,3 @@ async function readOrDefault(filePath: string, defaultContent: string): Promise<
   } catch { /* ignore */ }
   return defaultContent;
 }
-
-

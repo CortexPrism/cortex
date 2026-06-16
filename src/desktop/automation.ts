@@ -1,4 +1,10 @@
-export type { Point, Rect, DesktopAction, DesktopActionResult, DesktopAutomation } from './types.ts';
+export type {
+  DesktopAction,
+  DesktopActionResult,
+  DesktopAutomation,
+  Point,
+  Rect,
+} from './types.ts';
 import type { DesktopAction, DesktopActionResult, DesktopAutomation } from './types.ts';
 import { darwinAutomation } from './darwin.ts';
 import { windowsAutomation } from './windows.ts';

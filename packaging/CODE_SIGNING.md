@@ -5,11 +5,13 @@ Desktop app bundles require code signing for distribution outside developer mode
 ## macOS
 
 ### Requirements
+
 - Apple Developer account ($99/year)
 - Developer ID Application certificate
 - App-specific password for notarization
 
 ### Signing
+
 ```bash
 codesign --deep --force --verify --verbose \
   --sign "Developer ID Application: Your Name (TEAMID)" \
@@ -20,6 +22,7 @@ codesign --verify --verbose "Cortex.app"
 ```
 
 ### Notarization
+
 ```bash
 # Create zip for notarization
 ditto -c -k --keepParent "Cortex.app" "Cortex.zip"
@@ -36,6 +39,7 @@ xcrun stapler staple "Cortex.app"
 ```
 
 ### Env vars for CI
+
 ```
 APPLE_DEVELOPER_ID=Developer ID Application: Your Name (TEAMID)
 APPLE_NOTARY_USER=your@email.com
@@ -46,10 +50,12 @@ APPLE_TEAM_ID=TEAMID
 ## Windows
 
 ### Requirements
+
 - EV Code Signing Certificate (~$300-400/year) or OV Certificate (~$70/year)
 - Hardware token or cloud HSM for EV certs
 
 ### Signing with signtool
+
 ```cmd
 signtool sign /fd SHA256 ^
   /tr http://timestamp.digicert.com ^
@@ -59,6 +65,7 @@ signtool sign /fd SHA256 ^
 ```
 
 ### Env vars for CI
+
 ```
 WINDOWS_CERTIFICATE_BASE64=<base64 encoded .pfx>
 WINDOWS_CERTIFICATE_PASSWORD=<pfx password>
@@ -86,5 +93,7 @@ In `desktop/src-tauri/tauri.conf.json`, set bundle signing:
 ## Without Code Signing
 
 Without signing:
+
 - **macOS**: Users must right-click → Open on first launch, or run `xattr -d com.apple.quarantine`
-- **Windows**: SmartScreen may show "unrecognized app" warning, users can click "More info" → "Run anyway"
+- **Windows**: SmartScreen may show "unrecognized app" warning, users can click "More info" → "Run
+  anyway"

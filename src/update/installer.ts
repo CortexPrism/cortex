@@ -58,7 +58,11 @@ async function extractTarball(
 async function extractZip(zipPath: string, destDir: string): Promise<void> {
   if (isWindows()) {
     const cmd = new Deno.Command('powershell.exe', {
-      args: ['-NoProfile', '-Command', `Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force`],
+      args: [
+        '-NoProfile',
+        '-Command',
+        `Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force`,
+      ],
       stdout: 'piped',
       stderr: 'piped',
     });
