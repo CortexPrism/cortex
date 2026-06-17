@@ -461,6 +461,8 @@ const HTML = `<!DOCTYPE html>
   .card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:14px; transition:all 0.2s ease; }
   .card:hover { border-color:rgba(6,182,212,0.3); }
   .card-sm { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .card-mp { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+  .card-mp:hover { border-color:rgba(6,182,212,0.25); box-shadow:0 2px 12px rgba(0,0,0,0.15); transform:translateY(-1px); }
 
   /* Memory tabs */
   .mem-tab { padding:8px 16px; border:none; background:transparent; color:var(--text3); font-size:12px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
@@ -5688,11 +5690,80 @@ async function loadMarketplace() {
   const category = document.getElementById('mp-category')?.value || '';
 
   try {
-    // Load stats
-    const stats = await fetch(BASE + '/api/marketplace/stats').then(r => r.json()).catch(() => null);
+    const [stats, installedPlugins, installedAgents] = await Promise.all([
+      fetch(BASE + '/api/marketplace/stats').then(r => r.json()).catch(() => null),
+      fetch(BASE + '/api/plugins').then(r => r.json()).catch(() => []),
+      fetch(BASE + '/api/agents').then(r => r.json()).catch(() => []),
+    ]);
     const statsEl = document.getElementById('mp-stats');
     if (statsEl && stats) {
       statsEl.textContent = stats.totalPlugins + ' plugins · ' + stats.totalAgents + ' agents · ' + (stats.totalDownloads >= 1000 ? Math.round(stats.totalDownloads/1000) + 'K' : stats.totalDownloads) + ' downloads';
+    }
+    const installedPluginNames = new Set((installedPlugins || []).map((i) => i.name));
+    const installedPluginMap = new Map((installedPlugins || []).map((i) => [i.name, i]));
+    const installedAgentNames = new Set((installedAgents || []).map((a) => a.name));
+
+    function pluginCard(p) {
+      const isInstalled = installedPluginNames.has(p.name);
+      const local = installedPluginMap.get(p.name);
+      const hue = [...p.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
+      return \`<div class="card card-mp" style="display:flex;align-items:flex-start;gap:14px;cursor:default;">
+        <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:hsl(\${hue},55%,18%);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:hsl(\${hue},60%,72%);text-transform:uppercase;">\${esc(p.name[0] || '?')}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
+            <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${esc(p.kind)}</span>
+            <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(p.version)}</span>
+            \${p.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
+            \${isInstalled ? '<span class="badge" style="background:' + (local?.enabled ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)') + ';color:' + (local?.enabled ? '#4ade80' : 'var(--text3)') + ';">' + (local?.enabled ? 'installed' : 'disabled') + '</span>' : ''}
+          </div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:4px;line-height:1.5;">\${esc(p.description || '')}</p>
+          <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-family:'JetBrains Mono',monospace;">\${esc(p.slug)}</span>
+            <span>·</span>
+            <span>\${p.downloads} \${p.downloads === 1 ? 'download' : 'downloads'}</span>
+            \${p.author ? '<span>· by ' + esc(p.author) + '</span>' : ''}
+            \${p.category ? '<span>· ' + esc(p.category) + '</span>' : ''}
+            \${p.license ? '<span>· ' + esc(p.license) + '</span>' : ''}
+          </div>
+        </div>
+        <div style="flex-shrink:0;">
+          \${isInstalled
+            ? '<span class="btn btn-ghost" style="font-size:12px;padding:5px 14px;opacity:0.6;cursor:default;">Installed</span>'
+            : '<button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="installMarketplacePlugin(\\'' + esc(p.slug) + '\\', \\'' + esc(p.kind) + '\\')">Install</button>'}
+        </div>
+      </div>\`;
+    }
+
+    function agentCard(a) {
+      const isInstalled = installedAgentNames.has(a.name);
+      const hue = [...a.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
+      return \`<div class="card card-mp" style="display:flex;align-items:flex-start;gap:14px;cursor:default;">
+        <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:hsl(\${hue},55%,18%);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:hsl(\${hue},60%,72%);text-transform:uppercase;">\${esc(a.name[0] || '?')}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:600;">\${esc(a.name)}</span>
+            \${a.provider ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(a.provider) + '</span>' : ''}
+            <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(a.version)}</span>
+            \${a.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(a.rating)) + '</span>' : ''}
+            \${isInstalled ? '<span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">installed</span>' : ''}
+          </div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:4px;line-height:1.5;">\${esc(a.description || '')}</p>
+          <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-family:'JetBrains Mono',monospace;">\${esc(a.slug)}</span>
+            <span>·</span>
+            <span>\${a.downloads} \${a.downloads === 1 ? 'download' : 'downloads'}</span>
+            \${a.model ? '<span>· ' + esc(a.model) + '</span>' : ''}
+            \${a.author ? '<span>· by ' + esc(a.author) + '</span>' : ''}
+            \${a.tags?.length ? '<span>· [' + a.tags.map(t => esc(t)).join(', ') + ']</span>' : ''}
+          </div>
+        </div>
+        <div style="flex-shrink:0;">
+          \${isInstalled
+            ? '<span class="btn btn-ghost" style="font-size:12px;padding:5px 14px;opacity:0.6;cursor:default;">Installed</span>'
+            : '<button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="importMarketplaceAgent(\\'' + esc(a.slug) + '\\')">Import</button>'}
+        </div>
+      </div>\`;
     }
 
     if (marketplaceTab === 'plugins') {
@@ -5706,31 +5777,7 @@ async function loadMarketplace() {
         el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><p style="color:var(--text3);font-size:13px;">No plugins found' + (search ? ' for "' + esc(search) + '"' : '') + '.</p></div>';
         return;
       }
-      el.innerHTML = '';
-      for (const p of data.plugins) {
-        const d = document.createElement('div');
-        d.className = 'card-sm';
-        d.innerHTML = \`
-          <div style="display:flex;align-items:flex-start;gap:12px;">
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
-                <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${esc(p.kind)}</span>
-                <span style="font-size:11px;color:var(--text3);">v\${esc(p.version)}</span>
-                \${p.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
-              </div>
-              <p style="font-size:12px;color:var(--text2);margin-bottom:4px;">\${esc(p.description || '')}</p>
-              <div style="font-size:11px;color:var(--text3);">
-                \${esc(p.slug)} · \${p.downloads} downloads
-                \${p.author ? ' · by ' + esc(p.author) : ''}
-                \${p.category ? ' · ' + esc(p.category) : ''}
-              </div>
-            </div>
-            <button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="installMarketplacePlugin('\${esc(p.slug)}', '\${esc(p.kind)}')">Install</button>
-          </div>
-        \`;
-        el.appendChild(d);
-      }
+      el.innerHTML = data.plugins.map(pluginCard).join('');
     } else {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
@@ -5741,32 +5788,7 @@ async function loadMarketplace() {
         el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p style="color:var(--text3);font-size:13px;">No agents found' + (search ? ' for "' + esc(search) + '"' : '') + '.</p></div>';
         return;
       }
-      el.innerHTML = '';
-      for (const a of data.agents) {
-        const d = document.createElement('div');
-        d.className = 'card-sm';
-        d.innerHTML = \`
-          <div style="display:flex;align-items:flex-start;gap:12px;">
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <span style="font-size:13px;font-weight:600;">\${esc(a.name)}</span>
-                \${a.provider ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(a.provider) + '</span>' : ''}
-                <span style="font-size:11px;color:var(--text3);">v\${esc(a.version)}</span>
-                \${a.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(a.rating)) + '</span>' : ''}
-              </div>
-              <p style="font-size:12px;color:var(--text2);margin-bottom:4px;">\${esc(a.description || '')}</p>
-              <div style="font-size:11px;color:var(--text3);">
-                \${esc(a.slug)} · \${a.downloads} downloads
-                \${a.model ? ' · ' + esc(a.model) : ''}
-                \${a.author ? ' · by ' + esc(a.author) : ''}
-                \${a.tags?.length ? ' · [' + a.tags.map(t => esc(t)).join(', ') + ']' : ''}
-              </div>
-            </div>
-            <button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="importMarketplaceAgent('\${esc(a.slug)}')">Import</button>
-          </div>
-        \`;
-        el.appendChild(d);
-      }
+      el.innerHTML = data.agents.map(agentCard).join('');
     }
   } catch (e) {
     el.innerHTML = '<div style="text-align:center;padding:40px 20px;"><p style="color:#f87171;font-size:13px;">Failed to load marketplace: ' + esc(e.message) + '</p><p style="font-size:12px;color:var(--text3);margin-top:6px;">Make sure the Cortex server can reach https://cortexprism.io</p></div>';
