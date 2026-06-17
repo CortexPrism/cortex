@@ -100,9 +100,9 @@ export async function runDailyConsolidation(): Promise<void> {
   await db.run(
     `UPDATE semantic_memory
      SET decay_score = MAX(0.01,
-       decay_score * (1.0 / (1.0 + (julianday('now') - julianday(last_accessed_at)) / half_life_days))
+       decay_score * (1.0 / (1.0 + (julianday('now') - julianday(last_accessed)) / half_life_days))
      )
-     WHERE last_accessed_at IS NOT NULL`,
+     WHERE last_accessed IS NOT NULL`,
   );
 
   await db.run(

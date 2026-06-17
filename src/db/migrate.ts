@@ -225,6 +225,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '019_model_quartermaster.sql',
       label: 'cortex.db (model quartermaster)',
     },
+    {
+      db: memoryDb,
+      sqlFile: '020_episodic_updated_at.sql',
+      label: 'memory.db (episodic updated_at)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
