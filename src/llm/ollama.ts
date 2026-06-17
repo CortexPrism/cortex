@@ -1,4 +1,10 @@
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+} from './types.ts';
 
 interface OllamaMessage {
   role: string;
@@ -62,7 +68,12 @@ export class OllamaProvider implements LLMProvider {
     if (options.numCtx != null) ollamaOpts.num_ctx = options.numCtx;
     if (options.numThread != null) ollamaOpts.num_thread = options.numThread;
 
-    const body: Record<string, unknown> = { model: options.model, messages, stream: false, options: ollamaOpts };
+    const body: Record<string, unknown> = {
+      model: options.model,
+      messages,
+      stream: false,
+      options: ollamaOpts,
+    };
     if (options.keepAlive != null) body.keep_alive = options.keepAlive;
 
     const response = await fetch(`${this.baseUrl}/api/chat`, {

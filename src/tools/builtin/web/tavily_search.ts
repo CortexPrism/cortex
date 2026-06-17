@@ -108,7 +108,12 @@ export const tavilySearchTool: Tool = {
 
       if (!res.ok) {
         const body = await res.text().catch(() => '');
-        return mkResult(false, '', `Tavily returned HTTP ${res.status}: ${body.slice(0, 200)}`, start);
+        return mkResult(
+          false,
+          '',
+          `Tavily returned HTTP ${res.status}: ${body.slice(0, 200)}`,
+          start,
+        );
       }
 
       const data = await res.json() as TavilyResponse;

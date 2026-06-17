@@ -1,7 +1,12 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { fromFileUrl, join } from '@std/path';
-import { findDenoProcesses, isCompiledBinary, isWindows, killProcessById } from '../utils/platform.ts';
+import {
+  findDenoProcesses,
+  isCompiledBinary,
+  isWindows,
+  killProcessById,
+} from '../utils/platform.ts';
 import { startServer } from '../server/server.ts';
 import { installServerService, uninstallServerService } from './service-helper.ts';
 import { PATHS } from '../config/paths.ts';

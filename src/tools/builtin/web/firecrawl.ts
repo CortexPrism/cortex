@@ -49,7 +49,8 @@ export const firecrawlTool: Tool = {
       {
         name: 'mode',
         type: 'string',
-        description: '"scrape" to extract content from a specific URL, or "search" to search the web and return page content',
+        description:
+          '"scrape" to extract content from a specific URL, or "search" to search the web and return page content',
         required: true,
       },
       {
@@ -73,7 +74,8 @@ export const firecrawlTool: Tool = {
       {
         name: 'only_main_content',
         type: 'boolean',
-        description: 'Strip navigation, footers etc. and return only main body content (default true)',
+        description:
+          'Strip navigation, footers etc. and return only main body content (default true)',
         required: false,
       },
     ],
@@ -120,7 +122,12 @@ export const firecrawlTool: Tool = {
 
         if (!res.ok) {
           const body = await res.text().catch(() => '');
-          return mkResult(false, '', `Firecrawl returned HTTP ${res.status}: ${body.slice(0, 200)}`, start);
+          return mkResult(
+            false,
+            '',
+            `Firecrawl returned HTTP ${res.status}: ${body.slice(0, 200)}`,
+            start,
+          );
         }
 
         const data = await res.json() as FirecrawlScrapeResponse;
@@ -173,7 +180,12 @@ export const firecrawlTool: Tool = {
 
         if (!res.ok) {
           const body = await res.text().catch(() => '');
-          return mkResult(false, '', `Firecrawl search returned HTTP ${res.status}: ${body.slice(0, 200)}`, start);
+          return mkResult(
+            false,
+            '',
+            `Firecrawl search returned HTTP ${res.status}: ${body.slice(0, 200)}`,
+            start,
+          );
         }
 
         const data = await res.json() as FirecrawlSearchResponse;

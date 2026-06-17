@@ -2,12 +2,16 @@
 
 All notable changes to CortexPrism are documented here.
 
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)  
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
 ## [Unreleased]
+
+---
+
+## [0.33.0] — 2026-06-17
 
 ### Added
 
@@ -25,35 +29,40 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **`POST /api/plugins/update-all`** (`src/server/router.ts`) — applies all available plugin updates
   and returns per-plugin success/error detail
 - **Plugin Updates settings card** (`src/server/ui.ts`) — new card in the Updates settings pane with
-  interval, GitHub token (with PAT generation link), startup and auto-update checkboxes, and
-  **Save Plugin Settings**, **Check Now**, and **Update All** action buttons with inline results panel
-- **Provider-specific LLM settings** (`src/config/config.ts`, `src/llm/types.ts`, `src/llm/openai-compatible.ts`,
-  `src/llm/ollama.ts`, `src/agent/loop.ts`, `src/server/ws.ts`) — each provider now exposes its unique
-  parameters end-to-end from config → `CompletionOptions` → provider adapter:
-  - **Anthropic / Google / OpenAI** — `reasoningEffort` (low / medium / high) already wired; now surfaced
-    as a labelled dropdown in the Edit modal ("Extended Thinking", "Thinking Budget", "Reasoning Effort")
-  - **OpenRouter** — `httpReferer` and `xTitle` injected as `HTTP-Referer` / `X-Title` request headers
-  - **Perplexity** — `searchRecencyFilter` (month / week / day / hour), `returnCitations`, `returnImages`
-    forwarded as `search_recency_filter`, `return_citations`, `return_images` body fields
+  interval, GitHub token (with PAT generation link), startup and auto-update checkboxes, and **Save
+  Plugin Settings**, **Check Now**, and **Update All** action buttons with inline results panel
+- **Provider-specific LLM settings** (`src/config/config.ts`, `src/llm/types.ts`,
+  `src/llm/openai-compatible.ts`, `src/llm/ollama.ts`, `src/agent/loop.ts`, `src/server/ws.ts`) —
+  each provider now exposes its unique parameters end-to-end from config → `CompletionOptions` →
+  provider adapter:
+  - **Anthropic / Google / OpenAI** — `reasoningEffort` (low / medium / high) already wired; now
+    surfaced as a labelled dropdown in the Edit modal ("Extended Thinking", "Thinking Budget",
+    "Reasoning Effort")
+  - **OpenRouter** — `httpReferer` and `xTitle` injected as `HTTP-Referer` / `X-Title` request
+    headers
+  - **Perplexity** — `searchRecencyFilter` (month / week / day / hour), `returnCitations`,
+    `returnImages` forwarded as `search_recency_filter`, `return_citations`, `return_images` body
+    fields
   - **Together AI / Fireworks / Novita** — `repetitionPenalty` forwarded as `repetition_penalty`
   - **Ollama** — `numCtx` → `num_ctx`, `numThread` → `num_thread` in `options` object; `keepAlive` →
     `keep_alive` at request-body level; both `complete()` and `stream()` wired
   - **LM Studio** — `numCtx`, `keepAlive` forwarded via the OpenAI-compatible path
   - **LiteLLM** — `dropParams` → `drop_params` body field to silently ignore unsupported parameters
   - **Venice AI** — `includeVeniceSystemPrompt` → `venice_parameters.include_venice_system_prompt`
-- **`PROVIDER_EXTRA_FIELDS` metadata** (`src/server/ui.ts`) — declarative per-provider field descriptor
-  map (`select` / `number` / `text` / `checkbox`) that drives a dynamic "Provider Settings" section
-  injected into the Add/Edit Model modal when a provider with extra fields is selected
+- **`PROVIDER_EXTRA_FIELDS` metadata** (`src/server/ui.ts`) — declarative per-provider field
+  descriptor map (`select` / `number` / `text` / `checkbox`) that drives a dynamic "Provider
+  Settings" section injected into the Add/Edit Model modal when a provider with extra fields is
+  selected
 - **Provider card summary badges** (`src/server/ui.ts`) — configured provider cards in Settings now
-  display active extra settings inline (reasoning effort, repetition penalty, recency filter, num_ctx,
-  keep-alive, citations, drop-params, venice-prompt)
-- **`PUT /api/config/provider` body widened** (`src/server/router.ts`) — accepts all new provider-specific
-  fields so the modal save correctly persists them
-- **11 new LLM providers** — Cerebras, Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI,
-  LM Studio, LiteLLM, Hugging Face Inference Router, Alibaba (Qwen), and Venice AI; each implemented
-  as an `OpenAICompatibleProvider` subclass with verified base URLs and auth from official docs
-  (`src/llm/cerebras.ts`, `fireworks.ts`, `perplexity.ts`, `nvidia.ts`, `moonshot.ts`, `novita.ts`,
-  `lmstudio.ts`, `litellm.ts`, `huggingface.ts`, `alibaba.ts`, `venice.ts`)
+  display active extra settings inline (reasoning effort, repetition penalty, recency filter,
+  num_ctx, keep-alive, citations, drop-params, venice-prompt)
+- **`PUT /api/config/provider` body widened** (`src/server/router.ts`) — accepts all new
+  provider-specific fields so the modal save correctly persists them
+- **11 new LLM providers** — Cerebras, Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita
+  AI, LM Studio, LiteLLM, Hugging Face Inference Router, Alibaba (Qwen), and Venice AI; each
+  implemented as an `OpenAICompatibleProvider` subclass with verified base URLs and auth from
+  official docs (`src/llm/cerebras.ts`, `fireworks.ts`, `perplexity.ts`, `nvidia.ts`, `moonshot.ts`,
+  `novita.ts`, `lmstudio.ts`, `litellm.ts`, `huggingface.ts`, `alibaba.ts`, `venice.ts`)
 - **Model listing for all new providers** (`src/server/models.ts`) — dedicated `*Models()` functions
   registered in the `LISTERS` map; Perplexity falls back to a static curated list as it exposes no
   `/models` endpoint
@@ -63,12 +72,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **`GET /api/providers/configured`** (`src/server/router.ts`) — returns only providers that have an
   API key (or `baseUrl` for Ollama) configured, used by the agent modal and QM settings
 - **Quartermaster unified page** (`src/server/ui.ts`) — merged the former separate "Quartermaster"
-  and "Model Intel" nav items into a single page with **Tool Orchestration** and **Model Intelligence**
-  section tabs plus a ⚙ settings panel
+  and "Model Intel" nav items into a single page with **Tool Orchestration** and **Model
+  Intelligence** section tabs plus a ⚙ settings panel
 - **QM Settings panel** (`src/server/ui.ts`, `src/server/router.ts`) — inline settings to
-  enable/disable Model Intelligence, pin a dedicated QM provider + model (ideal for Ollama/LM Studio),
-  choose strategy (conservative / balanced / aggressive), and set the observe threshold; saved via
-  `POST /api/qm/config`
+  enable/disable Model Intelligence, pin a dedicated QM provider + model (ideal for Ollama/LM
+  Studio), choose strategy (conservative / balanced / aggressive), and set the observe threshold;
+  saved via `POST /api/qm/config`
 - **`GET/POST /api/qm/config`** (`src/server/router.ts`) — read and write `modelSelection` config
   block including new `quartermasterProvider` and `quartermasterModel` fields
 - **`POST /api/qm/reset`** (`src/server/router.ts`) — clears all learned QM patterns, decisions,
@@ -79,10 +88,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
   hit/success counts, avg confidence) from `/api/qm/patterns`; renders a progress bar per pattern
 - **QM decisions tab rework** (`src/server/ui.ts`) — shows aggregate accuracy header, signal
   contribution per decision, session suffix, and pending-evaluation count
-- **First-time password setup** (`src/server/router.ts`, `src/server/ui.ts`) — `POST /api/auth/change-password`
-  now skips session auth when no password exists yet; settings Security tab dynamically shows
-  "Set Password" vs "Change Password" and hides the current-password field on first use;
-  a new session cookie is returned immediately after the password is set
+- **First-time password setup** (`src/server/router.ts`, `src/server/ui.ts`) —
+  `POST /api/auth/change-password` now skips session auth when no password exists yet; settings
+  Security tab dynamically shows "Set Password" vs "Change Password" and hides the current-password
+  field on first use; a new session cookie is returned immediately after the password is set
 - **`quartermasterProvider` / `quartermasterModel` config fields** (`src/config/config.ts`) —
   optional fields on `ModelSelectionConfig` to pin model routing to a specific provider
 - **Request-flow architecture doc** (`docs/request-flow.md`) — Mermaid flowchart covering the full
@@ -102,9 +111,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
   redirects all stdout/stderr to `~/.cortex/data/server.log` (appending across restarts) via a shell
   redirect, replacing the previous silent `/dev/null` discard; `PATHS.serverLog` exposes the
   canonical path
-- **Agent loop debug tracing** (`src/agent/loop.ts`) — `[loop]` prefixed `console.log` statements
-  on every tool round: turn ID, tool presence, stream mode, response length/preview, detected tool
-  call names, per-tool execution results (success, output length, error), prose emission length, and
+- **Agent loop debug tracing** (`src/agent/loop.ts`) — `[loop]` prefixed `console.log` statements on
+  every tool round: turn ID, tool presence, stream mode, response length/preview, detected tool call
+  names, per-tool execution results (success, output length, error), prose emission length, and
   final response emission path
 
 ### Fixed
@@ -116,29 +125,31 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Direct URL fallback skips GitHub URLs** (`src/plugins/update.ts`) — the manifest re-fetch
   fallback in `checkUpdateForRow` now excludes `github.com` URLs, which are exclusively handled by
   the Releases/Tags API path
-- **`githubToken` threaded through `applyPluginUpdate`** (`src/plugins/update.ts`, `src/cli/daemon.ts`,
-  `src/server/router.ts`) — token is now passed to the internal `checkUpdateForRow` call, preventing
-  unauthenticated GitHub API rate-limit failures that caused fallthrough to the HTML fetch path
+- **`githubToken` threaded through `applyPluginUpdate`** (`src/plugins/update.ts`,
+  `src/cli/daemon.ts`, `src/server/router.ts`) — token is now passed to the internal
+  `checkUpdateForRow` call, preventing unauthenticated GitHub API rate-limit failures that caused
+  fallthrough to the HTML fetch path
 - **Route ordering for `/api/plugins/check-updates`** (`src/server/router.ts`) — moved specific
   routes before the `GET /api/plugins/:name` catch-all which was intercepting them and returning 404
-- **Daily semantic decay was a no-op** (`src/memory/consolidate.ts`) — `runDailyConsolidation` queried
-  the non-existent column `last_accessed_at`; corrected to `last_accessed` (the actual schema column),
-  so decay scores are now updated on every daily cycle
-- **Heuristic cycle metrics always reported zero** (`src/memory/heuristics.ts`) — `boostImportanceFromAccess`
-  and `slowDecayForFrequentAccess` both hardcoded `return 0`; they now use `db.client.execute` to
-  obtain `rowsAffected` and return the real updated-row count
-- **Half-life extension only fired once** (`src/memory/heuristics.ts`) — `slowDecayForFrequentAccess`
-  guarded with `half_life_days <= default`, preventing re-triggering after the first extension; changed
-  to `< max` so frequently-accessed memories keep extending toward the ceiling on each cycle
+- **Daily semantic decay was a no-op** (`src/memory/consolidate.ts`) — `runDailyConsolidation`
+  queried the non-existent column `last_accessed_at`; corrected to `last_accessed` (the actual
+  schema column), so decay scores are now updated on every daily cycle
+- **Heuristic cycle metrics always reported zero** (`src/memory/heuristics.ts`) —
+  `boostImportanceFromAccess` and `slowDecayForFrequentAccess` both hardcoded `return 0`; they now
+  use `db.client.execute` to obtain `rowsAffected` and return the real updated-row count
+- **Half-life extension only fired once** (`src/memory/heuristics.ts`) —
+  `slowDecayForFrequentAccess` guarded with `half_life_days <= default`, preventing re-triggering
+  after the first extension; changed to `< max` so frequently-accessed memories keep extending
+  toward the ceiling on each cycle
 - **Reflection patterns duplicated on every turn** (`src/agent/reflect.ts`) — `storeReflection` used
-  `ON CONFLICT DO NOTHING` with a random ID, so the same pattern string accumulated hundreds of rows;
-  it now looks up by `pattern` text first and performs a weighted confidence update + `supporting_events`
-  increment on existing rows, only inserting when the pattern is genuinely new
+  `ON CONFLICT DO NOTHING` with a random ID, so the same pattern string accumulated hundreds of
+  rows; it now looks up by `pattern` text first and performs a weighted confidence update +
+  `supporting_events` increment on existing rows, only inserting when the pattern is genuinely new
 - **Memory injection missing metadata context** (`src/memory/inject.ts`) — `formatHit` only showed
   label and age; it now also surfaces `category`, `tags`, `topics`, and `entities` inline so the LLM
   receives richer context for each recalled memory
-- **Noisy knowledge graph entities** (`src/memory/graph.ts`) — `extractAndStoreEntities` was creating
-  graph nodes for every capitalized word (e.g. "User", "Assistant", "Based", "String"); an
+- **Noisy knowledge graph entities** (`src/memory/graph.ts`) — `extractAndStoreEntities` was
+  creating graph nodes for every capitalized word (e.g. "User", "Assistant", "Based", "String"); an
   `ENTITY_STOP_WORDS` set now filters common English words and agent-specific noise before insertion
 - **Bare JSON tool calls leaked to chat UI** (`src/agent/loop.ts`) — `stripToolCallMarkup` used a
   non-greedy regex `\{...\}` that stopped at the first `}`, so nested args like
@@ -163,8 +174,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   90-second `AbortSignal` timeout; `signal?: AbortSignal` added to `CompletionOptions` and wired
   through `OpenAICompatibleProvider.stream()` and `complete()`
 - **Model looping on tools without producing a final answer** (`src/agent/loop.ts`) — follow-up
-  prompt after tool results now escalates per round: when ≤1 rounds remain the model receives a
-  hard instruction to stop calling tools and deliver its final response immediately
+  prompt after tool results now escalates per round: when ≤1 rounds remain the model receives a hard
+  instruction to stop calling tools and deliver its final response immediately
 
 ---
 
@@ -176,25 +187,25 @@ Versioning: [Semantic Versioning](https://semver.org/)
   `src/cli/voice-cmd.ts`) — full voice pipeline: speech-to-text via OpenAI Whisper, text-to-speech
   via OpenAI TTS (or optional ElevenLabs), energy-based VAD, audio format conversion with ffmpeg
   fallback, voice channel plugin implementing `ChannelPlugin`, and `speak`/`listen` agent tools
-- **Voice WebSocket protocol** (`src/server/ws.ts`) — new `WsMsg` variants (`audio_chunk`, `audio_end`,
-  `speak`, `audio`, `voice_state`) for real-time audio streaming, server-side transcription, and TTS
-  playback; transcribed speech is dispatched directly into the agent loop
+- **Voice WebSocket protocol** (`src/server/ws.ts`) — new `WsMsg` variants (`audio_chunk`,
+  `audio_end`, `speak`, `audio`, `voice_state`) for real-time audio streaming, server-side
+  transcription, and TTS playback; transcribed speech is dispatched directly into the agent loop
 - **Voice API routes** (`POST /api/voice/transcribe`, `POST /api/voice/synthesize`,
   `GET /api/voice/synthesize/:text`, `GET /api/voice/providers`) — REST endpoints for audio
   transcription and speech synthesis
 - **Auto-TTS pipeline hook** (`src/voice/pipeline.ts`) — `post-output` hook that automatically
   synthesizes agent text responses to audio when `voice.autoTTS` is enabled; audio is forwarded to
   the WebSocket client before the `done` signal
-- **Voice settings in Web UI** (`src/server/ui.ts`) — Voice & TTS settings tab with provider selection,
-  default voice, language, auto-TTS toggle, and ElevenLabs API key; microphone button in chat input
-  bar with CSS recording animation; speaker button on each assistant message for on-demand TTS;
-  voice indicator with speaking pulse animation
+- **Voice settings in Web UI** (`src/server/ui.ts`) — Voice & TTS settings tab with provider
+  selection, default voice, language, auto-TTS toggle, and ElevenLabs API key; microphone button in
+  chat input bar with CSS recording animation; speaker button on each assistant message for
+  on-demand TTS; voice indicator with speaking pulse animation
 - **Voice activity detection** (`src/voice/vad.ts`) — energy-based VAD with configurable frame size,
   speech threshold, silence timeout, and minimum speech duration
 - **Voice CLI command** (`cortex voice enable|disable|status|set-voice`) — manage voice mode and
   default voice from the terminal
-- **`voiceDataDir` path** (`src/config/paths.ts`) — dedicated voice cache directory under the
-  data directory
+- **`voiceDataDir` path** (`src/config/paths.ts`) — dedicated voice cache directory under the data
+  directory
 - **Service management commands** (`src/cli/start.ts`) — `cortex start` and `cortex restart`
   commands for managing the daemon and web UI server processes
 - **Silent install and uninstall operations** (`src/cli/install.ts`, `src/cli/service-helper.ts`) —
@@ -211,14 +222,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
   `ContentBlock[]` (text, image, document) in addition to plain strings, enabling multimodal LLM
   providers to receive images and documents natively
 - **Multimodal LLM provider support** — Anthropic (`src/llm/anthropic.ts`) maps content blocks to
-  native `image`/`document` blocks; OpenAI and OpenAI-compatible providers
-  (`src/llm/openai.ts`, `src/llm/openai-compatible.ts`) map images to `image_url` parts; Google
-  (`src/llm/google.ts`) maps to `inlineData` parts; Ollama (`src/llm/ollama.ts`) maps images to the
-  `images` array; Bedrock (`src/llm/bedrock.ts`) extracts text from content blocks for Converse API
+  native `image`/`document` blocks; OpenAI and OpenAI-compatible providers (`src/llm/openai.ts`,
+  `src/llm/openai-compatible.ts`) map images to `image_url` parts; Google (`src/llm/google.ts`) maps
+  to `inlineData` parts; Ollama (`src/llm/ollama.ts`) maps images to the `images` array; Bedrock
+  (`src/llm/bedrock.ts`) extracts text from content blocks for Converse API
 - **PDF text extraction** (`src/utils/pdf.ts`) — new utility using `pdf-parse` (PDF.js) to extract
-  readable text from uploaded PDFs. Integrated into `file_read` tool (`src/tools/builtin/file_read.ts`)
-  for on-demand extraction, and into the WebSocket handler for immediate inline preview in the chat
-  message
+  readable text from uploaded PDFs. Integrated into `file_read` tool
+  (`src/tools/builtin/file_read.ts`) for on-demand extraction, and into the WebSocket handler for
+  immediate inline preview in the chat message
 - **Upload endpoint** (`POST /api/upload`) — REST endpoint for programmatic file uploads, accepts
   `{ filename, mimeType, data (base64) }` and saves to `$DATA_DIR/uploads/`
 - **Session resume on page refresh** (`src/server/ws.ts`) — `processChatMessage` now accepts and
@@ -226,8 +237,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   existing conversation (with full history) instead of creating a new session
 - **Text-only model image handling** (`src/server/ws.ts`) — image content blocks are only sent to
   providers known to support multimodal input (Anthropic, Google); for other providers a clear
-  message is appended noting the limitation and suggesting a provider switch, with the file saved
-  to disk for reference
+  message is appended noting the limitation and suggesting a provider switch, with the file saved to
+  disk for reference
 - **Raw tool call filtering in session restore** (`src/server/ui.ts`) — `restoreSession()` now
   detects assistant messages containing raw `{"tool":...}` JSON and renders them as compact
   `⚙ tool_name` bubbles instead of displaying the raw JSON verbatim
@@ -248,15 +259,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Agent loop** (`src/agent/loop.ts`) — `AgentTurnOptions` now accepts optional `userContentBlocks`
   for multimodal user messages; when provided, the last user message in history is replaced with
   content blocks so the LLM receives the full multimodal context. After tool execution, a follow-up
-  instruction is embedded in the tool result message (*"Based on the tool output above, provide your
-  complete response. Do NOT make additional tool calls unless absolutely necessary"*) to force the
+  instruction is embedded in the tool result message (_"Based on the tool output above, provide your
+  complete response. Do NOT make additional tool calls unless absolutely necessary"_) to force the
   LLM to produce analysis rather than stopping after raw tool output
 - **LLM router** (`src/llm/router.ts`) — `chooseModel()` updated to extract text from
   `ContentBlock[]` for scoring, maintaining compatibility with multimodal messages
 - **`file_read` tool** (`src/tools/builtin/file_read.ts`) — added `workspace` parameter
   (`"agent"/"global"`) matching other file tools; path resolution now uses `resolveWorkspacePath()`
-  to find files in the agent workspace; PDF output capped at 150 lines / 8000 chars to avoid
-  context exhaustion; description prominently mentions PDF auto-extraction
+  to find files in the agent workspace; PDF output capped at 150 lines / 8000 chars to avoid context
+  exhaustion; description prominently mentions PDF auto-extraction
 - **`code_exec` tool description** (`src/tools/builtin/code_exec.ts`) — now explicitly warns that
   the sandbox has NO access to host files or workspace, no package managers available
 - **System prompt augmentations** (`src/server/ws.ts`) — two new sections appended:
@@ -267,10 +278,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **PDF inline preview** (`src/server/ws.ts`) — extracted text wrapped in
   `=== BEGIN/END DOCUMENT ===` markers; preview capped at 2000 chars to keep initial context lean;
   when extraction fails, an explicit `file_read("filename.pdf")` hint is included
-- **File-upload prompt** (`src/server/ws.ts`) — when files are uploaded without a text message,
-  the effective prompt is now explicitly directive: *"Read, analyze, and provide a thorough
-  evaluation — include: Summary of key content, Main points and findings, Your assessment and
-  any recommendations"*
+- **File-upload prompt** (`src/server/ws.ts`) — when files are uploaded without a text message, the
+  effective prompt is now explicitly directive: _"Read, analyze, and provide a thorough evaluation —
+  include: Summary of key content, Main points and findings, Your assessment and any
+  recommendations"_
 
 ### Fixed
 

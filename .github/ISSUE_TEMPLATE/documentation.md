@@ -1,7 +1,7 @@
 ---
 name: Documentation Issue
 about: Report missing, incorrect, or confusing documentation
-title: "docs: <short description>"
+title: 'docs: <short description>'
 labels: documentation
 assignees: ''
 ---
@@ -10,8 +10,8 @@ assignees: ''
 
 <!-- Link to the file, section, or page that has the issue. -->
 
-- File / URL: 
-- Section: 
+- File / URL:
+- Section:
 
 ## What is wrong or missing?
 

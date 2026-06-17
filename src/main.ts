@@ -39,7 +39,7 @@ import { githubCommand } from './cli/github-cmd.ts';
 import { quartermasterCommand } from './cli/quartermaster-cmd.ts';
 import { mqmCommand } from './cli/model-qm-cmd.ts';
 import { installCommand, uninstallCommand } from './cli/install.ts';
-import { startCommand, restartCommand } from './cli/start.ts';
+import { restartCommand, startCommand } from './cli/start.ts';
 import { voiceCommand } from './cli/voice-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';

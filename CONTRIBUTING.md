@@ -24,8 +24,8 @@ feature ideas, documentation improvements, and code contributions.
 
 ## Getting Started
 
-**Prerequisites:** [Deno 2.x](https://deno.land) is required. Docker is optional (needed only if
-you want to test sandboxed code execution).
+**Prerequisites:** [Deno 2.x](https://deno.land) is required. Docker is optional (needed only if you
+want to test sandboxed code execution).
 
 ```bash
 # 1. Fork and clone the repo
@@ -75,8 +75,8 @@ deno task test    # Run all tests
 - **Strict mode** — `no implicit any`, no `!` non-null assertions without an accompanying comment
   explaining why it is safe
 - **Async-first** — prefer `async/await` over raw Promise chains
-- **Fire-and-forget** — background tasks (memory writes, reflection) must use `.catch(() => {})`
-  and must never block the agent response
+- **Fire-and-forget** — background tasks (memory writes, reflection) must use `.catch(() => {})` and
+  must never block the agent response
 - **Error handling** — catch errors at call-site boundaries; surface actionable messages to the user
 - **No hardcoded secrets** — use `CORTEX_VAULT_KEY` env var; never commit credentials or API keys
 - **No hardcoded paths** — always use `PATHS` from `src/config/paths.ts`
@@ -170,19 +170,20 @@ perf: cache embedding lookups in semantic memory
 
 The type prefix affects changelog generation:
 
-| Prefix | CHANGELOG section |
-|---|---|
-| `feat` | Added |
-| `fix` | Fixed |
-| `refactor` | Changed |
-| `perf` | Changed |
-| `docs` | (docs-only, omitted from release notes) |
-| `chore` | (omitted from release notes) |
-| `test` | (omitted from release notes) |
+| Prefix     | CHANGELOG section                       |
+| ---------- | --------------------------------------- |
+| `feat`     | Added                                   |
+| `fix`      | Fixed                                   |
+| `refactor` | Changed                                 |
+| `perf`     | Changed                                 |
+| `docs`     | (docs-only, omitted from release notes) |
+| `chore`    | (omitted from release notes)            |
+| `test`     | (omitted from release notes)            |
 
 Include a scope when helpful: `feat(memory): add graph tier`.
 
 **Breaking changes** — append `!` to the type and add a `BREAKING CHANGE:` footer:
+
 ```
 feat(llm)!: remove deprecated provider field
 
@@ -209,7 +210,8 @@ early to gather feedback before investing heavy implementation effort.
 
 - **Bugs** — use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md); include your OS,
   Deno version, Cortex version, and full error output
-- **Feature requests** — use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
+- **Feature requests** — use the
+  [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
 - **Security vulnerabilities** — do **not** open a public issue; follow the process in
   [SECURITY.md](SECURITY.md)
 
@@ -217,5 +219,4 @@ early to gather feedback before investing heavy implementation effort.
 
 ## License
 
-By contributing you agree that your contributions will be licensed under the
-[MIT License](LICENSE).
+By contributing you agree that your contributions will be licensed under the [MIT License](LICENSE).

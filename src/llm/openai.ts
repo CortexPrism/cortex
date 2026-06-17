@@ -1,5 +1,11 @@
 import OpenAI from 'npm:openai';
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+} from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'gpt-4o': { in: 2.5, out: 10.0 },

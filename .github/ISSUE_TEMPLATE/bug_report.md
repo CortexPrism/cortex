@@ -1,7 +1,7 @@
 ---
 name: Bug Report
 about: Report a reproducible bug in CortexPrism
-title: "fix: <short description>"
+title: 'fix: <short description>'
 labels: bug
 assignees: ''
 ---
@@ -30,14 +30,14 @@ assignees: ''
 
 ## Environment
 
-| Field | Value |
-|---|---|
-| OS | e.g. macOS 14.5, Ubuntu 24.04, Windows 11 |
-| Deno version | run `deno --version` |
-| Cortex version | run `cortex --version` or paste the commit hash |
-| Install method | one-line installer / manual clone / binary download |
-| Docker installed? | Yes / No |
-| LLM Provider | e.g. Anthropic, OpenAI, Ollama |
+| Field             | Value                                               |
+| ----------------- | --------------------------------------------------- |
+| OS                | e.g. macOS 14.5, Ubuntu 24.04, Windows 11           |
+| Deno version      | run `deno --version`                                |
+| Cortex version    | run `cortex --version` or paste the commit hash     |
+| Install method    | one-line installer / manual clone / binary download |
+| Docker installed? | Yes / No                                            |
+| LLM Provider      | e.g. Anthropic, OpenAI, Ollama                      |
 
 ## Relevant Config (redact API keys)
 
@@ -54,5 +54,6 @@ assignees: ''
 ## Checklist
 
 - [ ] I can reproduce the bug reliably
-- [ ] I have searched [existing issues](https://github.com/CortexPrism/cortex/issues) and this is not a duplicate
+- [ ] I have searched [existing issues](https://github.com/CortexPrism/cortex/issues) and this is
+      not a duplicate
 - [ ] I have redacted all API keys and sensitive data from this report

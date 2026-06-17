@@ -8,7 +8,8 @@ const MAX_DEPTH = 20;
 export const fileGlobTool: Tool = {
   definition: {
     name: 'file_glob',
-    description: 'Find files matching a glob pattern (e.g. "**/*.ts", "src/**\/*.ts"). Returns relative file paths sorted by modification time.',
+    description:
+      'Find files matching a glob pattern (e.g. "**/*.ts", "src/**\/*.ts"). Returns relative file paths sorted by modification time.',
     capabilities: ['fs:list'],
     params: [
       {
@@ -61,7 +62,9 @@ export const fileGlobTool: Tool = {
       const output = results.length === 0
         ? 'No files matched the pattern.'
         : results.slice(0, MAX_RESULTS).map((r) => r.path).join('\n') +
-          (results.length > MAX_RESULTS ? `\n... (${results.length} results, showing first ${MAX_RESULTS})` : '');
+          (results.length > MAX_RESULTS
+            ? `\n... (${results.length} results, showing first ${MAX_RESULTS})`
+            : '');
 
       return {
         toolName: 'file_glob',

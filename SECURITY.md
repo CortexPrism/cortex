@@ -5,10 +5,10 @@
 Security fixes are applied to the latest stable release. We strongly recommend always running the
 most recent version.
 
-| Version | Supported |
-|---------|-----------|
-| 0.32.x (latest) | Yes |
-| < 0.32 | No — please upgrade |
+| Version         | Supported           |
+| --------------- | ------------------- |
+| 0.32.x (latest) | Yes                 |
+| < 0.32          | No — please upgrade |
 
 ---
 
@@ -29,12 +29,12 @@ Include as much of the following as you can:
 
 ### What to expect
 
-| Timeline | Action |
-|---|---|
-| Within **48 hours** | Acknowledgement of your report |
-| Within **7 days** | Initial assessment and severity classification |
-| Within **30 days** | Patch developed and tested (complex issues may take longer) |
-| On fix release | Public disclosure in the GitHub Security Advisories with credit to the reporter |
+| Timeline            | Action                                                                          |
+| ------------------- | ------------------------------------------------------------------------------- |
+| Within **48 hours** | Acknowledgement of your report                                                  |
+| Within **7 days**   | Initial assessment and severity classification                                  |
+| Within **30 days**  | Patch developed and tested (complex issues may take longer)                     |
+| On fix release      | Public disclosure in the GitHub Security Advisories with credit to the reporter |
 
 We follow [responsible disclosure](https://en.wikipedia.org/wiki/Responsible_disclosure) — we ask
 that you give us reasonable time to patch before any public disclosure.
@@ -107,8 +107,8 @@ the application itself, and it can be skipped by running with `--check` in offli
 
 ## Known Limitations
 
-- The policy validator operates on **intent strings** — it is a best-effort filter, not a
-  sandboxing solution. For high-risk deployments, combine with OS-level sandboxing.
+- The policy validator operates on **intent strings** — it is a best-effort filter, not a sandboxing
+  solution. For high-risk deployments, combine with OS-level sandboxing.
 - LLM outputs are processed as text; prompt injection through untrusted content in files or web
   pages is a risk. Review tool call approvals carefully when the agent has processed external
   content.

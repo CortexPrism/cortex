@@ -1,6 +1,12 @@
 import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
-import type { Part, Content } from 'npm:@google/generative-ai';
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+import type { Content, Part } from 'npm:@google/generative-ai';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+} from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'gemini-2.0-flash': { in: 0.10, out: 0.40 },

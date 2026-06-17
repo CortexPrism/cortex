@@ -1,7 +1,7 @@
 ---
 name: Feature Request
 about: Suggest a new feature or improvement for CortexPrism
-title: "feat: <short description>"
+title: 'feat: <short description>'
 labels: enhancement
 assignees: ''
 ---

@@ -916,9 +916,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
     for (const r of available) {
       try {
         const upd = await applyPluginUpdate(r.pluginName, githubToken);
-        results.push({ name: r.pluginName, previousVersion: upd.previousVersion, newVersion: upd.newVersion });
+        results.push({
+          name: r.pluginName,
+          previousVersion: upd.previousVersion,
+          newVersion: upd.newVersion,
+        });
       } catch (e) {
-        results.push({ name: r.pluginName, previousVersion: r.currentVersion, newVersion: r.currentVersion, error: (e as Error).message });
+        results.push({
+          name: r.pluginName,
+          previousVersion: r.currentVersion,
+          newVersion: r.currentVersion,
+          error: (e as Error).message,
+        });
       }
     }
     return json({ updated: results.length, results });
@@ -1964,8 +1973,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
       '../quartermaster/mod.ts'
     );
     const sessionId = url.searchParams.get('session') ?? undefined;
-    const [summary, weights, toolStats, recentDecisions, accuracyTrend, patterns] =
-      await Promise.all([
+    const [summary, weights, toolStats, recentDecisions, accuracyTrend, patterns] = await Promise
+      .all([
         getQmSummary(sessionId),
         getSignalWeights(),
         getToolStats(),
@@ -1994,15 +2003,29 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const body = await req.json() as Record<string, unknown>;
     const config = await loadConfig();
     config.modelSelection = {
-      enabled: body.enabled !== undefined ? Boolean(body.enabled) : (config.modelSelection?.enabled ?? false),
-      mode: (body.mode as 'conservative' | 'balanced' | 'aggressive') ?? config.modelSelection?.mode ?? 'balanced',
-      observeThreshold: Number(body.observeThreshold ?? config.modelSelection?.observeThreshold ?? 50),
-      enforceConfidence: Number(body.enforceConfidence ?? config.modelSelection?.enforceConfidence ?? 0.85),
-      suggestConfidence: Number(body.suggestConfidence ?? config.modelSelection?.suggestConfidence ?? 0.65),
-      costBudget: body.costBudget !== undefined ? Number(body.costBudget) : config.modelSelection?.costBudget,
-      allowedProviders: (body.allowedProviders as ProviderKind[] | undefined) ?? config.modelSelection?.allowedProviders,
-      quartermasterProvider: (body.quartermasterProvider as ProviderKind | undefined) ?? config.modelSelection?.quartermasterProvider,
-      quartermasterModel: (body.quartermasterModel as string | undefined) ?? config.modelSelection?.quartermasterModel,
+      enabled: body.enabled !== undefined
+        ? Boolean(body.enabled)
+        : (config.modelSelection?.enabled ?? false),
+      mode: (body.mode as 'conservative' | 'balanced' | 'aggressive') ??
+        config.modelSelection?.mode ?? 'balanced',
+      observeThreshold: Number(
+        body.observeThreshold ?? config.modelSelection?.observeThreshold ?? 50,
+      ),
+      enforceConfidence: Number(
+        body.enforceConfidence ?? config.modelSelection?.enforceConfidence ?? 0.85,
+      ),
+      suggestConfidence: Number(
+        body.suggestConfidence ?? config.modelSelection?.suggestConfidence ?? 0.65,
+      ),
+      costBudget: body.costBudget !== undefined
+        ? Number(body.costBudget)
+        : config.modelSelection?.costBudget,
+      allowedProviders: (body.allowedProviders as ProviderKind[] | undefined) ??
+        config.modelSelection?.allowedProviders,
+      quartermasterProvider: (body.quartermasterProvider as ProviderKind | undefined) ??
+        config.modelSelection?.quartermasterProvider,
+      quartermasterModel: (body.quartermasterModel as string | undefined) ??
+        config.modelSelection?.quartermasterModel,
     };
     await saveConfig(config);
     return json({ success: true, modelSelection: config.modelSelection });

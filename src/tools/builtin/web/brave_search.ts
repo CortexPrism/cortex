@@ -100,7 +100,12 @@ export const braveSearchTool: Tool = {
       });
 
       if (!res.ok) {
-        return mkResult(false, '', `Brave Search returned HTTP ${res.status}: ${res.statusText}`, start);
+        return mkResult(
+          false,
+          '',
+          `Brave Search returned HTTP ${res.status}: ${res.statusText}`,
+          start,
+        );
       }
 
       const data = await res.json() as BraveResponse;

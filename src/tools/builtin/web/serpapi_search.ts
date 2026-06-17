@@ -52,8 +52,7 @@ export const serpapiSearchTool: Tool = {
       {
         name: 'engine',
         type: 'string',
-        description:
-          'Search engine to use: "google" (default), "bing", "duckduckgo", "yahoo"',
+        description: 'Search engine to use: "google" (default), "bing", "duckduckgo", "yahoo"',
         required: false,
       },
       {
@@ -119,7 +118,11 @@ export const serpapiSearchTool: Tool = {
       }
 
       if (data.knowledge_graph?.description) {
-        lines.push(`**Knowledge Graph — ${data.knowledge_graph.title ?? ''}:** ${data.knowledge_graph.description}`);
+        lines.push(
+          `**Knowledge Graph — ${
+            data.knowledge_graph.title ?? ''
+          }:** ${data.knowledge_graph.description}`,
+        );
         lines.push('');
       }
 
