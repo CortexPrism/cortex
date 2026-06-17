@@ -11,36 +11,38 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed — High
 
-- **Persistent memory file formatting** — Fixed `appendToMemoryFile()` insertion point
-  calculation; `sectionBody.slice(lastBullet).indexOf('\\n')` always returned 0, causing
-  new entries to be inserted before the last bullet instead of after it.
-- **Chat auto-scroll** — `appendBubble()` and chunk handler now use `requestAnimationFrame`
-  for scroll-to-bottom to ensure DOM layout is complete before scrolling. `restoreSession()`
-  adds a delayed secondary scroll for mid-conversation resume.
+- **Persistent memory file formatting** — Fixed `appendToMemoryFile()` insertion point calculation;
+  `sectionBody.slice(lastBullet).indexOf('\\n')` always returned 0, causing new entries to be
+  inserted before the last bullet instead of after it.
+- **Chat auto-scroll** — `appendBubble()` and chunk handler now use `requestAnimationFrame` for
+  scroll-to-bottom to ensure DOM layout is complete before scrolling. `restoreSession()` adds a
+  delayed secondary scroll for mid-conversation resume.
 
 ### Added — High
 
-- **Session titles** — Sessions now auto-generate a title from the first 60 characters of
-  the first user message. Added `updateSessionName()` in sessions DB layer, `PATCH
-  /api/sessions/:id` API endpoint, and title display in chat header, sidebar, and sessions
-  list.
-- **Session archiving** — Added archive and restore buttons to the sessions list. Archived
-  sessions are shown with reduced opacity. Archive API already existed (`POST
-  /api/sessions/:id/archive`); UI now exposes it.
+- **Session titles** — Sessions now auto-generate a title from the first 60 characters of the first
+  user message. Added `updateSessionName()` in sessions DB layer, `PATCH
+  /api/sessions/:id` API
+  endpoint, and title display in chat header, sidebar, and sessions list.
+- **Session archiving** — Added archive and restore buttons to the sessions list. Archived sessions
+  are shown with reduced opacity. Archive API already existed (`POST
+  /api/sessions/:id/archive`);
+  UI now exposes it.
 
 ### Fixed — Medium
 
-- **Services/agents page loading** — Added `agents: loadAgents` and `services: loadServices`
-  to `showPage()` loaders so pages render on initial navigation instead of requiring a
-  manual refresh click.
-- **Skills tag filtering** — Replaced flat button pills with a `<select>` dropdown filter
-  for skill tags to declutter the toolbar when many tags are present.
-- **Policy management** — Added `enabled` column to `policy_rules` (migration 022),
-  enable/disable toggle checkboxes, inline editing of pattern and reason, and an add-policy
-  form in the Policies page. New API endpoints: `PATCH/DELETE /api/policies/:id`, `PUT
-  /api/policies/:id/toggle`, `POST /api/policies`.
-- **Discover tab filtering** — Marketplace Discover tab now hides plugins and agents that
-  are already installed, keeping the page clean and focused on new content.
+- **Services/agents page loading** — Added `agents: loadAgents` and `services: loadServices` to
+  `showPage()` loaders so pages render on initial navigation instead of requiring a manual refresh
+  click.
+- **Skills tag filtering** — Replaced flat button pills with a `<select>` dropdown filter for skill
+  tags to declutter the toolbar when many tags are present.
+- **Policy management** — Added `enabled` column to `policy_rules` (migration 022), enable/disable
+  toggle checkboxes, inline editing of pattern and reason, and an add-policy form in the Policies
+  page. New API endpoints: `PATCH/DELETE /api/policies/:id`, `PUT
+  /api/policies/:id/toggle`,
+  `POST /api/policies`.
+- **Discover tab filtering** — Marketplace Discover tab now hides plugins and agents that are
+  already installed, keeping the page clean and focused on new content.
 
 ## [0.35.1] — 2026-06-17
 

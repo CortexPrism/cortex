@@ -4413,9 +4413,11 @@ function toggleSkillDetail(card) {
 
 // ── Policies ────────────────────────────────────────────────
 let editingPolicyId = null;
+let allPolicies = [];
 
 async function loadPolicies() {
   const policies = await fetch(BASE + '/api/policies').then(r => r.json()).catch(() => []);
+  allPolicies = policies;
   const el = document.getElementById('policies-list');
   if (!policies.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><p style="color:var(--text3);font-size:13px;">No security policies configured.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Default deny rules are always active. Click "+ Add Policy" to create one.</p></div>'; return; }
 
@@ -4431,7 +4433,7 @@ async function loadPolicies() {
     d.style.opacity = isDisabled ? '0.45' : '1';
     d.innerHTML = \`
       <label style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;" title="\${p.enabled ? 'Enabled' : 'Disabled'}">
-        <input type="checkbox" \${p.enabled ? 'checked' : ''} onchange="togglePolicyEnabled('\\'' + p.id + '\\'', this.checked)" style="accent-color:var(--accent2);">
+        <input type="checkbox" \${p.enabled ? 'checked' : ''} onchange="togglePolicyEnabled('\${p.id}', this.checked)" style="accent-color:var(--accent2);">
       </label>
       <span class="badge" style="min-width:52px;justify-content:center;background:\${isAllow ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};color:\${isAllow ? '#4ade80' : '#f87171'};">\${p.effect}</span>
       <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);min-width:80px;justify-content:center;">\${p.kind}</span>
@@ -4443,9 +4445,9 @@ async function loadPolicies() {
         : '<span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.reason ?? '') + '</span>'}
       <span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">p\${p.priority}</span>
       \${editingPolicyId === p.id
-        ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="savePolicyEdit(\\'' + p.id + '\\')">Save</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cancelPolicyEdit()">Cancel</button>'
-        : '<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="editPolicyInline(\\'' + p.id + '\\', \\'' + escAttr(p.pattern) + '\\', \\'' + escAttr(p.reason ?? '') + '\\')">✎</button>'}
-      <button class="btn" style="font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePolicyAction('\\'' + p.id + '\\')">✕</button>
+        ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="savePolicyEdit('\${p.id}')">Save</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cancelPolicyEdit()">Cancel</button>'
+        : '<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="editPolicyInline('\${p.id}')">✎</button>'}
+      <button class="btn" style="font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePolicyAction('\${p.id}')">✕</button>
     \`;
     el.appendChild(d);
   }
@@ -4460,7 +4462,7 @@ async function togglePolicyEnabled(id, enabled) {
   loadPolicies();
 }
 
-function editPolicyInline(id, pattern, reason) {
+function editPolicyInline(id) {
   editingPolicyId = id;
   loadPolicies();
 }
@@ -4882,7 +4884,7 @@ function renderSessionsList(sessions) {
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(99,102,241,0.1);color:var(--accent2);" onclick="event.stopPropagation();continueSession('\${s.id}')">▶ Continue</button>
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();exportSession('\${s.id}')">⬇ Export</button>
-        \${s.status !== 'archived' ? '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();archiveSessionAction(\\'' + s.id + '\\')">📦 Archive</button>' : '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();unarchiveSessionAction(\\'' + s.id + '\\')">↩ Restore</button>'}
+        \${s.status !== 'archived' ? '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();archiveSessionAction('\${s.id}')">📦 Archive</button>' : '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();unarchiveSessionAction('\${s.id}')">↩ Restore</button>'}
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
       </div>
     </div>
