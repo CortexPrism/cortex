@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'qwen-plus': { in: 0.40, out: 1.20 },
@@ -9,13 +10,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class AlibabaProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'alibaba',
       'qwen-plus',
-      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      'https://dashscope.aliyuncs.com/compatible-mode/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

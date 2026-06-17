@@ -6,6 +6,7 @@ import type {
   CompletionResult,
   ContentBlock,
   LLMProvider,
+  PricingMap,
 } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
@@ -50,9 +51,11 @@ export class GoogleProvider implements LLMProvider {
   readonly defaultModel = 'gemini-2.0-flash';
 
   private genAI: GoogleGenerativeAI;
+  private pricing: PricingMap;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
@@ -84,7 +87,7 @@ export class GoogleProvider implements LLMProvider {
     const usage = response.usageMetadata;
     const tokensIn = usage?.promptTokenCount ?? 0;
     const tokensOut = usage?.candidatesTokenCount ?? 0;
-    const rates = COST_PER_1M[options.model] ?? { in: 0.10, out: 0.40 };
+    const rates = this.pricing[options.model] ?? { in: 0.10, out: 0.40 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
 
     return { content, model: options.model, tokensIn, tokensOut, costUsd };
@@ -128,7 +131,7 @@ export class GoogleProvider implements LLMProvider {
       }
     }
 
-    const rates = COST_PER_1M[options.model] ?? { in: 0.10, out: 0.40 };
+    const rates = this.pricing[options.model] ?? { in: 0.10, out: 0.40 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
     yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
   }

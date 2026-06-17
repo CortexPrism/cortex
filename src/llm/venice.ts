@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'llama-3.3-70b': { in: 0.60, out: 0.60 },
@@ -8,13 +9,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class VeniceProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'venice',
       'llama-3.3-70b',
       'https://api.venice.ai/api/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

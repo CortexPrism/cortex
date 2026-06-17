@@ -1,3 +1,5 @@
+export type PricingMap = Record<string, { in: number; out: number }>;
+
 export interface ImageContent {
   type: 'image';
   source: { type: 'base64'; mediaType: string; data: string };

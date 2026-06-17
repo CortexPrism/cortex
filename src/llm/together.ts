@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'meta-llama/Llama-3.3-70B-Instruct-Turbo': { in: 0.88, out: 0.88 },
@@ -9,13 +10,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class TogetherProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'together',
       'meta-llama/Llama-3.3-70B-Instruct-Turbo',
       'https://api.together.xyz/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

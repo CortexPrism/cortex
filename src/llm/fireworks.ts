@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'accounts/fireworks/models/llama-v3p3-70b-instruct': { in: 0.90, out: 0.90 },
@@ -9,13 +10,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class FireworksProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'fireworks',
       'accounts/fireworks/models/llama-v3p3-70b-instruct',
       'https://api.fireworks.ai/inference/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

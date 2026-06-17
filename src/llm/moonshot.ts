@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'moonshot-v1-8k': { in: 1.63, out: 1.63 },
@@ -8,13 +9,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class MoonshotProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'moonshot',
-      'kimi-k2-0711-preview',
+      'moonshot-v1-8k',
       'https://api.moonshot.cn/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

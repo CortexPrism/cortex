@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'llama3.1-8b': { in: 0.10, out: 0.10 },
@@ -8,13 +9,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class CerebrasProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'cerebras',
       'llama-3.3-70b',
       'https://api.cerebras.ai/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

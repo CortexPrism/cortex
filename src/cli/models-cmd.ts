@@ -135,6 +135,12 @@ export const modelsCommand = new Command()
         );
         console.log(`  API Key:     ${cfg.apiKey ? green('configured') : red('missing')}`);
         if (cfg.baseUrl) console.log(`  Base URL:    ${dim(cfg.baseUrl)}`);
+        if (cfg.pricing && Object.keys(cfg.pricing).length > 0) {
+          console.log(`  Pricing:${dim(' (per 1M tokens)')}`);
+          for (const [m, r] of Object.entries(cfg.pricing)) {
+            console.log(`    ${cyan(m)}: $${r.in} in / $${r.out} out`);
+          }
+        }
         console.log('');
       }),
   )

@@ -5,6 +5,7 @@ import type {
   CompletionResult,
   ContentBlock,
   LLMProvider,
+  PricingMap,
 } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
@@ -57,9 +58,11 @@ export class AnthropicProvider implements LLMProvider {
   readonly defaultModel = 'claude-sonnet-4-5';
 
   private client: Anthropic;
+  private pricing: PricingMap;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     this.client = new Anthropic({ apiKey });
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
@@ -101,7 +104,7 @@ export class AnthropicProvider implements LLMProvider {
 
     const tokensIn = response.usage.input_tokens;
     const tokensOut = response.usage.output_tokens;
-    const rates = COST_PER_1M[options.model] ?? { in: 3.0, out: 15.0 };
+    const rates = this.pricing[options.model] ?? { in: 3.0, out: 15.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
 
     return { content, model: options.model, tokensIn, tokensOut, costUsd };
@@ -155,7 +158,7 @@ export class AnthropicProvider implements LLMProvider {
       }
     }
 
-    const rates = COST_PER_1M[options.model] ?? { in: 3.0, out: 15.0 };
+    const rates = this.pricing[options.model] ?? { in: 3.0, out: 15.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
     yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
   }

@@ -9,6 +9,7 @@ import type {
   CompletionResult,
   ContentBlock,
   LLMProvider,
+  PricingMap,
 } from './types.ts';
 
 function toBedrockContent(content: string | ContentBlock[]): Array<{ text: string }> {
@@ -42,16 +43,19 @@ export class BedrockProvider implements LLMProvider {
   readonly defaultModel = 'anthropic.claude-3-5-sonnet-20240620-v1:0';
 
   private client: BedrockRuntimeClient;
+  private pricing: PricingMap;
 
   constructor(
     accessKeyId: string,
     secretAccessKey: string,
     region: string,
+    pricingOverrides?: PricingMap,
   ) {
     this.client = new BedrockRuntimeClient({
       region,
       credentials: { accessKeyId, secretAccessKey },
     });
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
@@ -82,7 +86,7 @@ export class BedrockProvider implements LLMProvider {
     const usage = response.usage;
     const tokensIn = usage?.inputTokens ?? 0;
     const tokensOut = usage?.outputTokens ?? 0;
-    const rates = COST_PER_1M[options.model] ?? { in: 3.0, out: 15.0 };
+    const rates = this.pricing[options.model] ?? { in: 3.0, out: 15.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
 
     return { content, model: options.model, tokensIn, tokensOut, costUsd };
@@ -124,7 +128,7 @@ export class BedrockProvider implements LLMProvider {
       }
     }
 
-    const rates = COST_PER_1M[options.model] ?? { in: 3.0, out: 15.0 };
+    const rates = this.pricing[options.model] ?? { in: 3.0, out: 15.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
     yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
   }
