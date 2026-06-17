@@ -1,0 +1,206 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#06090f"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+
+    <!-- Logo icon gradient: cyan → deep blue -->
+    <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <!-- Bottom accent bar (fades at edges) -->
+    <linearGradient id="accentBar" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#0891b2" stop-opacity="0"/>
+      <stop offset="20%"  stop-color="#06b6d4" stop-opacity="0.85"/>
+      <stop offset="50%"  stop-color="#22d3ee"/>
+      <stop offset="80%"  stop-color="#06b6d4" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#0891b2" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Radial ambient glow behind logo -->
+    <radialGradient id="centerGlow" cx="50%" cy="40%" r="38%">
+      <stop offset="0%"   stop-color="#06b6d4" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Icon glow filter -->
+    <filter id="iconGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle text glow for title -->
+    <filter id="titleGlow" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- ============================================================
+       BACKGROUND
+  ============================================================ -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <!-- Radial ambient glow overlay -->
+  <rect width="1280" height="640" fill="url(#centerGlow)"/>
+
+  <!-- ============================================================
+       DECORATIVE HEXAGONS (hollow, low opacity)
+  ============================================================ -->
+
+  <!-- Top-left cluster -->
+  <polygon points="90,60 142,90 142,150 90,180 38,150 38,90"
+    fill="none" stroke="#22d3ee" stroke-width="1.5" opacity="0.09"/>
+  <polygon points="90,88 116,103 116,133 90,148 64,133 64,103"
+    fill="none" stroke="#06b6d4" stroke-width="1" opacity="0.05"/>
+
+  <!-- Top-right -->
+  <polygon points="1192,36 1247,67 1247,130 1192,161 1137,130 1137,67"
+    fill="none" stroke="#06b6d4" stroke-width="1.5" opacity="0.09"/>
+
+  <!-- Bottom-left -->
+  <polygon points="130,456 200,416 200,336 130,296 60,336 60,416"
+    fill="none" stroke="#06b6d4" stroke-width="1.5" opacity="0.07"/>
+
+  <!-- Right-center -->
+  <polygon points="1178,316 1228,345 1228,404 1178,433 1128,404 1128,345"
+    fill="none" stroke="#22d3ee" stroke-width="1.2" opacity="0.07"/>
+
+  <!-- Large ghost hex, right side (very faint) -->
+  <polygon points="1060,160 1164,218 1164,336 1060,394 956,336 956,218"
+    fill="none" stroke="#06b6d4" stroke-width="1" opacity="0.028"/>
+
+  <!-- Mid-left ghost -->
+  <polygon points="232,240 314,286 314,378 232,424 150,378 150,286"
+    fill="none" stroke="#22d3ee" stroke-width="1" opacity="0.032"/>
+
+  <!-- Bottom-right small hex -->
+  <polygon points="1230,530 1268,508 1268,464 1230,442 1192,464 1192,508"
+    fill="none" stroke="#06b6d4" stroke-width="1" opacity="0.07"/>
+
+  <!-- ============================================================
+       LOGO ICON  (100×100 box centered at 640,208; top-left: 590,158)
+  ============================================================ -->
+  <g transform="translate(590, 158)">
+    <!-- Glow halo (rendered first, behind the box) -->
+    <rect x="-8" y="-8" width="116" height="116" rx="26"
+      fill="#06b6d4" opacity="0.20" filter="url(#iconGlow)"/>
+    <!-- Icon rounded-rect box -->
+    <rect x="0" y="0" width="100" height="100" rx="20" fill="url(#logoGrad)"/>
+    <!--
+      Pointy-top hexagon, center (50,50), outer radius r=35:
+        top        (50, 15)
+        upper-right(80.3, 32.5)
+        lower-right(80.3, 67.5)
+        bottom     (50, 85)
+        lower-left (19.7, 67.5)
+        upper-left (19.7, 32.5)
+    -->
+    <polygon points="50,15 80.3,32.5 80.3,67.5 50,85 19.7,67.5 19.7,32.5"
+      fill="none" stroke="rgba(255,255,255,0.90)" stroke-width="4.5" stroke-linejoin="round"/>
+    <!--
+      Inner hexagon, r=20:
+        (50,30) (67.3,40) (67.3,60) (50,70) (32.7,60) (32.7,40)
+    -->
+    <polygon points="50,30 67.3,40 67.3,60 50,70 32.7,60 32.7,40"
+      fill="rgba(255,255,255,0.16)" stroke="rgba(255,255,255,0.44)" stroke-width="1.5"/>
+    <!-- Center dot -->
+    <circle cx="50" cy="50" r="5" fill="rgba(255,255,255,0.68)"/>
+  </g>
+
+  <!-- ============================================================
+       WORDMARK
+  ============================================================ -->
+  <text x="640" y="327"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+    font-size="64" font-weight="700"
+    fill="#e5e7eb"
+    text-anchor="middle"
+    letter-spacing="-2"
+    filter="url(#titleGlow)">CortexPrism</text>
+
+  <!-- ============================================================
+       TAGLINE
+  ============================================================ -->
+  <text x="640" y="368"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+    font-size="18" font-weight="400"
+    fill="#6b7280"
+    text-anchor="middle"
+    letter-spacing="4">AGENTIC AI HARNESS SYSTEM</text>
+
+  <!-- ============================================================
+       SEPARATOR
+  ============================================================ -->
+  <line x1="455" y1="406" x2="825" y2="406" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+  <!-- ============================================================
+       BADGE ROW
+       Layout (total ≈510px, start at x≈385):
+         [GitHub icon 30px][10px][Open Source][16px·16px][Deno 2][16px·16px][TypeScript][16px·16px][MIT License]
+  ============================================================ -->
+
+  <!-- GitHub mark icon (24×24 path, scaled 1.25 → 30×30) -->
+  <g transform="translate(385, 427)">
+    <g transform="scale(1.25)" fill="#9ca3af">
+      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+    </g>
+  </g>
+
+  <!-- "Open Source" label -->
+  <text x="426" y="450"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="17" font-weight="500"
+    fill="#9ca3af">Open Source</text>
+
+  <!-- Separator dot 1 -->
+  <circle cx="550" cy="441" r="2.5" fill="#374151"/>
+
+  <!-- "Deno 2" -->
+  <text x="562" y="450"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="17" font-weight="500"
+    fill="#9ca3af">Deno 2</text>
+
+  <!-- Separator dot 2 -->
+  <circle cx="626" cy="441" r="2.5" fill="#374151"/>
+
+  <!-- "TypeScript Strict" -->
+  <text x="638" y="450"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="17" font-weight="500"
+    fill="#9ca3af">TypeScript Strict</text>
+
+  <!-- Separator dot 3 -->
+  <circle cx="773" cy="441" r="2.5" fill="#374151"/>
+
+  <!-- "MIT License" -->
+  <text x="785" y="450"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="17" font-weight="500"
+    fill="#9ca3af">MIT License</text>
+
+  <!-- ============================================================
+       REPO URL (monospace footer)
+  ============================================================ -->
+  <text x="640" y="522"
+    font-family="'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Courier New', monospace"
+    font-size="13" font-weight="400"
+    fill="#4b5563"
+    text-anchor="middle"
+    letter-spacing="0.8">github.com/CortexPrism/cortex</text>
+
+  <!-- ============================================================
+       BOTTOM ACCENT BAR
+  ============================================================ -->
+  <rect x="0" y="628" width="1280" height="12" fill="url(#accentBar)"/>
+</svg>
