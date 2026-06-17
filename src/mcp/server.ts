@@ -2,6 +2,7 @@ import { globalRegistry } from '../tools/registry.ts';
 import { retrieve } from '../memory/store.ts';
 import { listSessions } from '../db/sessions.ts';
 import { loadConfig } from '../config/config.ts';
+import { getVersion } from '../config/version.ts';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -119,7 +120,7 @@ function registerBuiltinTools(): void {
               status: 'ok',
               provider,
               model,
-              version: '0.20.0',
+              version: await getVersion(),
               ts: new Date().toISOString(),
             },
             null,
@@ -168,7 +169,7 @@ async function handleRequest(req: JsonRpcRequest): Promise<JsonRpcResponse> {
           result: {
             protocolVersion: '2024-11-05',
             capabilities: { tools: {} },
-            serverInfo: { name: 'cortex', version: '0.20.0' },
+            serverInfo: { name: 'cortex', version: await getVersion() },
           },
         };
 

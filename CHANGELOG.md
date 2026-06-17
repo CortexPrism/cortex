@@ -7,6 +7,92 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.35.1] — 2026-06-17
+
+### Fixed — Critical
+
+- **Voice CLI subcommands** — Rewrote `voice` command to use correct Cliffy subcommand API pattern.
+  `voice enable`, `voice disable`, `voice status`, `voice set-voice`, and `voice set-speed` all now
+  execute correctly instead of showing help text.
+- **OpenAI streaming parameters** — Streaming calls now correctly pass `max_tokens`, `temperature`,
+  and `top_p`; previously they were dropped causing unconstrained token generation.
+- **o-series model support** — Added o1/o3 detection in both `openai.ts` and `openai-compatible.ts`;
+  reasoning models now use `max_completion_tokens` instead of `max_tokens` and omit unsupported
+  `temperature`/`top_p` parameters.
+- **Google Gemini generation config** — `temperature`, `topP`, and `maxOutputTokens` are now properly
+  passed to `generateContent()` and `generateContentStream()`, fixing silent parameter drops.
+- **Tool registration** — `file_copy` and `file_move` tools are now registered in all three tool
+  maps (chat CLI, WebSocket server, sub-agent entry), making them callable.
+- **File undo/redo** — Undo now uses `resolveWorkspacePath()` for path validation, supports restore
+  of rename and delete operations, and correctly parses `file_rename.ts` log format. Redo now
+  correctly restores the original edit content rather than re-applying the undo.
+
+### Fixed — High
+
+- **Enhanced tools registered** — `file_read_enhanced`, `web_search_enhanced`, and
+  `web_fetch_enhanced` are now registered in the chat CLI and WebSocket server tool maps.
+- **Web domain policy validation** — Extended domain policy checks to cover `web_fetch`, `firecrawl`,
+  `brave_search`, `tavily_search`, `serpapi_search`, and all enhanced web tools. Node directive
+  validation also now includes web domain policy checks.
+- **FILE_TOOLS set** — Added `file_copy`, `file_move`, `file_undo`, `file_redo`, and `file_glob`
+  to the path-validation set in both `validateToolCall` and `validateNodeDirective`.
+- **WASM plugin loading** — WASM plugins are no longer skipped in `loadAllPlugins`. The loader now
+  correctly dispatches to `loadWasmPlugin()` for `type: 'wasm'` plugins.
+
+### Fixed — Medium
+
+- **AbortSignal propagation** — Added `AbortSignal` support to `openai`, `anthropic`, `cohere`, and
+  `ollama` providers for request cancellation and timeout enforcement.
+- **Vault enforcement** — `usage_limit`, `expires_at`, and `allowed_agents` are now checked before
+  credential decryption. Access logging is now fire-and-forget to prevent logging failures from
+  breaking credential retrieval.
+- **Cohere provider** — Added `top_p` parameter support with `!= null` guard, wrapped `temperature`
+  in null guard for both complete and stream, added content block coercion for multimodal inputs,
+  and wrapped stream JSON parsing in try/catch for malformed NDJSON lines.
+- **Ollama provider** — Added `top_p` parameter support, fixed inconsistent default values between
+  `complete()` and `stream()` (both now use `temperature: 0.7`, `num_predict: 4096`), removed
+  duplicate `OllamaResponse` interface, and wrapped stream JSON parsing in try/catch.
+- **Bedrock provider** — Added `topP` to `inferenceConfig` and null guards on `maxTokens` and
+  `temperature` parameters.
+- **Hardcoded versions** — Replaced hardcoded `'0.20.0'` version strings in MCP server and remote
+  agent with `getVersion()` from `src/config/version.ts` (reads VERSION file).
+- **Service log capture** — `getServiceLogs()` now reads last 200 lines from `stderr.log` instead of
+  returning an empty string.
+- **Lens metrics** — Added `writeMetric()`, `getMetrics()`, and `getSessionCostTotal()` store
+  functions for the `lens_metrics` table.
+- **Router error logging** — Empty catch blocks in `buildCascadeRouter` and `buildThresholdRouter`
+  now log warnings with the error message.
+- **WASM host functions** — Implemented `http_request` (fetch with timeout), `get_config` (env
+  vars), and `set_state`/`get_state` (in-memory Map). WASM tool execution now correctly encodes
+  and passes the tool name to `plugin_execute_tool`.
+- **OpenClaw migration** — `openclaw-migrate.ts` is now wired into the `import` command as a
+  `files` subcommand instead of being dead code.
+
+### Fixed — Low
+
+- **FTS query sanitization** — Added `sanitizeFtsQuery()` helper to strip FTS5 special characters
+  from search queries in both episodic and semantic memory search.
+- **Memory retention** — Retention enforcement now covers `semantic_memory` and `reflection_memory`
+  in addition to `episodic_memory`.
+- **Eval runner** — `toolCallsMade` is now tracked via `AgentTurnResult` instead of being hardcoded
+  to 0.
+- **Tool result formatting** — `formatToolResults` now emits `truncated` and `outputLength`
+  attributes in `<tool_result>` XML tags.
+- **File patch cleanup** — Temp `.patch` files are now cleaned up in a try/finally block to prevent
+  leaks on process crash.
+- **Skill write** — Step `description` now correctly reads from `step.description` with fallback to
+  `step.action`.
+- **Speak/Listen tools** — Added `['network:fetch']` capabilities to both tools.
+- **Miscellaneous** — Removed duplicate `web_fetch` tool entry in WebSocket server tool map; fixed
+  inconsistent `OllamaResponse` interface duplication; added null guards on Bedrock inference
+  config parameters; placed `afterText` variable outside try block in `file_patch` to fix scoping.
+
+### Changed
+
+- **AGENTS.md** — Updated LLM provider count from 12 to 24.
+
+---
+
 ## [0.35.0] — 2026-06-17
 
 ### Changed

@@ -19,10 +19,15 @@ const FILE_TOOLS = new Set([
   'file_patch',
   'file_delete',
   'file_rename',
+  'file_copy',
+  'file_move',
   'file_list',
   'file_tree',
   'file_info',
   'file_search',
+  'file_undo',
+  'file_redo',
+  'file_glob',
 ]);
 
 export async function validateToolCall(
@@ -64,11 +69,23 @@ export async function validateToolCall(
     }
   }
 
-  if (toolName === 'web_search') {
-    const query = String(args.query ?? '');
-    const domainMatch = query.match(/https?:\/\/([^/\s]+)/);
+  const WEB_TOOLS = new Set(['web_search', 'web_fetch', 'firecrawl', 'web_search_enhanced', 'web_fetch_enhanced', 'brave_search', 'tavily_search', 'serpapi_search']);
+  if (WEB_TOOLS.has(toolName)) {
+    let url = '';
+    if (toolName === 'web_search' || toolName === 'web_search_enhanced' || toolName === 'brave_search' || toolName === 'tavily_search' || toolName === 'serpapi_search') {
+      url = String(args.query ?? '');
+    } else if (toolName === 'web_fetch' || toolName === 'web_fetch_enhanced' || toolName === 'firecrawl') {
+      url = String(args.url ?? args.query ?? '');
+    }
+    const domainMatch = url.match(/https?:\/\/([^/\s]+)/);
     if (domainMatch) {
       const domainDecision = await checkPolicy('domain', domainMatch[1]);
+      if (!domainDecision.allowed) {
+        return { allowed: false, reason: domainDecision.reason };
+      }
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      const domainOnly = new URL(url).hostname;
+      const domainDecision = await checkPolicy('domain', domainOnly);
       if (!domainDecision.allowed) {
         return { allowed: false, reason: domainDecision.reason };
       }
@@ -207,20 +224,49 @@ export async function validateNodeDirective(
     }
   }
 
+  // Layer 2.5: Web domain policy checks for node directives
+  const WEB_TOOLS_NODE = new Set(['web_search', 'web_fetch', 'firecrawl', 'web_search_enhanced', 'web_fetch_enhanced', 'brave_search', 'tavily_search', 'serpapi_search']);
+  if (WEB_TOOLS_NODE.has(toolName)) {
+    let url = '';
+    if (toolName === 'web_search' || toolName === 'web_search_enhanced' || toolName === 'brave_search' || toolName === 'tavily_search' || toolName === 'serpapi_search') {
+      url = String(args.query ?? '');
+    } else {
+      url = String(args.url ?? args.query ?? '');
+    }
+    const domainMatch = url.match(/https?:\/\/([^/\s]+)/);
+    if (domainMatch) {
+      const domainDecision = await checkPolicy('domain', domainMatch[1]);
+      if (!domainDecision.allowed) {
+        return { allowed: false, reason: domainDecision.reason };
+      }
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      const domainOnly = new URL(url).hostname;
+      const domainDecision = await checkPolicy('domain', domainOnly);
+      if (!domainDecision.allowed) {
+        return { allowed: false, reason: domainDecision.reason };
+      }
+    }
+  }
+
   // Layer 3: Tier-based path restrictions (for file tools)
-  const FILE_TOOLS = new Set([
+  const FILE_TOOLS_NODE = new Set([
     'file_read',
     'file_write',
     'file_edit',
     'file_patch',
     'file_delete',
     'file_rename',
+    'file_copy',
+    'file_move',
     'file_list',
     'file_tree',
     'file_info',
     'file_search',
+    'file_undo',
+    'file_redo',
+    'file_glob',
   ]);
-  if (FILE_TOOLS.has(toolName)) {
+  if (FILE_TOOLS_NODE.has(toolName)) {
     const pathArg = args.path ?? args.source ?? args.pattern ?? '';
     if (typeof pathArg === 'string' && pathArg) {
       const pathCheck = isPathAllowedByTier(tier, pathArg);

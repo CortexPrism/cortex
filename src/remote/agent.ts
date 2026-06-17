@@ -23,7 +23,7 @@ export interface NodeAgentOptions {
   tlsKey?: string;
 }
 
-const VERSION = '0.20.0';
+import { getVersion } from '../config/version.ts';
 const DEFAULT_DIRECTIVE_TIMEOUT_MS = 300_000;
 const MAX_RECONNECT_MS = 30_000;
 const MISSED_HEARTBEAT_LIMIT = 3;
@@ -169,7 +169,7 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
       name,
       token,
       capabilities: [],
-      version: VERSION,
+      version: await getVersion(),
       tier,
       group,
       lastProcessedDirectiveId,

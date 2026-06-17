@@ -142,6 +142,7 @@ export interface AgentTurnResult {
   costUsd: number;
   turnId: string;
   durationMs: number;
+  toolCallsMade?: number;
   /** True when the loop was halted at maxToolRounds with work still in progress. */
   hitToolCeiling?: boolean;
 }
@@ -1205,5 +1206,5 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   }
 
   const durationMs = Date.now() - started;
-  return { response, tokensIn, tokensOut, costUsd, turnId, durationMs, hitToolCeiling };
+  return { response, tokensIn, tokensOut, costUsd, turnId, durationMs, hitToolCeiling, toolCallsMade: state.toolCallsMade };
 }

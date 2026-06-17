@@ -6,6 +6,7 @@
 import { fromFileUrl } from '@std/path';
 import { isWindows } from '../utils/platform.ts';
 import { getCoreDb } from '../db/client.ts';
+import { PATHS } from '../config/paths.ts';
 import type { InValue } from 'npm:@libsql/client';
 
 /** Service definition stored in the registry */
@@ -317,8 +318,14 @@ export async function stopAllServices(): Promise<void> {
 }
 
 export function getServiceLogs(id: string): string {
-  // TODO: implement log capture from service stdout/stderr
-  return '';
+  try {
+    const logPath = `${PATHS.dataDir}/services/${id}/stderr.log`;
+    const content = Deno.readTextFileSync(logPath);
+    const lines = content.split('\n');
+    return lines.slice(-200).join('\n');
+  } catch {
+    return '';
+  }
 }
 
 // ── Health checks ──────────────────────────────────────────

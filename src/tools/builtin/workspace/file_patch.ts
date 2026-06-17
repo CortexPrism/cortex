@@ -49,23 +49,25 @@ export const filePatchTool: Tool = {
         : Deno.cwd();
 
       const tmpPatch = `${filePath}.patch`;
-      await Deno.writeTextFile(tmpPatch, patchText);
-
-      const cmd = new Deno.Command('git', {
-        args: ['-C', workspaceDir, 'apply', tmpPatch],
-        stdout: 'null',
-        stderr: 'piped',
-      });
-      const result = await cmd.output();
-
-      await Deno.remove(tmpPatch).catch(() => {});
-
       let afterText: string;
-      if (result.success) {
-        afterText = await Deno.readTextFile(filePath);
-      } else {
-        afterText = applySimplePatch(beforeText, patchText);
-        await Deno.writeTextFile(filePath, afterText);
+      try {
+        await Deno.writeTextFile(tmpPatch, patchText);
+
+        const cmd = new Deno.Command('git', {
+          args: ['-C', workspaceDir, 'apply', tmpPatch],
+          stdout: 'null',
+          stderr: 'piped',
+        });
+        const result = await cmd.output();
+
+        if (result.success) {
+          afterText = await Deno.readTextFile(filePath);
+        } else {
+          afterText = applySimplePatch(beforeText, patchText);
+          await Deno.writeTextFile(filePath, afterText);
+        }
+      } finally {
+        await Deno.remove(tmpPatch).catch(() => {});
       }
 
       await gitEnsureBranch(workspaceDir, `workspace/${context.agentId}`);

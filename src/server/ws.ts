@@ -12,7 +12,10 @@ import { buildEmbedder } from '../memory/embeddings.ts';
 import { globalRegistry } from '../tools/registry.ts';
 import type { Tool } from '../tools/types.ts';
 import { fileReadTool } from '../tools/builtin/file_read.ts';
+import { fileReadEnhancedTool } from '../tools/builtin/file_read_enhanced.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
+import { webSearchEnhancedTool } from '../tools/builtin/web/search_enhanced.ts';
+import { webFetchEnhancedTool } from '../tools/builtin/web/fetch_enhanced.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
 import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
@@ -40,10 +43,12 @@ import {
 } from '../tools/builtin/github/index.ts';
 import { onFileChange } from '../workspace/events.ts';
 import {
+  fileCopyTool,
   fileDeleteTool,
   fileEditTool,
   fileInfoTool,
   fileListTool,
+  fileMoveTool,
   filePatchTool,
   fileRedoTool,
   fileRenameTool,
@@ -266,11 +271,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       const registry = globalRegistry;
       const allTools: Record<string, Tool> = {
         file_read: fileReadTool,
+        file_read_enhanced: fileReadEnhancedTool,
         file_write: fileWriteTool,
         file_edit: fileEditTool,
         file_patch: filePatchTool,
         file_delete: fileDeleteTool,
         file_rename: fileRenameTool,
+        file_copy: fileCopyTool,
+        file_move: fileMoveTool,
         file_list: fileListTool,
         file_tree: fileTreeTool,
         file_info: fileInfoTool,
@@ -278,6 +286,9 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         file_undo: fileUndoTool,
         file_redo: fileRedoTool,
         web_search: webSearchTool,
+        web_search_enhanced: webSearchEnhancedTool,
+        web_fetch: webFetchTool,
+        web_fetch_enhanced: webFetchEnhancedTool,
         code_exec: codeExecTool,
         sub_agent: subAgentTool,
         node_dispatch: nodeDispatchTool,
@@ -294,7 +305,6 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         speak: speakTool,
         listen: listenTool,
         shell: shellTool,
-        web_fetch: webFetchTool,
         file_glob: fileGlobTool,
         brave_search: braveSearchTool,
         tavily_search: tavilySearchTool,

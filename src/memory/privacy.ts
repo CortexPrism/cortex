@@ -42,4 +42,12 @@ export async function enforceMemoryRetention(maxDays: number): Promise<void> {
     `DELETE FROM episodic_memory WHERE created_at < ?`,
     [cutoff],
   );
+  await db.run(
+    `DELETE FROM semantic_memory WHERE created_at < ?`,
+    [cutoff],
+  );
+  await db.run(
+    `DELETE FROM reflection_memory WHERE created_at < ?`,
+    [cutoff],
+  );
 }

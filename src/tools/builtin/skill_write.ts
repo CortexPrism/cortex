@@ -96,7 +96,7 @@ export const skillWriteTool: Tool = {
           return {
             step: i + 1,
             action: String(step.action ?? ''),
-            description: String(step.action ?? ''),
+            description: String(step.description ?? step.action ?? ''),
             tool: step.tool as string | undefined,
             params: step.params as Record<string, unknown> | undefined,
           };

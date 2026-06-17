@@ -95,7 +95,7 @@ export class AnthropicProvider implements LLMProvider {
       system: systemMsg,
       messages,
       ...(thinking ? { thinking } : {}),
-    });
+    }, { signal: options.signal });
 
     const content = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
@@ -140,7 +140,7 @@ export class AnthropicProvider implements LLMProvider {
       system: systemMsg,
       messages,
       ...(thinking ? { thinking } : {}),
-    });
+    }, { signal: options.signal });
 
     let tokensIn = 0;
     let tokensOut = 0;

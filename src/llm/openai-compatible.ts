@@ -54,12 +54,17 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
+    const isReasoningModel = options.model.startsWith('o1') || options.model.startsWith('o3');
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: options.model,
       messages,
-      max_tokens: options.maxTokens,
-      temperature: options.temperature,
-      top_p: options.topP,
+      ...(isReasoningModel
+        ? { max_completion_tokens: options.maxTokens }
+        : {
+          max_tokens: options.maxTokens,
+          temperature: options.temperature,
+          top_p: options.topP,
+        }),
       stream: false,
     };
 
@@ -106,14 +111,19 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
+    const isReasoningModel = options.model.startsWith('o1') || options.model.startsWith('o3');
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
       model: options.model,
       messages,
       stream: true,
       stream_options: { include_usage: true },
-      temperature: options.temperature,
-      top_p: options.topP,
-      max_tokens: options.maxTokens,
+      ...(isReasoningModel
+        ? { max_completion_tokens: options.maxTokens }
+        : {
+          temperature: options.temperature,
+          top_p: options.topP,
+          max_tokens: options.maxTokens,
+        }),
     };
 
     const extraS = params as unknown as Record<string, unknown>;

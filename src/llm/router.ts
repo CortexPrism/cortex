@@ -603,8 +603,8 @@ export function buildCascadeRouter(config: CortexConfig): CascadeRouter | null {
     try {
       const provider = buildProviderFromConfig(entry.provider, providerCfg);
       steps.push({ provider, model: entry.model });
-    } catch {
-      // skip misconfigured steps
+    } catch (e) {
+      console.warn(`[router] Skipping misconfigured cascade step: ${(e as Error).message}`);
     }
   }
 
@@ -636,7 +636,8 @@ export function buildThresholdRouter(config: CortexConfig): ThresholdRouter | nu
       threshold: config.router.confidenceThreshold,
       scorer,
     });
-  } catch {
+  } catch (e) {
+    console.warn(`[router] Failed to build threshold router: ${(e as Error).message}`);
     return null;
   }
 }

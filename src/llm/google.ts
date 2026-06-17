@@ -62,6 +62,11 @@ export class GoogleProvider implements LLMProvider {
     const modelConfig: Record<string, unknown> = {
       model: options.model,
       systemInstruction: options.systemPrompt,
+      generationConfig: {
+        ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
+        ...(options.temperature != null ? { temperature: options.temperature } : {}),
+        ...(options.topP != null ? { topP: options.topP } : {}),
+      },
     };
 
     if (options.reasoningEffort) {
@@ -94,19 +99,24 @@ export class GoogleProvider implements LLMProvider {
   }
 
   async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
-    const modelConfig: Record<string, unknown> = {
+    const modelConfig2: Record<string, unknown> = {
       model: options.model,
       systemInstruction: options.systemPrompt,
+      generationConfig: {
+        ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
+        ...(options.temperature != null ? { temperature: options.temperature } : {}),
+        ...(options.topP != null ? { topP: options.topP } : {}),
+      },
     };
 
     if (options.reasoningEffort) {
-      modelConfig.thinkingConfig = {
+      modelConfig2.thinkingConfig = {
         thinkingBudget: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
       };
     }
 
     const model = this.genAI.getGenerativeModel(
-      modelConfig as unknown as Parameters<GoogleGenerativeAI['getGenerativeModel']>[0],
+      modelConfig2 as unknown as Parameters<GoogleGenerativeAI['getGenerativeModel']>[0],
     );
 
     const contents2: Content[] = options.messages

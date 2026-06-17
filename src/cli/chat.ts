@@ -17,8 +17,12 @@ import type { Tool } from '../tools/types.ts';
 import { ensureDaemons } from './daemon.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { fileReadTool } from '../tools/builtin/file_read.ts';
+import { fileReadEnhancedTool } from '../tools/builtin/file_read_enhanced.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { webSearchTool } from '../tools/builtin/web_search.ts';
+import { webSearchEnhancedTool } from '../tools/builtin/web/search_enhanced.ts';
+import { webFetchEnhancedTool } from '../tools/builtin/web/fetch_enhanced.ts';
+import { webFetchTool } from '../tools/builtin/web_fetch.ts';
 import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { subAgentTool } from '../tools/builtin/sub_agent.ts';
 import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
@@ -32,6 +36,7 @@ import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
 import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
 import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
 import { computerTool } from '../tools/builtin/computer.ts';
+import { fileCopyTool, fileMoveTool } from '../tools/builtin/workspace/index.ts';
 import {
   formatSkillsAsAvailableList,
   getAllHumanSkills,
@@ -194,7 +199,13 @@ export const chatCommand = new Command()
       const registry = globalRegistry;
       const allTools: Record<string, Tool> = {
         file_read: fileReadTool,
+        file_read_enhanced: fileReadEnhancedTool,
+        file_copy: fileCopyTool,
+        file_move: fileMoveTool,
         web_search: webSearchTool,
+        web_search_enhanced: webSearchEnhancedTool,
+        web_fetch: webFetchTool,
+        web_fetch_enhanced: webFetchEnhancedTool,
         shell: shellTool,
         code_exec: codeExecTool,
         sub_agent: subAgentTool,

@@ -113,3 +113,40 @@ export async function getSessionEvents(sessionId: string): Promise<LensEvent[]> 
     [sessionId],
   );
 }
+
+export interface LensMetric {
+  metric_name: string;
+  metric_time: string;
+  value: number;
+  unit: string;
+  labels: string;
+}
+
+export async function writeMetric(metric: LensMetric): Promise<void> {
+  const db = await getLensDb();
+  await db.run(
+    `INSERT OR REPLACE INTO lens_metrics (metric_name, metric_time, value, unit, labels)
+     VALUES (?, ?, ?, ?, ?)`,
+    [metric.metric_name, metric.metric_time, metric.value, metric.unit, metric.labels],
+  );
+}
+
+export async function getMetrics(
+  name: string,
+  since: string,
+): Promise<LensMetric[]> {
+  const db = await getLensDb();
+  return await db.all<LensMetric>(
+    `SELECT * FROM lens_metrics WHERE metric_name = ? AND metric_time >= ? ORDER BY metric_time ASC`,
+    [name, since],
+  );
+}
+
+export async function getSessionCostTotal(sessionId: string): Promise<number> {
+  const db = await getLensDb();
+  const row = await db.get<{ total: number }>(
+    `SELECT COALESCE(SUM(cost_usd), 0) as total FROM lens_events WHERE session_id = ?`,
+    [sessionId],
+  );
+  return row?.total ?? 0;
+}
