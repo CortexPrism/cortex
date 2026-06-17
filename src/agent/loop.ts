@@ -691,62 +691,71 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
             costUsd += chunk.costUsd ?? 0;
           }
         }
-      } else {
-        // Buffer via streaming — avoids complete() hanging on slow/large contexts.
-        // A 180-second AbortSignal prevents indefinite stalls on slow providers.
-        _log.debug(`Using buffered stream with timeout`, { round, timeoutMs: 180_000 });
-        const abortCtrl = new AbortController();
-        const abortTimer = setTimeout(() => abortCtrl.abort(), 180_000);
-        try {
-          for await (
-            const chunk of effectiveProvider.stream({
-              messages: currentMessages,
-              model: effectiveModel,
-              systemPrompt: nodeAwareSystemPrompt,
-              ...providerOpts,
-              signal: abortCtrl.signal,
-            })
-          ) {
-            if (!chunk.done) {
-              roundResponse += chunk.delta;
-            } else {
-              tokensIn += chunk.tokensIn ?? 0;
-              tokensOut += chunk.tokensOut ?? 0;
-              costUsd += chunk.costUsd ?? 0;
-              _log.debug(`Stream completed`, {
-                round,
-                tokensIn,
-                tokensOut,
-                costUsd,
-                responseLength: roundResponse.length,
-              });
-            }
-          }
-        } catch (streamErr) {
-          clearTimeout(abortTimer);
-          const err = streamErr as Error;
-          if (err.name === 'AbortError' || err.message.includes('abort')) {
-            _log.warn(`Streaming timeout after 180s`, {
-              round,
-              turnId,
-              responseLength: roundResponse.length,
-            });
-            return {
-              response:
-                'Request timed out. The task may be too complex or the provider is slow. Please try again or break down the request into smaller parts.',
-              tokensIn,
-              tokensOut,
-              costUsd,
-              turnId,
-              durationMs: Date.now() - started,
-            };
-          }
-          _log.error(`Streaming error`, { round, turnId, error: err.message, stack: err.stack });
-          throw streamErr;
-        } finally {
-          clearTimeout(abortTimer);
-        }
-      }
+       } else {
+         // Buffer via streaming — avoids complete() hanging on slow/large contexts.
+         // A 180-second AbortSignal prevents indefinite stalls on slow providers.
+         // Note: We buffer the full response to properly parse tool calls, but also
+         // emit chunks incrementally to the client for real-time display.
+         _log.debug(`Using buffered stream with timeout`, { round, timeoutMs: 180_000 });
+         const abortCtrl = new AbortController();
+         const abortTimer = setTimeout(() => abortCtrl.abort(), 180_000);
+         try {
+           for await (
+             const chunk of effectiveProvider.stream({
+               messages: currentMessages,
+               model: effectiveModel,
+               systemPrompt: nodeAwareSystemPrompt,
+               ...providerOpts,
+               signal: abortCtrl.signal,
+             })
+           ) {
+             if (!chunk.done) {
+               roundResponse += chunk.delta;
+               // Emit chunks to client in real-time even in buffered mode.
+               // This provides live feedback while still buffering the full response
+               // for tool call parsing. The WebSocket handler will strip any tool calls
+               // before sending to the client.
+               if (onChunk && chunk.delta.trim()) {
+                 onChunk(chunk.delta);
+               }
+             } else {
+               tokensIn += chunk.tokensIn ?? 0;
+               tokensOut += chunk.tokensOut ?? 0;
+               costUsd += chunk.costUsd ?? 0;
+               _log.debug(`Stream completed`, {
+                 round,
+                 tokensIn,
+                 tokensOut,
+                 costUsd,
+                 responseLength: roundResponse.length,
+               });
+             }
+           }
+         } catch (streamErr) {
+           clearTimeout(abortTimer);
+           const err = streamErr as Error;
+           if (err.name === 'AbortError' || err.message.includes('abort')) {
+             _log.warn(`Streaming timeout after 180s`, {
+               round,
+               turnId,
+               responseLength: roundResponse.length,
+             });
+             return {
+               response:
+                 'Request timed out. The task may be too complex or the provider is slow. Please try again or break down the request into smaller parts.',
+               tokensIn,
+               tokensOut,
+               costUsd,
+               turnId,
+               durationMs: Date.now() - started,
+             };
+           }
+           _log.error(`Streaming error`, { round, turnId, error: err.message, stack: err.stack });
+           throw streamErr;
+         } finally {
+           clearTimeout(abortTimer);
+         }
+       }
 
       response = roundResponse;
       _log.trace(`response buffered`, { round, responseLen: roundResponse.length });
@@ -873,25 +882,28 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         // If auto-execution fails, force completion with explanation
         const forcedResponse = roundResponse +
           '\n\n[Note: I had difficulty executing the web search automatically. Let me provide a response based on my knowledge instead.]';
-        if (!useDirectStream && onChunk) onChunk(forcedResponse);
+        if (onChunk) onChunk(stripToolCallMarkup(forcedResponse));
         response = forcedResponse;
         break;
       }
 
-      if (toolCalls.length === 0) {
-        // No tool calls — this is the final clean response.  If we buffered
-        // (didn't stream above), emit it now so the user sees something.
-        _log.trace(`final clean response`, { round, hasOnChunk: !!onChunk, useDirectStream });
-        if (!useDirectStream && onChunk) onChunk(stripToolCallMarkup(roundResponse));
-        break;
-      }
+       if (toolCalls.length === 0) {
+         // No tool calls — this is the final clean response.
+         // In direct streaming mode, emit now. In buffered mode with incremental
+         // streaming, chunks were already emitted above during streaming.
+         _log.trace(`final clean response`, { round, hasOnChunk: !!onChunk, useDirectStream });
+         if (useDirectStream && onChunk) {
+           // Direct streaming: emit the final accumulated response
+           onChunk(stripToolCallMarkup(roundResponse));
+         }
+         // Buffered streaming: chunks already emitted during streaming phase above
+         break;
+       }
 
-      // Has tool calls — emit the prose portion only (strip raw JSON/XML).
-      if (onChunk) {
-        const proseOnly = stripToolCallMarkup(roundResponse);
-        _log.trace(`emitting prose`, { round, proseLen: proseOnly.length });
-        if (proseOnly.trim()) onChunk(proseOnly);
-      }
+       // Has tool calls — chunks already emitted during streaming phase at line 721.
+       // The WebSocket handler will strip tool calls from those chunks before
+       // sending to client, so the user sees prose without JSON/XML.
+       // Skip redundant emission here to avoid duplication.
 
       _log.debug(`Starting tool execution loop`, { round, toolCallsCount: toolCalls.length });
       const toolResults = [];
@@ -1082,7 +1094,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       output: response || '(error)',
     });
     const preOutputResult = await runHooksForStage('pre-output', preOutputCtx);
-    let finalOutput = response || '(error)';
+    let finalOutput = stripToolCallMarkup(response || '(error)');
     if (preOutputResult.aborted) {
       const abortMsg = preOutputResult.abortMessage || 'Request was blocked before final output';
       _log.warn(`Pipeline abort at pre-output stage`, { turnId, reason: abortMsg });
