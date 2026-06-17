@@ -830,7 +830,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         // No tool calls — this is the final clean response.  If we buffered
         // (didn't stream above), emit it now so the user sees something.
         _log.trace(`final clean response`, { round, hasOnChunk: !!onChunk, useDirectStream });
-        if (!useDirectStream && onChunk) onChunk(roundResponse);
+        if (!useDirectStream && onChunk) onChunk(stripToolCallMarkup(roundResponse));
         break;
       }
 

@@ -81,8 +81,21 @@ export function parseToolCalls(text: string): ToolCallRequest[] {
     if (call) calls.push(call);
   }
 
-  // Strip <tool_call> regions before bare-JSON scan to avoid double-counting
-  const strippedText = text.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+  // Strip <tool_call> regions and fenced code blocks before bare-JSON scan
+  // to avoid double-counting, but first extract calls from code fences
+  const fenceRe = /```(?:json|tool_call)?\n([\s\S]*?)```/g;
+  let fm: RegExpExecArray | null;
+  while ((fm = fenceRe.exec(text)) !== null) {
+    const inner = fm[1].trim();
+    if (/^\{/.test(inner)) {
+      const call = parseToolCallJson(inner);
+      if (call) calls.push(call);
+    }
+  }
+
+  const strippedText = text
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
+    .replace(/```(?:json|tool_call)?\n[\s\S]*?```/g, '');
   calls.push(...extractBareToolCalls(strippedText));
 
   return calls;
