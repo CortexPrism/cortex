@@ -2948,7 +2948,7 @@ async function sendMessage() {
   // Auto-name session from first message
   if (text && sessionId && !sessionNamed) {
     sessionNamed = true;
-    const title = text.slice(0, 60).replace(/\n/g, ' ').trim() + (text.length > 60 ? '…' : '');
+    const title = text.slice(0, 60).replace(/\\n/g, ' ').trim() + (text.length > 60 ? '…' : '');
     fetch(BASE + '/api/sessions/' + encodeURIComponent(sessionId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
