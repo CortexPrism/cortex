@@ -79,6 +79,14 @@ export const PATHS = {
     return join(this.dataDir, 'server.log');
   },
 
+  get logDir() {
+    return join(this.dataDir, 'logs');
+  },
+
+  get logFile() {
+    return join(this.dataDir, 'logs', 'cortex.log');
+  },
+
   sessionDb(sessionId: string): string {
     return join(this.sessionsDir, `${sessionId}.db`);
   },

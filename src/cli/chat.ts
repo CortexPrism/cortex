@@ -2,6 +2,8 @@ import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { isFirstRun, loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
+import { configureLogger } from '../utils/logger.ts';
+import { PATHS } from '../config/paths.ts';
 import { buildProvider, buildRouter } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { initSessionDb } from '../db/migrate.ts';
@@ -75,6 +77,15 @@ export const chatCommand = new Command()
       },
     ) => {
       let config = await loadConfig();
+
+      const _loggingCfg = config.logging ?? { level: 'error', fileEnabled: true };
+      configureLogger({
+        level: _loggingCfg.level as import('../utils/logger.ts').LogLevel,
+        fileEnabled: _loggingCfg.fileEnabled,
+        filePath: _loggingCfg.filePath ?? PATHS.logFile,
+        fileMaxBytes: _loggingCfg.fileMaxBytes,
+        fileMaxFiles: _loggingCfg.fileMaxFiles,
+      });
 
       if (await isFirstRun()) {
         config = await runSetupWizard(config);

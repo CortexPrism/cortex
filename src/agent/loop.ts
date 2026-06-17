@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger.ts';
 import type { LLMProvider } from '../llm/types.ts';
 import type { ContentBlock, Message } from '../llm/types.ts';
 import type { Db } from '../db/client.ts';
@@ -28,6 +29,15 @@ import {
 } from '../memory/skills.ts';
 import { buildNodeContextSection, injectNodeContext } from './node-context.ts';
 import type { ProviderKind } from '../config/config.ts';
+import {
+  generationCreate,
+  isConfigured as langfuseConfigured,
+  spanCreate,
+  spanUpdate,
+  traceCreate,
+} from '../observability/langfuse.ts';
+
+const _log = logger('agent:loop');
 
 let builtinHooksRegistered = false;
 
@@ -234,14 +244,23 @@ function nanoid(): string {
 }
 
 export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnResult> {
+  const turnId = nanoid();
+  const started = Date.now();
+  const startedAt = new Date(started).toISOString();
+  
+  _log.info(`Agent turn starting`, { turnId, sessionId: options.sessionId, messageLength: options.userMessage.length });
+  
   if (!builtinHooksRegistered) {
+    _log.debug(`Registering builtin hooks`, { turnId });
     registerBuiltinHooks();
     // Register voice auto-TTS hook
     try {
       const { registerVoicePipelineHook } = await import('../voice/pipeline.ts');
       registerVoicePipelineHook();
+      _log.debug(`Voice pipeline hook registered`, { turnId });
     } catch {
       // Voice module not loaded — not a fatal error
+      _log.debug(`Voice module not available`, { turnId });
     }
     builtinHooksRegistered = true;
   }
@@ -249,6 +268,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   // Load config for MQM (cached, cheap after first call)
   const { loadConfig } = await import('../config/config.ts');
   const config = await loadConfig();
+  _log.debug(`Config loaded`, { turnId, hasModelSelection: !!config?.modelSelection?.enabled });
 
   const {
     userMessage,
@@ -260,10 +280,6 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     stream = true,
     onChunk,
   } = options;
-
-  const turnId = nanoid();
-  const started = Date.now();
-  const startedAt = new Date(started).toISOString();
 
   let effectiveInput = userMessage;
 
@@ -287,8 +303,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     messages: [],
   });
 
+  _log.debug(`Running pre-assess hooks`, { turnId });
   const preAssessResult = await runHooksForStage('pre-assess', preAssessCtx);
   if (preAssessResult.aborted) {
+    _log.warn(`Pre-assess aborted`, { turnId, reason: preAssessResult.abortMessage });
     return {
       response: preAssessResult.abortMessage || 'Request blocked',
       tokensIn: 0,
@@ -299,6 +317,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     };
   }
   effectiveInput = preAssessCtx.input ?? effectiveInput;
+  _log.debug(`Pre-assess completed`, { turnId, inputModified: effectiveInput !== userMessage });
 
   await persistMessage(sessionDb, 'user', effectiveInput);
 
@@ -308,8 +327,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
   const recencyWindow = options.historyRecencyWindow ?? 20;
   const semanticK = options.historySemanticK ?? 5;
+  _log.debug(`Loading history`, { turnId, recencyWindow, semanticK });
   const history = await loadHybridHistory(sessionDb, effectiveInput, recencyWindow, semanticK);
   const messages: Message[] = [...history];
+  _log.debug(`History loaded`, { turnId, historyLength: history.length, totalMessages: messages.length });
 
   if (
     options.userContentBlocks &&
@@ -321,9 +342,15 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       role: 'user',
       content: options.userContentBlocks,
     };
+    _log.debug(`Applied user content blocks`, { turnId, blockCount: options.userContentBlocks.length });
   }
 
   const maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
+  const overallTimeout = 300_000; // 5 minutes absolute timeout
+  const overallTimer = setTimeout(() => {
+    _log.error(`Agent turn timed out after 5 minutes`, { turnId, sessionId });
+    throw new Error('Agent turn timed out after 5 minutes - please try a simpler request');
+  }, overallTimeout);
 
   let response = '';
   let tokensIn = 0;
@@ -336,6 +363,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   const toolCtx: ToolContext | undefined = registry && options.toolContext
     ? { ...options.toolContext, sessionId }
     : undefined;
+  _log.debug(`Starting main loop`, { turnId, maxToolRounds, hasTools: !!registry, hasToolCtx: !!toolCtx });
 
   const metaAssessment = assessTask(effectiveInput);
 
@@ -477,8 +505,8 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           effectiveProvider = buildProviderFromConfig(predictedProvider, providerCfg);
           effectiveModel = predictedModel;
           if (state.mqmPredictionConfidence) {
-            console.log(
-              `  🎯 MQM: Using ${predictedProvider}/${predictedModel} (confidence: ${
+            _log.info(
+              `MQM: Using ${predictedProvider}/${predictedModel} (confidence: ${
                 (predictedState.mqmPredictionConfidence as number).toFixed(2)
               })`,
             );
@@ -557,10 +585,21 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     return out;
   }
 
+  // Langfuse: emit trace for this turn
+  if (langfuseConfigured()) {
+    traceCreate({
+      id: turnId,
+      name: 'agent-turn',
+      sessionId,
+      metadata: { model: effectiveModel, hasTools: !!registry },
+      startedAt,
+    });
+  }
+
   try {
     let round = 0;
     let currentMessages = messages;
-    console.log(`[loop] turn=${turnId} tools=${registry ? 'yes' : 'no'} stream=${stream}`);
+    _log.debug(`turn start`, { turnId, hasTools: !!registry, stream });
 
     while (round < maxToolRounds) {
       let roundResponse = '';
@@ -574,8 +613,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       });
       const preReasonResult = await runHooksForStage('pre-reason', preReasonCtx);
       if (preReasonResult.aborted) {
+        const abortMsg = preReasonResult.abortMessage || 'Request was blocked by a safety check';
+        _log.warn(`Pipeline abort at pre-reason stage`, { turnId, reason: abortMsg });
         return {
-          response: preReasonResult.abortMessage || 'Request blocked',
+          response: abortMsg,
           tokensIn,
           tokensOut,
           costUsd,
@@ -591,7 +632,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       // When no tools are registered we can stream directly to the client.
       const hasTools = !!(registry && toolCtx);
       const useDirectStream = stream && onChunk && !hasTools;
-      console.log(`[loop] round=${round} hasTools=${hasTools} useDirectStream=${useDirectStream}`);
+      _log.debug(`Starting LLM stream`, { round, hasTools, useDirectStream, model: effectiveModel, provider: effectiveProvider.name });
 
       const providerOpts = {
         reasoningEffort: options.reasoningEffort,
@@ -610,6 +651,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       };
 
       if (useDirectStream) {
+        _log.debug(`Using direct stream`, { round });
         for await (
           const chunk of effectiveProvider.stream({
             messages: currentMessages,
@@ -629,9 +671,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         }
       } else {
         // Buffer via streaming — avoids complete() hanging on slow/large contexts.
-        // A 90-second AbortSignal prevents indefinite stalls on slow providers.
+        // A 180-second AbortSignal prevents indefinite stalls on slow providers.
+        _log.debug(`Using buffered stream with timeout`, { round, timeoutMs: 180_000 });
         const abortCtrl = new AbortController();
-        const abortTimer = setTimeout(() => abortCtrl.abort(), 90_000);
+        const abortTimer = setTimeout(() => abortCtrl.abort(), 180_000);
         try {
           for await (
             const chunk of effectiveProvider.stream({
@@ -648,19 +691,33 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
               tokensIn += chunk.tokensIn ?? 0;
               tokensOut += chunk.tokensOut ?? 0;
               costUsd += chunk.costUsd ?? 0;
+              _log.debug(`Stream completed`, { round, tokensIn, tokensOut, costUsd, responseLength: roundResponse.length });
             }
           }
+        } catch (streamErr) {
+          clearTimeout(abortTimer);
+          const err = streamErr as Error;
+          if (err.name === 'AbortError' || err.message.includes('abort')) {
+            _log.warn(`Streaming timeout after 180s`, { round, turnId, responseLength: roundResponse.length });
+            return {
+              response:
+                'Request timed out. The task may be too complex or the provider is slow. Please try again or break down the request into smaller parts.',
+              tokensIn,
+              tokensOut,
+              costUsd,
+              turnId,
+              durationMs: Date.now() - started,
+            };
+          }
+          _log.error(`Streaming error`, { round, turnId, error: err.message, stack: err.stack });
+          throw streamErr;
         } finally {
           clearTimeout(abortTimer);
         }
       }
 
       response = roundResponse;
-      console.log(
-        `[loop] round=${round} responseLen=${roundResponse.length} preview=${
-          JSON.stringify(roundResponse.slice(0, 120))
-        }`,
-      );
+      _log.trace(`response buffered`, { round, responseLen: roundResponse.length });
 
       const postReasonCtx = createPipelineContext({
         stage: 'post-reason',
@@ -672,8 +729,11 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       });
       const postReasonResult = await runHooksForStage('post-reason', postReasonCtx);
       if (postReasonResult.aborted) {
+        const abortMsg = postReasonResult.abortMessage ||
+          'Request was blocked during response processing';
+        _log.warn(`Pipeline abort at post-reason stage`, { turnId, reason: abortMsg });
         return {
-          response: postReasonResult.abortMessage || 'Request blocked',
+          response: abortMsg,
           tokensIn,
           tokensOut,
           costUsd,
@@ -687,17 +747,89 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       if (!registry || !toolCtx) break;
 
       const toolCalls = parseToolCalls(roundResponse);
-      console.log(
-        `[loop] round=${round} toolCallsFound=${toolCalls.length} names=${
-          toolCalls.map((t) => t.toolName).join(',')
-        }`,
-      );
+      _log.debug(`tool calls parsed`, {
+        round,
+        count: toolCalls.length,
+        names: toolCalls.map((t) => t.toolName).join(','),
+      });
+      if (langfuseConfigured()) {
+        generationCreate({
+          traceId: turnId,
+          id: `${turnId}-round-${round}`,
+          name: `llm-round-${round}`,
+          parentObservationId: turnId,
+          startTime: startedAt,
+          endTime: new Date().toISOString(),
+          model: effectiveModel,
+          input: currentMessages.slice(-2).map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 500) : m.content })),
+          output: roundResponse.slice(0, 2000),
+          usage: { input: tokensIn, output: tokensOut, unit: 'TOKENS' },
+        });
+      }
+      
+      // Detect if agent is stuck promising to use tools but not actually calling them
+      const hasToolPromises = /\b(search|look up|find|check|web search|perform a search|let me search|I will search|I'll search|let me look|I'll find|I'll check)\b/i.test(roundResponse);
+      const isStuckInPromiseLoop = hasToolPromises && toolCalls.length === 0 && round >= 1;
+      
+      _log.debug(`Promise loop analysis`, { 
+        round, 
+        hasToolPromises, 
+        toolCallsCount: toolCalls.length, 
+        responseLength: roundResponse.length,
+        isStuckInPromiseLoop,
+        responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n')
+      });
+      
+      if (isStuckInPromiseLoop) {
+        _log.warn(`Agent stuck in promise loop, attempting tool execution`, { 
+          round, 
+          responseLength: roundResponse.length,
+          fullResponse: roundResponse.slice(0, 1000)
+        });
+        
+        // Try to extract the search query and execute web search automatically
+        const searchQueryMatch = roundResponse.match(/(?:search|look up|find|check for)\s+(.+?)(?:\.|$|\n)/i);
+        if (searchQueryMatch && registry && toolCtx) {
+          const searchQuery = searchQueryMatch[1].trim();
+          _log.info(`Auto-executing web search for: "${searchQuery}"`, { turnId, round });
+          
+          try {
+            const webSearchResult = await executeTool({
+              toolName: 'web_search',
+              args: { query: searchQuery, max_results: 5 }
+            }, registry, toolCtx);
+            
+            if (webSearchResult.success) {
+              _log.info(`Auto web search successful`, { turnId, round, outputLength: webSearchResult.output.length });
+              // Add the search result to the tool results and continue
+              const autoToolResults = [webSearchResult];
+              const resultText = formatToolResults(autoToolResults);
+              currentMessages = [
+                ...currentMessages,
+                { role: 'assistant' as const, content: roundResponse },
+                { role: 'user' as const, content: `${resultText}\n\nBased on the search results above, please provide your complete response to the user.` },
+              ];
+              round++;
+              continue; // Continue to next round with search results
+            } else {
+              _log.warn(`Auto web search failed`, { turnId, round, error: webSearchResult.error });
+            }
+          } catch (err) {
+            _log.error(`Auto web search error`, { turnId, round, error: (err as Error).message });
+          }
+        }
+        
+        // If auto-execution fails, force completion with explanation
+        const forcedResponse = roundResponse + '\n\n[Note: I had difficulty executing the web search automatically. Let me provide a response based on my knowledge instead.]';
+        if (!useDirectStream && onChunk) onChunk(forcedResponse);
+        response = forcedResponse;
+        break;
+      }
+      
       if (toolCalls.length === 0) {
         // No tool calls — this is the final clean response.  If we buffered
         // (didn't stream above), emit it now so the user sees something.
-        console.log(
-          `[loop] round=${round} final clean response — emitting via onChunk=${!!onChunk} useDirectStream=${useDirectStream}`,
-        );
+        _log.trace(`final clean response`, { round, hasOnChunk: !!onChunk, useDirectStream });
         if (!useDirectStream && onChunk) onChunk(roundResponse);
         break;
       }
@@ -705,14 +837,19 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       // Has tool calls — emit the prose portion only (strip raw JSON/XML).
       if (onChunk) {
         const proseOnly = stripToolCallMarkup(roundResponse);
-        console.log(
-          `[loop] round=${round} emitting prose (len=${proseOnly.length}) stripped from tool-call response`,
-        );
+        _log.trace(`emitting prose`, { round, proseLen: proseOnly.length });
         if (proseOnly.trim()) onChunk(proseOnly);
       }
 
+      _log.debug(`Starting tool execution loop`, { round, toolCallsCount: toolCalls.length });
       const toolResults = [];
-      for (const tc of toolCalls) {
+      for (const [index, tc] of toolCalls.entries()) {
+        _log.debug(`Executing tool ${index + 1}/${toolCalls.length}`, { 
+          round, 
+          toolName: tc.toolName, 
+          argsCount: Object.keys(tc.args).length 
+        });
+        
         const preToolCtx = createPipelineContext({
           stage: 'pre-tool',
           sessionId,
@@ -727,6 +864,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         });
         const preToolResult = await runHooksForStage('pre-tool', preToolCtx);
         if (preToolResult.aborted) {
+          _log.warn(`Tool execution blocked by pre-tool hook`, { round, toolName: tc.toolName, reason: preToolResult.abortMessage });
           toolResults.push({
             toolName: tc.toolName,
             success: false,
@@ -737,15 +875,37 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           continue;
         }
 
-        console.log(
-          `[loop] executing tool=${tc.toolName} args=${JSON.stringify(tc.args).slice(0, 120)}`,
-        );
+        _log.debug(`Executing tool`, {
+          tool: tc.toolName,
+          args: JSON.stringify(tc.args).slice(0, 120),
+        });
+        const toolSpanId = `${turnId}-tool-${round}-${tc.toolName}`;
+        if (langfuseConfigured()) {
+          spanCreate({
+            traceId: turnId,
+            id: toolSpanId,
+            name: `tool:${tc.toolName}`,
+            parentObservationId: `${turnId}-round-${round}`,
+            startTime: new Date().toISOString(),
+            input: tc.args,
+          });
+        }
         const result = await executeTool(tc, registry, toolCtx);
-        console.log(
-          `[loop] tool=${tc.toolName} success=${result.success} outputLen=${result.output.length} error=${
-            result.error ?? ''
-          }`,
-        );
+        if (langfuseConfigured()) {
+          spanUpdate(toolSpanId, turnId, {
+            endTime: new Date().toISOString(),
+            output: result.output.slice(0, 2000),
+            level: result.success ? 'DEFAULT' : 'ERROR',
+            statusMessage: result.error,
+          });
+        }
+        _log.debug(`Tool execution completed`, {
+          tool: tc.toolName,
+          success: result.success,
+          outputLen: result.output.length,
+          error: result.error ?? '',
+          durationMs: result.durationMs,
+        });
         state.toolCallsMade++;
 
         const postToolCtx = createPipelineContext({
@@ -770,6 +930,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           result: result.output || result.error || '',
         });
       }
+      _log.debug(`Tool execution loop completed`, { round, resultsCount: toolResults.length });
 
       const resultText = formatToolResults(toolResults);
       // Tool results are internal context fed back to the LLM — never send raw
@@ -788,18 +949,28 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         { role: 'user' as const, content: followUpInstruction },
       ];
 
-      console.log(`[loop] round=${round} done — advancing to round ${round + 1}`);
+      _log.debug(`Advancing to next round`, { round, next: round + 1, roundsLeft: maxToolRounds - round - 1 });
       round++;
     }
     if (round >= maxToolRounds && response === '') {
       hitToolCeiling = true;
-      console.log(`[loop] hit tool ceiling at round=${round}/${maxToolRounds}`);
+      _log.warn(`Hit tool ceiling with no response`, { round, maxToolRounds });
     }
-    console.log(`[loop] exited while loop at round=${round} responseLen=${response.length}`);
+    _log.info(`Agent loop completed`, { 
+      turnId, 
+      finalRound: round, 
+      responseLength: response.length, 
+      hitToolCeiling, 
+      totalTokensUsed: tokensIn + tokensOut,
+      totalCost: costUsd,
+      toolCallsMade: state.toolCallsMade
+    });
   } catch (err) {
     errorMsg = (err as Error).message;
     throw err;
   } finally {
+    clearTimeout(overallTimer);
+    
     const finalState: AgentState = {
       ...state,
       tokensUsed: tokensIn + tokensOut,
@@ -825,7 +996,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       const mqmState = { ...finalState } as Record<string, unknown>;
       mqmState.mqmRequestContext = mqmReqCtx;
       mqmState.mqmModelUsed = {
-        provider: mqmPredictedProviderKind ?? config.defaultProvider,
+        provider: mqmPredictedProviderKind ?? effectiveProvider.name,
         model: effectiveModel,
       };
       mqmState.mqmConfidence = mqmQualityScore;
@@ -853,7 +1024,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     const preOutputResult = await runHooksForStage('pre-output', preOutputCtx);
     let finalOutput = response || '(error)';
     if (preOutputResult.aborted) {
-      finalOutput = preOutputResult.abortMessage || 'Request blocked';
+      const abortMsg = preOutputResult.abortMessage || 'Request was blocked before final output';
+      _log.warn(`Pipeline abort at pre-output stage`, { turnId, reason: abortMsg });
+      finalOutput = abortMsg;
     } else {
       finalOutput = preOutputCtx.output ?? finalOutput;
     }
@@ -862,26 +1035,51 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     const episodicSummary = `User: ${userMessage.slice(0, 200)}\nAssistant: ${
       (response || '(error)').slice(0, 200)
     }`;
-    await Promise.allSettled([
+    // Critical operations that must complete before returning
+    await Promise.all([
       persistMessage(sessionDb, 'assistant', finalOutput, tokensOut),
       incrementTurn(sessionId),
-      writeEpisodic({
-        sessionId,
-        summary: episodicSummary,
-        importance: Math.min(1.0, 0.3 + (userMessage.length / 500)),
-        embedder: options.embedder,
-      }).catch(() => {}),
-      extractAndStoreEntities(`${userMessage} ${response}`, sessionId).catch(() => {}),
-      detectAndPersistPreference(userMessage).catch(() => {}),
-      options.enableReflection && response
-        ? reflectOnTurn(
-          userMessage,
-          response,
-          effectiveProvider,
-          effectiveModel,
-          options.reasoningEffort,
-        )
-          .then(async (r) => {
+    ]);
+
+    // Fire-and-forget background operations - never block the response
+    (async () => {
+      try {
+        await Promise.allSettled([
+          writeEpisodic({
+            sessionId,
+            summary: episodicSummary,
+            importance: Math.min(1.0, 0.3 + (userMessage.length / 500)),
+            embedder: options.embedder,
+          }),
+          extractAndStoreEntities(`${userMessage} ${response}`, sessionId),
+          detectAndPersistPreference(userMessage),
+          logEvent({
+            event_type: 'llm_call',
+            session_id: sessionId,
+            turn_id: turnId,
+            actor: 'agent',
+            action: 'llm_call',
+            summary: userMessage.slice(0, 120),
+            model: effectiveModel,
+            tokens_in: tokensIn,
+            tokens_out: tokensOut,
+            cost_usd: costUsd,
+            started_at: startedAt,
+            duration_ms: durationMs,
+            error: errorMsg,
+          }),
+        ]);
+
+        // Handle reflection separately since it has additional dependencies
+        if (options.enableReflection && response) {
+          try {
+            const r = await reflectOnTurn(
+              userMessage,
+              response,
+              effectiveProvider,
+              effectiveModel,
+              options.reasoningEffort,
+            );
             await storeReflection(sessionId, r);
             // Feed reflection back into QM so wasCorrect gets resolved
             if (collectedToolCalls.length > 0) {
@@ -893,25 +1091,22 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
                 actualToolCalls: collectedToolCalls.map((t) => t.tool),
               }).catch(() => {});
             }
-          })
-          .catch(() => {})
-        : Promise.resolve(),
-      logEvent({
-        event_type: 'llm_call',
-        session_id: sessionId,
-        turn_id: turnId,
-        actor: 'agent',
-        action: 'llm_call',
-        summary: userMessage.slice(0, 120),
-        model: effectiveModel,
-        tokens_in: tokensIn,
-        tokens_out: tokensOut,
-        cost_usd: costUsd,
-        started_at: startedAt,
-        duration_ms: durationMs,
-        error: errorMsg,
-      }),
-    ]);
+          } catch (reflectionErr) {
+            _log.warn('Reflection failed', {
+              error: (reflectionErr as Error).message,
+              sessionId,
+              turnId,
+            });
+          }
+        }
+      } catch (bgErr) {
+        _log.warn('Background operations failed', {
+          error: (bgErr as Error).message,
+          sessionId,
+          turnId,
+        });
+      }
+    })().catch(() => {});
 
     if (collectedToolCalls.length >= 2) {
       extractSkillFromSession(

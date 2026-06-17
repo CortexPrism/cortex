@@ -16,6 +16,7 @@ import { searchEntities, traverseGraph } from '../memory/graph.ts';
 import { listReflections } from '../agent/reflect.ts';
 import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
+import { configureLogger } from '../utils/logger.ts';
 import type {
   AgentConfig,
   CortexConfig,
@@ -643,6 +644,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const current = await loadConfig();
     const updated = { ...current, ...body } as CortexConfig;
     await saveConfig(updated);
+    // Apply logging config live if it was included in the update
+    if (body.logging) {
+      const lc = updated.logging!;
+      configureLogger({
+        level: (lc.level ?? 'error') as import('../utils/logger.ts').LogLevel,
+        fileEnabled: lc.fileEnabled !== false,
+        filePath: lc.filePath ?? PATHS.logFile,
+        fileMaxBytes: lc.fileMaxBytes,
+        fileMaxFiles: lc.fileMaxFiles,
+      });
+    }
     return json({ ok: true });
   }
 

@@ -80,18 +80,30 @@ export const restartCommand = new Command()
 
       if (restartServer) {
         console.log(dim('Stopping server…'));
-        const existing = await findServerProcess(opts.port);
-        if (existing) {
-          killProcessById(existing.pid);
-          console.log(cyan(`  Stopped server (pid ${existing.pid})`));
-        } else {
-          const stopped = await stopBackgroundServer(opts.port);
-          if (!stopped) console.log(dim('  No server found'));
+        // Kill the process actually holding the port (handles sh-wrapper spawns correctly)
+        try {
+          const fuserProc = new Deno.Command('fuser', {
+            args: ['-k', `${opts.port}/tcp`],
+            stdout: 'null',
+            stderr: 'null',
+          });
+          await fuserProc.output();
+          console.log(cyan(`  Stopped server (port ${opts.port})`));
+        } catch {
+          // fuser not available — fall back to pid-based kill
+          const existing = await findServerProcess(opts.port);
+          if (existing) {
+            killProcessById(existing.pid);
+            console.log(cyan(`  Stopped server (pid ${existing.pid})`));
+          } else {
+            const stopped = await stopBackgroundServer(opts.port);
+            if (!stopped) console.log(dim('  No server found'));
+          }
         }
         console.log('');
       }
 
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1500));
 
       let daemonOk = true;
       let serverOk = true;
