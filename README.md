@@ -5,14 +5,14 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.32.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.33.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 
 **CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
 autonomous agent. It provides persistent memory, a rich tool ecosystem, sandboxed code execution, a
 full-featured web UI, and enterprise-grade security — all running locally on your machine or server.
 
-- Works with **12 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
+- Works with **24 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
 - Ships as a **single Deno binary** — no Docker required to get started
 - **100% open source** — MIT licensed, no telemetry, data stays on your machine
 
@@ -38,8 +38,10 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ### AI Providers & Model Routing
 
-- **12 LLM providers** — Anthropic Claude, OpenAI GPT, Google Gemini, Mistral, Groq, DeepSeek,
-  OpenRouter, xAI Grok, Together AI, AWS Bedrock, Cohere, Ollama (local models)
+- **24 LLM providers** — Anthropic Claude, OpenAI GPT, Google Gemini, Mistral, Groq, DeepSeek,
+  OpenRouter, xAI Grok, Together AI, AWS Bedrock, Cohere, Ollama (local models), Cerebras,
+  Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI, LM Studio, LiteLLM,
+  Hugging Face, Alibaba (Qwen), Venice AI, Kilo AI
 - **Multimodal input** — upload images and documents; native vision support for Anthropic and Google
   Gemini; PDF text auto-extracted for all providers
 - **Model Quartermaster (MQM)** — intelligent model selection that learns which model performs best
@@ -70,16 +72,20 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ### Built-in Tools
 
-| Category       | Tools                                                                               |
-| -------------- | ----------------------------------------------------------------------------------- |
-| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo |
-| Shell          | execute shell commands (sandboxed through policy validator)                         |
-| Web            | web_search, web_fetch (returns cleaned plain text)                                  |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                 |
-| GitHub         | PR creation, issue tracking, repo browsing                                          |
-| Git workspace  | status, commit, push, pull, branch, clone                                           |
-| Voice          | speak, listen (STT/TTS agent tools)                                                 |
-| Sub-agents     | spawn typed child agents for parallel and delegated tasks                           |
+| Category       | Tools                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo             |
+| Shell          | execute shell commands (sandboxed through policy validator)                                     |
+| Web            | web_search (DuckDuckGo, Brave, Tavily, SerpAPI), web_fetch (returns cleaned plain text)         |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                             |
+| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                                    |
+| Git workspace  | status, commit, push, pull, branch, clone                                                       |
+| Voice          | speak, listen (STT/TTS agent tools)                                                             |
+| Memory         | memory_note — persist notes to episodic memory                                                  |
+| Sub-agents     | spawn typed child agents for parallel and delegated tasks                                       |
+| Skills         | load_skill, skill_read, skill_write                                                             |
+| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                         |
+| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                                      |
 
 ### Web UI & REST API
 
@@ -198,6 +204,26 @@ Commands:
   git               Git workspace operations
   github            GitHub integration (PRs, issues, repos)
   mqm               Model Quartermaster stats and configuration
+  qm                Quartermaster tool orchestration stats
+  models            List and configure LLM models
+  soul              Manage agent identity and personality templates
+  plugins           Install and manage plugins
+  marketplace       Browse and install from the plugin/agent marketplace
+  log               View and manage logging configuration
+  agent             Manage custom agents
+  service           Manage micro-services
+  node              Manage distributed nodes
+  eval              Run agent evaluation suites
+  install           Install as system service
+  uninstall         Remove system service
+  hooks             Manage pipeline hooks
+  triggers          Manage event triggers
+  channels          Manage channel adapters (Discord, etc.)
+  mcp               Start MCP server (stdio)
+  tui               Launch terminal UI
+  desktop           Desktop automation
+  workflow          Workflow engine operations
+  projects          Project management
 ```
 
 ### `cortex chat`
@@ -366,6 +392,33 @@ cortex voice status
 cortex voice set-voice <voice-id>
 ```
 
+### `cortex log`
+
+```bash
+cortex log show                          # Print last 100 log entries
+cortex log show --lines=200 --level=warn # Filter by level
+cortex log tail                          # Live tail (Ctrl+C to stop)
+cortex log tail --level=debug            # Tail with filters
+cortex log clear                         # Truncate the log file
+cortex log path                          # Print log file path
+cortex log set-level info                # Update log level in config
+cortex log status                        # Show current logging config
+```
+
+### `cortex plugins`
+
+```bash
+cortex plugins install <source>               # Install from URL, local file, or marketplace
+cortex plugins list                           # List installed plugins
+cortex plugins enable <name>                  # Enable a plugin
+cortex plugins disable <name>                 # Disable a plugin
+cortex plugins remove <name>                  # Remove a plugin
+cortex plugins update <name>                  # Update a plugin
+cortex plugins update --all                   # Update all plugins
+cortex plugins verify <name>                  # Verify integrity hash
+cortex plugins permissions <name>             # Inspect plugin permissions
+```
+
 ---
 
 ## Configuration
@@ -394,27 +447,47 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
     "cohere": { "kind": "cohere", "model": "command-r-plus", "apiKey": "..." },
     "ollama": { "kind": "ollama", "model": "llama3.2", "baseUrl": "http://localhost:11434" }
   },
-  "server": { "port": 3000, "host": "127.0.0.1" },
-  "reflection": { "enabled": true },
-  "memory": { "maxHits": 5 },
+  "agent": { "name": "Cortex", "maxTurns": 8, "streamOutput": true },
+  "router": {
+    "enabled": false,
+    "strategy": "cascade",
+    "confidenceThreshold": 0.7
+  },
+  "modelSelection": {
+    "enabled": true,
+    "mode": "balanced",
+    "observeThreshold": 50
+  },
+  "update": {
+    "channel": "stable",
+    "checkOnStartup": true
+  },
   "voice": {
     "enabled": false,
     "provider": "openai",
     "defaultVoice": "alloy",
     "autoTTS": false
+  },
+  "logging": {
+    "level": "info",
+    "fileEnabled": true
+  },
+  "webAuth": {
+    "requireAuth": false
   }
 }
 ```
 
 ### Environment Variables
 
-| Variable            | Purpose                                                      |
-| ------------------- | ------------------------------------------------------------ |
-| `CORTEX_DATA_DIR`   | Override data directory (default: `~/.cortex/data/`)         |
-| `CORTEX_CONFIG_DIR` | Override config directory (default: `~/.cortex/`)            |
-| `CORTEX_VAULT_KEY`  | Vault decryption passphrase (required to use `cortex vault`) |
-| `GITHUB_TOKEN`      | GitHub personal access token for the `github` command        |
-| `OPENAI_API_KEY`    | OpenAI API key (alternative to config file)                  |
+| Variable             | Purpose                                                      |
+| -------------------- | ------------------------------------------------------------ |
+| `CORTEX_DATA_DIR`    | Override data directory (default: `~/.cortex/data/`)         |
+| `CORTEX_CONFIG_DIR`  | Override config directory (default: `~/.cortex/`)            |
+| `CORTEX_VAULT_KEY`   | Vault decryption passphrase (required to use `cortex vault`) |
+| `CORTEX_LOG_LEVEL`   | Override log level (trace, debug, info, warn, error, silent) |
+| `GITHUB_TOKEN`       | GitHub personal access token for the `github` command        |
+| `OPENAI_API_KEY`     | OpenAI API key (alternative to config file)                  |
 
 ---
 
@@ -443,21 +516,61 @@ Start with `cortex serve` and open `http://127.0.0.1:3000`.
 
 ```
 GET    /api/health
+GET    /api/status
 GET    /api/sessions?limit=20
 GET    /api/sessions/:id
 GET    /api/sessions/:id/messages
+GET    /api/sessions/:id/children
+GET    /api/sessions/:id/events
 POST   /api/sessions/:id/resume
+POST   /api/sessions/:id/close
 DELETE /api/sessions/:id
 GET    /api/jobs?status=pending
+POST   /api/jobs
+DELETE /api/jobs/:id
 GET    /api/memory/search?q=<query>
+GET    /api/memory/stats
+GET    /api/memory/health
+POST   /api/memory/add
+GET    /api/memory/reflections
+GET    /api/memory/graph/entities
+GET    /api/config
+PUT    /api/config
+GET    /api/providers/configured
+GET    /api/providers/:kind/models
+GET    /api/plugins
+POST   /api/plugins/install
+POST   /api/plugins/:name/enable
+POST   /api/plugins/:name/disable
+DELETE /api/plugins/:name
+GET    /api/plugins/check-updates
+POST   /api/plugins/update-all
+GET    /api/agents
+POST   /api/agents
+PUT    /api/agents/:id
+DELETE /api/agents/:id
+GET    /api/services
+POST   /api/services
+GET    /api/skills
+POST   /api/skills
+GET    /api/soul/templates
+GET    /api/workspace/files
 GET    /api/workspace/git/status
 POST   /api/workspace/git/commit
 POST   /api/workspace/git/push
 GET    /api/github/repos
+GET    /api/github/repos/:owner/:name/pulls
 POST   /api/code/exec
 POST   /api/upload
 POST   /api/voice/transcribe
 POST   /api/voice/synthesize
+GET    /api/qm/health
+GET    /api/qm/recent
+GET    /api/mqm/health
+GET    /api/lens/recent
+GET    /api/dashboard/config
+PUT    /api/dashboard/config
+GET    /metrics
 WS     /ws   (streaming chat)
 ```
 
