@@ -871,6 +871,18 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('jobs');closeMobileSidebar()" id="nav-jobs">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Jobs
     </button>
+    <button class="nav-item" onclick="showPage('projects');closeMobileSidebar()" id="nav-projects">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects
+    </button>
+    <button class="nav-item" onclick="showPage('hooks');closeMobileSidebar()" id="nav-hooks">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Hooks
+    </button>
+    <button class="nav-item" onclick="showPage('triggers');closeMobileSidebar()" id="nav-triggers">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Triggers
+    </button>
+    <button class="nav-item" onclick="showPage('channels');closeMobileSidebar()" id="nav-channels">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M4 14h9M4 18h6"/><path d="M18 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><path d="M18 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><line x1="20" y1="10" x2="20" y2="14"/></svg></span> Channels
+    </button>
     <button class="nav-item" onclick="showPage('sessions');closeMobileSidebar()" id="nav-sessions">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Sessions
     </button>
@@ -1317,6 +1329,204 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
     <div id="jobs-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+  <!-- Page: Projects -->
+  <div id="page-projects" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Projects</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Workspace projects — organize work by context and agent</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="openProjectForm()">+ New Project</button>
+        <button class="btn btn-ghost" onclick="loadProjects()">↻ Refresh</button>
+      </div>
+    </div>
+    <!-- Stats bar -->
+    <div style="padding:10px 24px;border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:center;font-size:12px;color:var(--text3);">
+      <span>Total: <strong id="projects-total">—</strong></span>
+    </div>
+    <!-- New project form -->
+    <div id="project-form-panel" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">New Project</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Name *</label>
+          <input id="proj-name" class="inp" style="width:180px;" placeholder="my-project" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Description</label>
+          <input id="proj-desc" class="inp" style="width:220px;" placeholder="Optional description" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Agent ID</label>
+          <input id="proj-agent" class="inp" style="width:140px;" placeholder="default" />
+        </div>
+        <button class="btn btn-primary" onclick="saveProject()" style="height:34px;">Create</button>
+        <button class="btn btn-ghost" onclick="closeProjectForm()" style="height:34px;">Cancel</button>
+      </div>
+      <div id="project-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
+    </div>
+    <!-- Project list -->
+    <div id="projects-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;">
+      <div style="text-align:center;color:var(--text3);padding:60px 20px;">Loading projects…</div>
+    </div>
+  </div>
+
+  <!-- Page: Hooks -->
+  <div id="page-hooks" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Pipeline Hooks</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Registered hook handlers — in-memory, session lifetime</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="hooks-count-badge" style="font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:10px;color:var(--text2);">— hooks</span>
+        <button class="btn btn-ghost" onclick="initBuiltinHooks()">⚡ Init Built-in Hooks</button>
+        <button class="btn btn-ghost" onclick="loadHooksPage()">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 24px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">
+            <th style="text-align:left;padding:6px 10px;">Name</th>
+            <th style="text-align:left;padding:6px 10px;">Stages</th>
+            <th style="text-align:left;padding:6px 10px;">Priority</th>
+            <th style="text-align:left;padding:6px 10px;">Async</th>
+            <th style="text-align:left;padding:6px 10px;">Source</th>
+            <th style="text-align:left;padding:6px 10px;">Plugin</th>
+            <th style="text-align:left;padding:6px 10px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="hooks-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px;">Loading hooks…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Page: Triggers -->
+  <div id="page-triggers" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Triggers</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Webhooks, file watchers, and git hooks — in-memory only</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="openTriggerForm()">+ Add Trigger</button>
+        <button class="btn btn-ghost" onclick="loadTriggers()">↻ Refresh</button>
+      </div>
+    </div>
+    <!-- In-memory warning -->
+    <div style="padding:8px 24px;background:rgba(251,191,36,0.08);border-bottom:1px solid rgba(251,191,36,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#fbbf24;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Triggers are stored in memory only — they will be lost on server restart.
+    </div>
+    <!-- Summary cards -->
+    <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);">
+      <div class="stat"><div class="stat-num" id="triggers-total">—</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num" style="color:#22c55e;" id="triggers-enabled">—</div><div class="stat-label">Enabled</div></div>
+      <div class="stat"><div class="stat-num" style="color:#818cf8;" id="triggers-webhooks">—</div><div class="stat-label">Webhooks</div></div>
+      <div class="stat"><div class="stat-num" style="color:#38bdf8;" id="triggers-watchers">—</div><div class="stat-label">Watchers</div></div>
+    </div>
+    <!-- Add trigger form -->
+    <div id="trigger-form-panel" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Add Trigger</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:720px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Name *</label>
+          <input id="trig-name" class="inp" placeholder="my-trigger" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Source *</label>
+          <select id="trig-source" class="inp" onchange="triggerFormSourceChanged()">
+            <option value="webhook">Webhook</option>
+            <option value="watcher">File Watcher</option>
+            <option value="git_hook">Git Hook</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Agent ID</label>
+          <input id="trig-agent" class="inp" placeholder="default" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text3);">Prompt Template</label>
+          <input id="trig-prompt" class="inp" placeholder="Process event: {{event}}" />
+        </div>
+        <!-- Webhook-specific -->
+        <div id="trig-webhook-fields" style="display:contents;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Provider</label>
+            <select id="trig-webhook-provider" class="inp">
+              <option value="generic">Generic</option>
+              <option value="github">GitHub</option>
+              <option value="gitlab">GitLab</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Secret Env Var</label>
+            <input id="trig-webhook-secret-env" class="inp" placeholder="WEBHOOK_SECRET" />
+          </div>
+        </div>
+        <!-- Watcher-specific -->
+        <div id="trig-watcher-fields" style="display:none;grid-column:1/-1;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Paths (comma-separated)</label>
+              <input id="trig-watcher-paths" class="inp" placeholder="/home/user/project,/tmp/watch" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Debounce (ms)</label>
+              <input id="trig-watcher-debounce" class="inp" type="number" value="500" />
+            </div>
+          </div>
+        </div>
+        <!-- Git hook-specific -->
+        <div id="trig-githook-fields" style="display:none;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Repo Path</label>
+            <input id="trig-githook-repo" class="inp" placeholder="/path/to/repo" />
+          </div>
+        </div>
+        <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="trig-enabled" checked style="width:14px;height:14px;" />
+          <label for="trig-enabled" style="font-size:12px;">Enable immediately</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn btn-primary" onclick="saveTrigger()">Add Trigger</button>
+        <button class="btn btn-ghost" onclick="closeTriggerForm()">Cancel</button>
+      </div>
+      <div id="trigger-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
+    </div>
+    <!-- Triggers list -->
+    <div id="triggers-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+  <!-- Page: Channels -->
+  <div id="page-channels" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Channels</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Communication channel adapters — registered via plugins</p>
+      </div>
+      <button class="btn btn-ghost" onclick="loadChannels()">↻ Refresh</button>
+    </div>
+    <!-- Info banner -->
+    <div style="padding:8px 24px;background:rgba(251,191,36,0.08);border-bottom:1px solid rgba(251,191,36,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#fbbf24;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Channels are registered via plugins. Install a channel plugin to add new channels. The list below reflects what is currently registered in memory.
+    </div>
+    <!-- Summary cards -->
+    <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--border);">
+      <div class="stat"><div class="stat-num" id="channels-total">—</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num" style="color:#22c55e;" id="channels-active">—</div><div class="stat-label">Active</div></div>
+      <div class="stat"><div class="stat-num" style="color:#fbbf24;" id="channels-inactive">—</div><div class="stat-label">Inactive</div></div>
+    </div>
+    <!-- Channel list -->
+    <div id="channels-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 
   <!-- Page: Skills -->
@@ -2736,7 +2946,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','hooks','triggers','channels','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -2781,6 +2991,10 @@ function showPage(name) {
     nodes: loadNodes,
     quartermaster: loadQuartermaster,
     dashboard: loadDashboard,
+    projects: loadProjects,
+    hooks: loadHooksPage,
+    triggers: loadTriggers,
+    channels: loadChannels,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -3172,6 +3386,315 @@ async function loadJobs() {
     \`;
     el.appendChild(d);
   }
+}
+
+// ── Projects ────────────────────────────────────────────────
+async function loadProjects() {
+  const el = document.getElementById('projects-list');
+  showSkeleton(el, 3, 'card');
+  const projects = await fetch(BASE + '/api/projects').then(r => r.json()).catch(() => []);
+  document.getElementById('projects-total').textContent = projects.length;
+  renderProjects(projects);
+}
+
+function renderProjects(projects) {
+  const el = document.getElementById('projects-list');
+  if (!projects.length) {
+    el.innerHTML = \`<div style="text-align:center;color:var(--text3);padding:60px 20px;font-size:13px;">
+      No projects yet. Create one to organize work by workspace.
+    </div>\`;
+    return;
+  }
+  el.innerHTML = '';
+  for (const p of projects) {
+    const created = p.created ? new Date(p.created).toLocaleDateString() : '—';
+    const d = document.createElement('div');
+    d.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;';
+    d.innerHTML = \`
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;">\${escHtml(p.name)}</div>
+        \${p.description ? \`<div style="font-size:12px;color:var(--text3);margin-top:2px;">\${escHtml(p.description)}</div>\` : ''}
+        <div style="display:flex;gap:14px;margin-top:6px;font-size:11px;color:var(--text3);">
+          <span>Path: <code style="font-size:10px;">\${escHtml(p.path ?? '—')}</code></span>
+          \${p.agentId ? \`<span>Agent: <strong>\${escHtml(p.agentId)}</strong></span>\` : ''}
+          <span>Created: \${created}</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="color:#f87171;font-size:12px;" onclick="deleteProject(\${JSON.stringify(p.name)})">Delete</button>
+    \`;
+    el.appendChild(d);
+  }
+}
+
+function openProjectForm() {
+  document.getElementById('project-form-panel').style.display = 'block';
+  document.getElementById('project-form-error').style.display = 'none';
+  document.getElementById('proj-name').focus();
+}
+
+function closeProjectForm() {
+  document.getElementById('project-form-panel').style.display = 'none';
+  document.getElementById('proj-name').value = '';
+  document.getElementById('proj-desc').value = '';
+  document.getElementById('proj-agent').value = '';
+}
+
+async function saveProject() {
+  const name = document.getElementById('proj-name').value.trim();
+  const description = document.getElementById('proj-desc').value.trim();
+  const agentId = document.getElementById('proj-agent').value.trim() || 'default';
+  const errEl = document.getElementById('project-form-error');
+  if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
+  const res = await fetch(BASE + '/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description: description || undefined, agentId }),
+  });
+  const data = await res.json();
+  if (!res.ok) { errEl.textContent = data.error || 'Failed to create project.'; errEl.style.display = 'block'; return; }
+  closeProjectForm();
+  loadProjects();
+}
+
+async function deleteProject(name) {
+  if (!confirm(\`Delete project "\${name}"? This cannot be undone.\`)) return;
+  const res = await fetch(BASE + '/api/projects/' + encodeURIComponent(name), { method: 'DELETE' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to delete project', 'error'); return; }
+  loadProjects();
+}
+
+// ── Hooks ────────────────────────────────────────────────────
+async function loadHooksPage() {
+  document.getElementById('hooks-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px;">Loading…</td></tr>';
+  const hooks = await fetch(BASE + '/api/hooks').then(r => r.json()).catch(() => []);
+  document.getElementById('hooks-count-badge').textContent = hooks.length + ' hook' + (hooks.length !== 1 ? 's' : '');
+  renderHooks(hooks);
+}
+
+function renderHooks(hooks) {
+  const tbody = document.getElementById('hooks-tbody');
+  if (!hooks.length) {
+    tbody.innerHTML = \`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px;">
+      No hooks registered. Click "Init Built-in Hooks" to load the default hooks.
+    </td></tr>\`;
+    return;
+  }
+  tbody.innerHTML = hooks.map(h => \`
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 10px;font-weight:500;">\${escHtml(h.name)}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--text3);">\${(h.stages||[]).join(', ')}</td>
+      <td style="padding:8px 10px;">\${h.priority ?? '—'}</td>
+      <td style="padding:8px 10px;">\${h.async ? '<span style="color:#4ade80;">yes</span>' : 'no'}</td>
+      <td style="padding:8px 10px;font-size:12px;">\${escHtml(h.source ?? '—')}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--text3);">\${escHtml(h.pluginName ?? '—')}</td>
+      <td style="padding:8px 10px;">
+        \${h.disableable
+          ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="disableHook(\${JSON.stringify(h.name)})">Disable</button>\`
+          : '<span style="color:var(--text3);font-size:12px;">🔒 locked</span>'}
+      </td>
+    </tr>
+  \`).join('');
+}
+
+async function initBuiltinHooks() {
+  const res = await fetch(BASE + '/api/hooks/init', { method: 'POST' });
+  const data = await res.json();
+  if (!res.ok) { showToast(data.error || 'Failed to init hooks', 'error'); return; }
+  showToast(\`Initialized \${data.added} hook(s). Total: \${data.total}.\`, 'success');
+  loadHooksPage();
+}
+
+async function disableHook(name) {
+  if (!confirm(\`Disable hook "\${name}" for this session?\`)) return;
+  const res = await fetch(BASE + '/api/hooks/' + encodeURIComponent(name) + '/disable', { method: 'POST' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to disable hook', 'error'); return; }
+  loadHooksPage();
+}
+
+// ── Triggers ──────────────────────────────────────────────
+async function loadTriggers() {
+  const el = document.getElementById('triggers-list');
+  showSkeleton(el, 3, 'card');
+  const triggers = await fetch(BASE + '/api/triggers').then(r => r.json()).catch(() => []);
+  document.getElementById('triggers-total').textContent = triggers.length;
+  document.getElementById('triggers-enabled').textContent = triggers.filter(t => t.enabled).length;
+  document.getElementById('triggers-webhooks').textContent = triggers.filter(t => t.source === 'webhook').length;
+  document.getElementById('triggers-watchers').textContent = triggers.filter(t => t.source === 'watcher').length;
+  renderTriggers(triggers);
+}
+
+function renderTriggers(triggers) {
+  const el = document.getElementById('triggers-list');
+  if (!triggers.length) {
+    el.innerHTML = \`<div style="text-align:center;color:var(--text3);padding:60px 20px;font-size:13px;">
+      No triggers registered. Click "+ Add Trigger" to create one.
+    </div>\`;
+    return;
+  }
+  el.innerHTML = '';
+  for (const t of triggers) {
+    const statusColor = t.enabled ? '#22c55e' : '#fbbf24';
+    const statusLabel = t.enabled ? 'enabled' : 'disabled';
+    const webhookUrl = t.source === 'webhook' ? \`\${location.origin}/api/webhooks/\${encodeURIComponent(t.name)}\` : null;
+    const d = document.createElement('div');
+    d.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;';
+    d.innerHTML = \`
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:13px;">\${escHtml(t.name)}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${escHtml(t.source)}</span>
+          <span style="font-size:11px;color:\${statusColor};">⬤ \${statusLabel}</span>
+        </div>
+        \${webhookUrl ? \`<div style="margin-top:5px;font-size:11px;color:var(--text3);">
+          URL: <code style="font-size:10px;cursor:pointer;text-decoration:underline;" onclick="navigator.clipboard.writeText(\${JSON.stringify(webhookUrl)});showToast('URL copied','success')">\${escHtml(webhookUrl)}</code>
+        </div>\` : ''}
+        <div style="margin-top:5px;font-size:11px;color:var(--text3);">
+          Agent: <strong>\${escHtml(t.action?.agent || 'default')}</strong>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        \${t.enabled
+          ? \`<button class="btn btn-ghost" style="font-size:11px;" onclick="disableTrigger(\${escHtml(JSON.stringify(t.name))})">Disable</button>\`
+          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="enableTrigger(\${escHtml(JSON.stringify(t.name))})">Enable</button>\`}
+        <button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="removeTrigger(\${escHtml(JSON.stringify(t.name))})">Remove</button>
+      </div>
+    \`;
+    el.appendChild(d);
+  }
+}
+
+function openTriggerForm() {
+  document.getElementById('trigger-form-panel').style.display = 'block';
+  document.getElementById('trigger-form-error').style.display = 'none';
+  triggerFormSourceChanged();
+  document.getElementById('trig-name').focus();
+}
+
+function closeTriggerForm() {
+  document.getElementById('trigger-form-panel').style.display = 'none';
+}
+
+function triggerFormSourceChanged() {
+  const src = document.getElementById('trig-source').value;
+  const wh = document.getElementById('trig-webhook-fields');
+  const wa = document.getElementById('trig-watcher-fields');
+  const gh = document.getElementById('trig-githook-fields');
+  if (wh) { [...wh.children].forEach(el => el.style.display = src === 'webhook' ? 'flex' : 'none'); }
+  if (wa) wa.style.display = src === 'watcher' ? 'block' : 'none';
+  if (gh) gh.style.display = src === 'git_hook' ? 'block' : 'none';
+}
+
+async function saveTrigger() {
+  const name = document.getElementById('trig-name').value.trim();
+  const source = document.getElementById('trig-source').value;
+  const agent = document.getElementById('trig-agent').value.trim() || 'default';
+  const promptTemplate = document.getElementById('trig-prompt').value.trim() || 'Handle event: {{event}}';
+  const enabled = document.getElementById('trig-enabled').checked;
+  const errEl = document.getElementById('trigger-form-error');
+  if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
+
+  const config = {
+    name, source, enabled,
+    action: { type: 'agent_turn', agent, promptTemplate, timeoutSeconds: 60 },
+  };
+
+  if (source === 'webhook') {
+    const provider = document.getElementById('trig-webhook-provider').value;
+    const secretEnv = document.getElementById('trig-webhook-secret-env').value.trim();
+    config.webhook = { path: '/api/webhooks/' + encodeURIComponent(name), providers: [provider], events: ['*'], ...(secretEnv ? { secretEnv } : {}) };
+  } else if (source === 'watcher') {
+    const pathsRaw = document.getElementById('trig-watcher-paths').value.trim();
+    const debounceMs = parseInt(document.getElementById('trig-watcher-debounce').value, 10) || 500;
+    config.watcher = { paths: pathsRaw.split(',').map(s => s.trim()).filter(Boolean), debounceMs, recursive: true, events: ['create','modify','delete'] };
+  } else if (source === 'git_hook') {
+    const repoPath = document.getElementById('trig-githook-repo').value.trim();
+    config.gitHook = { repoPath, hooks: ['pre-commit', 'post-commit'] };
+  }
+
+  const res = await fetch(BASE + '/api/triggers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  });
+  const data = await res.json();
+  if (!res.ok) { errEl.textContent = data.error || 'Failed to create trigger.'; errEl.style.display = 'block'; return; }
+  closeTriggerForm();
+  loadTriggers();
+}
+
+async function removeTrigger(name) {
+  if (!confirm(\`Remove trigger "\${name}"?\`)) return;
+  const res = await fetch(BASE + '/api/triggers/' + encodeURIComponent(name), { method: 'DELETE' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to remove trigger', 'error'); return; }
+  loadTriggers();
+}
+
+async function enableTrigger(name) {
+  const res = await fetch(BASE + '/api/triggers/' + encodeURIComponent(name) + '/enable', { method: 'POST' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to enable trigger', 'error'); return; }
+  loadTriggers();
+}
+
+async function disableTrigger(name) {
+  const res = await fetch(BASE + '/api/triggers/' + encodeURIComponent(name) + '/disable', { method: 'POST' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to disable trigger', 'error'); return; }
+  loadTriggers();
+}
+
+// ── Channels ──────────────────────────────────────────────
+async function loadChannels() {
+  const el = document.getElementById('channels-list');
+  showSkeleton(el, 3, 'card');
+  const channels = await fetch(BASE + '/api/channels').then(r => r.json()).catch(() => []);
+  document.getElementById('channels-total').textContent = channels.length;
+  document.getElementById('channels-active').textContent = channels.filter(c => c.enabled).length;
+  document.getElementById('channels-inactive').textContent = channels.filter(c => !c.enabled).length;
+  renderChannels(channels);
+}
+
+function renderChannels(channels) {
+  const el = document.getElementById('channels-list');
+  if (!channels.length) {
+    el.innerHTML = \`<div style="text-align:center;color:var(--text3);padding:60px 20px;font-size:13px;">
+      No channels registered. Install a channel plugin (e.g. Discord) to get started.
+    </div>\`;
+    return;
+  }
+  el.innerHTML = '';
+  for (const c of channels) {
+    const statusColor = c.enabled ? '#22c55e' : '#fbbf24';
+    const statusLabel = c.enabled ? 'active' : 'inactive';
+    const d = document.createElement('div');
+    d.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+    d.innerHTML = \`
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:600;font-size:13px;">\${escHtml(c.id)}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${escHtml(c.protocol)}</span>
+          <span style="font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.04);color:\${statusColor};">⬤ \${statusLabel}</span>
+        </div>
+        <div style="margin-top:4px;font-size:11px;color:var(--text3);">Agent: <strong>\${escHtml(c.agentId)}</strong></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        \${c.enabled
+          ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="stopChannel(\${escHtml(JSON.stringify(c.id))})">Stop</button>\`
+          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="startChannel(\${escHtml(JSON.stringify(c.id))})">Start</button>\`}
+      </div>
+    \`;
+    el.appendChild(d);
+  }
+}
+
+async function startChannel(id) {
+  const res = await fetch(BASE + '/api/channels/' + encodeURIComponent(id) + '/start', { method: 'POST' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to start channel', 'error'); return; }
+  loadChannels();
+}
+
+async function stopChannel(id) {
+  const res = await fetch(BASE + '/api/channels/' + encodeURIComponent(id) + '/stop', { method: 'POST' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to stop channel', 'error'); return; }
+  loadChannels();
 }
 
 // ── Skills ──────────────────────────────────────────────────
