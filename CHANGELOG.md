@@ -27,6 +27,28 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Plugin Updates settings card** (`src/server/ui.ts`) — new card in the Updates settings pane with
   interval, GitHub token (with PAT generation link), startup and auto-update checkboxes, and
   **Save Plugin Settings**, **Check Now**, and **Update All** action buttons with inline results panel
+- **Provider-specific LLM settings** (`src/config/config.ts`, `src/llm/types.ts`, `src/llm/openai-compatible.ts`,
+  `src/llm/ollama.ts`, `src/agent/loop.ts`, `src/server/ws.ts`) — each provider now exposes its unique
+  parameters end-to-end from config → `CompletionOptions` → provider adapter:
+  - **Anthropic / Google / OpenAI** — `reasoningEffort` (low / medium / high) already wired; now surfaced
+    as a labelled dropdown in the Edit modal ("Extended Thinking", "Thinking Budget", "Reasoning Effort")
+  - **OpenRouter** — `httpReferer` and `xTitle` injected as `HTTP-Referer` / `X-Title` request headers
+  - **Perplexity** — `searchRecencyFilter` (month / week / day / hour), `returnCitations`, `returnImages`
+    forwarded as `search_recency_filter`, `return_citations`, `return_images` body fields
+  - **Together AI / Fireworks / Novita** — `repetitionPenalty` forwarded as `repetition_penalty`
+  - **Ollama** — `numCtx` → `num_ctx`, `numThread` → `num_thread` in `options` object; `keepAlive` →
+    `keep_alive` at request-body level; both `complete()` and `stream()` wired
+  - **LM Studio** — `numCtx`, `keepAlive` forwarded via the OpenAI-compatible path
+  - **LiteLLM** — `dropParams` → `drop_params` body field to silently ignore unsupported parameters
+  - **Venice AI** — `includeVeniceSystemPrompt` → `venice_parameters.include_venice_system_prompt`
+- **`PROVIDER_EXTRA_FIELDS` metadata** (`src/server/ui.ts`) — declarative per-provider field descriptor
+  map (`select` / `number` / `text` / `checkbox`) that drives a dynamic "Provider Settings" section
+  injected into the Add/Edit Model modal when a provider with extra fields is selected
+- **Provider card summary badges** (`src/server/ui.ts`) — configured provider cards in Settings now
+  display active extra settings inline (reasoning effort, repetition penalty, recency filter, num_ctx,
+  keep-alive, citations, drop-params, venice-prompt)
+- **`PUT /api/config/provider` body widened** (`src/server/router.ts`) — accepts all new provider-specific
+  fields so the modal save correctly persists them
 - **11 new LLM providers** — Cerebras, Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI,
   LM Studio, LiteLLM, Hugging Face Inference Router, Alibaba (Qwen), and Venice AI; each implemented
   as an `OpenAICompatibleProvider` subclass with verified base URLs and auth from official docs

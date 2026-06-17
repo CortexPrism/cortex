@@ -42,6 +42,28 @@ export interface ProviderConfig {
   reasoningEffort?: string;
   /** Max context window size in tokens (informational, not enforced at API level) */
   contextWindow?: number;
+  /** Repetition penalty 1.0–2.0 (Together AI, Fireworks, Novita) */
+  repetitionPenalty?: number;
+  /** Perplexity: filter search results by recency — 'month' | 'week' | 'day' | 'hour' */
+  searchRecencyFilter?: string;
+  /** Perplexity: include citations in response */
+  returnCitations?: boolean;
+  /** Perplexity: include images in response */
+  returnImages?: boolean;
+  /** OpenRouter: HTTP-Referer header sent to downstream providers */
+  httpReferer?: string;
+  /** OpenRouter: X-Title header for dashboard display */
+  xTitle?: string;
+  /** Ollama / LM Studio: context window size passed in options.num_ctx */
+  numCtx?: number;
+  /** Ollama: number of CPU threads */
+  numThread?: number;
+  /** Ollama / LM Studio: keep-alive duration e.g. '5m', '1h', '-1' (forever) */
+  keepAlive?: string;
+  /** LiteLLM: drop unsupported params instead of erroring */
+  dropParams?: boolean;
+  /** Venice AI: prepend Venice system prompt (character/uncensored mode) */
+  includeVeniceSystemPrompt?: boolean;
 }
 
 export interface RouterThresholdConfig {

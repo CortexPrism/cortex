@@ -55,18 +55,20 @@ export class OllamaProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
+    const ollamaOpts: Record<string, unknown> = {
+      temperature: options.temperature ?? 0.7,
+      num_predict: options.maxTokens ?? 4096,
+    };
+    if (options.numCtx != null) ollamaOpts.num_ctx = options.numCtx;
+    if (options.numThread != null) ollamaOpts.num_thread = options.numThread;
+
+    const body: Record<string, unknown> = { model: options.model, messages, stream: false, options: ollamaOpts };
+    if (options.keepAlive != null) body.keep_alive = options.keepAlive;
+
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: options.model,
-        messages,
-        stream: false,
-        options: {
-          temperature: options.temperature ?? 0.7,
-          num_predict: options.maxTokens ?? 4096,
-        },
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -88,14 +90,20 @@ export class OllamaProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
+    const ollamaOptsS: Record<string, unknown> = {};
+    if (options.temperature != null) ollamaOptsS.temperature = options.temperature;
+    if (options.maxTokens != null) ollamaOptsS.num_predict = options.maxTokens;
+    if (options.numCtx != null) ollamaOptsS.num_ctx = options.numCtx;
+    if (options.numThread != null) ollamaOptsS.num_thread = options.numThread;
+
+    const streamBody: Record<string, unknown> = { model: options.model, messages, stream: true };
+    if (Object.keys(ollamaOptsS).length > 0) streamBody.options = ollamaOptsS;
+    if (options.keepAlive != null) streamBody.keep_alive = options.keepAlive;
+
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: options.model,
-        messages,
-        stream: true,
-      }),
+      body: JSON.stringify(streamBody),
     });
 
     if (!response.ok || !response.body) {

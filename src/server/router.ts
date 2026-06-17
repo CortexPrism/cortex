@@ -657,6 +657,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
       temperature?: number;
       maxTokens?: number;
       topP?: number;
+      reasoningEffort?: string;
+      repetitionPenalty?: number;
+      searchRecencyFilter?: string;
+      returnCitations?: boolean;
+      returnImages?: boolean;
+      httpReferer?: string;
+      xTitle?: string;
+      numCtx?: number;
+      numThread?: number;
+      keepAlive?: string;
+      dropParams?: boolean;
+      includeVeniceSystemPrompt?: boolean;
     };
     const config = await loadConfig();
     const kind = body.kind as keyof typeof config.providers;
