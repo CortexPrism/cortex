@@ -7,6 +7,32 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.35.0] — 2026-06-17
+
+### Changed
+
+- **Consolidated settings navigation** — reduced 11 settings tabs to 4 grouped tabs:
+  - **General** — Agent behavior, user profile, UI & appearance, web authentication
+  - **AI & Models** — LLM providers, model routing (RouteLLM)
+  - **Tools & Extensions** — Voice & TTS, tool API keys, computer use (GUI automation)
+  - **System** — Automatic updates, plugin updates, logging, OTLP, Grafana, Langfuse
+
+- **Consolidated sidebar navigation** — reduced 7 nav sections to 5 with smarter categorization:
+  - **Core** — Dashboard, Chat, Sessions (moved from Management)
+  - **Intelligence** — Memory, Skills, Soul (moved from Configuration), Activity
+  - **Development** — Editor, Code Runner, Version Control (merged Git+GitHub), Projects (moved from Management)
+  - **Infrastructure** — Agents, Services, Nodes, Jobs, Automation (merged Hooks+Triggers), Channels
+  - **System** — Settings, Policies, Extensions (merged Plugins+Marketplace), Analytics, Quartermaster
+
+- **Merged related pages with internal tab navigation**:
+  - Git + GitHub → **Version Control** (Local / Remote tabs)
+  - Hooks + Triggers → **Automation** (Hooks / Triggers tabs)
+  - Plugins + Marketplace → **Extensions** (Installed / Discover tabs)
+
+- **Fixed duplicate Plugin Panels section** in sidebar navigation
+
+---
+
 ## [0.34.0] — 2026-06-17
 
 ### Added
