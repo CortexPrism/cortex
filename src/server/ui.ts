@@ -4108,9 +4108,12 @@ async function loadSettings() {
         </div>
         
         <div style="margin-top:16px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">GitHub Token (optional, for rate limits)</label>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
+            GitHub Token (optional, for rate limits)
+            <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
+          </label>
           <input class="inp" id="cfg-update-token" type="password" placeholder="ghp_..." value="\${config.update?.githubToken ?? ''}" />
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Personal access token to avoid GitHub API rate limits</p>
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — avoids GitHub API rate limits</p>
         </div>
         
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
@@ -4128,6 +4131,46 @@ async function loadSettings() {
           <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Update Settings</button>
           <button class="btn btn-ghost" onclick="checkUpdatesNow()">Check Now</button>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Plugin Updates</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs plugin updates</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
+            <input class="inp" id="cfg-plugin-update-interval" type="number" min="1" max="168" value="\${config.pluginUpdate?.checkIntervalHours ?? 24}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for plugin updates</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
+              GitHub Token (optional)
+              <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Plugin+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
+            </label>
+            <input class="inp" id="cfg-plugin-update-token" type="password" placeholder="ghp_..." value="\${config.pluginUpdate?.githubToken ?? ''}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — for GitHub Releases API calls</p>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-plugin-update-startup" \${config.pluginUpdate?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Check for plugin updates on startup</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-plugin-update-auto" \${config.pluginUpdate?.autoUpdate?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Automatically apply plugin updates</label>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Plugin Settings</button>
+          <button class="btn btn-ghost" onclick="checkPluginUpdatesNow()">Check Now</button>
+          <button class="btn btn-ghost" onclick="updateAllPluginsNow()">Update All</button>
+        </div>
+
+        <div id="plugin-update-results" style="margin-top:12px;"></div>
       </div>
     </div>
 
@@ -4396,9 +4439,68 @@ async function saveUpdateSettings() {
       githubToken: document.getElementById('cfg-update-token')?.value?.trim() || null,
       gpgKeyPath: null,
     },
+    pluginUpdate: {
+      checkOnStartup: document.getElementById('cfg-plugin-update-startup')?.checked ?? true,
+      autoUpdate: document.getElementById('cfg-plugin-update-auto')?.checked ?? false,
+      checkIntervalHours: Number(document.getElementById('cfg-plugin-update-interval')?.value) || 24,
+      githubToken: document.getElementById('cfg-plugin-update-token')?.value?.trim() || null,
+    },
   };
   const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   if (res.ok) { toast('Update settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
+}
+
+async function checkPluginUpdatesNow() {
+  const el = document.getElementById('plugin-update-results');
+  if (el) el.innerHTML = '<span style="font-size:11px;color:var(--text3);">Checking...</span>';
+  try {
+    const res = await fetch(BASE + '/api/plugins/check-updates');
+    const results = await res.json();
+    if (!el) return;
+    if (!results.length) {
+      el.innerHTML = '<span style="font-size:11px;color:var(--text3);">No plugins installed.</span>';
+      return;
+    }
+    const available = results.filter(r => r.updateAvailable);
+    const rows = results.map(r => {
+      const icon = r.updateAvailable ? '<span style="color:var(--green);">▲</span>' : '<span style="color:var(--text3);">●</span>';
+      const ver = r.updateAvailable
+        ? \`\${r.currentVersion} → <strong style="color:var(--green);">\${r.latestVersion}</strong>\`
+        : \`<span style="color:var(--text3);">\${r.currentVersion}</span>\`;
+      const err = r.error ? \`<span style="color:var(--red);font-size:10px;"> \${r.error}</span>\` : '';
+      return \`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);">\${icon} <span style="font-size:12px;font-weight:500;">\${r.pluginName}</span> <span style="font-size:11px;">\${ver}</span>\${err}</div>\`;
+    }).join('');
+    const summary = available.length
+      ? \`<div style="font-size:11px;color:var(--green);margin-bottom:6px;">\${available.length} update(s) available</div>\`
+      : \`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">All plugins up to date</div>\`;
+    el.innerHTML = summary + rows;
+  } catch (e) {
+    if (el) el.innerHTML = \`<span style="font-size:11px;color:var(--red);">Check failed: \${e.message}</span>\`;
+  }
+}
+
+async function updateAllPluginsNow() {
+  const el = document.getElementById('plugin-update-results');
+  if (el) el.innerHTML = '<span style="font-size:11px;color:var(--text3);">Updating...</span>';
+  try {
+    const res = await fetch(BASE + '/api/plugins/update-all', { method: 'POST' });
+    const data = await res.json();
+    if (!el) return;
+    if (data.updated === 0) {
+      el.innerHTML = '<span style="font-size:11px;color:var(--text3);">All plugins already up to date.</span>';
+      return;
+    }
+    const rows = data.results.map(r => {
+      if (r.error) {
+        return \`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--red);">✗</span> <strong>\${r.name}</strong>: <span style="color:var(--red);">\${r.error}</span></div>\`;
+      }
+      return \`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--green);">✓</span> <strong>\${r.name}</strong>: \${r.previousVersion} → <strong style="color:var(--green);">\${r.newVersion}</strong></div>\`;
+    }).join('');
+    el.innerHTML = \`<div style="font-size:11px;color:var(--green);margin-bottom:6px;">\${data.updated} plugin(s) updated</div>\` + rows;
+    toast(\`Updated \${data.updated} plugin(s)\`, 'success');
+  } catch (e) {
+    if (el) el.innerHTML = \`<span style="font-size:11px;color:var(--red);">Update failed: \${e.message}</span>\`;
+  }
 }
 
 async function saveProfileSettings() {
