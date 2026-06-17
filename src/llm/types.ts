@@ -29,6 +29,8 @@ export interface CompletionOptions {
   systemPrompt?: string;
   /** Reasoning effort — 'low' | 'medium' | 'high'. Maps to extended thinking budget (Anthropic), thinkingConfig (Google), or reasoning_effort (OpenAI/o-series). */
   reasoningEffort?: string;
+  /** Optional AbortSignal to cancel the in-flight request. */
+  signal?: AbortSignal;
 }
 
 export interface CompletionChunk {

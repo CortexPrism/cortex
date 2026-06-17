@@ -75,6 +75,10 @@ export const PATHS = {
     return join(this.dataDir, 'voice');
   },
 
+  get serverLog() {
+    return join(this.dataDir, 'server.log');
+  },
+
   sessionDb(sessionId: string): string {
     return join(this.sessionsDir, `${sessionId}.db`);
   },

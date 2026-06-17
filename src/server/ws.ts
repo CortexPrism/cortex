@@ -367,7 +367,13 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         systemPrompt: effectiveSystemPrompt,
         stream: true,
         reasoningEffort,
-        onChunk: (chunk) => send(ws, { type: 'chunk', delta: chunk }),
+        onChunk: (chunk) => {
+        let safe = chunk;
+        safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+        safe = safe.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
+        safe = safe.replace(/\{\s*"(tool|name)"\s*:[\s\S]*?\}/g, '');
+        if (safe.trim()) send(ws, { type: 'chunk', delta: safe });
+      },
         registry,
         toolContext: {
           workingDir,
