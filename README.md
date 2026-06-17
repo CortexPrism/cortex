@@ -4,7 +4,6 @@
   <img src="docs/banner.png" alt="CortexPrism" width="100%"/>
 </p>
 
-
 ## Star History
 
 <a href="https://www.star-history.com/?repos=CortexPrism%2Fcortex&type=date&legend=top-left">
@@ -14,7 +13,6 @@
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=CortexPrism/cortex&type=date&legend=top-left" />
  </picture>
 </a>
-
 
 > **The open-source AI agent harness with memory, tools, a web UI, and layered security — powered by
 > Deno.**

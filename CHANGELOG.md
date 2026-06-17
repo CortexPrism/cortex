@@ -12,9 +12,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ### Added
 
 - **Reasoning inspection panel** (`src/server/ui.ts`) — new `[🔬 Reasoning]` toggle button appears
-  during agent operations when tools are used; clicking reveals a collapsible panel showing raw
-  tool calls, execution results, and agent decision-making; panel auto-hides when response completes
-  for a clean default UX
+  during agent operations when tools are used; clicking reveals a collapsible panel showing raw tool
+  calls, execution results, and agent decision-making; panel auto-hides when response completes for
+  a clean default UX
 - **Real-time incremental streaming** (`src/agent/loop.ts`) — chunks now emit to client as they
   arrive during buffered streaming mode, eliminating delays from full-response buffering; maintains
   ability to parse tool calls while providing live UI updates for multi-round tool execution flows
@@ -28,8 +28,19 @@ Versioning: [Semantic Versioning](https://semver.org/)
   → synthesis) now shows final response in real-time without requiring page refresh; incremental
   streaming sends chunks immediately instead of waiting for full buffering
 - **Tool call JSON persisted to database** (`src/agent/loop.ts`) — responses are now stripped of
-  tool calls before storage in session history, ensuring clean session records and past conversations
-  remain readable and professional
+  tool calls before storage in session history, ensuring clean session records and past
+  conversations remain readable and professional
+- **Duplicate `reasoningBtn` variable declaration** (`src/server/ui.ts`) — renamed second `const`
+  declaration to `reasoningBtnToggle` to fix `SyntaxError: Identifier has already been declared`;
+  nested `case` blocks in a `switch` share the same scope
+- **Reasoning panel showing raw XML/tool calls** (`src/server/ui.ts`) — panel now extracts only
+  `` content via regex instead of displaying unfiltered `capturedReasoning` with
+  structured tool calls and markup tags
+- **Reasoning panel persisting across messages** (`src/server/ui.ts`) — panel DOM element now
+  properly removed via `.remove()` on `case 'start'` instead of only hidden with `display: none`
+- **Reasoning panel force-closed on response completion** (`src/server/ui.ts`) — removed
+  unnecessary `reasoningPanelOpen = false` and panel hide in `case 'done'` so user maintains
+  control over panel visibility
 
 ### Changed
 

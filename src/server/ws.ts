@@ -419,7 +419,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       }
 
       let capturedReasoning = '';
-      
+
       const result = await agentTurn({
         userMessage: effectiveMessage,
         provider: effectiveProvider,
@@ -433,14 +433,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         onChunk: (chunk) => {
           // Capture raw reasoning/tool calls before stripping
           capturedReasoning += chunk;
-          
+
           // Strip tool call markup using the same robust logic as loop.ts
           let safe = chunk;
-          
+
           // Remove <tool_call>...</tool_call> blocks
           safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
           safe = safe.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
-          
+
           // Remove bare JSON tool calls using brace-depth walker for nested JSON
           const bareToolRe = /\{\s*"(tool|name)"\s*:/g;
           let bm: RegExpExecArray | null;
@@ -481,14 +481,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           for (let i = regions.length - 1; i >= 0; i--) {
             safe = safe.slice(0, regions[i][0]) + safe.slice(regions[i][1]);
           }
-          
+
           // Remove fenced code blocks that contain tool call JSON
           safe = safe.replace(/```[\s\S]*?```/g, (block) => {
             return /\{\s*"(tool|name)"\s*:/.test(block) ? '' : block;
           });
-          
+
           safe = safe.replace(/\n{3,}/g, '\n\n').trim();
-          
+
           if (safe.trim()) send(ws, { type: 'chunk', delta: safe });
         },
         registry,
@@ -501,7 +501,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         enableReflection: true,
         userContentBlocks: contentBlocks,
       });
-      
+
       // Send captured reasoning separately if it contains tool calls
       if (capturedReasoning && capturedReasoning.includes('"tool"')) {
         send(ws, { type: 'reasoning', content: capturedReasoning });

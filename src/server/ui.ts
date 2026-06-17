@@ -2636,7 +2636,14 @@ function toggleReasoningPanel() {
       panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:JetBrains Mono,monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
       chatArea.appendChild(panel);
     }
-    panel.textContent = currentReasoningData || '(No reasoning data)';
+    // Extract thinking content from XML tags
+    let thinkingContent = currentReasoningData || '';
+    const re = new RegExp('<thinking>([\\s\\S]*?)</thinking>');
+    const thinkingMatch = thinkingContent.match(re);
+    if (thinkingMatch) {
+      thinkingContent = thinkingMatch[1].trim();
+    }
+    panel.textContent = thinkingContent || '(No reasoning data)';
     panel.style.display = 'block';
     const btn = document.getElementById('reasoning-toggle');
     if (btn) btn.style.background = 'rgba(6,182,212,0.2)';
@@ -2686,7 +2693,10 @@ function connect() {
            reasoningBtn.style.background = '';
          }
          const reasoningPanel = document.getElementById('reasoning-panel');
-         if (reasoningPanel) reasoningPanel.style.display = 'none';
+         if (reasoningPanel) {
+           reasoningPanel.style.display = 'none';
+           reasoningPanel.remove();
+         }
          agentBubble = appendBubble('agent', '');
          document.getElementById('thinking-bar').style.display = 'flex';
          break;
@@ -2706,9 +2716,6 @@ function connect() {
          break;
        case 'done':
          document.getElementById('thinking-bar').style.display = 'none';
-         reasoningPanelOpen = false;
-         const reasoningPanel2 = document.getElementById('reasoning-panel');
-         if (reasoningPanel2) reasoningPanel2.style.display = 'none';
          agentBubble = null;
          appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
          saveSession();
