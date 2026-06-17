@@ -1,4 +1,10 @@
-import type { CompletionChunk, CompletionOptions, CompletionResult, LLMProvider } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  LLMProvider,
+  PricingMap,
+} from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'command-r-plus': { in: 2.5, out: 10.0 },
@@ -36,9 +42,11 @@ export class CohereProvider implements LLMProvider {
   readonly defaultModel = 'command-r-plus';
 
   private apiKey: string;
+  private pricing: PricingMap;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     this.apiKey = apiKey;
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
@@ -74,7 +82,7 @@ export class CohereProvider implements LLMProvider {
     const usage = data.usage?.billed_units;
     const tokensIn = usage?.input_tokens ?? 0;
     const tokensOut = usage?.output_tokens ?? 0;
-    const rates = COST_PER_1M[options.model] ?? { in: 2.5, out: 10.0 };
+    const rates = this.pricing[options.model] ?? { in: 2.5, out: 10.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
 
     return { content, model: options.model, tokensIn, tokensOut, costUsd };
@@ -132,7 +140,7 @@ export class CohereProvider implements LLMProvider {
         if (event.type === 'message-end' && event.usage) {
           const tokensIn = event.usage.billed_units?.input_tokens ?? 0;
           const tokensOut = event.usage.billed_units?.output_tokens ?? 0;
-          const rates = COST_PER_1M[options.model] ?? { in: 2.5, out: 10.0 };
+          const rates = this.pricing[options.model] ?? { in: 2.5, out: 10.0 };
           const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
           yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
           return;

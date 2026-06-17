@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'llama-3.3-70b-versatile': { in: 0.59, out: 0.79 },
@@ -8,13 +9,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class GroqProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'groq',
       'llama-3.3-70b-versatile',
       'https://api.groq.com/openai/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

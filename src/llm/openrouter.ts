@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'anthropic/claude-3.5-sonnet': { in: 3.0, out: 15.0 },
@@ -9,13 +10,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class OpenRouterProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'openrouter',
       'openai/gpt-4o',
       'https://openrouter.ai/api/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

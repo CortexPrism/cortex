@@ -40,97 +40,106 @@ function createProvider(kind: ProviderKind, cfg: ProviderConfig): LLMProvider {
   switch (kind) {
     case 'anthropic':
       if (!cfg.apiKey) throw new Error('Anthropic API key is required.');
-      return new AnthropicProvider(cfg.apiKey);
+      return new AnthropicProvider(cfg.apiKey, cfg.pricing);
 
     case 'openai':
       if (!cfg.apiKey) throw new Error('OpenAI API key is required.');
-      return new OpenAIProvider(cfg.apiKey, cfg.baseUrl);
+      return new OpenAIProvider(cfg.apiKey, cfg.baseUrl, cfg.pricing);
 
     case 'ollama':
       return new OllamaProvider(cfg.baseUrl ?? 'http://localhost:11434');
 
     case 'google':
       if (!cfg.apiKey) throw new Error('Google API key is required.');
-      return new GoogleProvider(cfg.apiKey);
+      return new GoogleProvider(cfg.apiKey, cfg.pricing);
 
     case 'mistral':
       if (!cfg.apiKey) throw new Error('Mistral API key is required.');
-      return new MistralProvider(cfg.apiKey);
+      return new MistralProvider(cfg.apiKey, cfg.pricing);
 
     case 'groq':
       if (!cfg.apiKey) throw new Error('Groq API key is required.');
-      return new GroqProvider(cfg.apiKey);
+      return new GroqProvider(cfg.apiKey, cfg.pricing);
 
     case 'deepseek':
       if (!cfg.apiKey) throw new Error('DeepSeek API key is required.');
-      return new DeepSeekProvider(cfg.apiKey);
+      return new DeepSeekProvider(cfg.apiKey, cfg.pricing);
 
     case 'openrouter':
       if (!cfg.apiKey) throw new Error('OpenRouter API key is required.');
-      return new OpenRouterProvider(cfg.apiKey);
+      return new OpenRouterProvider(cfg.apiKey, cfg.pricing);
 
     case 'xai':
       if (!cfg.apiKey) throw new Error('xAI API key is required.');
-      return new XAIProvider(cfg.apiKey);
+      return new XAIProvider(cfg.apiKey, cfg.pricing);
 
     case 'together':
       if (!cfg.apiKey) throw new Error('Together AI API key is required.');
-      return new TogetherProvider(cfg.apiKey);
+      return new TogetherProvider(cfg.apiKey, cfg.pricing);
 
     case 'bedrock':
       if (!cfg.apiKey) throw new Error('AWS access key ID is required.');
       if (!cfg.secretKey) throw new Error('AWS secret access key is required.');
-      return new BedrockProvider(cfg.apiKey, cfg.secretKey, cfg.baseUrl ?? 'us-east-1');
+      return new BedrockProvider(
+        cfg.apiKey,
+        cfg.secretKey,
+        cfg.baseUrl ?? 'us-east-1',
+        cfg.pricing,
+      );
 
     case 'cohere':
       if (!cfg.apiKey) throw new Error('Cohere API key is required.');
-      return new CohereProvider(cfg.apiKey);
+      return new CohereProvider(cfg.apiKey, cfg.pricing);
 
     case 'kilo':
       if (!cfg.apiKey) throw new Error('Kilo API key is required.');
-      return new KiloProvider(cfg.apiKey);
+      return new KiloProvider(cfg.apiKey, cfg.pricing);
 
     case 'cerebras':
       if (!cfg.apiKey) throw new Error('Cerebras API key is required.');
-      return new CerebrasProvider(cfg.apiKey);
+      return new CerebrasProvider(cfg.apiKey, cfg.pricing);
 
     case 'fireworks':
       if (!cfg.apiKey) throw new Error('Fireworks API key is required.');
-      return new FireworksProvider(cfg.apiKey);
+      return new FireworksProvider(cfg.apiKey, cfg.pricing);
 
     case 'perplexity':
       if (!cfg.apiKey) throw new Error('Perplexity API key is required.');
-      return new PerplexityProvider(cfg.apiKey);
+      return new PerplexityProvider(cfg.apiKey, cfg.pricing);
 
     case 'nvidia':
       if (!cfg.apiKey) throw new Error('NVIDIA NIM API key is required.');
-      return new NvidiaProvider(cfg.apiKey);
+      return new NvidiaProvider(cfg.apiKey, cfg.pricing);
 
     case 'moonshot':
       if (!cfg.apiKey) throw new Error('Moonshot API key is required.');
-      return new MoonshotProvider(cfg.apiKey);
+      return new MoonshotProvider(cfg.apiKey, cfg.pricing);
 
     case 'novita':
       if (!cfg.apiKey) throw new Error('Novita API key is required.');
-      return new NovitaProvider(cfg.apiKey);
+      return new NovitaProvider(cfg.apiKey, cfg.pricing);
 
     case 'lmstudio':
       return new LMStudioProvider(cfg.baseUrl ?? 'http://localhost:1234');
 
     case 'litellm':
-      return new LiteLLMProvider(cfg.apiKey ?? 'litellm', cfg.baseUrl ?? 'http://localhost:4000');
+      return new LiteLLMProvider(
+        cfg.apiKey ?? 'litellm',
+        cfg.baseUrl ?? 'http://localhost:4000',
+        cfg.pricing,
+      );
 
     case 'huggingface':
       if (!cfg.apiKey) throw new Error('HuggingFace API key is required.');
-      return new HuggingFaceProvider(cfg.apiKey);
+      return new HuggingFaceProvider(cfg.apiKey, cfg.pricing);
 
     case 'alibaba':
       if (!cfg.apiKey) throw new Error('Alibaba Cloud API key is required.');
-      return new AlibabaProvider(cfg.apiKey);
+      return new AlibabaProvider(cfg.apiKey, cfg.pricing);
 
     case 'venice':
       if (!cfg.apiKey) throw new Error('Venice AI API key is required.');
-      return new VeniceProvider(cfg.apiKey);
+      return new VeniceProvider(cfg.apiKey, cfg.pricing);
 
     default:
       throw new Error(`Unknown provider kind: ${kind}`);

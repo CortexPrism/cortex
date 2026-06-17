@@ -717,6 +717,8 @@ interface CortexConfig {
 }
 ```
 
+All provider configs accept an optional `pricing` field — a map of model name to per-million-token rates in USD (`{ "model": { in: 2.5, out: 10.0 } }`). Config values are merged over the built-in hardcoded defaults so any model price can be overridden or added without modifying source code.
+
 ---
 
 ## Data Flow: Complete Chat Turn

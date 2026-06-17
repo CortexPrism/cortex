@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'meta-llama/Llama-3.3-70B-Instruct': { in: 0.60, out: 0.60 },
@@ -8,13 +9,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class HuggingFaceProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'huggingface',
       'meta-llama/Llama-3.3-70B-Instruct',
-      'https://router.huggingface.co/v1',
+      'https://api-inference.huggingface.co/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

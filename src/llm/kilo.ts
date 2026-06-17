@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'kilo/sonnet': { in: 3.0, out: 15.0 },
@@ -9,13 +10,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class KiloProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'kilo',
       'kilo/sonnet',
       'https://api.kilo.ai/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

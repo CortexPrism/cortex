@@ -46,6 +46,11 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Marketplace card redesign** (`src/server/ui.ts`) — new `.card-mp` CSS class with colour-derived
   icon square, hover shadow + lift (`translateY`), version as a blue badge, monospace slugs, license
   display, and proper singular/plural download counts
+- **Dynamic per-model pricing** (`src/config/config.ts`) — `ProviderConfig` now supports an optional
+  `pricing` field (`{ "model": { in: 2.5, out: 10.0 } }`) that lets users override built-in
+  hardcoded pricing or add prices for models not in the defaults. Pricing is merged per-provider so
+  config values take precedence over compile-time constants. Displayed in `cortex models show` when
+  set.
 
 ### Fixed
 

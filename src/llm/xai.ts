@@ -1,4 +1,5 @@
 import { OpenAICompatibleProvider } from './openai-compatible.ts';
+import type { PricingMap } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'grok-2': { in: 2.0, out: 10.0 },
@@ -7,13 +8,13 @@ const COST_PER_1M: Record<string, { in: number; out: number }> = {
 };
 
 export class XAIProvider extends OpenAICompatibleProvider {
-  constructor(apiKey: string) {
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
     super(
       'xai',
-      'grok-2-latest',
+      'grok-2',
       'https://api.x.ai/v1',
       apiKey,
-      COST_PER_1M,
+      { ...COST_PER_1M, ...pricingOverrides },
     );
   }
 }

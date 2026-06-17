@@ -5,6 +5,7 @@ import type {
   CompletionResult,
   ContentBlock,
   LLMProvider,
+  PricingMap,
 } from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
@@ -38,9 +39,11 @@ export class OpenAIProvider implements LLMProvider {
   readonly defaultModel = 'gpt-4o';
 
   private client: OpenAI;
+  private pricing: PricingMap;
 
-  constructor(apiKey: string, baseUrl?: string) {
+  constructor(apiKey: string, baseUrl?: string, pricingOverrides?: PricingMap) {
     this.client = new OpenAI({ apiKey, baseURL: baseUrl });
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
   }
 
   async complete(options: CompletionOptions): Promise<CompletionResult> {
@@ -70,7 +73,7 @@ export class OpenAIProvider implements LLMProvider {
     const content = response.choices[0]?.message?.content ?? '';
     const tokensIn = response.usage?.prompt_tokens ?? 0;
     const tokensOut = response.usage?.completion_tokens ?? 0;
-    const rates = COST_PER_1M[options.model] ?? { in: 2.5, out: 10.0 };
+    const rates = this.pricing[options.model] ?? { in: 2.5, out: 10.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
 
     return { content, model: options.model, tokensIn, tokensOut, costUsd };
@@ -111,7 +114,7 @@ export class OpenAIProvider implements LLMProvider {
       }
     }
 
-    const rates = COST_PER_1M[options.model] ?? { in: 2.5, out: 10.0 };
+    const rates = this.pricing[options.model] ?? { in: 2.5, out: 10.0 };
     const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
     yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
   }
