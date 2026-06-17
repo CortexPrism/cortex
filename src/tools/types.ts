@@ -8,7 +8,11 @@ export type ToolCapability =
   | 'shell:run'
   | 'network:fetch'
   | 'db:read'
-  | 'db:write';
+  | 'db:write'
+  | 'computer:screenshot'
+  | 'computer:mouse'
+  | 'computer:keyboard'
+  | 'computer:control';
 
 export interface ToolParam {
   name: string;

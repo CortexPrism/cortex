@@ -740,6 +740,95 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(configured);
   }
 
+  // GET /api/tools/config — get tool configurations (API keys, URLs, etc.)
+  if (req.method === 'GET' && path === '/api/tools/config') {
+    const { vaultList, vaultGet } = await import('../security/vault.ts');
+    try {
+      const entries = await vaultList();
+      const toolConfigs: Record<string, { configured: boolean; masked?: string; url?: string }> =
+        {};
+
+      // Check for known tool keys
+      const knownTools = [
+        'brave_search_api_key',
+        'tavily_api_key',
+        'firecrawl_api_key',
+        'firecrawl_url',
+        'serpapi_api_key',
+      ];
+
+      for (const toolKey of knownTools) {
+        const entry = entries.find((e) => e.name === toolKey);
+        if (entry) {
+          try {
+            const value = await vaultGet(toolKey);
+            toolConfigs[toolKey] = {
+              configured: true,
+              masked: value.slice(0, 6) + '...' + value.slice(-4),
+            };
+          } catch {
+            toolConfigs[toolKey] = { configured: false };
+          }
+        } else {
+          // Check environment variables as fallback
+          const envKey = toolKey.toUpperCase();
+          const envValue = Deno.env.get(envKey);
+          if (envValue) {
+            toolConfigs[toolKey] = {
+              configured: true,
+              masked: envValue.slice(0, 6) + '...' + envValue.slice(-4),
+            };
+          } else {
+            toolConfigs[toolKey] = { configured: false };
+          }
+        }
+      }
+
+      return json(toolConfigs);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // PUT /api/tools/config — update tool configuration
+  if (req.method === 'PUT' && path === '/api/tools/config') {
+    const body = await req.json() as {
+      tool: string;
+      value: string;
+      service?: string;
+    };
+
+    if (!body.tool || !body.value) {
+      return err('tool and value are required', 400);
+    }
+
+    const { vaultStore } = await import('../security/vault.ts');
+    try {
+      await vaultStore({
+        name: body.tool,
+        service: body.service || 'tool',
+        value: body.value,
+        credentialType: 'api_key',
+      });
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // DELETE /api/tools/config/:tool — remove tool configuration
+  const deleteToolMatch = path.match(/^\/api\/tools\/config\/([^/]+)$/);
+  if (req.method === 'DELETE' && deleteToolMatch) {
+    const toolName = deleteToolMatch[1];
+    const { vaultDelete } = await import('../security/vault.ts');
+    try {
+      await vaultDelete(toolName);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
   // GET /api/providers/:kind/models?apiKey=...&baseUrl=... — fetch models from provider
   const modelsMatch = path.match(/^\/api\/providers\/(\w+)\/models$/);
   if (req.method === 'GET' && modelsMatch) {

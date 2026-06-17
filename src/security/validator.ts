@@ -95,6 +95,54 @@ export async function validateToolCall(
     }
   }
 
+  // Computer use validation
+  if (toolName === 'computer') {
+    const action = String(args.action ?? '');
+    const computerDecision = await checkPolicy('computer', action);
+
+    if (!computerDecision.allowed) {
+      await logEvent({
+        event_type: 'policy_check',
+        session_id: sessionId,
+        actor: 'validator',
+        action: `computer:${action}`,
+        summary: `Computer use action denied by policy: ${action}`,
+        started_at: new Date().toISOString(),
+        payload: { action, rule: computerDecision.rule?.id },
+      });
+      return { allowed: false, reason: computerDecision.reason };
+    }
+
+    // Additional validation for typing actions - check for sensitive data
+    if (action === 'type') {
+      const text = String(args.text ?? '');
+      // Simple heuristic to detect potential passwords/secrets
+      if (
+        text.toLowerCase().includes('password') ||
+        text.toLowerCase().includes('secret') ||
+        text.toLowerCase().includes('api_key') ||
+        text.toLowerCase().includes('apikey') ||
+        text.toLowerCase().includes('token') ||
+        /\b[A-Za-z0-9_-]{20,}\b/.test(text) // Long random strings
+      ) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'validator',
+          action: 'computer:type:sensitive',
+          summary: 'Blocked computer use typing of potentially sensitive data',
+          started_at: new Date().toISOString(),
+          payload: { action: 'type', blocked: true },
+        });
+        return {
+          allowed: false,
+          reason:
+            'Blocked typing of potentially sensitive data. Use clipboard or file operations instead.',
+        };
+      }
+    }
+  }
+
   return { allowed: true, reason: 'Passed all policy checks' };
 }
 

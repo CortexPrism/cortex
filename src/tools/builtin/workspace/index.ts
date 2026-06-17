@@ -9,3 +9,6 @@ export { fileInfoTool } from './file_info.ts';
 export { fileSearchTool } from './file_search.ts';
 export { fileGlobTool } from './file_glob.ts';
 export { fileRedoTool, fileUndoTool } from './file_undo.ts';
+export { fileCopyTool } from './file_copy.ts';
+export { fileMoveTool } from './file_move.ts';
+export { fileDiffTool } from './file_diff.ts';

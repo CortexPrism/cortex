@@ -29,6 +29,7 @@ import { braveSearchTool } from '../tools/builtin/web/brave_search.ts';
 import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
 import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
 import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
+import { computerTool } from '../tools/builtin/computer.ts';
 import { fileGlobTool } from '../tools/builtin/workspace/file_glob.ts';
 import {
   githubIssueCreateTool,
@@ -299,6 +300,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         tavily_search: tavilySearchTool,
         serpapi_search: serpapiSearchTool,
         firecrawl: firecrawlTool,
+        computer: computerTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {
@@ -430,67 +432,101 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         stream: true,
         reasoningEffort,
         ...providerSpecificOpts,
-        onChunk: (chunk) => {
-          // Capture raw reasoning/tool calls before stripping
-          capturedReasoning += chunk;
+        onChunk: (() => {
+          // Buffer to accumulate chunks for proper tool call detection
+          let chunkBuffer = '';
+          let lastSentIndex = 0;
 
-          // Strip tool call markup using the same robust logic as loop.ts
-          let safe = chunk;
+          return (chunk: string) => {
+            // Capture raw reasoning/tool calls before stripping
+            capturedReasoning += chunk;
 
-          // Remove <tool_call>...</tool_call> blocks
-          safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
-          safe = safe.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
+            // Add to buffer
+            chunkBuffer += chunk;
 
-          // Remove bare JSON tool calls using brace-depth walker for nested JSON
-          const bareToolRe = /\{\s*"(tool|name)"\s*:/g;
-          let bm: RegExpExecArray | null;
-          const regions: Array<[number, number]> = [];
-          while ((bm = bareToolRe.exec(safe)) !== null) {
-            const start = bm.index;
-            let depth = 0;
-            let inStr = false;
-            let esc = false;
-            let end = -1;
-            for (let i = start; i < safe.length; i++) {
-              const ch = safe[i];
-              if (esc) {
-                esc = false;
-                continue;
-              }
-              if (ch === '\\') {
-                esc = true;
-                continue;
-              }
-              if (ch === '"') {
-                inStr = !inStr;
-                continue;
-              }
-              if (inStr) continue;
-              if (ch === '{') depth++;
-              if (ch === '}') {
-                depth--;
-                if (depth === 0) {
-                  end = i + 1;
-                  break;
+            // Try to extract and send safe content that's definitely not part of a tool call
+            // We look for complete tool calls and strip them, then send everything before
+            // the next potential tool call start.
+
+            let workingText = chunkBuffer;
+
+            // Remove <tool_call>...</tool_call> blocks (complete ones only)
+            workingText = workingText.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+            workingText = workingText.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
+
+            // Find and remove complete bare JSON tool calls
+            const bareToolRe = /\{\s*"(tool|name)"\s*:/g;
+            let bm: RegExpExecArray | null;
+            const regions: Array<[number, number]> = [];
+            while ((bm = bareToolRe.exec(workingText)) !== null) {
+              const start = bm.index;
+              let depth = 0;
+              let inStr = false;
+              let esc = false;
+              let end = -1;
+              for (let i = start; i < workingText.length; i++) {
+                const ch = workingText[i];
+                if (esc) {
+                  esc = false;
+                  continue;
+                }
+                if (ch === '\\') {
+                  esc = true;
+                  continue;
+                }
+                if (ch === '"') {
+                  inStr = !inStr;
+                  continue;
+                }
+                if (inStr) continue;
+                if (ch === '{') depth++;
+                if (ch === '}') {
+                  depth--;
+                  if (depth === 0) {
+                    end = i + 1;
+                    break;
+                  }
                 }
               }
+              if (end > start) {
+                regions.push([start, end]);
+              }
             }
-            if (end > start) regions.push([start, end]);
-          }
-          // Remove matched regions right-to-left so indices stay valid
-          for (let i = regions.length - 1; i >= 0; i--) {
-            safe = safe.slice(0, regions[i][0]) + safe.slice(regions[i][1]);
-          }
 
-          // Remove fenced code blocks that contain tool call JSON
-          safe = safe.replace(/```[\s\S]*?```/g, (block) => {
-            return /\{\s*"(tool|name)"\s*:/.test(block) ? '' : block;
-          });
+            // Remove matched regions right-to-left
+            for (let i = regions.length - 1; i >= 0; i--) {
+              workingText = workingText.slice(0, regions[i][0]) + workingText.slice(regions[i][1]);
+            }
 
-          safe = safe.replace(/\n{3,}/g, '\n\n').trim();
+            // Remove fenced code blocks that contain tool call JSON
+            workingText = workingText.replace(/```[\s\S]*?```/g, (block) => {
+              return /\{\s*"(tool|name)"\s*:/.test(block) ? '' : block;
+            });
 
-          if (safe.trim()) send(ws, { type: 'chunk', delta: safe });
-        },
+            // Find the last position where we're confident there's no incomplete tool call
+            // Look for the start of a potential tool call
+            const potentialToolStart = workingText.search(/\{\s*["']/);
+
+            let safeText = '';
+            if (potentialToolStart === -1) {
+              // No potential tool call start found, all text is safe
+              safeText = workingText;
+              chunkBuffer = '';
+              lastSentIndex = 0;
+            } else if (potentialToolStart > lastSentIndex) {
+              // Send everything up to the potential tool call start
+              safeText = workingText.slice(0, potentialToolStart);
+              chunkBuffer = workingText.slice(potentialToolStart);
+              lastSentIndex = 0;
+            }
+
+            // Clean up and send
+            safeText = safeText.replace(/\n{3,}/g, '\n\n').trim();
+            if (safeText) {
+              send(ws, { type: 'chunk', delta: safeText });
+            }
+          };
+        })(),
         registry,
         toolContext: {
           workingDir,
