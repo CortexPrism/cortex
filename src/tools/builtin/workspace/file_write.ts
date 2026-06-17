@@ -24,9 +24,9 @@ export const fileWriteTool: Tool = {
       {
         name: 'workspace',
         type: 'string',
-        description: 'Target workspace: "agent" (default) or "global"',
+        description: 'Target workspace: "agent" (default), "global", or "config" (for SOUL.md, USER.md, MEMORY.md)',
         required: false,
-        enum: ['agent', 'global'],
+        enum: ['agent', 'global', 'config'],
       },
     ],
   },
@@ -35,21 +35,25 @@ export const fileWriteTool: Tool = {
     const start = Date.now();
     const rawPath = String(args.path ?? '');
     const content = String(args.content ?? '');
-    const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
+    const SOUL_FILES = new Set(['USER.md', 'SOUL.md', 'MEMORY.md']);
+    const explicitWorkspace = args.workspace as 'agent' | 'global' | 'config' | undefined;
+    const workspace: 'agent' | 'global' | 'config' = explicitWorkspace ??
+      (SOUL_FILES.has(rawPath) ? 'config' : 'agent');
 
     try {
-      await ensureAgentWorkspace(context.agentId);
+      if (workspace !== 'config') await ensureAgentWorkspace(context.agentId);
       const filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
       const existing = await Deno.readTextFile(filePath).catch(() => '');
       await Deno.writeTextFile(filePath, content);
 
-      const workspaceDir = workspace === 'agent'
-        ? await ensureAgentWorkspace(context.agentId)
-        : Deno.cwd();
-
-      await gitEnsureBranch(workspaceDir, `workspace/${context.agentId}`);
-      await gitAutoCommit(workspaceDir, context.agentId, filePath, 'file_write');
+      if (workspace !== 'config') {
+        const workspaceDir = workspace === 'agent'
+          ? await ensureAgentWorkspace(context.agentId)
+          : Deno.cwd();
+        await gitEnsureBranch(workspaceDir, `workspace/${context.agentId}`);
+        await gitAutoCommit(workspaceDir, context.agentId, filePath, 'file_write');
+      }
 
       await logFileEdit({
         agentId: context.agentId,

@@ -12,7 +12,7 @@ function simpleHash(text: string): string {
 export interface EditLogEntry {
   agentId: string;
   sessionId?: string;
-  workspaceType: 'agent' | 'global';
+  workspaceType: 'agent' | 'global' | 'config';
   filePath: string;
   beforeText: string;
   afterText: string;

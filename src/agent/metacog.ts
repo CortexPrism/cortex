@@ -33,7 +33,7 @@ interface TaskSignals {
 
 const AMBIGUITY_PATTERNS = [
   /^(do it|fix it|run it|check it)\s*$/i,
-  /\byou know\b/i,
+  /\byou know (what to do|the drill|how)\b/i,
 ];
 
 const PRONOUN_PATTERN = /\b(it|that|this|those|them)\b/i;

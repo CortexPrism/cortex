@@ -230,6 +230,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '020_episodic_updated_at.sql',
       label: 'memory.db (episodic updated_at)',
     },
+    {
+      db: coreDb,
+      sqlFile: '021_workspace_type_config.sql',
+      label: 'cortex.db (workspace_type config)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
