@@ -118,8 +118,11 @@ export async function hasPassword(): Promise<boolean> {
 }
 
 export async function changePassword(oldPassword: string, newPassword: string): Promise<boolean> {
-  const valid = await verifyPassword(oldPassword);
-  if (!valid) return false;
+  const pwExists = await hasPassword();
+  if (pwExists) {
+    const valid = await verifyPassword(oldPassword);
+    if (!valid) return false;
+  }
   await setupPassword(newPassword);
   return true;
 }

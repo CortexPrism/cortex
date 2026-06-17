@@ -134,6 +134,121 @@ async function bedrockModels(): Promise<ModelEntry[]> {
   return data.modelSummaries.map((m) => ({ id: m.modelId, name: m.modelName }));
 }
 
+async function cerebrasModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.cerebras.ai/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`Cerebras API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function fireworksModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.fireworks.ai/inference/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`Fireworks API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function perplexityModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.perplexity.ai/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    return [
+      { id: 'sonar', name: 'Sonar' },
+      { id: 'sonar-pro', name: 'Sonar Pro' },
+      { id: 'sonar-reasoning', name: 'Sonar Reasoning' },
+      { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro' },
+      { id: 'r1-1776', name: 'R1 1776' },
+    ];
+  }
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function nvidiaModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`NVIDIA NIM API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function moonshotModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.moonshot.cn/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`Moonshot API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function novitaModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.novita.ai/openai/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`Novita API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function lmstudioModels(_apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
+  const url = (baseUrl || 'http://localhost:1234').replace(/\/$/, '');
+  const res = await fetch(`${url}/v1/models`);
+  if (!res.ok) throw new Error(`LM Studio API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function litellmModels(apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
+  const url = (baseUrl || 'http://localhost:4000').replace(/\/$/, '');
+  const res = await fetch(`${url}/v1/models`, {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`LiteLLM API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function huggingfaceModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://router.huggingface.co/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`HuggingFace API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function alibabaModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    return [
+      { id: 'qwen-turbo', name: 'Qwen Turbo' },
+      { id: 'qwen-plus', name: 'Qwen Plus' },
+      { id: 'qwen-max', name: 'Qwen Max' },
+      { id: 'qwen3-235b-a22b', name: 'Qwen3 235B' },
+      { id: 'qwen3-32b', name: 'Qwen3 32B' },
+    ];
+  }
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function veniceModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.venice.ai/api/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`Venice AI API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
 const LISTERS: Record<string, ModelLister | null> = {
   openai: openaiModels,
   anthropic: anthropicModels,
@@ -148,6 +263,17 @@ const LISTERS: Record<string, ModelLister | null> = {
   ollama: ollamaModels,
   bedrock: bedrockModels,
   kilo: kiloModels,
+  cerebras: cerebrasModels,
+  fireworks: fireworksModels,
+  perplexity: perplexityModels,
+  nvidia: nvidiaModels,
+  moonshot: moonshotModels,
+  novita: novitaModels,
+  lmstudio: lmstudioModels,
+  litellm: litellmModels,
+  huggingface: huggingfaceModels,
+  alibaba: alibabaModels,
+  venice: veniceModels,
 };
 
 export function fetchModels(
