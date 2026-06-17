@@ -14,11 +14,27 @@ export function getGlobalWorkspaceDir(): string {
   return Deno.cwd();
 }
 
+const CONFIG_SOUL_FILES = new Set(['SOUL.md', 'USER.md', 'MEMORY.md']);
+
 export function resolveWorkspacePath(
   agentId: string,
   rawPath: string,
-  workspace: 'agent' | 'global' = 'agent',
+  workspace: 'agent' | 'global' | 'config' = 'agent',
 ): string {
+  if (workspace === 'config') {
+    const configDir = normalize(resolve(PATHS.configDir));
+    const candidate = isAbsolute(rawPath)
+      ? normalize(resolve(rawPath))
+      : normalize(resolve(join(configDir, rawPath)));
+    const filename = candidate.split('/').pop() ?? '';
+    if (!candidate.startsWith(configDir + '/') || !CONFIG_SOUL_FILES.has(filename)) {
+      throw new Error(
+        `config workspace only allows writing to: ${[...CONFIG_SOUL_FILES].join(', ')}`,
+      );
+    }
+    return candidate;
+  }
+
   const agentDir = getAgentWorkspaceDir(agentId);
   const globalDir = getGlobalWorkspaceDir();
   const rootDir = workspace === 'agent' ? agentDir : globalDir;
