@@ -6,12 +6,6 @@ import type {
   LLMProvider,
 } from './types.ts';
 
-interface OllamaMessage {
-  role: string;
-  content: string;
-  images?: string[];
-}
-
 interface OllamaResponse {
   message: { content: string };
   prompt_eval_count: number;
@@ -37,11 +31,10 @@ function toOllamaMessages(messages: CompletionOptions['messages']): OllamaMessag
   });
 }
 
-interface OllamaResponse {
-  message: { content: string };
-  prompt_eval_count: number;
-  eval_count: number;
-  done: boolean;
+interface OllamaMessage {
+  role: string;
+  content: string;
+  images?: string[];
 }
 
 export class OllamaProvider implements LLMProvider {
@@ -65,6 +58,7 @@ export class OllamaProvider implements LLMProvider {
       temperature: options.temperature ?? 0.7,
       num_predict: options.maxTokens ?? 4096,
     };
+    if (options.topP != null) ollamaOpts.top_p = options.topP;
     if (options.numCtx != null) ollamaOpts.num_ctx = options.numCtx;
     if (options.numThread != null) ollamaOpts.num_thread = options.numThread;
 
@@ -80,6 +74,7 @@ export class OllamaProvider implements LLMProvider {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: options.signal,
     });
 
     if (!response.ok) {
@@ -101,20 +96,22 @@ export class OllamaProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
-    const ollamaOptsS: Record<string, unknown> = {};
-    if (options.temperature != null) ollamaOptsS.temperature = options.temperature;
-    if (options.maxTokens != null) ollamaOptsS.num_predict = options.maxTokens;
+    const ollamaOptsS: Record<string, unknown> = {
+      temperature: options.temperature ?? 0.7,
+      num_predict: options.maxTokens ?? 4096,
+    };
+    if (options.topP != null) ollamaOptsS.top_p = options.topP;
     if (options.numCtx != null) ollamaOptsS.num_ctx = options.numCtx;
     if (options.numThread != null) ollamaOptsS.num_thread = options.numThread;
 
-    const streamBody: Record<string, unknown> = { model: options.model, messages, stream: true };
-    if (Object.keys(ollamaOptsS).length > 0) streamBody.options = ollamaOptsS;
+    const streamBody: Record<string, unknown> = { model: options.model, messages, stream: true, options: ollamaOptsS };
     if (options.keepAlive != null) streamBody.keep_alive = options.keepAlive;
 
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(streamBody),
+      signal: options.signal,
     });
 
     if (!response.ok || !response.body) {
@@ -130,15 +127,19 @@ export class OllamaProvider implements LLMProvider {
 
       const lines = decoder.decode(value).split('\n').filter(Boolean);
       for (const line of lines) {
-        const data = JSON.parse(line) as OllamaResponse;
-        if (data.message?.content) {
-          yield { delta: data.message.content, done: false };
-        }
-        if (data.done) {
-          const tokensIn = data.prompt_eval_count ?? 0;
-          const tokensOut = data.eval_count ?? 0;
-          yield { delta: '', done: true, tokensIn, tokensOut, costUsd: 0 };
-          return;
+        try {
+          const data = JSON.parse(line) as OllamaResponse;
+          if (data.message?.content) {
+            yield { delta: data.message.content, done: false };
+          }
+          if (data.done) {
+            const tokensIn = data.prompt_eval_count ?? 0;
+            const tokensOut = data.eval_count ?? 0;
+            yield { delta: '', done: true, tokensIn, tokensOut, costUsd: 0 };
+            return;
+          }
+        } catch {
+          // skip malformed NDJSON lines
         }
       }
     }

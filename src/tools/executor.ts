@@ -192,6 +192,9 @@ export function formatToolResults(results: ToolCallResult[]): string {
           } bytes — full output available via tool_output_read]`
         : fullBody;
       let attrs = `tool="${r.toolName}" status="${status}"`;
+      if (r.durationMs != null) attrs += ` duration_ms="${r.durationMs}"`;
+      if (r.truncated) attrs += ` truncated="true"`;
+      if (r.outputLength != null) attrs += ` output_length="${r.outputLength}"`;
       if (r.errorInfo) {
         attrs += ` error_code="${r.errorInfo.code}" retryable="${r.errorInfo.retryable}"`;
         if (r.errorInfo.suggestedAction) {

@@ -8,7 +8,7 @@ export const listenTool: Tool = {
     name: 'listen',
     description:
       'Transcribe audio data to text. Provide audio as a data URL or base64-encoded string. If no audio is provided, returns instructions for capturing audio.',
-    capabilities: [],
+    capabilities: ['network:fetch'],
     params: [
       {
         name: 'audio_data',

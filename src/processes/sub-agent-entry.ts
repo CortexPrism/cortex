@@ -29,10 +29,12 @@ import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
 import { computerTool } from '../tools/builtin/computer.ts';
 import {
+  fileCopyTool,
   fileDeleteTool,
   fileEditTool,
   fileInfoTool,
   fileListTool,
+  fileMoveTool,
   filePatchTool,
   fileRedoTool,
   fileRenameTool,
@@ -146,6 +148,8 @@ async function main(): Promise<void> {
       file_patch: filePatchTool,
       file_delete: fileDeleteTool,
       file_rename: fileRenameTool,
+      file_copy: fileCopyTool,
+      file_move: fileMoveTool,
       file_list: fileListTool,
       file_tree: fileTreeTool,
       file_info: fileInfoTool,

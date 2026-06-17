@@ -3,6 +3,7 @@ import type { PluginRow } from './types.ts';
 import type { LoadedPlugin, PluginContext, PluginModule } from './types.ts';
 import type { Tool, ToolContext } from '../tools/types.ts';
 import { globalRegistry } from '../tools/registry.ts';
+import { loadWasmPlugin } from './wasm-runtime.ts';
 
 const _loaded = new Map<string, LoadedPlugin>();
 
@@ -135,6 +136,8 @@ export async function loadPlugin(row: PluginRow, ctx: PluginContext): Promise<Lo
     return await loadMcpPlugin(row, ctx);
   } else if (row.type === 'esm') {
     return await loadEsmPlugin(row, ctx);
+  } else if (row.type === 'wasm') {
+    return await loadWasmPlugin(row);
   } else {
     throw new Error(`Unsupported plugin type: ${row.type}`);
   }
@@ -161,10 +164,6 @@ export async function loadAllPlugins(
   const failures: Array<{ name: string; error: string }> = [];
 
   for (const row of rows) {
-    if (row.type === 'wasm') {
-      console.warn(`[plugins] WASM plugins not yet supported: ${row.name}`);
-      continue;
-    }
     try {
       const ctx = await ctxFactory(row.name);
       const loaded = await loadPlugin(row, ctx);

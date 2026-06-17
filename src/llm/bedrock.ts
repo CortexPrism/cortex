@@ -73,8 +73,9 @@ export class BedrockProvider implements LLMProvider {
       messages,
       system: systemPrompt ? [{ text: systemPrompt }] : undefined,
       inferenceConfig: {
-        maxTokens: options.maxTokens,
-        temperature: options.temperature,
+        ...(options.maxTokens != null ? { maxTokens: options.maxTokens } : {}),
+        ...(options.temperature != null ? { temperature: options.temperature } : {}),
+        ...(options.topP != null ? { topP: options.topP } : {}),
       },
     });
 
@@ -107,8 +108,9 @@ export class BedrockProvider implements LLMProvider {
       messages,
       system: systemPrompt ? [{ text: systemPrompt }] : undefined,
       inferenceConfig: {
-        maxTokens: options.maxTokens,
-        temperature: options.temperature,
+        ...(options.maxTokens != null ? { maxTokens: options.maxTokens } : {}),
+        ...(options.temperature != null ? { temperature: options.temperature } : {}),
+        ...(options.topP != null ? { topP: options.topP } : {}),
       },
     });
 

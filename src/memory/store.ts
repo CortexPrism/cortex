@@ -165,6 +165,10 @@ export interface MemoryHit {
   accessCount?: number;
 }
 
+function sanitizeFtsQuery(query: string): string {
+  return query.replace(/['"*()^~@:-]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export async function searchEpisodic(
   query: string,
   limit = 5,
@@ -184,10 +188,10 @@ export async function searchEpisodic(
             fts.rank, em.decay_score, em.access_count
      FROM episodic_fts fts
      JOIN episodic_memory em ON fts.rowid = em.rowid
-     WHERE episodic_fts MATCH ?
-     ORDER BY fts.rank
-     LIMIT ?`,
-    [query, limit],
+      WHERE episodic_fts MATCH ?
+      ORDER BY fts.rank
+      LIMIT ?`,
+    [sanitizeFtsQuery(query), limit],
   );
   return rows.map((r) => ({
     id: r.id,
@@ -221,10 +225,10 @@ export async function searchSemantic(
             fts.rank, sm.decay_score, sm.access_count
      FROM semantic_fts fts
      JOIN semantic_memory sm ON fts.rowid = sm.rowid
-     WHERE semantic_fts MATCH ?
-     ORDER BY fts.rank
-     LIMIT ?`,
-    [query, limit],
+      WHERE semantic_fts MATCH ?
+      ORDER BY fts.rank
+      LIMIT ?`,
+    [sanitizeFtsQuery(query), limit],
   );
   return rows.map((r) => ({
     id: r.id,

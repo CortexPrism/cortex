@@ -1,10 +1,13 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
 import { getCoreDb } from '../../../db/client.ts';
+import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
+
+const RESTORE_TOOLS = new Set(['file_write', 'file_edit', 'file_patch']);
 
 export const fileUndoTool: Tool = {
   definition: {
     name: 'file_undo',
-    description: 'Undo the most recent edit to a file in the workspace.',
+    description: 'Undo the most recent file operation in the workspace.',
     capabilities: ['fs:write'],
     params: [
       {
@@ -29,53 +32,69 @@ export const fileUndoTool: Tool = {
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
 
     try {
+      await ensureAgentWorkspace(context.agentId);
+      const resolvedPath = resolveWorkspacePath(context.agentId, rawPath, workspace);
+
       const db = await getCoreDb();
       const workspaceType = workspace;
 
-      let query = `SELECT id, before_text, after_text, file_path FROM file_edit_log
-         WHERE agent_id = ? AND workspace_type = ?`;
-      const params: string[] = [context.agentId, workspaceType];
-      if (rawPath) {
-        query += ` AND file_path = ?`;
-        params.push(rawPath);
-      }
-      query += ` ORDER BY created_at DESC LIMIT 1`;
-
+      const query = `SELECT id, before_text, after_text, file_path, tool FROM file_edit_log
+         WHERE agent_id = ? AND workspace_type = ? AND file_path = ?
+         ORDER BY created_at DESC LIMIT 1`;
       const row = await db.get<{
         id: string;
         before_text: string;
         after_text: string;
         file_path: string;
-      }>(query, params);
+        tool: string;
+      }>(query, [context.agentId, workspaceType, resolvedPath]);
 
       if (!row) throw new Error('No edits found to undo');
 
-      await Deno.writeTextFile(row.file_path, row.before_text);
+      const tool = row.tool;
 
-      // Log the undo as a new entry
-      await db.run(
-        `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          `undo_${Date.now().toString(36)}`,
-          context.agentId,
-          context.sessionId ?? null,
-          workspaceType,
-          row.file_path,
-          row.after_text,
-          row.before_text,
-          '',
-          '',
-          'file_undo',
-        ],
-      );
+      if (tool === 'file_rename') {
+        const afterText = row.after_text;
+        const match = afterText.match(/^renamed to (.+)$/);
+        if (match) {
+          const newPath = match[1];
+          try {
+            await Deno.stat(newPath);
+            await Deno.rename(newPath, resolvedPath);
+            await db.run(
+              `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [`undo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, `renamed from ${newPath}`, '', '', '', 'file_undo'],
+            );
+            return { toolName: 'file_undo', success: true, output: `Undid rename: moved ${newPath} back to ${resolvedPath}`, durationMs: Date.now() - start };
+          } catch {
+            throw new Error(`Cannot undo rename: file no longer exists at ${newPath}`);
+          }
+        }
+        throw new Error('Cannot undo this rename operation (unexpected format)');
+      }
 
-      return {
-        toolName: 'file_undo',
-        success: true,
-        output: `Undid edit to ${row.file_path}`,
-        durationMs: Date.now() - start,
-      };
+      if (tool === 'file_delete') {
+        await Deno.writeTextFile(resolvedPath, row.before_text);
+        await db.run(
+          `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [`undo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, '', row.before_text, '', '', 'file_undo'],
+        );
+        return { toolName: 'file_undo', success: true, output: `Undid deletion of ${resolvedPath}`, durationMs: Date.now() - start };
+      }
+
+      if (RESTORE_TOOLS.has(tool)) {
+        await Deno.writeTextFile(resolvedPath, row.before_text);
+        await db.run(
+          `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [`undo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, row.after_text, row.before_text, '', '', 'file_undo'],
+        );
+        return { toolName: 'file_undo', success: true, output: `Undid edit to ${resolvedPath}`, durationMs: Date.now() - start };
+      }
+
+      throw new Error(`Cannot undo operation of type: ${tool}`);
     } catch (err) {
       return {
         toolName: 'file_undo',
@@ -91,7 +110,7 @@ export const fileUndoTool: Tool = {
 export const fileRedoTool: Tool = {
   definition: {
     name: 'file_redo',
-    description: 'Redo the most recently undone edit to a file.',
+    description: 'Redo the most recently undone operation on a file.',
     capabilities: ['fs:write'],
     params: [
       {
@@ -116,50 +135,37 @@ export const fileRedoTool: Tool = {
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
 
     try {
+      await ensureAgentWorkspace(context.agentId);
+      const resolvedPath = resolveWorkspacePath(context.agentId, rawPath, workspace);
+
       const db = await getCoreDb();
       const workspaceType = workspace;
 
-      let query = `SELECT id, before_text, after_text, file_path FROM file_edit_log
-         WHERE agent_id = ? AND workspace_type = ? AND tool = 'file_undo'`;
-      const params: string[] = [context.agentId, workspaceType];
-      if (rawPath) {
-        query += ` AND file_path = ?`;
-        params.push(rawPath);
-      }
-      query += ` ORDER BY created_at DESC LIMIT 1`;
-
+      const query = `SELECT id, before_text, after_text, file_path, tool FROM file_edit_log
+         WHERE agent_id = ? AND workspace_type = ? AND file_path = ? AND tool = 'file_undo'
+         ORDER BY created_at DESC LIMIT 1`;
       const row = await db.get<{
         id: string;
         before_text: string;
         after_text: string;
         file_path: string;
-      }>(query, params);
+        tool: string;
+      }>(query, [context.agentId, workspaceType, resolvedPath]);
 
       if (!row) throw new Error('No undo entries found to redo');
 
-      await Deno.writeTextFile(row.file_path, row.after_text);
+      await Deno.writeTextFile(resolvedPath, row.before_text);
 
       await db.run(
         `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          `redo_${Date.now().toString(36)}`,
-          context.agentId,
-          context.sessionId ?? null,
-          workspaceType,
-          row.file_path,
-          row.before_text,
-          row.after_text,
-          '',
-          '',
-          'file_redo',
-        ],
+        [`redo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, row.after_text, row.before_text, '', '', 'file_redo'],
       );
 
       return {
         toolName: 'file_redo',
         success: true,
-        output: `Redid edit to ${row.file_path}`,
+        output: `Redid edit to ${resolvedPath}`,
         durationMs: Date.now() - start,
       };
     } catch (err) {

@@ -114,7 +114,7 @@ async function runTask(
       durationMs: Date.now() - started,
       tokensUsed: turnResult.tokensIn + turnResult.tokensOut,
       costUsd: turnResult.costUsd,
-      toolCallsMade: 0,
+      toolCallsMade: turnResult.toolCallsMade ?? 0,
       details: scoreResult.details,
     };
   } catch (err) {

@@ -3,6 +3,7 @@ import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { exists } from '@std/fs';
 import { join } from '@std/path';
 import { resolveHomeDir } from '../utils/platform.ts';
+import { importOpenClaw } from './openclaw-migrate.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { writeEpisodic } from '../memory/store.ts';
 import { addPolicy } from '../security/policy.ts';
@@ -218,5 +219,17 @@ export const importCommand = new Command()
         );
         if (result.errors > 0) console.log(red(`  Errors: ${result.errors}`));
         console.log('');
+      }),
+  )
+  .command(
+    'files',
+    new Command()
+      .description('Import OpenClaw artifacts (SOUL.md, USER.md, MEMORY.md) from directory')
+      .arguments('[path:string]')
+      .option('--dry-run', 'Preview what would be imported without writing')
+      .action(async (opts: { dryRun?: boolean }, sourcePath?: string) => {
+        await runMigrations();
+        const src = sourcePath || join(resolveHomeDir(), '.openclaw');
+        await importOpenClaw(src, { dryRun: opts.dryRun });
       }),
   );

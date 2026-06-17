@@ -56,19 +56,28 @@ export class OpenAIProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
-    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+    const isReasoningModel = options.model.startsWith('o1') || options.model.startsWith('o3');
+    const params = {
       model: options.model,
       messages,
-      max_tokens: options.maxTokens,
-      temperature: options.temperature,
+      ...(isReasoningModel
+        ? { max_completion_tokens: options.maxTokens }
+        : {
+          max_tokens: options.maxTokens,
+          temperature: options.temperature,
+          top_p: options.topP,
+        }),
       stream: false,
-    };
+    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
 
     if (options.reasoningEffort) {
       (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
     }
 
-    const response = await this.client.chat.completions.create(params);
+    const response = await this.client.chat.completions.create(
+      params,
+      { signal: options.signal },
+    );
 
     const content = response.choices[0]?.message?.content ?? '';
     const tokensIn = response.usage?.prompt_tokens ?? 0;
@@ -89,18 +98,29 @@ export class OpenAIProvider implements LLMProvider {
       messages.unshift({ role: 'system', content: options.systemPrompt });
     }
 
-    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+    const isReasoningModel = options.model.startsWith('o1') || options.model.startsWith('o3');
+    const params = {
       model: options.model,
       messages,
       stream: true,
       stream_options: { include_usage: true },
-    };
+      ...(isReasoningModel
+        ? { max_completion_tokens: options.maxTokens }
+        : {
+          max_tokens: options.maxTokens,
+          temperature: options.temperature,
+          top_p: options.topP,
+        }),
+    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;
 
     if (options.reasoningEffort) {
       (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
     }
 
-    const stream = await this.client.chat.completions.create(params);
+    const stream = await this.client.chat.completions.create(
+      params,
+      { signal: options.signal },
+    );
 
     let tokensIn = 0;
     let tokensOut = 0;

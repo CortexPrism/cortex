@@ -92,17 +92,45 @@ export async function vaultStore(opts: {
 
 export async function vaultGet(name: string, requestor = 'system'): Promise<string> {
   const db = await getVaultDb();
-  const row = await db.all<{ id: string; encrypted_data: Uint8Array }>(
-    `SELECT id, encrypted_data FROM vault_entries WHERE name = ? LIMIT 1`,
+  const row = await db.get<{
+    id: string;
+    encrypted_data: Uint8Array;
+    usage_limit: number;
+    usage_count: number;
+    expires_at: string | null;
+    allowed_agents: string;
+  }>(
+    `SELECT id, encrypted_data, usage_limit, usage_count, expires_at, allowed_agents
+     FROM vault_entries WHERE name = ? LIMIT 1`,
     [name],
   );
 
-  if (!row.length) throw new Error(`Vault entry not found: ${name}`);
+  if (!row) throw new Error(`Vault entry not found: ${name}`);
 
-  const { id, encrypted_data } = row[0];
-  const buf = encrypted_data instanceof Uint8Array
-    ? encrypted_data
-    : new Uint8Array(encrypted_data as unknown as ArrayBuffer);
+  if (row.expires_at && row.expires_at < new Date().toISOString()) {
+    await logAccess(row.id, requestor, false, 'expired');
+    throw new Error(`Vault entry expired: ${name}`);
+  }
+
+  if (row.usage_limit > 0 && row.usage_count >= row.usage_limit) {
+    await logAccess(row.id, requestor, false, 'rate_limited');
+    throw new Error(`Vault entry usage limit reached: ${name}`);
+  }
+
+  let allowed: string[];
+  try {
+    allowed = JSON.parse(row.allowed_agents);
+  } catch {
+    allowed = ['*'];
+  }
+  if (!allowed.includes('*') && !allowed.includes(requestor)) {
+    await logAccess(row.id, requestor, false, 'not_allowed_for_agent');
+    throw new Error(`Vault entry not allowed for requestor: ${requestor}`);
+  }
+
+  const buf = row.encrypted_data instanceof Uint8Array
+    ? row.encrypted_data
+    : new Uint8Array(row.encrypted_data as unknown as ArrayBuffer);
 
   const key = await deriveKey(getPassphrase());
   const iv = buf.slice(0, IV_LENGTH);
@@ -118,16 +146,26 @@ export async function vaultGet(name: string, requestor = 'system'): Promise<stri
 
   await db.run(
     `UPDATE vault_entries SET last_used_at = datetime('now'), usage_count = usage_count + 1 WHERE id = ?`,
-    [id],
+    [row.id],
   );
 
-  await db.run(
-    `INSERT INTO vault_access_log (id, credential_id, requestor, granted, reason, accessed_at)
-     VALUES (?, ?, ?, 1, 'requested', datetime('now'))`,
-    [vaultId(), id, requestor],
-  );
+  logAccess(row.id, requestor, true, 'requested').catch(() => {});
 
   return plaintext;
+}
+
+async function logAccess(
+  credentialId: string,
+  requestor: string,
+  granted: boolean,
+  reason: string,
+): Promise<void> {
+  const db = await getVaultDb();
+  await db.run(
+    `INSERT INTO vault_access_log (id, credential_id, requestor, granted, reason, accessed_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    [vaultId(), credentialId, requestor, granted ? 1 : 0, reason],
+  );
 }
 
 export async function vaultList(): Promise<

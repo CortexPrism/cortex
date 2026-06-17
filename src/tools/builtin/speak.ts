@@ -7,7 +7,7 @@ export const speakTool: Tool = {
   definition: {
     name: 'speak',
     description: 'Synthesize text to speech audio. Returns an audio data URL that can be played.',
-    capabilities: [],
+    capabilities: ['network:fetch'],
     params: [
       {
         name: 'text',
