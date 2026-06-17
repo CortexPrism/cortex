@@ -1,6 +1,7 @@
 # CortexPrism
 
-> **The open-source AI agent harness with memory, tools, a web UI, and layered security — powered by Deno.**
+> **The open-source AI agent harness with memory, tools, a web UI, and layered security — powered by
+> Deno.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
@@ -69,16 +70,16 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ### Built-in Tools
 
-| Category | Tools |
-|---|---|
-| File system | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo |
-| Shell | execute shell commands (sandboxed through policy validator) |
-| Web | web_search, web_fetch (returns cleaned plain text) |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop |
-| GitHub | PR creation, issue tracking, repo browsing |
-| Git workspace | status, commit, push, pull, branch, clone |
-| Voice | speak, listen (STT/TTS agent tools) |
-| Sub-agents | spawn typed child agents for parallel and delegated tasks |
+| Category       | Tools                                                                               |
+| -------------- | ----------------------------------------------------------------------------------- |
+| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo |
+| Shell          | execute shell commands (sandboxed through policy validator)                         |
+| Web            | web_search, web_fetch (returns cleaned plain text)                                  |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                 |
+| GitHub         | PR creation, issue tracking, repo browsing                                          |
+| Git workspace  | status, commit, push, pull, branch, clone                                           |
+| Voice          | speak, listen (STT/TTS agent tools)                                                 |
+| Sub-agents     | spawn typed child agents for parallel and delegated tasks                           |
 
 ### Web UI & REST API
 
@@ -91,7 +92,8 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ### Security (Parallax Model)
 
-- **Policy validator** — every tool call is evaluated against regex allow/deny rules before execution
+- **Policy validator** — every tool call is evaluated against regex allow/deny rules before
+  execution
 - **AES-256-GCM vault** — encrypted credential storage with PBKDF2 key derivation
 - **Default deny rules** — ships with protection against `rm -rf /`, fork bombs, direct disk writes
 - **Cortex Lens** — full audit log of all sessions, tool calls, LLM calls, and policy decisions
@@ -111,11 +113,11 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ## Requirements
 
-| Requirement | Notes |
-|---|---|
-| [Deno 2.x](https://deno.land) | Required — the installer handles this automatically |
-| Docker | Optional — needed for sandboxed code execution; subprocess fallback is available |
-| macOS, Linux, or Windows | All platforms supported |
+| Requirement                   | Notes                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| [Deno 2.x](https://deno.land) | Required — the installer handles this automatically                              |
+| Docker                        | Optional — needed for sandboxed code execution; subprocess fallback is available |
+| macOS, Linux, or Windows      | All platforms supported                                                          |
 
 ---
 
@@ -376,17 +378,21 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
   "defaultProvider": "anthropic",
   "providers": {
     "anthropic": { "kind": "anthropic", "model": "claude-sonnet-4-5", "apiKey": "sk-..." },
-    "openai":    { "kind": "openai",    "model": "gpt-4o",            "apiKey": "sk-..." },
-    "google":    { "kind": "google",    "model": "gemini-2.0-flash",  "apiKey": "..." },
-    "mistral":   { "kind": "mistral",   "model": "mistral-large-latest", "apiKey": "..." },
-    "groq":      { "kind": "groq",      "model": "llama-3.3-70b-versatile", "apiKey": "gsk_..." },
-    "deepseek":  { "kind": "deepseek",  "model": "deepseek-chat",    "apiKey": "sk-..." },
-    "openrouter":{ "kind": "openrouter","model": "openai/gpt-4o",    "apiKey": "..." },
-    "xai":       { "kind": "xai",       "model": "grok-2-latest",    "apiKey": "..." },
-    "together":  { "kind": "together",  "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "apiKey": "..." },
-    "bedrock":   { "kind": "bedrock",   "model": "us.amazon.nova-pro-v1:0", "region": "us-east-1" },
-    "cohere":    { "kind": "cohere",    "model": "command-r-plus",   "apiKey": "..." },
-    "ollama":    { "kind": "ollama",    "model": "llama3.2",         "baseUrl": "http://localhost:11434" }
+    "openai": { "kind": "openai", "model": "gpt-4o", "apiKey": "sk-..." },
+    "google": { "kind": "google", "model": "gemini-2.0-flash", "apiKey": "..." },
+    "mistral": { "kind": "mistral", "model": "mistral-large-latest", "apiKey": "..." },
+    "groq": { "kind": "groq", "model": "llama-3.3-70b-versatile", "apiKey": "gsk_..." },
+    "deepseek": { "kind": "deepseek", "model": "deepseek-chat", "apiKey": "sk-..." },
+    "openrouter": { "kind": "openrouter", "model": "openai/gpt-4o", "apiKey": "..." },
+    "xai": { "kind": "xai", "model": "grok-2-latest", "apiKey": "..." },
+    "together": {
+      "kind": "together",
+      "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "apiKey": "..."
+    },
+    "bedrock": { "kind": "bedrock", "model": "us.amazon.nova-pro-v1:0", "region": "us-east-1" },
+    "cohere": { "kind": "cohere", "model": "command-r-plus", "apiKey": "..." },
+    "ollama": { "kind": "ollama", "model": "llama3.2", "baseUrl": "http://localhost:11434" }
   },
   "server": { "port": 3000, "host": "127.0.0.1" },
   "reflection": { "enabled": true },
@@ -402,13 +408,13 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 ### Environment Variables
 
-| Variable | Purpose |
-|---|---|
-| `CORTEX_DATA_DIR` | Override data directory (default: `~/.cortex/data/`) |
-| `CORTEX_CONFIG_DIR` | Override config directory (default: `~/.cortex/`) |
-| `CORTEX_VAULT_KEY` | Vault decryption passphrase (required to use `cortex vault`) |
-| `GITHUB_TOKEN` | GitHub personal access token for the `github` command |
-| `OPENAI_API_KEY` | OpenAI API key (alternative to config file) |
+| Variable            | Purpose                                                      |
+| ------------------- | ------------------------------------------------------------ |
+| `CORTEX_DATA_DIR`   | Override data directory (default: `~/.cortex/data/`)         |
+| `CORTEX_CONFIG_DIR` | Override config directory (default: `~/.cortex/`)            |
+| `CORTEX_VAULT_KEY`  | Vault decryption passphrase (required to use `cortex vault`) |
+| `GITHUB_TOKEN`      | GitHub personal access token for the `github` command        |
+| `OPENAI_API_KEY`    | OpenAI API key (alternative to config file)                  |
 
 ---
 
@@ -416,22 +422,22 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 Start with `cortex serve` and open `http://127.0.0.1:3000`.
 
-| Tab | Description |
-|---|---|
-| **Chat** | WebSocket streaming chat with file upload (PDF, images, documents) |
-| **Editor** | Full file editor powered by CodeMirror |
-| **Git** | Visual git workspace — status, stage, commit, push, pull |
-| **GitHub** | PR management, issue tracking, repository browser |
-| **Code Runner** | Sandboxed code execution with language selection and live output |
-| **Lens** | Cortex Lens — full activity audit timeline |
-| **Memory** | Search episodic and semantic memory |
-| **Jobs** | View and manage scheduled jobs |
-| **Sessions** | Browse and resume past chat sessions |
-| **Agents** | View active and completed sub-agent sessions |
-| **Services** | Monitor running micro-services |
-| **Settings** | Provider configuration, voice settings |
-| **Soul** | Edit the agent's identity / system prompt |
-| **Plugins** | Manage installed plugins |
+| Tab             | Description                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| **Chat**        | WebSocket streaming chat with file upload (PDF, images, documents) |
+| **Editor**      | Full file editor powered by CodeMirror                             |
+| **Git**         | Visual git workspace — status, stage, commit, push, pull           |
+| **GitHub**      | PR management, issue tracking, repository browser                  |
+| **Code Runner** | Sandboxed code execution with language selection and live output   |
+| **Lens**        | Cortex Lens — full activity audit timeline                         |
+| **Memory**      | Search episodic and semantic memory                                |
+| **Jobs**        | View and manage scheduled jobs                                     |
+| **Sessions**    | Browse and resume past chat sessions                               |
+| **Agents**      | View active and completed sub-agent sessions                       |
+| **Services**    | Monitor running micro-services                                     |
+| **Settings**    | Provider configuration, voice settings                             |
+| **Soul**        | Edit the agent's identity / system prompt                          |
+| **Plugins**     | Manage installed plugins                                           |
 
 ### REST API
 
@@ -519,13 +525,13 @@ CLI / Web UI / REST API
    cortex.db · memory.db · lens.db · vault.db
 ```
 
-| Database | Purpose |
-|---|---|
-| `cortex.db` | Sessions, jobs, policies, services, nodes |
-| `memory.db` | Episodic, semantic, and reflection memory |
-| `lens.db` | Cortex Lens audit log |
-| `vault.db` | Encrypted credential vault |
-| `plugins.db` | Plugin registry |
+| Database     | Purpose                                   |
+| ------------ | ----------------------------------------- |
+| `cortex.db`  | Sessions, jobs, policies, services, nodes |
+| `memory.db`  | Episodic, semantic, and reflection memory |
+| `lens.db`    | Cortex Lens audit log                     |
+| `vault.db`   | Encrypted credential vault                |
+| `plugins.db` | Plugin registry                           |
 
 For the full architecture reference, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -548,7 +554,8 @@ deno task test
 ### Reporting Issues
 
 - **Bug reports** — use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md)
-- **Feature requests** — use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
+- **Feature requests** — use the
+  [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
 - **Security vulnerabilities** — see [SECURITY.md](SECURITY.md) for the private disclosure process
 
 ---

@@ -76,15 +76,23 @@ async function autoCheckPlugins(): Promise<void> {
         try {
           const upd = await applyPluginUpdate(r.pluginName, pluginCfg.githubToken);
           console.error(
-            dim(`[plugins] Auto-updated ${r.pluginName}: ${upd.previousVersion} → ${upd.newVersion}`),
+            dim(
+              `[plugins] Auto-updated ${r.pluginName}: ${upd.previousVersion} → ${upd.newVersion}`,
+            ),
           );
         } catch (e) {
-          console.error(dim(`[plugins] Auto-update failed for ${r.pluginName}: ${(e as Error).message}`));
+          console.error(
+            dim(`[plugins] Auto-update failed for ${r.pluginName}: ${(e as Error).message}`),
+          );
         }
       }
     } else {
       const names = available.map((r) => `${r.pluginName}@${r.latestVersion}`).join(', ');
-      console.error(dim(`[plugins] ${available.length} update(s) available: ${names}. Run \`cortex plugins update --all\` to apply.`));
+      console.error(
+        dim(
+          `[plugins] ${available.length} update(s) available: ${names}. Run \`cortex plugins update --all\` to apply.`,
+        ),
+      );
     }
   } catch {
     // silently ignore plugin check failures on startup

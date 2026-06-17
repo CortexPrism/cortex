@@ -53,7 +53,15 @@ import {
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 type WsMsg =
-  | { type: 'chat'; message: string; sessionId?: string; agentId?: string; model?: string; reasoningEffort?: string; files?: Array<{ filename: string; mimeType: string; data: string }> }
+  | {
+    type: 'chat';
+    message: string;
+    sessionId?: string;
+    agentId?: string;
+    model?: string;
+    reasoningEffort?: string;
+    files?: Array<{ filename: string; mimeType: string; data: string }>;
+  }
   | { type: 'new_session' }
   | { type: 'select_agent'; agentId: string }
   | { type: 'ping' }
@@ -196,7 +204,8 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       const provider = buildProvider({ ...config, defaultProvider: providerKind as never });
       const router = buildRouter(config);
       const effectiveProvider = router ?? provider;
-      const model = modelOverride || agent.model || config.providers[providerKind]?.model || 'unknown';
+      const model = modelOverride || agent.model || config.providers[providerKind]?.model ||
+        'unknown';
       const provCfg = config.providers[providerKind];
       const reasoningEffort = reasoningEffortOverride ?? provCfg?.reasoningEffort;
       const providerSpecificOpts = {
@@ -326,17 +335,24 @@ export async function handleWebSocket(req: Request): Promise<Response> {
             try {
               await Deno.writeFile(filePath, binary);
             } catch (e) {
-              console.error(`[ws] Failed to save uploaded file to ${filePath}: ${(e as Error).message}`);
+              console.error(
+                `[ws] Failed to save uploaded file to ${filePath}: ${(e as Error).message}`,
+              );
             }
           }
-          const existsInWorkingDir = await Deno.stat(`${workingDir}/${sanitized}`).then(() => true).catch(() => false);
-          const existsInWorkspace = await Deno.stat(`${workspaceDir}/${sanitized}`).then(() => true).catch(() => false);
-          console.log(`[ws] Uploaded ${sanitized} — workingDir:${existsInWorkingDir} workspaceDir:${existsInWorkspace} (size: ${binary.length})`);
+          const existsInWorkingDir = await Deno.stat(`${workingDir}/${sanitized}`).then(() => true)
+            .catch(() => false);
+          const existsInWorkspace = await Deno.stat(`${workspaceDir}/${sanitized}`).then(() => true)
+            .catch(() => false);
+          console.log(
+            `[ws] Uploaded ${sanitized} — workingDir:${existsInWorkingDir} workspaceDir:${existsInWorkspace} (size: ${binary.length})`,
+          );
           fileNote += `\n[File: ${sanitized} (${file.mimeType})`;
 
           const isImage = file.mimeType.startsWith('image/');
           if (isImage && !multimodal) {
-            fileNote += `\n(Note: current model/provider does not support image input. Consider switching to Anthropic or Google Gemini for image analysis. The file is saved at: ${sanitized})`;
+            fileNote +=
+              `\n(Note: current model/provider does not support image input. Consider switching to Anthropic or Google Gemini for image analysis. The file is saved at: ${sanitized})`;
           }
 
           if (file.mimeType === 'application/pdf') {
@@ -344,16 +360,23 @@ export async function handleWebSocket(req: Request): Promise<Response> {
               const pdfText = await extractPdfText(binary);
               if (pdfText) {
                 const preview = pdfText.slice(0, 2000);
-                const truncated = pdfText.length > 2000 ? `\n[... ${pdfText.length - 2000} more characters — use file_read("${sanitized}") to read full document]` : '';
-                fileNote += `\n\n=== BEGIN DOCUMENT: ${sanitized} ===\n${preview}${truncated}\n=== END DOCUMENT: ${sanitized} ===`;
+                const truncated = pdfText.length > 2000
+                  ? `\n[... ${
+                    pdfText.length - 2000
+                  } more characters — use file_read("${sanitized}") to read full document]`
+                  : '';
+                fileNote +=
+                  `\n\n=== BEGIN DOCUMENT: ${sanitized} ===\n${preview}${truncated}\n=== END DOCUMENT: ${sanitized} ===`;
               } else {
                 extractionWarnings++;
-                fileNote += `\nPDF text extraction returned empty. Use the file_read tool to read: file_read("${sanitized}")`;
+                fileNote +=
+                  `\nPDF text extraction returned empty. Use the file_read tool to read: file_read("${sanitized}")`;
               }
             } catch (e) {
               extractionWarnings++;
               console.error(`[ws] PDF extraction failed for ${sanitized}: ${(e as Error).message}`);
-              fileNote += `\nPDF text extraction failed. Use the file_read tool to read: file_read("${sanitized}")`;
+              fileNote +=
+                `\nPDF text extraction failed. Use the file_read tool to read: file_read("${sanitized}")`;
             }
           }
 
@@ -363,23 +386,25 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
       const hasImageFiles = files?.some((f) => f.mimeType.startsWith('image/')) ?? false;
 
-      const effectiveMessage = message.trim()
-        ? message + fileNote
-        : fileNote
+      const effectiveMessage = message.trim() ? message + fileNote : fileNote
         ? (
           hasImageFiles
             ? 'Image file(s) uploaded. ' + fileNote
-            : 'Document(s) uploaded. Read, analyze, and provide a thorough evaluation — include:\n- Summary of key content\n- Main points and findings\n- Your assessment and any recommendations\n\n' + fileNote
-          )
+            : 'Document(s) uploaded. Read, analyze, and provide a thorough evaluation — include:\n- Summary of key content\n- Main points and findings\n- Your assessment and any recommendations\n\n' +
+              fileNote
+        )
         : message;
 
       let effectiveSystemPrompt = systemPrompt;
-      effectiveSystemPrompt += '\n\n## Environment\ncode_exec runs in an isolated Docker sandbox with NO access to host files or the workspace. Use file_read/file_write/file_list for all file operations. shell runs locally and CAN access files.';
+      effectiveSystemPrompt +=
+        '\n\n## Environment\ncode_exec runs in an isolated Docker sandbox with NO access to host files or the workspace. Use file_read/file_write/file_list for all file operations. shell runs locally and CAN access files.';
       if (files?.length) {
         const fileNames = files.map((f) => f.filename.replace(/[^a-zA-Z0-9._-]/g, '_')).join(', ');
-        effectiveSystemPrompt += `\n\n## File Context\nThe user has uploaded files: ${fileNames}. The complete content has been included inline in the user message below (between === BEGIN/END DOCUMENT === markers if present). Analyze this content directly — do NOT call file_read to re-read the file unless the inline content is insufficient.`;
+        effectiveSystemPrompt +=
+          `\n\n## File Context\nThe user has uploaded files: ${fileNames}. The complete content has been included inline in the user message below (between === BEGIN/END DOCUMENT === markers if present). Analyze this content directly — do NOT call file_read to re-read the file unless the inline content is insufficient.`;
         if (extractionWarnings > 0) {
-          effectiveSystemPrompt += `\n\nNote: PDF text extraction failed for some files. Use \`file_read("<filename>")\` to read them.`;
+          effectiveSystemPrompt +=
+            `\n\nNote: PDF text extraction failed for some files. Use \`file_read("<filename>")\` to read them.`;
         }
       }
 
@@ -394,12 +419,12 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         reasoningEffort,
         ...providerSpecificOpts,
         onChunk: (chunk) => {
-        let safe = chunk;
-        safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
-        safe = safe.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
-        safe = safe.replace(/\{\s*"(tool|name)"\s*:[\s\S]*?\}/g, '');
-        if (safe.trim()) send(ws, { type: 'chunk', delta: safe });
-      },
+          let safe = chunk;
+          safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+          safe = safe.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
+          safe = safe.replace(/\{\s*"(tool|name)"\s*:[\s\S]*?\}/g, '');
+          if (safe.trim()) send(ws, { type: 'chunk', delta: safe });
+        },
         registry,
         toolContext: {
           workingDir,
@@ -443,11 +468,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         );
         const usedTokens = byRole.reduce((sum, r) => sum + r.total, 0);
         const maxContext = config.providers[providerKind]?.contextWindow ?? 200000;
-        const userTokens = byRole.find(r => r.role === 'user')?.total ?? 0;
-        const assistantTokens = byRole.find(r => r.role === 'assistant')?.total ?? 0;
+        const userTokens = byRole.find((r) => r.role === 'user')?.total ?? 0;
+        const assistantTokens = byRole.find((r) => r.role === 'assistant')?.total ?? 0;
         const sysPromptTokens = Math.max(1, Math.round((systemPrompt?.length ?? 0) / 3.5));
         const reasoningTokens = reasoningEffort
-          ? Math.round(assistantTokens * (reasoningEffort === 'high' ? 0.5 : reasoningEffort === 'medium' ? 0.25 : 0.1))
+          ? Math.round(
+            assistantTokens *
+              (reasoningEffort === 'high' ? 0.5 : reasoningEffort === 'medium' ? 0.25 : 0.1),
+          )
           : 0;
         const totalWithOverhead = usedTokens + sysPromptTokens + reasoningTokens;
         const percentage = Math.min(100, Math.round((totalWithOverhead / maxContext) * 100));
@@ -578,7 +606,15 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         send(ws, { type: 'transcribed', text: utterance.text, confidence: utterance.confidence });
 
         // Process the transcribed text through the agent
-        await processChatMessage(utterance.text, ws, activeAgent?.id, undefined, undefined, undefined, sessionId ?? undefined);
+        await processChatMessage(
+          utterance.text,
+          ws,
+          activeAgent?.id,
+          undefined,
+          undefined,
+          undefined,
+          sessionId ?? undefined,
+        );
       } catch (e) {
         send(ws, { type: 'error', error: `Transcription failed: ${(e as Error).message}` });
       }
@@ -633,7 +669,15 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         send(ws, { type: 'error', error: 'Empty message' });
         return;
       }
-      await processChatMessage(msg.message, ws, msg.agentId, msg.model, msg.reasoningEffort, msg.files, msg.sessionId);
+      await processChatMessage(
+        msg.message,
+        ws,
+        msg.agentId,
+        msg.model,
+        msg.reasoningEffort,
+        msg.files,
+        msg.sessionId,
+      );
       return;
     }
   };

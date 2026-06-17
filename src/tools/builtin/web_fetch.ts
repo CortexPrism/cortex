@@ -6,7 +6,8 @@ const MAX_CONTENT_LENGTH = 100_000;
 export const webFetchTool: Tool = {
   definition: {
     name: 'web_fetch',
-    description: 'Fetch a web page and return its content as plain text (HTML tags stripped). Use for reading documentation, articles, or any web page.',
+    description:
+      'Fetch a web page and return its content as plain text (HTML tags stripped). Use for reading documentation, articles, or any web page.',
     capabilities: ['network:fetch'],
     params: [
       {
@@ -80,7 +81,8 @@ export const webFetchTool: Tool = {
       const text = await res.text();
       const stripped = stripHtml(text);
       const truncated = stripped.length > maxLength
-        ? stripped.slice(0, maxLength) + `\n[... truncated at ${maxLength} chars, ${stripped.length} total]`
+        ? stripped.slice(0, maxLength) +
+          `\n[... truncated at ${maxLength} chars, ${stripped.length} total]`
         : stripped;
 
       return {

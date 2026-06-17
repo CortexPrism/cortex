@@ -1,5 +1,5 @@
 import type { LLMProvider } from '../llm/types.ts';
-import type { Message, ContentBlock } from '../llm/types.ts';
+import type { ContentBlock, Message } from '../llm/types.ts';
 import type { Db } from '../db/client.ts';
 import { logEvent } from '../db/lens.ts';
 import { incrementTurn } from '../db/sessions.ts';
@@ -31,7 +31,9 @@ import type { ProviderKind } from '../config/config.ts';
 
 let builtinHooksRegistered = false;
 
-const PREFERENCE_PATTERNS: Array<{ re: RegExp; extract: (m: RegExpMatchArray) => string; category: string }> = [
+const PREFERENCE_PATTERNS: Array<
+  { re: RegExp; extract: (m: RegExpMatchArray) => string; category: string }
+> = [
   {
     re: /(?:call|refer to|name) (?:yourself|you) (?:as )?["']?([\w\s-]{1,40})["']?/i,
     extract: (m) => `The user wants the assistant to be called "${m[1].trim()}".`,
@@ -162,7 +164,9 @@ async function loadHybridHistory(
       .join(' ');
 
     if (terms.length > 0) {
-      const oldRows = await db.all<{ id: number; role: string; content: string; created_at: string }>(
+      const oldRows = await db.all<
+        { id: number; role: string; content: string; created_at: string }
+      >(
         `SELECT id, role, content, created_at FROM session_messages
          WHERE role IN ('user', 'assistant')
            AND id < ?
@@ -503,12 +507,27 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       let end = -1;
       for (let i = start; i < out.length; i++) {
         const ch = out[i];
-        if (esc) { esc = false; continue; }
-        if (ch === '\\') { esc = true; continue; }
-        if (ch === '"') { inStr = !inStr; continue; }
+        if (esc) {
+          esc = false;
+          continue;
+        }
+        if (ch === '\\') {
+          esc = true;
+          continue;
+        }
+        if (ch === '"') {
+          inStr = !inStr;
+          continue;
+        }
         if (inStr) continue;
         if (ch === '{') depth++;
-        if (ch === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+        if (ch === '}') {
+          depth--;
+          if (depth === 0) {
+            end = i + 1;
+            break;
+          }
+        }
       }
       if (end > start) regions.push([start, end]);
     }
@@ -637,7 +656,11 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }
 
       response = roundResponse;
-      console.log(`[loop] round=${round} responseLen=${roundResponse.length} preview=${JSON.stringify(roundResponse.slice(0, 120))}`);
+      console.log(
+        `[loop] round=${round} responseLen=${roundResponse.length} preview=${
+          JSON.stringify(roundResponse.slice(0, 120))
+        }`,
+      );
 
       const postReasonCtx = createPipelineContext({
         stage: 'post-reason',
@@ -664,11 +687,17 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       if (!registry || !toolCtx) break;
 
       const toolCalls = parseToolCalls(roundResponse);
-      console.log(`[loop] round=${round} toolCallsFound=${toolCalls.length} names=${toolCalls.map((t) => t.toolName).join(',')}`);
+      console.log(
+        `[loop] round=${round} toolCallsFound=${toolCalls.length} names=${
+          toolCalls.map((t) => t.toolName).join(',')
+        }`,
+      );
       if (toolCalls.length === 0) {
         // No tool calls — this is the final clean response.  If we buffered
         // (didn't stream above), emit it now so the user sees something.
-        console.log(`[loop] round=${round} final clean response — emitting via onChunk=${!!onChunk} useDirectStream=${useDirectStream}`);
+        console.log(
+          `[loop] round=${round} final clean response — emitting via onChunk=${!!onChunk} useDirectStream=${useDirectStream}`,
+        );
         if (!useDirectStream && onChunk) onChunk(roundResponse);
         break;
       }
@@ -676,7 +705,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       // Has tool calls — emit the prose portion only (strip raw JSON/XML).
       if (onChunk) {
         const proseOnly = stripToolCallMarkup(roundResponse);
-        console.log(`[loop] round=${round} emitting prose (len=${proseOnly.length}) stripped from tool-call response`);
+        console.log(
+          `[loop] round=${round} emitting prose (len=${proseOnly.length}) stripped from tool-call response`,
+        );
         if (proseOnly.trim()) onChunk(proseOnly);
       }
 
@@ -706,9 +737,15 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           continue;
         }
 
-        console.log(`[loop] executing tool=${tc.toolName} args=${JSON.stringify(tc.args).slice(0, 120)}`);
+        console.log(
+          `[loop] executing tool=${tc.toolName} args=${JSON.stringify(tc.args).slice(0, 120)}`,
+        );
         const result = await executeTool(tc, registry, toolCtx);
-        console.log(`[loop] tool=${tc.toolName} success=${result.success} outputLen=${result.output.length} error=${result.error ?? ''}`);
+        console.log(
+          `[loop] tool=${tc.toolName} success=${result.success} outputLen=${result.output.length} error=${
+            result.error ?? ''
+          }`,
+        );
         state.toolCallsMade++;
 
         const postToolCtx = createPipelineContext({
@@ -740,7 +777,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       const roundsLeft = maxToolRounds - round - 1;
       const followUpInstruction = roundsLeft <= 1
-        ? `${resultText}\n\nYou have used ${round + 1} of ${maxToolRounds} allowed tool rounds. Provide your final response now. If the task is genuinely incomplete, summarise what has been done and what remains so it can be continued in the next turn.`
+        ? `${resultText}\n\nYou have used ${
+          round + 1
+        } of ${maxToolRounds} allowed tool rounds. Provide your final response now. If the task is genuinely incomplete, summarise what has been done and what remains so it can be continued in the next turn.`
         : `${resultText}\n\nBased on the tool output above, provide your complete response to the user. Only call another tool if the current output is genuinely insufficient — prefer summarising what you have.`;
 
       currentMessages = [

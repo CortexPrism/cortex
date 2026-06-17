@@ -1,5 +1,11 @@
 import OpenAI from 'npm:openai';
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+} from './types.ts';
 
 function toOpenAIContent(
   content: string | ContentBlock[],
@@ -64,13 +70,22 @@ export class OpenAICompatibleProvider implements LLMProvider {
     if (options.returnCitations != null) extra.return_citations = options.returnCitations;
     if (options.returnImages != null) extra.return_images = options.returnImages;
     if (options.dropParams) extra.drop_params = true;
-    if (options.includeVeniceSystemPrompt != null) extra.venice_parameters = { include_venice_system_prompt: options.includeVeniceSystemPrompt };
+    if (options.includeVeniceSystemPrompt != null) {
+      extra.venice_parameters = { include_venice_system_prompt: options.includeVeniceSystemPrompt };
+    }
 
     const reqOpts: Record<string, unknown> = { signal: options.signal };
-    if (options.httpReferer) reqOpts.headers = { ...reqOpts.headers as object, 'HTTP-Referer': options.httpReferer };
-    if (options.xTitle) reqOpts.headers = { ...reqOpts.headers as object, 'X-Title': options.xTitle };
+    if (options.httpReferer) {
+      reqOpts.headers = { ...reqOpts.headers as object, 'HTTP-Referer': options.httpReferer };
+    }
+    if (options.xTitle) {
+      reqOpts.headers = { ...reqOpts.headers as object, 'X-Title': options.xTitle };
+    }
 
-    const response = await this.client.chat.completions.create(params, reqOpts as Parameters<typeof this.client.chat.completions.create>[1]);
+    const response = await this.client.chat.completions.create(
+      params,
+      reqOpts as Parameters<typeof this.client.chat.completions.create>[1],
+    );
 
     const content = response.choices[0]?.message?.content ?? '';
     const tokensIn = response.usage?.prompt_tokens ?? 0;
@@ -108,13 +123,24 @@ export class OpenAICompatibleProvider implements LLMProvider {
     if (options.returnCitations != null) extraS.return_citations = options.returnCitations;
     if (options.returnImages != null) extraS.return_images = options.returnImages;
     if (options.dropParams) extraS.drop_params = true;
-    if (options.includeVeniceSystemPrompt != null) extraS.venice_parameters = { include_venice_system_prompt: options.includeVeniceSystemPrompt };
+    if (options.includeVeniceSystemPrompt != null) {
+      extraS.venice_parameters = {
+        include_venice_system_prompt: options.includeVeniceSystemPrompt,
+      };
+    }
 
     const reqOptsS: Record<string, unknown> = { signal: options.signal };
-    if (options.httpReferer) reqOptsS.headers = { ...reqOptsS.headers as object, 'HTTP-Referer': options.httpReferer };
-    if (options.xTitle) reqOptsS.headers = { ...reqOptsS.headers as object, 'X-Title': options.xTitle };
+    if (options.httpReferer) {
+      reqOptsS.headers = { ...reqOptsS.headers as object, 'HTTP-Referer': options.httpReferer };
+    }
+    if (options.xTitle) {
+      reqOptsS.headers = { ...reqOptsS.headers as object, 'X-Title': options.xTitle };
+    }
 
-    const stream = await this.client.chat.completions.create(params, reqOptsS as Parameters<typeof this.client.chat.completions.create>[1]);
+    const stream = await this.client.chat.completions.create(
+      params,
+      reqOptsS as Parameters<typeof this.client.chat.completions.create>[1],
+    );
 
     let tokensIn = 0;
     let tokensOut = 0;

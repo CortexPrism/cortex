@@ -16,7 +16,10 @@ interface DdgApiResponse {
 }
 
 function stripHtml(s: string): string {
-  return s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").trim();
+  return s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(
+    /&#x27;/g,
+    "'",
+  ).trim();
 }
 
 async function instantAnswers(
@@ -82,7 +85,8 @@ async function htmlSearch(
 
   const html = await res.text();
 
-  const resultPattern = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+  const resultPattern =
+    /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
   const snippetPattern = /<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
 
   const titles: Array<{ url: string; title: string }> = [];

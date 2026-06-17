@@ -170,7 +170,10 @@ async function checkUpdateForRow(
     }
 
     // For direct URL plugins, try re-fetching the manifest (skip GitHub URLs — handled above)
-    if (source && (source.startsWith('http://') || source.startsWith('https://')) && !source.includes('github.com')) {
+    if (
+      source && (source.startsWith('http://') || source.startsWith('https://')) &&
+      !source.includes('github.com')
+    ) {
       try {
         const res = await fetch(source);
         if (res.ok) {

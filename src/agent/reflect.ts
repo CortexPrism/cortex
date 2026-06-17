@@ -69,23 +69,39 @@ export async function storeReflection(
   if (result.patterns.length > 0) {
     const newConfidence = (result.confidence + result.quality) / 2;
     for (const pattern of result.patterns) {
-      const existing = await db.get<{ id: string; supporting_events: number; confidence: number; source_sessions: string }>(
+      const existing = await db.get<
+        { id: string; supporting_events: number; confidence: number; source_sessions: string }
+      >(
         `SELECT id, supporting_events, confidence, source_sessions FROM reflection_memory WHERE pattern = ? LIMIT 1`,
         [pattern],
       );
 
       if (existing) {
         const sessions: string[] = (() => {
-          try { return JSON.parse(existing.source_sessions) as string[]; } catch { return []; }
+          try {
+            return JSON.parse(existing.source_sessions) as string[];
+          } catch {
+            return [];
+          }
         })();
         if (!sessions.includes(sessionId)) sessions.push(sessionId);
         const events = existing.supporting_events + 1;
-        const updatedConfidence = Math.min(1.0, (existing.confidence * existing.supporting_events + newConfidence) / events);
+        const updatedConfidence = Math.min(
+          1.0,
+          (existing.confidence * existing.supporting_events + newConfidence) / events,
+        );
         await db.run(
           `UPDATE reflection_memory
            SET supporting_events = ?, confidence = ?, source_sessions = ?, last_reinforced = ?, updated_at = ?
            WHERE id = ?`,
-          [events, updatedConfidence, JSON.stringify(sessions.slice(-20)), now, now, existing.id] as InValue[],
+          [
+            events,
+            updatedConfidence,
+            JSON.stringify(sessions.slice(-20)),
+            now,
+            now,
+            existing.id,
+          ] as InValue[],
         );
       } else {
         await db.run(

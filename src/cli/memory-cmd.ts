@@ -81,21 +81,47 @@ export const memoryCommand = new Command()
         console.log('\n' + bold('  Memory Health Report'));
         console.log(dim('  ──────────────────────────────────────────────────'));
 
-        const fmtTier = (name: string, t: { total: number; active: number; stale: number; avgDecay: number; avgImportance: number; avgAccess: number }) => {
+        const fmtTier = (
+          name: string,
+          t: {
+            total: number;
+            active: number;
+            stale: number;
+            avgDecay: number;
+            avgImportance: number;
+            avgAccess: number;
+          },
+        ) => {
           const decayColor = t.avgDecay >= 0.7 ? green : t.avgDecay >= 0.4 ? yellow : red;
           console.log(`\n  ${bold(cyan(name))}`);
-          console.log(`    total: ${t.total}  active: ${green(String(t.active))}  stale: ${t.stale > 0 ? red(String(t.stale)) : dim('0')}`);
-          console.log(`    avg decay: ${decayColor(t.avgDecay.toFixed(3))}  avg importance: ${t.avgImportance.toFixed(3)}  avg accesses: ${t.avgAccess.toFixed(1)}`);
+          console.log(
+            `    total: ${t.total}  active: ${green(String(t.active))}  stale: ${
+              t.stale > 0 ? red(String(t.stale)) : dim('0')
+            }`,
+          );
+          console.log(
+            `    avg decay: ${decayColor(t.avgDecay.toFixed(3))}  avg importance: ${
+              t.avgImportance.toFixed(3)
+            }  avg accesses: ${t.avgAccess.toFixed(1)}`,
+          );
         };
 
         fmtTier('Episodic Memory', h.episodic);
         fmtTier('Semantic Memory', h.semantic);
 
         console.log(`\n  ${bold(cyan('Knowledge Graph'))}`);
-        console.log(`    entities: ${h.graph.entities}  relations: ${h.graph.relations}  avg strength: ${h.graph.avgStrength.toFixed(3)}`);
+        console.log(
+          `    entities: ${h.graph.entities}  relations: ${h.graph.relations}  avg strength: ${
+            h.graph.avgStrength.toFixed(3)
+          }`,
+        );
 
         console.log(`\n  ${bold(cyan('Reflection Memory'))}`);
-        console.log(`    patterns: ${h.reflection.total}  avg confidence: ${h.reflection.avgConfidence.toFixed(3)}  meta-patterns: ${h.reflection.metaPatterns}`);
+        console.log(
+          `    patterns: ${h.reflection.total}  avg confidence: ${
+            h.reflection.avgConfidence.toFixed(3)
+          }  meta-patterns: ${h.reflection.metaPatterns}`,
+        );
 
         console.log('');
       }),
@@ -109,10 +135,28 @@ export const memoryCommand = new Command()
         console.log(dim('\n  Running heuristic learning cycle…'));
         const result = await runHeuristicCycle();
         console.log(`\n  ${bold('Results:')}`);
-        console.log(`    importance boosted:    ${result.importanceBoosted > 0 ? green(String(result.importanceBoosted)) : dim('0')}`);
-        console.log(`    decay slowed:          ${result.decaySlowed > 0 ? green(String(result.decaySlowed)) : dim('0')}`);
-        console.log(`    relations strengthened: ${result.relationsStrengthened > 0 ? green(String(result.relationsStrengthened)) : dim('0')}`);
-        console.log(`    auto-tagged:           ${result.autoTagged > 0 ? green(String(result.autoTagged)) : dim('0')}`);
+        console.log(
+          `    importance boosted:    ${
+            result.importanceBoosted > 0 ? green(String(result.importanceBoosted)) : dim('0')
+          }`,
+        );
+        console.log(
+          `    decay slowed:          ${
+            result.decaySlowed > 0 ? green(String(result.decaySlowed)) : dim('0')
+          }`,
+        );
+        console.log(
+          `    relations strengthened: ${
+            result.relationsStrengthened > 0
+              ? green(String(result.relationsStrengthened))
+              : dim('0')
+          }`,
+        );
+        console.log(
+          `    auto-tagged:           ${
+            result.autoTagged > 0 ? green(String(result.autoTagged)) : dim('0')
+          }`,
+        );
         console.log('');
       }),
   );

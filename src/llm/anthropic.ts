@@ -1,5 +1,11 @@
 import Anthropic from 'npm:@anthropic-ai/sdk';
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+} from './types.ts';
 
 const COST_PER_1M: Record<string, { in: number; out: number }> = {
   'claude-opus-4-5': { in: 15.0, out: 75.0 },
@@ -16,7 +22,9 @@ const REASONING_BUDGET: Record<string, number> = {
   high: 16384,
 };
 
-function toAnthropicContent(content: string | ContentBlock[]): string | Anthropic.ContentBlockParam[] {
+function toAnthropicContent(
+  content: string | ContentBlock[],
+): string | Anthropic.ContentBlockParam[] {
   if (typeof content === 'string') return content;
   return content.map((block): Anthropic.ContentBlockParam => {
     if (block.type === 'text') return { type: 'text', text: block.text };
@@ -63,7 +71,9 @@ export class AnthropicProvider implements LLMProvider {
       }));
 
     const systemMsg: string | undefined = (() => {
-      if (typeof options.systemPrompt === 'string' && options.systemPrompt) return options.systemPrompt;
+      if (typeof options.systemPrompt === 'string' && options.systemPrompt) {
+        return options.systemPrompt;
+      }
       const sysMsg = options.messages.find((m) => m.role === 'system');
       if (!sysMsg) return undefined;
       return typeof sysMsg.content === 'string' ? sysMsg.content : undefined;
@@ -106,7 +116,9 @@ export class AnthropicProvider implements LLMProvider {
       }));
 
     const systemMsg: string | undefined = (() => {
-      if (typeof options.systemPrompt === 'string' && options.systemPrompt) return options.systemPrompt;
+      if (typeof options.systemPrompt === 'string' && options.systemPrompt) {
+        return options.systemPrompt;
+      }
       const sysMsg = options.messages.find((m) => m.role === 'system');
       if (!sysMsg) return undefined;
       return typeof sysMsg.content === 'string' ? sysMsg.content : undefined;

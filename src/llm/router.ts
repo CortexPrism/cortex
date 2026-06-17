@@ -22,7 +22,14 @@ import { LiteLLMProvider } from './litellm.ts';
 import { HuggingFaceProvider } from './huggingface.ts';
 import { AlibabaProvider } from './alibaba.ts';
 import { VeniceProvider } from './venice.ts';
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider, Message } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+  Message,
+} from './types.ts';
 import type { CortexConfig, ProviderConfig, ProviderKind } from '../config/config.ts';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -503,7 +510,9 @@ export class ThresholdRouter extends BaseRouter {
     const prompt = messages.length > 0
       ? messages.map((m) => {
         if (typeof m.content === 'string') return `${m.role}: ${m.content}`;
-        const textBlocks = m.content.filter((b): b is { type: 'text'; text: string } => b.type === 'text');
+        const textBlocks = m.content.filter((b): b is { type: 'text'; text: string } =>
+          b.type === 'text'
+        );
         return `${m.role}: ${textBlocks.map((b) => b.text).join('\n')}`;
       }).join('\n')
       : '';

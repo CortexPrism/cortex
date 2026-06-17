@@ -24,7 +24,9 @@ function formatHit(hit: MemoryHit): string {
   if (hit.category && hit.category !== 'general') meta.push(`category:${hit.category}`);
   if (hit.tags && hit.tags.length > 0) meta.push(`tags:${hit.tags.slice(0, 3).join(',')}`);
   if (hit.topics && hit.topics.length > 0) meta.push(`topics:${hit.topics.slice(0, 3).join(',')}`);
-  if (hit.entities && hit.entities.length > 0) meta.push(`entities:${hit.entities.slice(0, 3).join(',')}`);
+  if (hit.entities && hit.entities.length > 0) {
+    meta.push(`entities:${hit.entities.slice(0, 3).join(',')}`);
+  }
 
   const metaStr = meta.length > 0 ? ` · ${meta.join(' · ')}` : '';
   return `**[${label} · ${age}${metaStr}]** ${hit.text.slice(0, 400)}`;

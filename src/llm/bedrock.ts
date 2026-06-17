@@ -3,7 +3,13 @@ import {
   ConverseCommand,
   ConverseStreamCommand,
 } from 'npm:@aws-sdk/client-bedrock-runtime';
-import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider } from './types.ts';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+} from './types.ts';
 
 function toBedrockContent(content: string | ContentBlock[]): Array<{ text: string }> {
   if (typeof content === 'string') return [{ text: content }];

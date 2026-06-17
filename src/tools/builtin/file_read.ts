@@ -19,7 +19,8 @@ async function tryReadPdf(filePath: string): Promise<string | null> {
 export const fileReadTool: Tool = {
   definition: {
     name: 'file_read',
-    description: 'Read any file including PDFs (auto-extracts text). Returns up to 64KB with line numbers.',
+    description:
+      'Read any file including PDFs (auto-extracts text). Returns up to 64KB with line numbers.',
     capabilities: ['fs:read'],
     params: [
       {
@@ -65,9 +66,7 @@ export const fileReadTool: Tool = {
       await ensureAgentWorkspace(context.agentId);
       filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
     } catch {
-      filePath = rawPath.startsWith('/')
-        ? rawPath
-        : resolve(join(context.workingDir, rawPath));
+      filePath = rawPath.startsWith('/') ? rawPath : resolve(join(context.workingDir, rawPath));
     }
 
     try {
@@ -92,10 +91,18 @@ export const fileReadTool: Tool = {
           const numbered = lines
             .map((l, i) => `${String(offset + i).padStart(4)} │ ${l}`)
             .join('\n');
-          const header = `// ${filePath}  (PDF, ${pdfText.length} chars total, showing first ${content.length} chars${truncated ? ', output truncated' : ''})`;
+          const header =
+            `// ${filePath}  (PDF, ${pdfText.length} chars total, showing first ${content.length} chars${
+              truncated ? ', output truncated' : ''
+            })`;
           return result(true, `${header}\n${numbered}`, undefined, start);
         }
-        return result(false, '', `Could not extract text from PDF: ${filePath}. The file may be encrypted, scanned, or contain only images. If inline content was provided with the message, use that instead.`, start);
+        return result(
+          false,
+          '',
+          `Could not extract text from PDF: ${filePath}. The file may be encrypted, scanned, or contain only images. If inline content was provided with the message, use that instead.`,
+          start,
+        );
       }
 
       const raw = await Deno.readFile(filePath);
