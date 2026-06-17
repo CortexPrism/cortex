@@ -264,18 +264,24 @@ class LoggerRegistry {
 
     // Stdout: gated by global level
     if (this.stdoutTransport && rank >= globalRank) {
-      try { this.stdoutTransport.write(entry); } catch { /* non-fatal */ }
+      try {
+        this.stdoutTransport.write(entry);
+      } catch { /* non-fatal */ }
     }
 
     // File: uses configured level (or warn floor, whichever is lower rank)
     if (this.fileTransport && rank >= fileRank) {
-      try { this.fileTransport.write(entry); } catch { /* non-fatal */ }
+      try {
+        this.fileTransport.write(entry);
+      } catch { /* non-fatal */ }
     }
 
     // Extra transports (OTLP, Langfuse, custom): gated by global level
     if (rank >= globalRank) {
       for (const t of this.extraTransports) {
-        try { t.write(entry); } catch { /* non-fatal */ }
+        try {
+          t.write(entry);
+        } catch { /* non-fatal */ }
       }
     }
   }

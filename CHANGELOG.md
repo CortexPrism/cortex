@@ -11,9 +11,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Structured logging system** (`src/utils/logger.ts`) — `LoggerRegistry` singleton with configurable
-  levels (`trace`, `debug`, `info`, `warn`, `error`, `silent`), pluggable transports (stdout, file,
-  OTLP, Langfuse), and per-namespace loggers via `logger(ns)`
+- **Structured logging system** (`src/utils/logger.ts`) — `LoggerRegistry` singleton with
+  configurable levels (`trace`, `debug`, `info`, `warn`, `error`, `silent`), pluggable transports
+  (stdout, file, OTLP, Langfuse), and per-namespace loggers via `logger(ns)`
 - **File transport with rotation** — writes to `~/.cortex/data/logs/cortex.log`; configurable
   `fileMaxBytes` and `fileMaxFiles`; file-level threshold independent of stdout level so `warn+`
   always lands on disk even when global level is `error`
@@ -24,22 +24,33 @@ Versioning: [Semantic Versioning](https://semver.org/)
   via `PUT /api/config` and applies the new level **live** without restart
 - **Live log-level apply on config save** (`src/server/router.ts`) — `PUT /api/config` now calls
   `configureLogger` immediately when the payload contains a `logging` block
-- **Langfuse tracing in agent loop** (`src/agent/loop.ts`) — `traceCreate` per turn, `generationCreate`
-  per LLM round (with token usage), `spanCreate`/`spanUpdate` per tool call; all gated on
-  `isConfigured()` so there is zero overhead when Langfuse is not configured
+- **Langfuse tracing in agent loop** (`src/agent/loop.ts`) — `traceCreate` per turn,
+  `generationCreate` per LLM round (with token usage), `spanCreate`/`spanUpdate` per tool call; all
+  gated on `isConfigured()` so there is zero overhead when Langfuse is not configured
 - **Startup log marker** (`src/server/server.ts`) — emits a `warn`-level entry on every server start
   confirming the active log level and file path
 - **Observability documentation** (`docs/observability.md`) — covers log levels, config reference,
   CLI usage, namespace list, Prometheus/Grafana, OTLP, and Langfuse integration
+- **Marketplace installed-status detection** (`src/server/ui.ts`) — marketplace plugin/agent cards
+  now check local install state via `/api/plugins` and `/api/agents`; installed items show a green
+  "installed" badge (plugins also distinguish "disabled") and replace the Install/Import button with
+  a grayed-out "Installed" indicator
+- **Marketplace card redesign** (`src/server/ui.ts`) — new `.card-mp` CSS class with colour-derived
+  icon square, hover shadow + lift (`translateY`), version as a blue badge, monospace slugs, license
+  display, and proper singular/plural download counts
 
 ### Fixed
 
-- **`cortex restart` killing shell wrapper instead of server process** (`src/cli/start.ts`) — switched
-  to `fuser -k <port>/tcp` so the actual Deno process holding the socket is killed, preventing the
-  new server from failing with `AddrInUse` and serving stale (uncached) code
+- **`cortex restart` killing shell wrapper instead of server process** (`src/cli/start.ts`) —
+  switched to `fuser -k <port>/tcp` so the actual Deno process holding the socket is killed,
+  preventing the new server from failing with `AddrInUse` and serving stale (uncached) code
 - **File transport not writing at verbose levels** (`src/utils/logger.ts`) — file rank was hardcoded
   to `warn` floor regardless of configured level; now uses `Math.min(globalRank, FLOOR)` so setting
   level to `debug` or `info` flows fully to the log file
+- **Marketplace plugins all showing version `1.0.0`** (`src/server/router.ts`,
+  `src/plugins/update.ts`) — the marketplace API proxy now enriches plugin versions from GitHub
+  Releases/Tags API using the existing `checkGitHubRelease` logic (exported from `update.ts`);
+  results are cached in memory for 1 hour to avoid rate-limit churn
 
 ---
 

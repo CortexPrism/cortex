@@ -14,13 +14,13 @@ interface GitHubRelease {
   assets: { name: string; browser_download_url: string }[];
 }
 
-function extractGitHubOwnerRepo(source: string): { owner: string; repo: string } | null {
+export function extractGitHubOwnerRepo(source: string): { owner: string; repo: string } | null {
   const m = source.match(/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:[/?#].*)?$/);
   if (!m) return null;
   return { owner: m[1], repo: m[2] };
 }
 
-async function checkGitHubRelease(
+export async function checkGitHubRelease(
   owner: string,
   repo: string,
   githubToken: string | null,

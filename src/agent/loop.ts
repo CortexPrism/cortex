@@ -247,9 +247,13 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   const turnId = nanoid();
   const started = Date.now();
   const startedAt = new Date(started).toISOString();
-  
-  _log.info(`Agent turn starting`, { turnId, sessionId: options.sessionId, messageLength: options.userMessage.length });
-  
+
+  _log.info(`Agent turn starting`, {
+    turnId,
+    sessionId: options.sessionId,
+    messageLength: options.userMessage.length,
+  });
+
   if (!builtinHooksRegistered) {
     _log.debug(`Registering builtin hooks`, { turnId });
     registerBuiltinHooks();
@@ -330,7 +334,11 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   _log.debug(`Loading history`, { turnId, recencyWindow, semanticK });
   const history = await loadHybridHistory(sessionDb, effectiveInput, recencyWindow, semanticK);
   const messages: Message[] = [...history];
-  _log.debug(`History loaded`, { turnId, historyLength: history.length, totalMessages: messages.length });
+  _log.debug(`History loaded`, {
+    turnId,
+    historyLength: history.length,
+    totalMessages: messages.length,
+  });
 
   if (
     options.userContentBlocks &&
@@ -342,7 +350,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       role: 'user',
       content: options.userContentBlocks,
     };
-    _log.debug(`Applied user content blocks`, { turnId, blockCount: options.userContentBlocks.length });
+    _log.debug(`Applied user content blocks`, {
+      turnId,
+      blockCount: options.userContentBlocks.length,
+    });
   }
 
   const maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
@@ -363,7 +374,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   const toolCtx: ToolContext | undefined = registry && options.toolContext
     ? { ...options.toolContext, sessionId }
     : undefined;
-  _log.debug(`Starting main loop`, { turnId, maxToolRounds, hasTools: !!registry, hasToolCtx: !!toolCtx });
+  _log.debug(`Starting main loop`, {
+    turnId,
+    maxToolRounds,
+    hasTools: !!registry,
+    hasToolCtx: !!toolCtx,
+  });
 
   const metaAssessment = assessTask(effectiveInput);
 
@@ -632,7 +648,13 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       // When no tools are registered we can stream directly to the client.
       const hasTools = !!(registry && toolCtx);
       const useDirectStream = stream && onChunk && !hasTools;
-      _log.debug(`Starting LLM stream`, { round, hasTools, useDirectStream, model: effectiveModel, provider: effectiveProvider.name });
+      _log.debug(`Starting LLM stream`, {
+        round,
+        hasTools,
+        useDirectStream,
+        model: effectiveModel,
+        provider: effectiveProvider.name,
+      });
 
       const providerOpts = {
         reasoningEffort: options.reasoningEffort,
@@ -691,14 +713,24 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
               tokensIn += chunk.tokensIn ?? 0;
               tokensOut += chunk.tokensOut ?? 0;
               costUsd += chunk.costUsd ?? 0;
-              _log.debug(`Stream completed`, { round, tokensIn, tokensOut, costUsd, responseLength: roundResponse.length });
+              _log.debug(`Stream completed`, {
+                round,
+                tokensIn,
+                tokensOut,
+                costUsd,
+                responseLength: roundResponse.length,
+              });
             }
           }
         } catch (streamErr) {
           clearTimeout(abortTimer);
           const err = streamErr as Error;
           if (err.name === 'AbortError' || err.message.includes('abort')) {
-            _log.warn(`Streaming timeout after 180s`, { round, turnId, responseLength: roundResponse.length });
+            _log.warn(`Streaming timeout after 180s`, {
+              round,
+              turnId,
+              responseLength: roundResponse.length,
+            });
             return {
               response:
                 'Request timed out. The task may be too complex or the provider is slow. Please try again or break down the request into smaller parts.',
@@ -761,53 +793,72 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           startTime: startedAt,
           endTime: new Date().toISOString(),
           model: effectiveModel,
-          input: currentMessages.slice(-2).map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 500) : m.content })),
+          input: currentMessages.slice(-2).map((m) => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content.slice(0, 500) : m.content,
+          })),
           output: roundResponse.slice(0, 2000),
           usage: { input: tokensIn, output: tokensOut, unit: 'TOKENS' },
         });
       }
-      
+
       // Detect if agent is stuck promising to use tools but not actually calling them
-      const hasToolPromises = /\b(search|look up|find|check|web search|perform a search|let me search|I will search|I'll search|let me look|I'll find|I'll check)\b/i.test(roundResponse);
+      const hasToolPromises =
+        /\b(search|look up|find|check|web search|perform a search|let me search|I will search|I'll search|let me look|I'll find|I'll check)\b/i
+          .test(roundResponse);
       const isStuckInPromiseLoop = hasToolPromises && toolCalls.length === 0 && round >= 1;
-      
-      _log.debug(`Promise loop analysis`, { 
-        round, 
-        hasToolPromises, 
-        toolCallsCount: toolCalls.length, 
+
+      _log.debug(`Promise loop analysis`, {
+        round,
+        hasToolPromises,
+        toolCallsCount: toolCalls.length,
         responseLength: roundResponse.length,
         isStuckInPromiseLoop,
-        responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n')
+        responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
       });
-      
+
       if (isStuckInPromiseLoop) {
-        _log.warn(`Agent stuck in promise loop, attempting tool execution`, { 
-          round, 
+        _log.warn(`Agent stuck in promise loop, attempting tool execution`, {
+          round,
           responseLength: roundResponse.length,
-          fullResponse: roundResponse.slice(0, 1000)
+          fullResponse: roundResponse.slice(0, 1000),
         });
-        
+
         // Try to extract the search query and execute web search automatically
-        const searchQueryMatch = roundResponse.match(/(?:search|look up|find|check for)\s+(.+?)(?:\.|$|\n)/i);
+        const searchQueryMatch = roundResponse.match(
+          /(?:search|look up|find|check for)\s+(.+?)(?:\.|$|\n)/i,
+        );
         if (searchQueryMatch && registry && toolCtx) {
           const searchQuery = searchQueryMatch[1].trim();
           _log.info(`Auto-executing web search for: "${searchQuery}"`, { turnId, round });
-          
+
           try {
-            const webSearchResult = await executeTool({
-              toolName: 'web_search',
-              args: { query: searchQuery, max_results: 5 }
-            }, registry, toolCtx);
-            
+            const webSearchResult = await executeTool(
+              {
+                toolName: 'web_search',
+                args: { query: searchQuery, max_results: 5 },
+              },
+              registry,
+              toolCtx,
+            );
+
             if (webSearchResult.success) {
-              _log.info(`Auto web search successful`, { turnId, round, outputLength: webSearchResult.output.length });
+              _log.info(`Auto web search successful`, {
+                turnId,
+                round,
+                outputLength: webSearchResult.output.length,
+              });
               // Add the search result to the tool results and continue
               const autoToolResults = [webSearchResult];
               const resultText = formatToolResults(autoToolResults);
               currentMessages = [
                 ...currentMessages,
                 { role: 'assistant' as const, content: roundResponse },
-                { role: 'user' as const, content: `${resultText}\n\nBased on the search results above, please provide your complete response to the user.` },
+                {
+                  role: 'user' as const,
+                  content:
+                    `${resultText}\n\nBased on the search results above, please provide your complete response to the user.`,
+                },
               ];
               round++;
               continue; // Continue to next round with search results
@@ -818,14 +869,15 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
             _log.error(`Auto web search error`, { turnId, round, error: (err as Error).message });
           }
         }
-        
+
         // If auto-execution fails, force completion with explanation
-        const forcedResponse = roundResponse + '\n\n[Note: I had difficulty executing the web search automatically. Let me provide a response based on my knowledge instead.]';
+        const forcedResponse = roundResponse +
+          '\n\n[Note: I had difficulty executing the web search automatically. Let me provide a response based on my knowledge instead.]';
         if (!useDirectStream && onChunk) onChunk(forcedResponse);
         response = forcedResponse;
         break;
       }
-      
+
       if (toolCalls.length === 0) {
         // No tool calls — this is the final clean response.  If we buffered
         // (didn't stream above), emit it now so the user sees something.
@@ -844,12 +896,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       _log.debug(`Starting tool execution loop`, { round, toolCallsCount: toolCalls.length });
       const toolResults = [];
       for (const [index, tc] of toolCalls.entries()) {
-        _log.debug(`Executing tool ${index + 1}/${toolCalls.length}`, { 
-          round, 
-          toolName: tc.toolName, 
-          argsCount: Object.keys(tc.args).length 
+        _log.debug(`Executing tool ${index + 1}/${toolCalls.length}`, {
+          round,
+          toolName: tc.toolName,
+          argsCount: Object.keys(tc.args).length,
         });
-        
+
         const preToolCtx = createPipelineContext({
           stage: 'pre-tool',
           sessionId,
@@ -864,7 +916,11 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         });
         const preToolResult = await runHooksForStage('pre-tool', preToolCtx);
         if (preToolResult.aborted) {
-          _log.warn(`Tool execution blocked by pre-tool hook`, { round, toolName: tc.toolName, reason: preToolResult.abortMessage });
+          _log.warn(`Tool execution blocked by pre-tool hook`, {
+            round,
+            toolName: tc.toolName,
+            reason: preToolResult.abortMessage,
+          });
           toolResults.push({
             toolName: tc.toolName,
             success: false,
@@ -949,28 +1005,32 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         { role: 'user' as const, content: followUpInstruction },
       ];
 
-      _log.debug(`Advancing to next round`, { round, next: round + 1, roundsLeft: maxToolRounds - round - 1 });
+      _log.debug(`Advancing to next round`, {
+        round,
+        next: round + 1,
+        roundsLeft: maxToolRounds - round - 1,
+      });
       round++;
     }
     if (round >= maxToolRounds && response === '') {
       hitToolCeiling = true;
       _log.warn(`Hit tool ceiling with no response`, { round, maxToolRounds });
     }
-    _log.info(`Agent loop completed`, { 
-      turnId, 
-      finalRound: round, 
-      responseLength: response.length, 
-      hitToolCeiling, 
+    _log.info(`Agent loop completed`, {
+      turnId,
+      finalRound: round,
+      responseLength: response.length,
+      hitToolCeiling,
       totalTokensUsed: tokensIn + tokensOut,
       totalCost: costUsd,
-      toolCallsMade: state.toolCallsMade
+      toolCallsMade: state.toolCallsMade,
     });
   } catch (err) {
     errorMsg = (err as Error).message;
     throw err;
   } finally {
     clearTimeout(overallTimer);
-    
+
     const finalState: AgentState = {
       ...state,
       tokensUsed: tokensIn + tokensOut,
