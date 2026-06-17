@@ -31,6 +31,7 @@ import { braveSearchTool } from '../tools/builtin/web/brave_search.ts';
 import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
 import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
 import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
+import { computerTool } from '../tools/builtin/computer.ts';
 import {
   formatSkillsAsAvailableList,
   getAllHumanSkills,
@@ -207,6 +208,7 @@ export const chatCommand = new Command()
         tavily_search: tavilySearchTool,
         serpapi_search: serpapiSearchTool,
         firecrawl: firecrawlTool,
+        computer: computerTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {

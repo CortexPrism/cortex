@@ -213,6 +213,18 @@ export interface WebAuth {
   sessionSecret?: string;
 }
 
+export interface ComputerUseConfig {
+  enabled: boolean;
+  displayWidth: number;
+  displayHeight: number;
+  runtime: 'native' | 'docker';
+  dockerImage?: string;
+  screenshotFormat: 'png' | 'jpeg';
+  screenshotQuality: number;
+  actionTimeoutMs: number;
+  requireApproval: boolean;
+}
+
 export interface CortexConfig {
   version: number;
   defaultProvider: ProviderKind;
@@ -246,6 +258,8 @@ export interface CortexConfig {
   voice?: import('../voice/types.ts').VoiceConfig;
   /** Logging and observability configuration */
   logging?: LoggingConfig;
+  /** Computer use (GUI automation) configuration */
+  computerUse?: ComputerUseConfig;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {

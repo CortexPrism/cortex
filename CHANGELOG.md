@@ -7,6 +7,168 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [Unreleased]
+
+### Added
+
+#### Computer Use (GUI Automation)
+
+- **Computer Use Tool** (`computer`) — enables AI agents to interact with graphical user interfaces
+  through screenshots, mouse control, and keyboard input; supports 15 different actions including
+  screenshot capture, clicking (left/right/middle/double/triple), mouse movement and dragging, text
+  typing, keyboard shortcuts, scrolling, and wait operations
+- **Virtual Display Management** (`src/computer-use/display.ts`) — automatic X11 virtual display
+  (Xvfb) lifecycle management with display number allocation to support multiple concurrent sessions,
+  health checking, and graceful shutdown
+- **Screenshot Capture** (`src/computer-use/screenshot.ts`) — flexible screenshot capture supporting
+  multiple tools (scrot, ImageMagick, xwd) with automatic fallback, PNG and JPEG format support,
+  configurable quality settings, and smart file storage to avoid tool output truncation
+- **Mouse Control** (`src/computer-use/mouse.ts`) — comprehensive mouse automation via xdotool
+  including precise coordinate-based movement, all click types, click-and-drag operations, scrolling
+  in all directions, and cursor position tracking
+- **Keyboard Control** (`src/computer-use/keyboard.ts`) — full keyboard automation supporting text
+  typing with configurable delays, individual key presses, key combinations (ctrl+s, alt+tab, etc.),
+  key holding for specified durations, and normalized key name mapping for cross-platform
+  compatibility
+- **Action Executor** (`src/computer-use/executor.ts`) — orchestrates display, mouse, and keyboard
+  controllers with configurable timeouts, error handling, screenshot directory management, and action
+  validation
+- **Security Integration** — computer use actions integrated with policy validation system, approval
+  gates requiring user confirmation for each action, sensitive data detection (passwords, API keys)
+  with automatic blocking, and comprehensive audit logging via Cortex Lens
+- **Computer Use Settings UI** — dedicated settings tab in web UI for configuring display resolution
+  (640-3840 x 480-2160), runtime selection (Native Xvfb or Docker), screenshot format and quality,
+  action timeouts, approval requirements, and Docker image configuration
+- **Docker Support** (`docker/computer-use.Dockerfile`) — pre-built Docker image with Ubuntu 22.04,
+  Xvfb, xdotool, scrot, XFCE desktop environment, Firefox, Chromium, LibreOffice, and automatic Xvfb
+  startup for isolated GUI automation
+- **Configuration System** — computer use configuration stored in main config file with enable/disable
+  toggle, all settings persisted across restarts, and tool automatically disabled when not configured
+- **Tool Capabilities** — added four new capability types: `computer:screenshot`, `computer:mouse`,
+  `computer:keyboard`, and `computer:control` for granular permission control
+- **Policy Support** — added `computer` policy kind to security system for fine-grained access control
+  of computer use actions
+- **Documentation** (`docs/computer-use/README.md`) — comprehensive guide covering requirements,
+  installation instructions for multiple Linux distributions, usage examples, available actions with
+  parameters, common key names, security features, troubleshooting guide, example workflows (web
+  research, document editing), and architecture overview
+- **Tests** (`tests/computer-use/display_test.ts`) — automated tests for display management including
+  availability checks, lifecycle management, and multi-display support
+
+**Requirements (Linux):**
+- `xvfb` — X Virtual Frame Buffer for virtual displays
+- `xdotool` — Command-line X11 automation for mouse and keyboard
+- `scrot` — Screenshot utility (or ImageMagick as fallback)
+- `x11-utils` — X11 utilities
+
+**Installation:**
+```bash
+# Debian/Ubuntu
+sudo apt-get install xvfb xdotool scrot x11-utils
+
+# Fedora/RHEL
+sudo dnf install xorg-x11-server-Xvfb xdotool scrot xorg-x11-utils
+
+# Arch Linux
+sudo pacman -S xorg-server-xvfb xdotool scrot xorg-utils
+```
+
+**Available Actions:**
+- `screenshot` — capture current display state
+- `left_click`, `right_click`, `middle_click` — click at coordinates
+- `double_click`, `triple_click` — multi-click operations
+- `mouse_move` — move cursor to coordinates
+- `left_click_drag` — drag from one point to another
+- `left_mouse_down`, `left_mouse_up` — fine-grained click control
+- `type` — type text string
+- `key` — press key or key combination (e.g., "ctrl+s", "alt+tab")
+- `hold_key` — hold key for specified duration
+- `scroll` — scroll in any direction with configurable amount
+- `wait` — pause execution between actions
+
+**Security Features:**
+- All actions require user approval by default (configurable)
+- Actions validated against security policies before execution
+- Sensitive data detection prevents typing passwords/API keys
+- All operations logged in Cortex Lens audit system
+- Runs in isolated virtual display (not host display)
+- No direct filesystem access (use separate file tools)
+
+#### Tool Configuration UI
+
+- **Tools & APIs Settings Tab** — new settings tab in web UI for managing tool API keys and
+  configurations without editing config files or using CLI
+- **Tool Configuration API** — REST endpoints (`GET/PUT/DELETE /api/tools/config`) for managing tool
+  settings programmatically
+- **Vault Integration** — tool API keys stored securely in encrypted vault (AES-256-GCM) with
+  automatic fallback to environment variables
+- **Visual Tool Management** — see configured vs. available tools, add/edit/remove API keys through
+  intuitive UI
+- **Supported Tools** — Brave Search, Tavily Search, Firecrawl (API key + self-hosted URL), SerpAPI
+  configuration
+- **Masked Key Display** — configured keys shown with first 6 and last 4 characters visible (e.g.,
+  `sk-abc...xyz`)
+
+#### Enhanced Web Tools
+
+- **Web Search Cache System** (`src/tools/builtin/web/cache.ts`) — persistent caching for web search
+  results with TTL (1 hour default), automatic cleanup, and cache size management (max 1000 entries)
+- **Enhanced Web Search** (`web_search_enhanced`) — multi-provider search with intelligent fallback
+  (Brave → Tavily → DuckDuckGo), automatic retry on failure (up to 2 attempts), result caching, and
+  provider preference support
+- **Enhanced Web Fetch** (`web_fetch_enhanced`) — improved content extraction with HTML-to-Markdown
+  conversion, better entity decoding, automatic retry with exponential backoff (up to 3 attempts),
+  improved error messages with actionable suggestions, and more realistic User-Agent headers
+
+#### New File Management Tools
+
+- **File Copy Tool** (`file_copy`) — copy files or directories to new locations with overwrite
+  protection, git integration, automatic parent directory creation, and edit logging
+- **File Move Tool** (`file_move`) — move or rename files/directories efficiently with atomic
+  operations, overwrite protection, git tracking for both source and destination, and edit logging
+- **File Diff Tool** (`file_diff`) — compare two files with unified diff format showing
+  additions/deletions, configurable context lines (default 3), change statistics, and context
+  collapsing for readability
+
+#### Enhanced File Tools
+
+- **Enhanced File Read** (`file_read_enhanced`) — advanced file reader with automatic language
+  detection (40+ languages including TypeScript, Python, Rust, Go, etc.), smart binary file
+  detection (by extension and content analysis), large file warnings (>1MB) with chunked reading
+  suggestions, improved metadata display (file size, line count, language), and better error
+  handling with specific error codes
+
+### Fixed
+
+- **Tool call JSON leaking during streaming** (`src/server/ws.ts`) — tool calls split across
+  multiple WebSocket chunks now properly buffered and stripped; prevents incomplete JSON fragments
+  like `{"tool":"web_search"...` from appearing in UI during live streaming before page refresh
+
+### Improved
+
+- **Tool registration** — computer tool now registered in all entry points: CLI chat
+  (`src/cli/chat.ts`), WebSocket server (`src/server/ws.ts`), service processes
+  (`src/processes/service-entry.ts`), and sub-agent processes (`src/processes/sub-agent-entry.ts`)
+- **Import maps** (`deno.json`) — added `@std/encoding/base64` dependency for screenshot base64
+  encoding with proper submodule mapping for Deno's module resolution
+- **Security policy system** — extended `PolicyKind` type to include `computer` for fine-grained
+  access control of computer use actions; all computer use operations now flow through policy
+  validation with automatic sensitive data detection
+- **Configuration schema** — extended `CortexConfig` interface with `computerUse` settings including
+  enable/disable toggle, display resolution, runtime selection, screenshot options, and approval
+  requirements; all settings persisted in main config file
+- All tools now include structured `errorInfo` with error codes (`INVALID_URL`, `HTTP_ERROR`,
+  `TIMEOUT`, etc.), retry flags, suggested actions, and context data
+- Consistent retry logic across network-dependent tools (2-3 attempts with exponential backoff and
+  configurable delays)
+- Better error messages throughout the tool system with specific guidance on resolution
+- Enhanced content extraction in web fetch with improved HTML stripping and markdown formatting
+- Workspace tool exports updated to include new file management tools
+- Settings UI now includes Tools & APIs tab and Computer Use tab for easy configuration management
+- WebSocket chunk handling now uses buffering to prevent split tool calls from leaking through
+
+---
+
 ## [0.34.0] — 2026-06-17
 
 ### Added
@@ -33,14 +195,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Duplicate `reasoningBtn` variable declaration** (`src/server/ui.ts`) — renamed second `const`
   declaration to `reasoningBtnToggle` to fix `SyntaxError: Identifier has already been declared`;
   nested `case` blocks in a `switch` share the same scope
-- **Reasoning panel showing raw XML/tool calls** (`src/server/ui.ts`) — panel now extracts only
-  `` content via regex instead of displaying unfiltered `capturedReasoning` with
-  structured tool calls and markup tags
+- **Reasoning panel showing raw XML/tool calls** (`src/server/ui.ts`) — panel now extracts only ``
+  content via regex instead of displaying unfiltered `capturedReasoning` with structured tool calls
+  and markup tags
 - **Reasoning panel persisting across messages** (`src/server/ui.ts`) — panel DOM element now
   properly removed via `.remove()` on `case 'start'` instead of only hidden with `display: none`
-- **Reasoning panel force-closed on response completion** (`src/server/ui.ts`) — removed
-  unnecessary `reasoningPanelOpen = false` and panel hide in `case 'done'` so user maintains
-  control over panel visibility
+- **Reasoning panel force-closed on response completion** (`src/server/ui.ts`) — removed unnecessary
+  `reasoningPanelOpen = false` and panel hide in `case 'done'` so user maintains control over panel
+  visibility
 
 ### Changed
 

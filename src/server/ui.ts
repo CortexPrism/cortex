@@ -5029,6 +5029,8 @@ async function loadSettings() {
       <button class="mem-tab \${settingsActiveTab === 'ui' ? 'active' : ''}" onclick="switchSettingsTab('ui')" id="settings-tab-ui">UI & Appearance</button>
       <button class="mem-tab \${settingsActiveTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')" id="settings-tab-security">Security</button>
       <button class="mem-tab \${settingsActiveTab === 'voice' ? 'active' : ''}" onclick="switchSettingsTab('voice')" id="settings-tab-voice">Voice & TTS</button>
+      <button class="mem-tab \${settingsActiveTab === 'tools' ? 'active' : ''}" onclick="switchSettingsTab('tools')" id="settings-tab-tools">Tools & APIs</button>
+      <button class="mem-tab \${settingsActiveTab === 'computer-use' ? 'active' : ''}" onclick="switchSettingsTab('computer-use')" id="settings-tab-computer-use">Computer Use</button>
       <button class="mem-tab \${settingsActiveTab === 'logging' ? 'active' : ''}" onclick="switchSettingsTab('logging')" id="settings-tab-logging">Logging</button>
     </div>
 
@@ -5559,13 +5561,195 @@ async function loadSettings() {
         </div>
       </div>
     </div>
+
+    <!-- Tools & APIs Tab -->
+    <div id="settings-pane-tools" style="display:\${settingsActiveTab === 'tools' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Tool API Keys & Configuration</div>
+            <p style="font-size:11px;color:var(--text3);margin-top:2px;">Configure API keys for web search, web scraping, and other external tools</p>
+          </div>
+        </div>
+
+        <div id="tool-configs-list" style="margin-top:16px;">
+          <p style="font-size:12px;color:var(--text3);">Loading tool configurations...</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Add / Update Tool Configuration</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Tool</label>
+            <select class="inp" id="tool-name-select" onchange="updateToolFields()">
+              <option value="">-- Select Tool --</option>
+              <option value="brave_search_api_key">Brave Search API Key</option>
+              <option value="tavily_api_key">Tavily Search API Key</option>
+              <option value="firecrawl_api_key">Firecrawl API Key</option>
+              <option value="firecrawl_url">Firecrawl Self-Hosted URL</option>
+              <option value="serpapi_api_key">SerpAPI API Key</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Choose which tool to configure</p>
+          </div>
+          <div id="tool-value-container">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Value</label>
+            <input class="inp" id="tool-value-input" type="text" placeholder="Enter API key or URL" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;" id="tool-value-hint">API key or configuration value</p>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveToolConfig()">Save Tool Configuration</button>
+          <button class="btn btn-ghost" onclick="clearToolForm()">Clear</button>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--bg2);border:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          About Tool Configuration
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tool API keys are stored securely in the encrypted vault (AES-256-GCM). They're never exposed in logs or API responses.</p>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;"><strong>Priority:</strong> The system checks the vault first, then falls back to environment variables if not found.</p>
+        <div style="margin-top:12px;font-size:11px;">
+          <p style="color:var(--text2);font-weight:500;margin-bottom:6px;">Supported Tools:</p>
+          <ul style="margin:0;padding-left:20px;color:var(--text3);">
+            <li><strong>Brave Search</strong> — Premium web search API (web_search_enhanced)</li>
+            <li><strong>Tavily Search</strong> — AI-optimized search API (web_search_enhanced)</li>
+            <li><strong>Firecrawl</strong> — Web scraping and crawling service</li>
+            <li><strong>SerpAPI</strong> — Google Search API wrapper</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Computer Use Tab -->
+    <div id="settings-pane-computer-use" style="display:\${settingsActiveTab === 'computer-use' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Computer Use (GUI Automation)</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Enable AI agents to interact with graphical user interfaces through screenshots, mouse control, and keyboard input</p>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Enable Computer Use</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cu-enabled" \${config.computerUse?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Allow agents to control desktop</span>
+            </div>
+            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Enables screenshot, mouse, and keyboard tools</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Require Approval</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cu-approval" \${config.computerUse?.requireApproval !== false?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Require user approval for each action</span>
+            </div>
+            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Recommended for security</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Width (px)</label>
+            <input class="inp" id="cu-width" type="number" min="640" max="3840" value="\${config.computerUse?.displayWidth ?? 1024}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Virtual display width (640-3840)</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Height (px)</label>
+            <input class="inp" id="cu-height" type="number" min="480" max="2160" value="\${config.computerUse?.displayHeight ?? 768}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Virtual display height (480-2160)</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Runtime</label>
+            <select class="inp" id="cu-runtime">
+              <option value="native" \${(config.computerUse?.runtime ?? 'native') === 'native' ? 'selected' : ''}>Native (Xvfb)</option>
+              <option value="docker" \${config.computerUse?.runtime === 'docker' ? 'selected' : ''}>Docker Container</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Execution environment</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Docker Image</label>
+            <input class="inp" id="cu-docker-image" type="text" value="\${config.computerUse?.dockerImage ?? 'cortex/computer-use:latest'}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Docker image for containerized execution</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Screenshot Format</label>
+            <select class="inp" id="cu-screenshot-format">
+              <option value="png" \${(config.computerUse?.screenshotFormat ?? 'png') === 'png' ? 'selected' : ''}>PNG (Lossless)</option>
+              <option value="jpeg" \${config.computerUse?.screenshotFormat === 'jpeg' ? 'selected' : ''}>JPEG (Compressed)</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Screenshot image format</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">JPEG Quality</label>
+            <input class="inp" id="cu-quality" type="number" min="1" max="100" value="\${config.computerUse?.screenshotQuality ?? 85}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Quality for JPEG screenshots (1-100)</p>
+          </div>
+          
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Action Timeout (ms)</label>
+            <input class="inp" id="cu-timeout" type="number" min="1000" max="30000" value="\${config.computerUse?.actionTimeoutMs ?? 5000}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Max time for each action (1000-30000)</p>
+          </div>
+        </div>
+        
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveComputerUseSettings()">Save Computer Use Settings</button>
+        </div>
+      </div>
+      
+      <div class="card" style="background:var(--bg2);border:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          About Computer Use
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Computer Use enables agents to interact with desktop environments through screenshots, mouse control, and keyboard input.</p>
+        
+        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Requirements (Linux):</p>
+        <ul style="margin:0;padding-left:20px;color:var(--text3);font-size:11px;">
+          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">xvfb</code> — X Virtual Frame Buffer</li>
+          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">xdotool</code> — Mouse and keyboard control</li>
+          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">scrot</code> — Screenshot utility</li>
+          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">x11-utils</code> — X11 utilities</li>
+        </ul>
+        
+        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Installation:</p>
+        <pre style="background:var(--bg1);padding:8px;border-radius:4px;font-size:10px;overflow-x:auto;margin:0;"><code># Debian/Ubuntu
+sudo apt-get install xvfb xdotool scrot x11-utils
+
+# Fedora/RHEL
+sudo dnf install xorg-x11-server-Xvfb xdotool scrot xorg-x11-utils</code></pre>
+        
+        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Security:</p>
+        <ul style="margin:0;padding-left:20px;color:var(--text3);font-size:11px;">
+          <li>All actions require approval by default</li>
+          <li>Actions are validated against security policies</li>
+          <li>All operations are logged in Cortex Lens</li>
+          <li>Runs in isolated virtual display (not host display)</li>
+          <li>Sensitive data typing is blocked automatically</li>
+        </ul>
+        
+        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Available Actions:</p>
+        <ul style="margin:0;padding-left:20px;color:var(--text3);font-size:11px;">
+          <li>screenshot, left_click, right_click, double_click, triple_click</li>
+          <li>mouse_move, left_click_drag, scroll</li>
+          <li>type (text), key (keyboard shortcuts), hold_key</li>
+          <li>wait (pause between actions)</li>
+        </ul>
+      </div>
+    </div>
   \`;
   refreshSecuritySection();
+  if (settingsActiveTab === 'tools') loadToolConfigs();
 }
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security', 'voice', 'logging'];
+  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security', 'voice', 'tools', 'computer-use', 'logging'];
   tabs.forEach(t => {
     const tabBtn = document.getElementById('settings-tab-' + t);
     const pane = document.getElementById('settings-pane-' + t);
@@ -5573,6 +5757,7 @@ function switchSettingsTab(tabName) {
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
   });
   if (tabName === 'security') refreshSecuritySection();
+  if (tabName === 'tools') loadToolConfigs();
 }
 
 async function saveGeneralSettings() {
@@ -5826,6 +6011,112 @@ async function saveVoiceSettings() {
   } else {
     toast('Failed to save voice settings', 'error');
   }
+}
+
+async function saveComputerUseSettings() {
+  const body = {
+    computerUse: {
+      enabled: document.getElementById('cu-enabled')?.checked ?? false,
+      displayWidth: Number(document.getElementById('cu-width')?.value ?? 1024),
+      displayHeight: Number(document.getElementById('cu-height')?.value ?? 768),
+      runtime: document.getElementById('cu-runtime')?.value ?? 'native',
+      dockerImage: document.getElementById('cu-docker-image')?.value || undefined,
+      screenshotFormat: document.getElementById('cu-screenshot-format')?.value ?? 'png',
+      screenshotQuality: Number(document.getElementById('cu-quality')?.value ?? 85),
+      actionTimeoutMs: Number(document.getElementById('cu-timeout')?.value ?? 5000),
+      requireApproval: document.getElementById('cu-approval')?.checked ?? true,
+    },
+  };
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) {
+    toast('Computer Use settings saved', 'success');
+  } else {
+    toast('Failed to save Computer Use settings', 'error');
+  }
+}
+
+async function loadToolConfigs() {
+  const listEl = document.getElementById('tool-configs-list');
+  if (!listEl) return;
+  try {
+    const res = await fetch(BASE + '/api/tools/config');
+    if (!res.ok) { listEl.innerHTML = '<p style="font-size:12px;color:var(--error);">Failed to load tool configurations</p>'; return; }
+    const configs = await res.json();
+    const tools = [
+      { key: 'brave_search_api_key', label: 'Brave Search API', desc: 'Premium web search' },
+      { key: 'tavily_api_key', label: 'Tavily Search API', desc: 'AI-optimized search' },
+      { key: 'firecrawl_api_key', label: 'Firecrawl API Key', desc: 'Web scraping service' },
+      { key: 'firecrawl_url', label: 'Firecrawl URL', desc: 'Self-hosted endpoint' },
+      { key: 'serpapi_api_key', label: 'SerpAPI', desc: 'Google Search wrapper' },
+    ];
+    const configured = tools.filter(t => configs[t.key]?.configured);
+    const unconfigured = tools.filter(t => !configs[t.key]?.configured);
+    let html = '';
+    if (configured.length > 0) {
+      html += '<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:8px;">Configured Tools</div>';
+      configured.forEach(tool => {
+        const cfg = configs[tool.key];
+        html += \`<div class="card-sm" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;"><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;margin-bottom:2px;">\${tool.label}</div><div style="font-size:11px;color:var(--text3);">\${tool.desc} • <code style="color:var(--text2);">\${cfg.masked || '••••••'}</code></div></div><div style="display:flex;gap:6px;"><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="editToolConfig('\${tool.key}')">Edit</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:var(--error);" onclick="deleteToolConfig('\${tool.key}')">Remove</button></div></div>\`;
+      });
+      html += '</div>';
+    }
+    if (unconfigured.length > 0) {
+      html += '<div style="font-size:12px;font-weight:500;color:var(--text3);margin-bottom:8px;">Available Tools (' + unconfigured.length + ')</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">';
+      unconfigured.forEach(tool => html += \`<div class="card-sm" style="padding:10px;"><div style="font-size:11px;font-weight:500;margin-bottom:2px;">\${tool.label}</div><div style="font-size:10px;color:var(--text3);">\${tool.desc}</div></div>\`);
+      html += '</div>';
+    }
+    if (configured.length === 0 && unconfigured.length === 0) html = '<p style="font-size:12px;color:var(--text3);">No tools available</p>';
+    listEl.innerHTML = html;
+  } catch (err) {
+    listEl.innerHTML = \`<p style="font-size:12px;color:var(--error);">Error: \${err.message}</p>\`;
+  }
+}
+
+function updateToolFields() {
+  const select = document.getElementById('tool-name-select');
+  const input = document.getElementById('tool-value-input');
+  const hint = document.getElementById('tool-value-hint');
+  if (!select || !input || !hint) return;
+  const tool = select.value;
+  if (tool.endsWith('_url')) { input.placeholder = 'https://api.example.com'; input.type = 'url'; hint.textContent = 'Self-hosted service URL'; }
+  else { input.placeholder = 'Enter API key'; input.type = 'password'; hint.textContent = 'API key (stored securely in vault)'; }
+}
+
+function editToolConfig(toolKey) {
+  const select = document.getElementById('tool-name-select');
+  if (select) { select.value = toolKey; updateToolFields(); document.getElementById('tool-value-input')?.focus(); document.getElementById('tool-value-input').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+}
+
+async function deleteToolConfig(toolKey) {
+  if (!confirm('Remove this tool configuration?')) return;
+  try {
+    const res = await fetch(BASE + '/api/tools/config/' + toolKey, { method: 'DELETE' });
+    if (res.ok) { toast('Tool configuration removed', 'success'); loadToolConfigs(); clearToolForm(); }
+    else toast('Failed to remove tool configuration', 'error');
+  } catch (err) { toast('Error: ' + err.message, 'error'); }
+}
+
+async function saveToolConfig() {
+  const toolSelect = document.getElementById('tool-name-select');
+  const valueInput = document.getElementById('tool-value-input');
+  if (!toolSelect || !valueInput) return;
+  const tool = toolSelect.value;
+  const value = valueInput.value.trim();
+  if (!tool) { toast('Please select a tool', 'error'); return; }
+  if (!value) { toast('Please enter a value', 'error'); return; }
+  try {
+    const res = await fetch(BASE + '/api/tools/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, value, service: 'tool' }) });
+    if (res.ok) { toast('Tool configuration saved', 'success'); loadToolConfigs(); clearToolForm(); }
+    else { const err = await res.text(); toast('Failed to save: ' + err, 'error'); }
+  } catch (err) { toast('Error: ' + err.message, 'error'); }
+}
+
+function clearToolForm() {
+  const select = document.getElementById('tool-name-select');
+  const input = document.getElementById('tool-value-input');
+  if (select) select.value = '';
+  if (input) input.value = '';
+  updateToolFields();
 }
 
 async function checkUpdatesNow() {

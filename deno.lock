@@ -955,6 +955,7 @@
       "jsr:@cliffy/prompt@^1.2.1",
       "jsr:@std/assert@^1.0.19",
       "jsr:@std/datetime@~0.225.2",
+      "jsr:@std/encoding@^1.0.10",
       "jsr:@std/fmt@^1.0.3",
       "jsr:@std/fs@^1.0.6",
       "jsr:@std/path@^1.0.8",
