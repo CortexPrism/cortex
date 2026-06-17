@@ -4444,12 +4444,40 @@ async function loadPolicies() {
         ? '<input id="edit-policy-reason" class="inp" style="max-width:200px;font-size:11px;padding:4px 8px;" value="' + escAttr(p.reason ?? '') + '" placeholder="reason" />'
         : '<span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.reason ?? '') + '</span>'}
       <span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">p\${p.priority}</span>
-      \${editingPolicyId === p.id
-        ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="savePolicyEdit('\${p.id}')">Save</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cancelPolicyEdit()">Cancel</button>'
-        : '<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="editPolicyInline('\${p.id}')">✎</button>'}
-      <button class="btn" style="font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePolicyAction('\${p.id}')">✕</button>
+      <span id="policy-actions-\${p.id}"></span>
     \`;
     el.appendChild(d);
+    // Attach action buttons via DOM to avoid nested template interpolation escaping
+    const actionsEl = document.getElementById('policy-actions-' + p.id);
+    if (actionsEl) {
+      if (editingPolicyId === p.id) {
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-primary';
+        saveBtn.style.cssText = 'font-size:11px;padding:4px 10px;';
+        saveBtn.textContent = 'Save';
+        saveBtn.onclick = () => savePolicyEdit(p.id);
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-ghost';
+        cancelBtn.style.cssText = 'font-size:11px;padding:4px 10px;';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = () => cancelPolicyEdit();
+        actionsEl.appendChild(saveBtn);
+        actionsEl.appendChild(cancelBtn);
+      } else {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-ghost';
+        editBtn.style.cssText = 'font-size:11px;padding:4px 8px;';
+        editBtn.textContent = '\u270E';
+        editBtn.onclick = () => editPolicyInline(p.id);
+        actionsEl.appendChild(editBtn);
+      }
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn';
+      delBtn.style.cssText = 'font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.1);color:#f87171;';
+      delBtn.textContent = '\u2715';
+      delBtn.onclick = () => deletePolicyAction(p.id);
+      actionsEl.appendChild(delBtn);
+    }
   }
 }
 
@@ -4884,11 +4912,31 @@ function renderSessionsList(sessions) {
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(99,102,241,0.1);color:var(--accent2);" onclick="event.stopPropagation();continueSession('\${s.id}')">▶ Continue</button>
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();exportSession('\${s.id}')">⬇ Export</button>
-        \${s.status !== 'archived' ? '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();archiveSessionAction('\${s.id}')">📦 Archive</button>' : '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();unarchiveSessionAction('\${s.id}')">↩ Restore</button>'}
+        <span id="sess-archive-btn-\${s.id}"></span>
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
       </div>
     </div>
-  \`}).join('')
+  \`}).join('');
+  // Attach archive/restore buttons via DOM
+  for (const s of sessions) {
+    const btn = document.getElementById('sess-archive-btn-' + s.id);
+    if (!btn) continue;
+    if (s.status !== 'archived') {
+      const a = document.createElement('button');
+      a.className = 'btn btn-ghost';
+      a.style.cssText = 'padding:4px 10px;font-size:11px;';
+      a.textContent = '📦 Archive';
+      a.onclick = (e) => { e.stopPropagation(); archiveSessionAction(s.id); };
+      btn.appendChild(a);
+    } else {
+      const r = document.createElement('button');
+      r.className = 'btn btn-ghost';
+      r.style.cssText = 'padding:4px 10px;font-size:11px;';
+      r.textContent = '↩ Restore';
+      r.onclick = (e) => { e.stopPropagation(); unarchiveSessionAction(s.id); };
+      btn.appendChild(r);
+    }
+  }
 }
 
 async function searchSessions() {
