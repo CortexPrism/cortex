@@ -883,6 +883,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('chat');closeMobileSidebar()" id="nav-chat">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Chat
     </button>
+    <button class="nav-item" onclick="showPage('sessions');closeMobileSidebar()" id="nav-sessions">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Sessions
+    </button>
 
     <!-- Intelligence -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Intelligence <span class="nav-section-toggle">▼</span></div>
@@ -892,27 +895,30 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('skills');closeMobileSidebar()" id="nav-skills">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Skills
     </button>
+    <button class="nav-item" onclick="showPage('soul');closeMobileSidebar()" id="nav-soul">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span> Soul
+    </button>
     <button class="nav-item" onclick="showPage('lens');closeMobileSidebar()" id="nav-lens">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></span> Activity
     </button>
 
-    <!-- Tools -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Tools <span class="nav-section-toggle">▼</span></div>
+    <!-- Development -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Development <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('editor');closeMobileSidebar()" id="nav-editor">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Editor
-    </button>
-    <button class="nav-item" onclick="showPage('git');closeMobileSidebar()" id="nav-git">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="4"/><circle cx="12" cy="6" r="4"/><path d="M18 12h-4"/><path d="M10 12H6"/></svg></span> Git
-    </button>
-    <button class="nav-item" onclick="showPage('github');closeMobileSidebar()" id="nav-github">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg></span> GitHub
     </button>
     <button class="nav-item" onclick="showPage('coderunner');closeMobileSidebar()" id="nav-coderunner">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span> Code Runner
     </button>
+    <button class="nav-item" onclick="showPage('vcs');closeMobileSidebar()" id="nav-vcs">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="4"/><circle cx="12" cy="6" r="4"/><path d="M18 12h-4"/><path d="M10 12H6"/></svg></span> Version Control
+    </button>
+    <button class="nav-item" onclick="showPage('projects');closeMobileSidebar()" id="nav-projects">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects
+    </button>
 
-    <!-- Management -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Management <span class="nav-section-toggle">▼</span></div>
+    <!-- Infrastructure -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Infrastructure <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('agents');closeMobileSidebar()" id="nav-agents">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Agents
     </button>
@@ -925,56 +931,34 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('jobs');closeMobileSidebar()" id="nav-jobs">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Jobs
     </button>
-    <button class="nav-item" onclick="showPage('projects');closeMobileSidebar()" id="nav-projects">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects
-    </button>
-    <button class="nav-item" onclick="showPage('hooks');closeMobileSidebar()" id="nav-hooks">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Hooks
-    </button>
-    <button class="nav-item" onclick="showPage('triggers');closeMobileSidebar()" id="nav-triggers">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Triggers
+    <button class="nav-item" onclick="showPage('automation');closeMobileSidebar()" id="nav-automation">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Automation
     </button>
     <button class="nav-item" onclick="showPage('channels');closeMobileSidebar()" id="nav-channels">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M4 14h9M4 18h6"/><path d="M18 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><path d="M18 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><line x1="20" y1="10" x2="20" y2="14"/></svg></span> Channels
     </button>
-    <button class="nav-item" onclick="showPage('sessions');closeMobileSidebar()" id="nav-sessions">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Sessions
-    </button>
 
-    <!-- Configuration -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Configuration <span class="nav-section-toggle">▼</span></div>
+    <!-- System -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
-    </button>
-    <button class="nav-item" onclick="showPage('soul');closeMobileSidebar()" id="nav-soul">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span> Soul
     </button>
     <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Policies
     </button>
-    <button class="nav-item" onclick="showPage('plugins');closeMobileSidebar()" id="nav-plugins">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Plugins
+    <button class="nav-item" onclick="showPage('extensions');closeMobileSidebar()" id="nav-extensions">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Extensions
     </button>
-    <button class="nav-item" onclick="showPage('marketplace');closeMobileSidebar()" id="nav-marketplace">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Marketplace
-    </button>
-
-    <!-- Plugin Panels (dynamic) -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
-    <div id="plugin-panels-nav"></div>
-
-    <!-- Plugin Panels (dynamic) -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
-    <div id="plugin-panels-nav"></div>
-
-    <!-- Monitoring -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Monitoring <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
     </button>
     <button class="nav-item" onclick="showPage('quartermaster');closeMobileSidebar()" id="nav-quartermaster">
       <span class="icon">🧠</span>Quartermaster
     </button>
+
+    <!-- Plugin Panels (dynamic) -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
+    <div id="plugin-panels-nav"></div>
   </nav>
 
   <!-- Daemon status -->
@@ -1121,79 +1105,70 @@ const HTML = `<!DOCTYPE html>
   </div>
 
   <!-- Page: Git -->
-  <div id="page-git" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+  <div id="page-vcs" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
-        <h1 style="font-size:15px;font-weight:600;">Git Workspace</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Stage, commit, push, pull, and manage branches</p>
+        <h1 style="font-size:15px;font-weight:600;">Version Control</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Local Git operations and remote GitHub management</p>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
         <select id="git-agent-select" class="inp" style="width:160px;font-size:12px;padding:5px 8px;">
           <option value="">Current directory</option>
         </select>
-        <button class="btn btn-ghost" onclick="gitRefresh()" style="padding:5px 12px;font-size:12px;">↻ Refresh</button>
+        <button class="btn btn-ghost" onclick="vcsRefresh()" style="padding:5px 12px;font-size:12px;">↻ Refresh</button>
       </div>
     </div>
-    <!-- Git status bar -->
-    <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-shrink:0;">
-      <span id="git-branch" style="font-size:13px;font-weight:500;color:var(--accent2);font-family:'JetBrains Mono',monospace;">—</span>
-      <span id="git-status-text" style="font-size:12px;color:var(--text3);">loading…</span>
-      <span id="git-ahead-behind" style="font-size:11px;color:var(--text3);"></span>
-      <div style="margin-left:auto;display:flex;gap:6px;">
-        <button class="btn btn-ghost" onclick="gitStageAll()" style="padding:4px 10px;font-size:11px;">Stage All</button>
-        <button class="btn btn-ghost" onclick="gitShowCommitInput()" style="padding:4px 10px;font-size:11px;">Commit</button>
-        <button class="btn btn-ghost" onclick="gitPush()" style="padding:4px 10px;font-size:11px;">Push</button>
-        <button class="btn btn-ghost" onclick="gitPull()" style="padding:4px 10px;font-size:11px;">Pull</button>
+    <!-- VCS tab bar -->
+    <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
+      <button class="mem-tab active" onclick="vcsShowTab('local')" id="vcs-tab-local">Local</button>
+      <button class="mem-tab" onclick="vcsShowTab('remote')" id="vcs-tab-remote">Remote</button>
+    </div>
+    <!-- Tab: Local (Git) -->
+    <div id="vcs-pane-local" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-shrink:0;">
+        <span id="git-branch" style="font-size:13px;font-weight:500;color:var(--accent2);font-family:'JetBrains Mono',monospace;">—</span>
+        <span id="git-status-text" style="font-size:12px;color:var(--text3);">loading…</span>
+        <span id="git-ahead-behind" style="font-size:11px;color:var(--text3);"></span>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-ghost" onclick="gitStageAll()" style="padding:4px 10px;font-size:11px;">Stage All</button>
+          <button class="btn btn-ghost" onclick="gitShowCommitInput()" style="padding:4px 10px;font-size:11px;">Commit</button>
+          <button class="btn btn-ghost" onclick="gitPush()" style="padding:4px 10px;font-size:11px;">Push</button>
+          <button class="btn btn-ghost" onclick="gitPull()" style="padding:4px 10px;font-size:11px;">Pull</button>
+        </div>
+      </div>
+      <div id="git-commit-area" style="display:none;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div style="display:flex;gap:8px;">
+          <input id="git-commit-message" class="inp" placeholder="Commit message…" style="flex:1;font-size:13px;" onkeydown="if(event.key==='Enter'){event.preventDefault();gitDoCommit()}"/>
+          <button class="btn btn-primary" onclick="gitDoCommit()" style="padding:5px 16px;font-size:12px;">Commit</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('git-commit-area').style.display='none'" style="padding:5px 12px;font-size:12px;">Cancel</button>
+        </div>
+      </div>
+      <div style="flex:1;overflow:hidden;display:flex;">
+        <div style="flex:1;overflow-y:auto;padding:16px 20px;border-right:1px solid var(--border);">
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Changes</div>
+          <div id="git-changes-list" style="font-size:12px;"></div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Recent Commits</div>
+          <div id="git-log-list" style="font-size:12px;"></div>
+        </div>
       </div>
     </div>
-    <!-- Commit input (hidden by default) -->
-    <div id="git-commit-area" style="display:none;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">
-      <div style="display:flex;gap:8px;">
-        <input id="git-commit-message" class="inp" placeholder="Commit message…" style="flex:1;font-size:13px;" onkeydown="if(event.key==='Enter'){event.preventDefault();gitDoCommit()}"/>
-        <button class="btn btn-primary" onclick="gitDoCommit()" style="padding:5px 16px;font-size:12px;">Commit</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('git-commit-area').style.display='none'" style="padding:5px 12px;font-size:12px;">Cancel</button>
-      </div>
-    </div>
-    <!-- Main git content: two columns -->
-    <div style="flex:1;overflow:hidden;display:flex;">
-      <!-- Left: status/changes -->
-      <div style="flex:1;overflow-y:auto;padding:16px 20px;border-right:1px solid var(--border);">
-        <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Changes</div>
-        <div id="git-changes-list" style="font-size:12px;"></div>
-      </div>
-      <!-- Right: log -->
-      <div style="flex:1;overflow-y:auto;padding:16px 20px;">
-        <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Recent Commits</div>
-        <div id="git-log-list" style="font-size:12px;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Page: GitHub -->
-  <div id="page-github" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">GitHub</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Pull requests, issues, and repository management</p>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
+    <!-- Tab: Remote (GitHub) -->
+    <div id="vcs-pane-remote" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div style="padding:10px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;">
         <span id="gh-token-status" style="font-size:11px;color:var(--text3);"></span>
-        <button class="btn btn-ghost" onclick="ghRefresh()" style="padding:5px 12px;font-size:12px;">↻ Refresh</button>
+        <input id="gh-repo-input" class="inp" placeholder="owner/repo (e.g. user/myrepo)" style="width:260px;font-size:13px;" onkeydown="if(event.key==='Enter')ghLoadRepo()"/>
+        <button class="btn btn-primary" onclick="ghLoadRepo()" style="padding:5px 14px;font-size:12px;">Load</button>
+        <button class="nav-item compact" onclick="ghShowTab('pulls')" id="gh-tab-pulls" style="display:none;">Pull Requests</button>
+        <button class="nav-item compact" onclick="ghShowTab('issues')" id="gh-tab-issues" style="display:none;">Issues</button>
+        <button class="nav-item compact" onclick="ghShowTab('info')" id="gh-tab-info" style="display:none;">Repo Info</button>
       </div>
-    </div>
-    <!-- Repo selector / nav tabs -->
-    <div style="padding:10px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0;">
-      <input id="gh-repo-input" class="inp" placeholder="owner/repo (e.g. user/myrepo)" style="width:260px;font-size:13px;" onkeydown="if(event.key==='Enter')ghLoadRepo()"/>
-      <button class="btn btn-primary" onclick="ghLoadRepo()" style="padding:5px 14px;font-size:12px;">Load</button>
-      <button class="nav-item compact" onclick="ghShowTab('pulls')" id="gh-tab-pulls" style="display:none;">Pull Requests</button>
-      <button class="nav-item compact" onclick="ghShowTab('issues')" id="gh-tab-issues" style="display:none;">Issues</button>
-      <button class="nav-item compact" onclick="ghShowTab('info')" id="gh-tab-info" style="display:none;">Repo Info</button>
-    </div>
-    <!-- GitHub content area -->
-    <div id="gh-content" style="flex:1;overflow-y:auto;padding:16px 24px;font-size:13px;">
-      <div style="text-align:center;color:var(--text3);padding:60px 20px;">
-        <p>Enter a repository (owner/repo) and click Load to get started.</p>
-        <p style="font-size:12px;margin-top:8px;">Requires a GitHub token in <code style="color:var(--text2);">GITHUB_TOKEN</code> env, <code style="color:var(--text2);">githubToken</code> config, or vault.</p>
+      <div id="gh-content" style="flex:1;overflow-y:auto;padding:16px 24px;font-size:13px;">
+        <div style="text-align:center;color:var(--text3);padding:60px 20px;">
+          <p>Enter a repository (owner/repo) and click Load to get started.</p>
+          <p style="font-size:12px;margin-top:8px;">Requires a GitHub token in <code style="color:var(--text2);">GITHUB_TOKEN</code> env, <code style="color:var(--text2);">githubToken</code> config, or vault.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -1440,20 +1415,26 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: Hooks -->
-  <div id="page-hooks" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+  <!-- Page: Automation -->
+  <div id="page-automation" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <h1 style="font-size:15px;font-weight:600;">Pipeline Hooks</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Registered hook handlers — in-memory, session lifetime</p>
+        <h1 style="font-size:15px;font-weight:600;">Automation</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Pipeline hooks, webhook/file/git triggers — in-memory, session lifetime</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <span id="hooks-count-badge" style="font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:10px;color:var(--text2);">— hooks</span>
-        <button class="btn btn-ghost" onclick="initBuiltinHooks()">⚡ Init Built-in Hooks</button>
-        <button class="btn btn-ghost" onclick="loadHooksPage()">↻ Refresh</button>
+        <button class="btn btn-ghost" id="auto-add-trigger-btn" onclick="openTriggerForm()">+ Add Trigger</button>
+        <button class="btn btn-ghost" onclick="autoRefresh()">↻ Refresh</button>
       </div>
     </div>
-    <div style="flex:1;overflow-y:auto;padding:16px 24px;">
+    <!-- Tab bar -->
+    <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
+      <button class="mem-tab active" onclick="autoShowTab('hooks')" id="auto-tab-hooks">Hooks</button>
+      <button class="mem-tab" onclick="autoShowTab('triggers')" id="auto-tab-triggers">Triggers</button>
+    </div>
+    <!-- Tab: Hooks -->
+    <div id="auto-pane-hooks" style="flex:1;overflow-y:auto;padding:16px 24px;">
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead>
           <tr style="border-bottom:1px solid var(--border);color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">
@@ -1471,104 +1452,86 @@ const HTML = `<!DOCTYPE html>
         </tbody>
       </table>
     </div>
-  </div>
-
-  <!-- Page: Triggers -->
-  <div id="page-triggers" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">Triggers</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Webhooks, file watchers, and git hooks — in-memory only</p>
+    <!-- Tab: Triggers -->
+    <div id="auto-pane-triggers" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div style="padding:8px 24px;background:rgba(251,191,36,0.08);border-bottom:1px solid rgba(251,191,36,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#fbbf24;flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Triggers are stored in memory only — they will be lost on server restart.
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="openTriggerForm()">+ Add Trigger</button>
-        <button class="btn btn-ghost" onclick="loadTriggers()">↻ Refresh</button>
+      <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div class="stat"><div class="stat-num" id="triggers-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-num" style="color:#22c55e;" id="triggers-enabled">—</div><div class="stat-label">Enabled</div></div>
+        <div class="stat"><div class="stat-num" style="color:#818cf8;" id="triggers-webhooks">—</div><div class="stat-label">Webhooks</div></div>
+        <div class="stat"><div class="stat-num" style="color:#38bdf8;" id="triggers-watchers">—</div><div class="stat-label">Watchers</div></div>
       </div>
-    </div>
-    <!-- In-memory warning -->
-    <div style="padding:8px 24px;background:rgba(251,191,36,0.08);border-bottom:1px solid rgba(251,191,36,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#fbbf24;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Triggers are stored in memory only — they will be lost on server restart.
-    </div>
-    <!-- Summary cards -->
-    <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);">
-      <div class="stat"><div class="stat-num" id="triggers-total">—</div><div class="stat-label">Total</div></div>
-      <div class="stat"><div class="stat-num" style="color:#22c55e;" id="triggers-enabled">—</div><div class="stat-label">Enabled</div></div>
-      <div class="stat"><div class="stat-num" style="color:#818cf8;" id="triggers-webhooks">—</div><div class="stat-label">Webhooks</div></div>
-      <div class="stat"><div class="stat-num" style="color:#38bdf8;" id="triggers-watchers">—</div><div class="stat-label">Watchers</div></div>
-    </div>
-    <!-- Add trigger form -->
-    <div id="trigger-form-panel" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Add Trigger</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:720px;">
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:11px;color:var(--text3);">Name *</label>
-          <input id="trig-name" class="inp" placeholder="my-trigger" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:11px;color:var(--text3);">Source *</label>
-          <select id="trig-source" class="inp" onchange="triggerFormSourceChanged()">
-            <option value="webhook">Webhook</option>
-            <option value="watcher">File Watcher</option>
-            <option value="git_hook">Git Hook</option>
-          </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:11px;color:var(--text3);">Agent ID</label>
-          <input id="trig-agent" class="inp" placeholder="default" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:11px;color:var(--text3);">Prompt Template</label>
-          <input id="trig-prompt" class="inp" placeholder="Process event: {{event}}" />
-        </div>
-        <!-- Webhook-specific -->
-        <div id="trig-webhook-fields" style="display:contents;">
+      <div id="trigger-form-panel" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Add Trigger</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:720px;">
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <label style="font-size:11px;color:var(--text3);">Provider</label>
-            <select id="trig-webhook-provider" class="inp">
-              <option value="generic">Generic</option>
-              <option value="github">GitHub</option>
-              <option value="gitlab">GitLab</option>
+            <label style="font-size:11px;color:var(--text3);">Name *</label>
+            <input id="trig-name" class="inp" placeholder="my-trigger" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Source *</label>
+            <select id="trig-source" class="inp" onchange="triggerFormSourceChanged()">
+              <option value="webhook">Webhook</option>
+              <option value="watcher">File Watcher</option>
+              <option value="git_hook">Git Hook</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <label style="font-size:11px;color:var(--text3);">Secret Env Var</label>
-            <input id="trig-webhook-secret-env" class="inp" placeholder="WEBHOOK_SECRET" />
+            <label style="font-size:11px;color:var(--text3);">Agent ID</label>
+            <input id="trig-agent" class="inp" placeholder="default" />
           </div>
-        </div>
-        <!-- Watcher-specific -->
-        <div id="trig-watcher-fields" style="display:none;grid-column:1/-1;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--text3);">Paths (comma-separated)</label>
-              <input id="trig-watcher-paths" class="inp" placeholder="/home/user/project,/tmp/watch" />
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--text3);">Debounce (ms)</label>
-              <input id="trig-watcher-debounce" class="inp" type="number" value="500" />
-            </div>
-          </div>
-        </div>
-        <!-- Git hook-specific -->
-        <div id="trig-githook-fields" style="display:none;">
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <label style="font-size:11px;color:var(--text3);">Repo Path</label>
-            <input id="trig-githook-repo" class="inp" placeholder="/path/to/repo" />
+            <label style="font-size:11px;color:var(--text3);">Prompt Template</label>
+            <input id="trig-prompt" class="inp" placeholder="Process event: {{event}}" />
+          </div>
+          <div id="trig-webhook-fields" style="display:contents;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Provider</label>
+              <select id="trig-webhook-provider" class="inp">
+                <option value="generic">Generic</option>
+                <option value="github">GitHub</option>
+                <option value="gitlab">GitLab</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Secret Env Var</label>
+              <input id="trig-webhook-secret-env" class="inp" placeholder="WEBHOOK_SECRET" />
+            </div>
+          </div>
+          <div id="trig-watcher-fields" style="display:none;grid-column:1/-1;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:11px;color:var(--text3);">Paths (comma-separated)</label>
+                <input id="trig-watcher-paths" class="inp" placeholder="/home/user/project,/tmp/watch" />
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:11px;color:var(--text3);">Debounce (ms)</label>
+                <input id="trig-watcher-debounce" class="inp" type="number" value="500" />
+              </div>
+            </div>
+          </div>
+          <div id="trig-githook-fields" style="display:none;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Repo Path</label>
+              <input id="trig-githook-repo" class="inp" placeholder="/path/to/repo" />
+            </div>
+          </div>
+          <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="trig-enabled" checked style="width:14px;height:14px;" />
+            <label for="trig-enabled" style="font-size:12px;">Enable immediately</label>
           </div>
         </div>
-        <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
-          <input type="checkbox" id="trig-enabled" checked style="width:14px;height:14px;" />
-          <label for="trig-enabled" style="font-size:12px;">Enable immediately</label>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn btn-primary" onclick="saveTrigger()">Add Trigger</button>
+          <button class="btn btn-ghost" onclick="closeTriggerForm()">Cancel</button>
         </div>
+        <div id="trigger-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button class="btn btn-primary" onclick="saveTrigger()">Add Trigger</button>
-        <button class="btn btn-ghost" onclick="closeTriggerForm()">Cancel</button>
-      </div>
-      <div id="trigger-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
+      <div id="triggers-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
     </div>
-    <!-- Triggers list -->
-    <div id="triggers-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 
   <!-- Page: Channels -->
@@ -1868,13 +1831,47 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: Plugins -->
-  <div id="page-plugins" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+  <!-- Page: Extensions -->
+  <div id="page-extensions" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div><h1 style="font-size:15px;font-weight:600;">Plugins</h1><p style="font-size:12px;color:var(--text3);margin-top:2px;">ESM, MCP, and WASM plugins</p></div>
-      <button class="btn btn-ghost" onclick="showInstallModal()">+ Install Plugin</button>
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Extensions</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Installed plugins and discoverable extensions from the marketplace</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost" onclick="showInstallModal()">+ Install Plugin</button>
+        <button class="btn btn-ghost" onclick="extRefresh()">↻ Refresh</button>
+      </div>
     </div>
-    <div id="plugins-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+    <!-- Tab bar -->
+    <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
+      <button class="mem-tab active" onclick="extShowTab('installed')" id="ext-tab-installed">Installed</button>
+      <button class="mem-tab" onclick="extShowTab('discover')" id="ext-tab-discover">Discover</button>
+    </div>
+    <!-- Tab: Installed -->
+    <div id="ext-pane-installed" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+      <div id="plugins-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <!-- Tab: Discover -->
+    <div id="ext-pane-discover" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <input id="mp-search" class="inp" placeholder="Search marketplace…" style="flex:1;" oninput="marketplaceDelayedSearch()" />
+        <select id="mp-kind" class="inp" style="width:140px;" onchange="loadMarketplace()">
+          <option value="">All kinds</option>
+          <option value="esm">ESM</option>
+          <option value="mcp">MCP</option>
+          <option value="wasm">WASM</option>
+        </select>
+        <select id="mp-category" class="inp" style="width:160px;" onchange="loadMarketplace()">
+          <option value="">All categories</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;flex-shrink:0;">
+        <button id="mp-tab-plugins" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:rgba(99,102,241,0.1);color:var(--accent2);border-bottom:2px solid var(--accent);" onclick="switchMarketplaceTab('plugins')">Plugins</button>
+        <button id="mp-tab-agents" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;" onclick="switchMarketplaceTab('agents')">Agents</button>
+      </div>
+      <div id="mp-content" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
     <!-- Install modal -->
     <div id="plugin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
       <div class="card" style="width:480px;">
@@ -1894,35 +1891,6 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Page: Marketplace -->
-  <div id="page-marketplace" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
-      <div style="flex:1;">
-        <h1 style="font-size:15px;font-weight:600;">Marketplace</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Discover plugins and agents from the CortexPrism marketplace</p>
-      </div>
-      <span id="mp-stats" style="font-size:11px;color:var(--text3);"></span>
-      <button class="btn btn-ghost" onclick="loadMarketplace()">↻ Refresh</button>
-    </div>
-    <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">
-      <input id="mp-search" class="inp" placeholder="Search marketplace…" style="flex:1;" oninput="marketplaceDelayedSearch()" />
-      <select id="mp-kind" class="inp" style="width:140px;" onchange="loadMarketplace()">
-        <option value="">All kinds</option>
-        <option value="esm">ESM</option>
-        <option value="mcp">MCP</option>
-        <option value="wasm">WASM</option>
-      </select>
-      <select id="mp-category" class="inp" style="width:160px;" onchange="loadMarketplace()">
-        <option value="">All categories</option>
-      </select>
-    </div>
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;">
-      <button id="mp-tab-plugins" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:rgba(99,102,241,0.1);color:var(--accent2);border-bottom:2px solid var(--accent);" onclick="switchMarketplaceTab('plugins')">Plugins</button>
-      <button id="mp-tab-agents" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;" onclick="switchMarketplaceTab('agents')">Agents</button>
-    </div>
-    <div id="mp-content" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;"></div>
   </div>
 
   <!-- Page: Plugin Panels -->
@@ -3075,16 +3043,17 @@ function renderRecentPages() {
     if (!recent.length) { section.style.display = 'none'; return; }
     section.style.display = 'block';
     const titles = { chat:'Chat', memory:'Memory', skills:'Skills', lens:'Activity',
-      editor:'Editor', git:'Git', github:'GitHub', coderunner:'Code Runner', agents:'Agents',
+      editor:'Editor', vcs:'Version Control', coderunner:'Code Runner', agents:'Agents',
       services:'Services', nodes:'Nodes', jobs:'Jobs', sessions:'Sessions', settings:'Settings',
-      soul:'Soul', policies:'Policies', plugins:'Plugins', marketplace:'Marketplace',
-      dashboard:'Dashboard', analytics:'Analytics', quartermaster:'Quartermaster', modelqm:'Model Intel' };
+      soul:'Soul', policies:'Policies', extensions:'Extensions',
+      automation:'Automation', channels:'Channels', projects:'Projects',
+      dashboard:'Dashboard', analytics:'Analytics', quartermaster:'Quartermaster' };
     list.innerHTML = recent.map(p => \`<button class="nav-item compact" onclick="showPage('\${p}');closeMobileSidebar()">\${titles[p] || p}</button>\`).join('');
   } catch {}
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','hooks','triggers','channels','sessions','settings','soul','policies','plugins','marketplace','analytics','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','automation','channels','sessions','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3123,16 +3092,16 @@ function showPage(name) {
   const loaders = {
     lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
-    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings, plugins: loadPlugins,
-    marketplace: loadMarketplace, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
+    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings,
+    extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: loadNodes,
     quartermaster: loadQuartermaster,
     dashboard: loadDashboard,
     projects: loadProjects,
-    hooks: loadHooksPage,
-    triggers: loadTriggers,
+    automation: loadHooksPage,
     channels: loadChannels,
+    vcs: gitRefresh,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -5022,19 +4991,12 @@ async function loadSettings() {
     <!-- Settings Navigation Tabs -->
     <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;">
       <button class="mem-tab \${settingsActiveTab === 'general' ? 'active' : ''}" onclick="switchSettingsTab('general')" id="settings-tab-general">General</button>
-      <button class="mem-tab \${settingsActiveTab === 'providers' ? 'active' : ''}" onclick="switchSettingsTab('providers')" id="settings-tab-providers">Providers & Models</button>
-      <button class="mem-tab \${settingsActiveTab === 'router' ? 'active' : ''}" onclick="switchSettingsTab('router')" id="settings-tab-router">Model Router</button>
-      <button class="mem-tab \${settingsActiveTab === 'updates' ? 'active' : ''}" onclick="switchSettingsTab('updates')" id="settings-tab-updates">Updates</button>
-      <button class="mem-tab \${settingsActiveTab === 'profile' ? 'active' : ''}" onclick="switchSettingsTab('profile')" id="settings-tab-profile">User Profile</button>
-      <button class="mem-tab \${settingsActiveTab === 'ui' ? 'active' : ''}" onclick="switchSettingsTab('ui')" id="settings-tab-ui">UI & Appearance</button>
-      <button class="mem-tab \${settingsActiveTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')" id="settings-tab-security">Security</button>
-      <button class="mem-tab \${settingsActiveTab === 'voice' ? 'active' : ''}" onclick="switchSettingsTab('voice')" id="settings-tab-voice">Voice & TTS</button>
-      <button class="mem-tab \${settingsActiveTab === 'tools' ? 'active' : ''}" onclick="switchSettingsTab('tools')" id="settings-tab-tools">Tools & APIs</button>
-      <button class="mem-tab \${settingsActiveTab === 'computer-use' ? 'active' : ''}" onclick="switchSettingsTab('computer-use')" id="settings-tab-computer-use">Computer Use</button>
-      <button class="mem-tab \${settingsActiveTab === 'logging' ? 'active' : ''}" onclick="switchSettingsTab('logging')" id="settings-tab-logging">Logging</button>
+      <button class="mem-tab \${settingsActiveTab === 'providers' ? 'active' : ''}" onclick="switchSettingsTab('providers')" id="settings-tab-providers">AI &amp; Models</button>
+      <button class="mem-tab \${settingsActiveTab === 'tools' ? 'active' : ''}" onclick="switchSettingsTab('tools')" id="settings-tab-tools">Tools &amp; Extensions</button>
+      <button class="mem-tab \${settingsActiveTab === 'system' ? 'active' : ''}" onclick="switchSettingsTab('system')" id="settings-tab-system">System</button>
     </div>
 
-    <!-- General Settings Tab -->
+    <!-- General Tab -->
     <div id="settings-pane-general" style="display:\${settingsActiveTab === 'general' ? 'block' : 'none'};">
       <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Agent Behavior</div>
@@ -5069,9 +5031,129 @@ async function loadSettings() {
           <button class="btn btn-primary" onclick="saveGeneralSettings()">Save General Settings</button>
         </div>
       </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">User Profile &amp; Personalization</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Help Cortex understand your background and preferences for more relevant assistance</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Role / Title</label>
+            <input class="inp" id="cfg-profile-role" placeholder="e.g. Software Engineer, Product Manager" value="\${esc(config.userProfile?.role ?? '')}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Your professional role or title</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Experience Level</label>
+            <select class="inp" id="cfg-profile-experience">
+              <option value="">Not specified</option>
+              <option value="beginner" \${config.userProfile?.experienceLevel==='beginner'?'selected':''}>Beginner</option>
+              <option value="intermediate" \${config.userProfile?.experienceLevel==='intermediate'?'selected':''}>Intermediate</option>
+              <option value="advanced" \${config.userProfile?.experienceLevel==='advanced'?'selected':''}>Advanced</option>
+              <option value="expert" \${config.userProfile?.experienceLevel==='expert'?'selected':''}>Expert</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Your overall experience level</p>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Primary Use Case</label>
+          <input class="inp" id="cfg-profile-usecase" placeholder="e.g. Full-stack development, Data analysis" value="\${esc(config.userProfile?.primaryUseCase ?? '')}" />
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Main task or domain you'll use Cortex for</p>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Preferred Workflow</label>
+          <select class="inp" id="cfg-profile-workflow">
+            <option value="">Not specified</option>
+            <option value="cli" \${config.userProfile?.preferredWorkflow==='cli'?'selected':''}>CLI-focused</option>
+            <option value="web" \${config.userProfile?.preferredWorkflow==='web'?'selected':''}>Web UI-focused</option>
+            <option value="hybrid" \${config.userProfile?.preferredWorkflow==='hybrid'?'selected':''}>Hybrid (CLI + Web)</option>
+            <option value="api" \${config.userProfile?.preferredWorkflow==='api'?'selected':''}>API/Integration</option>
+          </select>
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">How you prefer to interact with Cortex</p>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Domains &amp; Technologies (comma-separated)</label>
+          <input class="inp" id="cfg-profile-domains" placeholder="e.g. TypeScript, React, AWS, Machine Learning" value="\${(config.userProfile?.domains ?? []).join(', ')}" />
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Technologies and domains you work with</p>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Additional Context (optional)</label>
+          <textarea class="inp" id="cfg-profile-context" placeholder="Any other context that would help Cortex assist you better..." style="resize:vertical;min-height:80px;font-size:12px;">\${esc(config.userProfile?.additionalContext ?? '')}</textarea>
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Free-form notes about your work, preferences, or needs</p>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveProfileSettings()">Save User Profile</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">UI &amp; Appearance</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Customize the visual appearance and animations of the web interface</p>
+        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-ui-enabled" \${config.ui?.enabled !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
+            <label style="font-size:13px;color:var(--text);font-weight:500;">Enable UI animations and effects</label>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Background Effect</label>
+            <select class="inp" id="cfg-ui-background">
+              <option value="none" \${config.ui?.backgroundEffect==='none'?'selected':''}>None</option>
+              <option value="matrix" \${config.ui?.backgroundEffect==='matrix'?'selected':''}>Matrix</option>
+              <option value="particles" \${config.ui?.backgroundEffect==='particles'?'selected':''}>Particles</option>
+              <option value="neural" \${config.ui?.backgroundEffect==='neural'?'selected':''}>Neural Network</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Animated background effect (may impact performance)</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Color Scheme</label>
+            <select class="inp" id="cfg-ui-colors">
+              <option value="vibrant" \${config.ui?.colorScheme==='vibrant'?'selected':''}>Vibrant</option>
+              <option value="subtle" \${config.ui?.colorScheme==='subtle'?'selected':''}>Subtle</option>
+              <option value="monochrome" \${config.ui?.colorScheme==='monochrome'?'selected':''}>Monochrome</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Color palette for UI elements</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveUISettings()">Save UI Settings</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Web Authentication</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure password protection for the web interface</p>
+        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-auth-require" \${config.webAuth?.requireAuth !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
+            <label style="font-size:13px;color:var(--text);font-weight:500;">Require authentication for web UI</label>
+          </div>
+          <p style="font-size:10px;color:var(--text3);margin-top:4px;margin-left:28px;">When enabled, users must log in with password to access the web interface</p>
+        </div>
+        <div style="margin-top:16px;">
+          <div id="cfg-auth-pw-label" style="font-size:12px;font-weight:500;margin-bottom:8px;">Set Password</div>
+          <div id="cfg-auth-oldpass-row" style="display:none;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Current Password</label>
+            <input class="inp" id="cfg-auth-oldpass" type="password" placeholder="Enter current password" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">New Password</label>
+              <input class="inp" id="cfg-auth-newpass" type="password" placeholder="Enter new password" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confirm New Password</label>
+              <input class="inp" id="cfg-auth-confirmpass" type="password" placeholder="Confirm new password" />
+            </div>
+          </div>
+          <p style="font-size:10px;color:var(--text3);margin-top:4px;">Leave blank to keep current password unchanged</p>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveSecuritySettings()">Save Security Settings</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Providers & Models Tab -->
+    <!-- AI & Models Tab -->
     <div id="settings-pane-providers" style="display:\${settingsActiveTab === 'providers' ? 'block' : 'none'};">
       <div class="card" style="margin-bottom:14px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -5117,7 +5199,6 @@ async function loadSettings() {
           </div>\`;
         }).join('')}
 
-        <!-- Unconfigured -->
         <div style="margin-top:12px;">
           <details style="font-size:12px;">
             <summary style="cursor:pointer;color:var(--text3);padding:6px 0;font-weight:500;">Available providers (\${unconfigured.length})</summary>
@@ -5129,19 +5210,14 @@ async function loadSettings() {
           </details>
         </div>
       </div>
-    </div>
 
-    <!-- Router Tab -->
-    <div id="settings-pane-router" style="display:\${settingsActiveTab === 'router' ? 'block' : 'none'};">
-      <div class="card">
+      <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Model Router (RouteLLM)</div>
         <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Intelligently route queries to strong or weak models based on complexity. Cascade mode tries models in order; Threshold mode uses a scorer to decide.</p>
-        
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
           <input type="checkbox" id="cfg-router" \${config.router?.enabled?'checked':''} style="width:18px;height:18px;accent-color:var(--accent);" />
           <label style="font-size:13px;color:var(--text);font-weight:500;">Enable Model Router</label>
         </div>
-        
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
           <div>
             <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Routing Strategy</label>
@@ -5157,253 +5233,22 @@ async function loadSettings() {
             <p style="font-size:10px;color:var(--text3);margin-top:2px;">Threshold for routing to strong model (higher = more selective)</p>
           </div>
         </div>
-        
         <div style="margin-top:16px;display:flex;gap:8px;">
           <button class="btn btn-primary" onclick="saveRouterSettings()">Save Router Settings</button>
         </div>
       </div>
     </div>
 
-    <!-- Updates Tab -->
-    <div id="settings-pane-updates" style="display:\${settingsActiveTab === 'updates' ? 'block' : 'none'};">
-      <div class="card">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Automatic Updates</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs updates from GitHub releases</p>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Update Channel</label>
-            <select class="inp" id="cfg-update-channel">
-              <option value="stable" \${config.update?.channel==='stable'?'selected':''}>Stable (recommended)</option>
-              <option value="pre-release" \${config.update?.channel==='pre-release'?'selected':''}>Pre-release (beta features)</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Which release channel to follow</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
-            <input class="inp" id="cfg-update-interval" type="number" min="1" max="168" value="\${config.update?.checkIntervalHours ?? 24}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for updates (1-168 hours)</p>
-          </div>
-        </div>
-        
-        <div style="margin-top:16px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
-            GitHub Token (optional, for rate limits)
-            <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
-          </label>
-          <input class="inp" id="cfg-update-token" type="password" placeholder="ghp_..." value="\${config.update?.githubToken ?? ''}" />
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — avoids GitHub API rate limits</p>
-        </div>
-        
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-update-startup" \${config.update?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-            <label style="font-size:12px;color:var(--text2);">Check for updates on startup</label>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-update-auto" \${config.update?.autoUpdate?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-            <label style="font-size:12px;color:var(--text2);">Automatically install updates (requires restart)</label>
-          </div>
-        </div>
-        
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Update Settings</button>
-          <button class="btn btn-ghost" onclick="checkUpdatesNow()">Check Now</button>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:16px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Plugin Updates</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs plugin updates</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
-            <input class="inp" id="cfg-plugin-update-interval" type="number" min="1" max="168" value="\${config.pluginUpdate?.checkIntervalHours ?? 24}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for plugin updates</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
-              GitHub Token (optional)
-              <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Plugin+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
-            </label>
-            <input class="inp" id="cfg-plugin-update-token" type="password" placeholder="ghp_..." value="\${config.pluginUpdate?.githubToken ?? ''}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — for GitHub Releases API calls</p>
-          </div>
-        </div>
-
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-plugin-update-startup" \${config.pluginUpdate?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-            <label style="font-size:12px;color:var(--text2);">Check for plugin updates on startup</label>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-plugin-update-auto" \${config.pluginUpdate?.autoUpdate?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-            <label style="font-size:12px;color:var(--text2);">Automatically apply plugin updates</label>
-          </div>
-        </div>
-
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Plugin Settings</button>
-          <button class="btn btn-ghost" onclick="checkPluginUpdatesNow()">Check Now</button>
-          <button class="btn btn-ghost" onclick="updateAllPluginsNow()">Update All</button>
-        </div>
-
-        <div id="plugin-update-results" style="margin-top:12px;"></div>
-      </div>
-    </div>
-
-    <!-- User Profile Tab -->
-    <div id="settings-pane-profile" style="display:\${settingsActiveTab === 'profile' ? 'block' : 'none'};">
-      <div class="card">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">User Profile & Personalization</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Help Cortex understand your background and preferences for more relevant assistance</p>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Role / Title</label>
-            <input class="inp" id="cfg-profile-role" placeholder="e.g. Software Engineer, Product Manager" value="\${esc(config.userProfile?.role ?? '')}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Your professional role or title</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Experience Level</label>
-            <select class="inp" id="cfg-profile-experience">
-              <option value="">Not specified</option>
-              <option value="beginner" \${config.userProfile?.experienceLevel==='beginner'?'selected':''}>Beginner</option>
-              <option value="intermediate" \${config.userProfile?.experienceLevel==='intermediate'?'selected':''}>Intermediate</option>
-              <option value="advanced" \${config.userProfile?.experienceLevel==='advanced'?'selected':''}>Advanced</option>
-              <option value="expert" \${config.userProfile?.experienceLevel==='expert'?'selected':''}>Expert</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Your overall experience level</p>
-          </div>
-        </div>
-        
-        <div style="margin-top:14px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Primary Use Case</label>
-          <input class="inp" id="cfg-profile-usecase" placeholder="e.g. Full-stack development, Data analysis" value="\${esc(config.userProfile?.primaryUseCase ?? '')}" />
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Main task or domain you'll use Cortex for</p>
-        </div>
-        
-        <div style="margin-top:14px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Preferred Workflow</label>
-          <select class="inp" id="cfg-profile-workflow">
-            <option value="">Not specified</option>
-            <option value="cli" \${config.userProfile?.preferredWorkflow==='cli'?'selected':''}>CLI-focused</option>
-            <option value="web" \${config.userProfile?.preferredWorkflow==='web'?'selected':''}>Web UI-focused</option>
-            <option value="hybrid" \${config.userProfile?.preferredWorkflow==='hybrid'?'selected':''}>Hybrid (CLI + Web)</option>
-            <option value="api" \${config.userProfile?.preferredWorkflow==='api'?'selected':''}>API/Integration</option>
-          </select>
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">How you prefer to interact with Cortex</p>
-        </div>
-        
-        <div style="margin-top:14px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Domains & Technologies (comma-separated)</label>
-          <input class="inp" id="cfg-profile-domains" placeholder="e.g. TypeScript, React, AWS, Machine Learning" value="\${(config.userProfile?.domains ?? []).join(', ')}" />
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Technologies and domains you work with</p>
-        </div>
-        
-        <div style="margin-top:14px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Additional Context (optional)</label>
-          <textarea class="inp" id="cfg-profile-context" placeholder="Any other context that would help Cortex assist you better..." style="resize:vertical;min-height:80px;font-size:12px;">\${esc(config.userProfile?.additionalContext ?? '')}</textarea>
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Free-form notes about your work, preferences, or needs</p>
-        </div>
-        
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveProfileSettings()">Save User Profile</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- UI & Appearance Tab -->
-    <div id="settings-pane-ui" style="display:\${settingsActiveTab === 'ui' ? 'block' : 'none'};">
-      <div class="card">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">UI & Appearance</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Customize the visual appearance and animations of the web interface</p>
-        
-        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-ui-enabled" \${config.ui?.enabled !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
-            <label style="font-size:13px;color:var(--text);font-weight:500;">Enable UI animations and effects</label>
-          </div>
-        </div>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Background Effect</label>
-            <select class="inp" id="cfg-ui-background">
-              <option value="none" \${config.ui?.backgroundEffect==='none'?'selected':''}>None</option>
-              <option value="matrix" \${config.ui?.backgroundEffect==='matrix'?'selected':''}>Matrix</option>
-              <option value="particles" \${config.ui?.backgroundEffect==='particles'?'selected':''}>Particles</option>
-              <option value="neural" \${config.ui?.backgroundEffect==='neural'?'selected':''}>Neural Network</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Animated background effect (may impact performance)</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Color Scheme</label>
-            <select class="inp" id="cfg-ui-colors">
-              <option value="vibrant" \${config.ui?.colorScheme==='vibrant'?'selected':''}>Vibrant</option>
-              <option value="subtle" \${config.ui?.colorScheme==='subtle'?'selected':''}>Subtle</option>
-              <option value="monochrome" \${config.ui?.colorScheme==='monochrome'?'selected':''}>Monochrome</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Color palette for UI elements</p>
-          </div>
-        </div>
-        
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveUISettings()">Save UI Settings</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Security Tab -->
-    <div id="settings-pane-security" style="display:\${settingsActiveTab === 'security' ? 'block' : 'none'};">
-      <div class="card">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Web Authentication</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure password protection for the web interface</p>
-        
-        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-auth-require" \${config.webAuth?.requireAuth !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
-            <label style="font-size:13px;color:var(--text);font-weight:500;">Require authentication for web UI</label>
-          </div>
-          <p style="font-size:10px;color:var(--text3);margin-top:4px;margin-left:28px;">When enabled, users must log in with password to access the web interface</p>
-        </div>
-        
-        <div style="margin-top:16px;">
-          <div id="cfg-auth-pw-label" style="font-size:12px;font-weight:500;margin-bottom:8px;">Set Password</div>
-          <div id="cfg-auth-oldpass-row" style="display:none;">
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Current Password</label>
-            <input class="inp" id="cfg-auth-oldpass" type="password" placeholder="Enter current password" />
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">New Password</label>
-              <input class="inp" id="cfg-auth-newpass" type="password" placeholder="Enter new password" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confirm New Password</label>
-              <input class="inp" id="cfg-auth-confirmpass" type="password" placeholder="Confirm new password" />
-            </div>
-          </div>
-          <p style="font-size:10px;color:var(--text3);margin-top:4px;">Leave blank to keep current password unchanged</p>
-        </div>
-        
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveSecuritySettings()">Save Security Settings</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Voice Settings Tab -->
-    <div id="settings-pane-voice" style="display:\${settingsActiveTab === 'voice' ? 'block' : 'none'};">
+    <!-- Tools & Extensions Tab -->
+    <div id="settings-pane-tools" style="display:\${settingsActiveTab === 'tools' ? 'block' : 'none'};">
       <div class="card" style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Voice & TTS Configuration</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Voice &amp; TTS Configuration</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div>
             <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Enable Voice</label>
             <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
               <input type="checkbox" id="cfg-voice-enabled" \${config.voice?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-              <span style="font-size:12px;color:var(--text2);">Enable speech-to-text & text-to-speech</span>
+              <span style="font-size:12px;color:var(--text2);">Enable speech-to-text &amp; text-to-speech</span>
             </div>
           </div>
           <div>
@@ -5457,12 +5302,211 @@ async function loadSettings() {
           <button class="btn btn-primary" onclick="saveVoiceSettings()">Save Voice Settings</button>
         </div>
       </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Tool API Keys &amp; Configuration</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:14px;">Configure API keys for web search, web scraping, and other external tools</p>
+
+        <div id="tool-configs-list" style="margin-top:16px;">
+          <p style="font-size:12px;color:var(--text3);">Loading tool configurations...</p>
+        </div>
+
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px;">Add / Update Tool Configuration</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+            <div>
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Tool</label>
+              <select class="inp" id="tool-name-select" onchange="updateToolFields()">
+                <option value="">-- Select Tool --</option>
+                <option value="brave_search_api_key">Brave Search API Key</option>
+                <option value="tavily_api_key">Tavily Search API Key</option>
+                <option value="firecrawl_api_key">Firecrawl API Key</option>
+                <option value="firecrawl_url">Firecrawl Self-Hosted URL</option>
+                <option value="serpapi_api_key">SerpAPI API Key</option>
+              </select>
+              <p style="font-size:10px;color:var(--text3);margin-top:2px;">Choose which tool to configure</p>
+            </div>
+            <div id="tool-value-container">
+              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Value</label>
+              <input class="inp" id="tool-value-input" type="text" placeholder="Enter API key or URL" />
+              <p style="font-size:10px;color:var(--text3);margin-top:2px;" id="tool-value-hint">API key or configuration value</p>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;">
+            <button class="btn btn-primary" onclick="saveToolConfig()">Save Tool Configuration</button>
+            <button class="btn btn-ghost" onclick="clearToolForm()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--bg2);border:1px solid var(--border);margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          About Tool Configuration
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tool API keys are stored securely in the encrypted vault (AES-256-GCM). They're never exposed in logs or API responses.</p>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;"><strong>Priority:</strong> The system checks the vault first, then falls back to environment variables if not found.</p>
+        <div style="margin-top:12px;font-size:11px;">
+          <p style="color:var(--text2);font-weight:500;margin-bottom:6px;">Supported Tools:</p>
+          <ul style="margin:0;padding-left:20px;color:var(--text3);">
+            <li><strong>Brave Search</strong> — Premium web search API (web_search_enhanced)</li>
+            <li><strong>Tavily Search</strong> — AI-optimized search API (web_search_enhanced)</li>
+            <li><strong>Firecrawl</strong> — Web scraping and crawling service</li>
+            <li><strong>SerpAPI</strong> — Google Search API wrapper</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Computer Use (GUI Automation)</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Enable AI agents to interact with graphical user interfaces through screenshots, mouse control, and keyboard input</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Enable Computer Use</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cu-enabled" \${config.computerUse?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Allow agents to control desktop</span>
+            </div>
+            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Enables screenshot, mouse, and keyboard tools</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Require Approval</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cu-approval" \${config.computerUse?.requireApproval !== false?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Require user approval for each action</span>
+            </div>
+            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Recommended for security</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Width (px)</label>
+            <input class="inp" id="cu-width" type="number" min="640" max="3840" value="\${config.computerUse?.displayWidth ?? 1024}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Virtual display width (640-3840)</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Height (px)</label>
+            <input class="inp" id="cu-height" type="number" min="480" max="2160" value="\${config.computerUse?.displayHeight ?? 768}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Virtual display height (480-2160)</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Runtime</label>
+            <select class="inp" id="cu-runtime">
+              <option value="native" \${(config.computerUse?.runtime ?? 'native') === 'native' ? 'selected' : ''}>Native (Xvfb)</option>
+              <option value="docker" \${config.computerUse?.runtime === 'docker' ? 'selected' : ''}>Docker Container</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Execution environment</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Docker Image</label>
+            <input class="inp" id="cu-docker-image" type="text" value="\${config.computerUse?.dockerImage ?? 'cortex/computer-use:latest'}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Docker image for containerized execution</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Screenshot Format</label>
+            <select class="inp" id="cu-screenshot-format">
+              <option value="png" \${(config.computerUse?.screenshotFormat ?? 'png') === 'png' ? 'selected' : ''}>PNG (Lossless)</option>
+              <option value="jpeg" \${config.computerUse?.screenshotFormat === 'jpeg' ? 'selected' : ''}>JPEG (Compressed)</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Screenshot image format</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">JPEG Quality</label>
+            <input class="inp" id="cu-quality" type="number" min="1" max="100" value="\${config.computerUse?.screenshotQuality ?? 85}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Quality for JPEG screenshots (1-100)</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Action Timeout (ms)</label>
+            <input class="inp" id="cu-timeout" type="number" min="1000" max="30000" value="\${config.computerUse?.actionTimeoutMs ?? 5000}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Max time for each action (1000-30000)</p>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveComputerUseSettings()">Save Computer Use Settings</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Logging Tab -->
-    <div id="settings-pane-logging" style="display:\${settingsActiveTab === 'logging' ? 'block' : 'none'};">
+    <!-- System Tab -->
+    <div id="settings-pane-system" style="display:\${settingsActiveTab === 'system' ? 'block' : 'none'};">
       <div class="card" style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Log Level & File</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Automatic Updates</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs updates from GitHub releases</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Update Channel</label>
+            <select class="inp" id="cfg-update-channel">
+              <option value="stable" \${config.update?.channel==='stable'?'selected':''}>Stable (recommended)</option>
+              <option value="pre-release" \${config.update?.channel==='pre-release'?'selected':''}>Pre-release (beta features)</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Which release channel to follow</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
+            <input class="inp" id="cfg-update-interval" type="number" min="1" max="168" value="\${config.update?.checkIntervalHours ?? 24}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for updates (1-168 hours)</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
+            GitHub Token (optional, for rate limits)
+            <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
+          </label>
+          <input class="inp" id="cfg-update-token" type="password" placeholder="ghp_..." value="\${config.update?.githubToken ?? ''}" />
+          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — avoids GitHub API rate limits</p>
+        </div>
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-update-startup" \${config.update?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Check for updates on startup</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-update-auto" \${config.update?.autoUpdate?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Automatically install updates (requires restart)</label>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Update Settings</button>
+          <button class="btn btn-ghost" onclick="checkUpdatesNow()">Check Now</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Plugin Updates</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs plugin updates</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
+            <input class="inp" id="cfg-plugin-update-interval" type="number" min="1" max="168" value="\${config.pluginUpdate?.checkIntervalHours ?? 24}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for plugin updates</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
+              GitHub Token (optional)
+              <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Plugin+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
+            </label>
+            <input class="inp" id="cfg-plugin-update-token" type="password" placeholder="ghp_..." value="\${config.pluginUpdate?.githubToken ?? ''}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — for GitHub Releases API calls</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-plugin-update-startup" \${config.pluginUpdate?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Check for plugin updates on startup</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="cfg-plugin-update-auto" \${config.pluginUpdate?.autoUpdate?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+            <label style="font-size:12px;color:var(--text2);">Automatically apply plugin updates</label>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveUpdateSettings()">Save Plugin Settings</button>
+          <button class="btn btn-ghost" onclick="checkPluginUpdatesNow()">Check Now</button>
+          <button class="btn btn-ghost" onclick="updateAllPluginsNow()">Update All</button>
+        </div>
+        <div id="plugin-update-results" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Log Level &amp; File</div>
         <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Structured logging to <code style="color:var(--text2);">~/.cortex/data/logs/cortex.log</code>. Override at runtime with <code style="color:var(--text2);">CORTEX_LOG_LEVEL</code>.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
           <div>
@@ -5538,7 +5582,7 @@ async function loadSettings() {
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Langfuse (LLM Observability)</div>
         <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Capture per-turn traces, tool spans, and LLM generations in <a href="https://langfuse.com" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">Langfuse</a>. Leave keys blank to disable.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -5561,187 +5605,6 @@ async function loadSettings() {
         </div>
       </div>
     </div>
-
-    <!-- Tools & APIs Tab -->
-    <div id="settings-pane-tools" style="display:\${settingsActiveTab === 'tools' ? 'block' : 'none'};">
-      <div class="card" style="margin-bottom:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div>
-            <div style="font-size:13px;font-weight:600;">Tool API Keys & Configuration</div>
-            <p style="font-size:11px;color:var(--text3);margin-top:2px;">Configure API keys for web search, web scraping, and other external tools</p>
-          </div>
-        </div>
-
-        <div id="tool-configs-list" style="margin-top:16px;">
-          <p style="font-size:12px;color:var(--text3);">Loading tool configurations...</p>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Add / Update Tool Configuration</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:12px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Tool</label>
-            <select class="inp" id="tool-name-select" onchange="updateToolFields()">
-              <option value="">-- Select Tool --</option>
-              <option value="brave_search_api_key">Brave Search API Key</option>
-              <option value="tavily_api_key">Tavily Search API Key</option>
-              <option value="firecrawl_api_key">Firecrawl API Key</option>
-              <option value="firecrawl_url">Firecrawl Self-Hosted URL</option>
-              <option value="serpapi_api_key">SerpAPI API Key</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Choose which tool to configure</p>
-          </div>
-          <div id="tool-value-container">
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Value</label>
-            <input class="inp" id="tool-value-input" type="text" placeholder="Enter API key or URL" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;" id="tool-value-hint">API key or configuration value</p>
-          </div>
-        </div>
-        <div style="margin-top:14px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveToolConfig()">Save Tool Configuration</button>
-          <button class="btn btn-ghost" onclick="clearToolForm()">Clear</button>
-        </div>
-      </div>
-
-      <div class="card" style="background:var(--bg2);border:1px solid var(--border);">
-        <div style="font-size:12px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          About Tool Configuration
-        </div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Tool API keys are stored securely in the encrypted vault (AES-256-GCM). They're never exposed in logs or API responses.</p>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;"><strong>Priority:</strong> The system checks the vault first, then falls back to environment variables if not found.</p>
-        <div style="margin-top:12px;font-size:11px;">
-          <p style="color:var(--text2);font-weight:500;margin-bottom:6px;">Supported Tools:</p>
-          <ul style="margin:0;padding-left:20px;color:var(--text3);">
-            <li><strong>Brave Search</strong> — Premium web search API (web_search_enhanced)</li>
-            <li><strong>Tavily Search</strong> — AI-optimized search API (web_search_enhanced)</li>
-            <li><strong>Firecrawl</strong> — Web scraping and crawling service</li>
-            <li><strong>SerpAPI</strong> — Google Search API wrapper</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Computer Use Tab -->
-    <div id="settings-pane-computer-use" style="display:\${settingsActiveTab === 'computer-use' ? 'block' : 'none'};">
-      <div class="card" style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Computer Use (GUI Automation)</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Enable AI agents to interact with graphical user interfaces through screenshots, mouse control, and keyboard input</p>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Enable Computer Use</label>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-              <input type="checkbox" id="cu-enabled" \${config.computerUse?.enabled?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-              <span style="font-size:12px;color:var(--text2);">Allow agents to control desktop</span>
-            </div>
-            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Enables screenshot, mouse, and keyboard tools</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Require Approval</label>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-              <input type="checkbox" id="cu-approval" \${config.computerUse?.requireApproval !== false?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-              <span style="font-size:12px;color:var(--text2);">Require user approval for each action</span>
-            </div>
-            <p style="font-size:10px;color:var(--text3);margin-top:4px;">Recommended for security</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Width (px)</label>
-            <input class="inp" id="cu-width" type="number" min="640" max="3840" value="\${config.computerUse?.displayWidth ?? 1024}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Virtual display width (640-3840)</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Height (px)</label>
-            <input class="inp" id="cu-height" type="number" min="480" max="2160" value="\${config.computerUse?.displayHeight ?? 768}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Virtual display height (480-2160)</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Runtime</label>
-            <select class="inp" id="cu-runtime">
-              <option value="native" \${(config.computerUse?.runtime ?? 'native') === 'native' ? 'selected' : ''}>Native (Xvfb)</option>
-              <option value="docker" \${config.computerUse?.runtime === 'docker' ? 'selected' : ''}>Docker Container</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Execution environment</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Docker Image</label>
-            <input class="inp" id="cu-docker-image" type="text" value="\${config.computerUse?.dockerImage ?? 'cortex/computer-use:latest'}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Docker image for containerized execution</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Screenshot Format</label>
-            <select class="inp" id="cu-screenshot-format">
-              <option value="png" \${(config.computerUse?.screenshotFormat ?? 'png') === 'png' ? 'selected' : ''}>PNG (Lossless)</option>
-              <option value="jpeg" \${config.computerUse?.screenshotFormat === 'jpeg' ? 'selected' : ''}>JPEG (Compressed)</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Screenshot image format</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">JPEG Quality</label>
-            <input class="inp" id="cu-quality" type="number" min="1" max="100" value="\${config.computerUse?.screenshotQuality ?? 85}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Quality for JPEG screenshots (1-100)</p>
-          </div>
-          
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Action Timeout (ms)</label>
-            <input class="inp" id="cu-timeout" type="number" min="1000" max="30000" value="\${config.computerUse?.actionTimeoutMs ?? 5000}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Max time for each action (1000-30000)</p>
-          </div>
-        </div>
-        
-        <div style="margin-top:14px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveComputerUseSettings()">Save Computer Use Settings</button>
-        </div>
-      </div>
-      
-      <div class="card" style="background:var(--bg2);border:1px solid var(--border);">
-        <div style="font-size:12px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          About Computer Use
-        </div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Computer Use enables agents to interact with desktop environments through screenshots, mouse control, and keyboard input.</p>
-        
-        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Requirements (Linux):</p>
-        <ul style="margin:0;padding-left:20px;color:var(--text3);font-size:11px;">
-          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">xvfb</code> — X Virtual Frame Buffer</li>
-          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">xdotool</code> — Mouse and keyboard control</li>
-          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">scrot</code> — Screenshot utility</li>
-          <li><code style="background:var(--bg1);padding:2px 4px;border-radius:3px;">x11-utils</code> — X11 utilities</li>
-        </ul>
-        
-        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Installation:</p>
-        <pre style="background:var(--bg1);padding:8px;border-radius:4px;font-size:10px;overflow-x:auto;margin:0;"><code># Debian/Ubuntu
-sudo apt-get install xvfb xdotool scrot x11-utils
-
-# Fedora/RHEL
-sudo dnf install xorg-x11-server-Xvfb xdotool scrot xorg-x11-utils</code></pre>
-        
-        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Security:</p>
-        <ul style="margin:0;padding-left:20px;color:var(--text3);font-size:11px;">
-          <li>All actions require approval by default</li>
-          <li>Actions are validated against security policies</li>
-          <li>All operations are logged in Cortex Lens</li>
-          <li>Runs in isolated virtual display (not host display)</li>
-          <li>Sensitive data typing is blocked automatically</li>
-        </ul>
-        
-        <p style="font-size:11px;color:var(--text2);font-weight:500;margin-top:12px;margin-bottom:4px;">Available Actions:</p>
-        <ul style="margin:0;padding-left:20px;color:var(--text3);font-size:11px;">
-          <li>screenshot, left_click, right_click, double_click, triple_click</li>
-          <li>mouse_move, left_click_drag, scroll</li>
-          <li>type (text), key (keyboard shortcuts), hold_key</li>
-          <li>wait (pause between actions)</li>
-        </ul>
-      </div>
-    </div>
   \`;
   refreshSecuritySection();
   if (settingsActiveTab === 'tools') loadToolConfigs();
@@ -5749,14 +5612,14 @@ sudo dnf install xorg-x11-server-Xvfb xdotool scrot xorg-x11-utils</code></pre>
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security', 'voice', 'tools', 'computer-use', 'logging'];
+  const tabs = ['general', 'providers', 'tools', 'system'];
   tabs.forEach(t => {
     const tabBtn = document.getElementById('settings-tab-' + t);
     const pane = document.getElementById('settings-pane-' + t);
     if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
   });
-  if (tabName === 'security') refreshSecuritySection();
+  if (tabName === 'general') refreshSecuritySection();
   if (tabName === 'tools') loadToolConfigs();
 }
 
@@ -7193,7 +7056,7 @@ const CMD_PAGES = [
   { id:'settings', label:'Settings', icon:'⚙', desc:'Configure providers, API keys, router' },
   { id:'soul', label:'Soul', icon:'❤', desc:'Agent identity (SOUL.md, USER.md, MEMORY.md)' },
   { id:'policies', label:'Policies', icon:'🛡', desc:'Security policy rules' },
-  { id:'plugins', label:'Plugins', icon:'🧩', desc:'ESM, MCP, and WASM plugin registry' },
+  { id:'extensions', label:'Extensions', icon:'🧩', desc:'Installed plugins and marketplace discovery' },
   { id:'analytics', label:'Analytics', icon:'📈', desc:'Token usage, cost, session statistics' },
 ];
 
@@ -7920,6 +7783,55 @@ async function gitLoadAgentSelector() {
     gitAgentId = val;
     gitRefresh();
   };
+}
+
+// ── Version Control (VCS) tab-switching ──────────────────────
+let vcsActiveTab = 'local';
+function vcsRefresh() {
+  if (vcsActiveTab === 'local') gitRefresh(); else ghRefresh();
+}
+function vcsShowTab(tab) {
+  vcsActiveTab = tab;
+  ['local','remote'].forEach(t => {
+    const btn = document.getElementById('vcs-tab-' + t);
+    const pane = document.getElementById('vcs-pane-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (pane) pane.style.display = t === tab ? 'flex' : 'none';
+  });
+  vcsRefresh();
+}
+
+// ── Automation tab-switching ──────────────────────────────────
+let autoActiveTab = 'hooks';
+function autoRefresh() {
+  if (autoActiveTab === 'hooks') { initBuiltinHooks(); loadHooksPage(); } else loadTriggers();
+}
+function autoShowTab(tab) {
+  autoActiveTab = tab;
+  ['hooks','triggers'].forEach(t => {
+    const btn = document.getElementById('auto-tab-' + t);
+    const pane = document.getElementById('auto-pane-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (pane) pane.style.display = t === tab ? (t === 'hooks' ? 'block' : 'flex') : 'none';
+  });
+  document.getElementById('auto-add-trigger-btn').style.display = tab === 'triggers' ? '' : 'none';
+  if (tab === 'triggers') loadTriggers(); else loadHooksPage();
+}
+
+// ── Extensions tab-switching ──────────────────────────────────
+let extActiveTab = 'installed';
+function extRefresh() {
+  if (extActiveTab === 'installed') loadPlugins(); else loadMarketplace();
+}
+function extShowTab(tab) {
+  extActiveTab = tab;
+  ['installed','discover'].forEach(t => {
+    const btn = document.getElementById('ext-tab-' + t);
+    const pane = document.getElementById('ext-pane-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (pane) pane.style.display = t === tab ? 'flex' : 'none';
+  });
+  extRefresh();
 }
 
 // ── GitHub Page ──────────────────────────────────────────────
