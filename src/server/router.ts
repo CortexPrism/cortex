@@ -875,12 +875,136 @@ export async function handleApi(req: Request): Promise<Response | null> {
     );
   }
 
+  // POST /api/hooks/init
+  if (req.method === 'POST' && path === '/api/hooks/init') {
+    const { registerBuiltinHooks } = await import('../pipeline/builtin.ts');
+    const { getHookCount } = await import('../pipeline/manager.ts');
+    const before = getHookCount();
+    registerBuiltinHooks();
+    const after = getHookCount();
+    return json({ ok: true, added: after - before, total: after });
+  }
+
   // POST /api/hooks/:name/disable
   const hookDisableMatch = path.match(/^\/api\/hooks\/([^/]+)\/disable$/);
   if (req.method === 'POST' && hookDisableMatch) {
     const { unregisterHook } = await import('../pipeline/manager.ts');
     const ok = unregisterHook(hookDisableMatch[1]);
     return ok ? json({ ok: true }) : notFound('Hook not found');
+  }
+
+  // ── Projects ─────────────────────────────────────────────
+
+  // GET /api/projects
+  if (req.method === 'GET' && path === '/api/projects') {
+    const { listProjects } = await import('../projects/manager.ts');
+    return json(await listProjects());
+  }
+
+  // POST /api/projects
+  if (req.method === 'POST' && path === '/api/projects') {
+    const body = await req.json();
+    if (!body.name || typeof body.name !== 'string') {
+      return err('name is required', 400);
+    }
+    if (/[^a-zA-Z0-9_-]/.test(body.name)) {
+      return err('name may only contain letters, numbers, hyphens, and underscores', 400);
+    }
+    const { createProject } = await import('../projects/manager.ts');
+    try {
+      const project = await createProject(body.name, {
+        agentId: body.agentId,
+        description: body.description,
+      });
+      return json(project, 201);
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
+  }
+
+  // GET /api/projects/:name  and  DELETE /api/projects/:name
+  const projectGetMatch = path.match(/^\/api\/projects\/([^/]+)$/);
+  if (req.method === 'GET' && projectGetMatch) {
+    const { loadProject } = await import('../projects/manager.ts');
+    const project = await loadProject(projectGetMatch[1]);
+    return project ? json(project) : notFound('Project not found');
+  }
+
+  if (req.method === 'DELETE' && projectGetMatch) {
+    const { deleteProject } = await import('../projects/manager.ts');
+    const ok = await deleteProject(projectGetMatch[1]);
+    return ok ? json({ ok: true }) : notFound('Project not found');
+  }
+
+  // ── Triggers ─────────────────────────────────────────────
+
+  // GET /api/triggers
+  if (req.method === 'GET' && path === '/api/triggers') {
+    const { listTriggers } = await import('../triggers/manager.ts');
+    return json(listTriggers());
+  }
+
+  // POST /api/triggers
+  if (req.method === 'POST' && path === '/api/triggers') {
+    const body = await req.json();
+    if (!body.name || typeof body.name !== 'string') {
+      return err('name is required', 400);
+    }
+    if (/[^a-zA-Z0-9_-]/.test(body.name)) {
+      return err('name may only contain letters, numbers, hyphens, and underscores', 400);
+    }
+    if (!body.action?.promptTemplate) {
+      return err('action.promptTemplate is required', 400);
+    }
+    const { registerTrigger } = await import('../triggers/manager.ts');
+    try {
+      registerTrigger(body);
+      return json({ ok: true }, 201);
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
+  }
+
+  // POST /api/triggers/:name/enable  and  POST /api/triggers/:name/disable
+  const triggerEnableMatch = path.match(/^\/api\/triggers\/([^/]+)\/(enable|disable)$/);
+  if (req.method === 'POST' && triggerEnableMatch) {
+    const { getTrigger } = await import('../triggers/manager.ts');
+    const config = getTrigger(triggerEnableMatch[1]);
+    if (!config) return notFound('Trigger not found');
+    config.enabled = triggerEnableMatch[2] === 'enable';
+    return json({ ok: true, enabled: config.enabled });
+  }
+
+  // DELETE /api/triggers/:name
+  const triggerGetMatch = path.match(/^\/api\/triggers\/([^/]+)$/);
+  if (req.method === 'DELETE' && triggerGetMatch) {
+    const { unregisterTrigger } = await import('../triggers/manager.ts');
+    const ok = unregisterTrigger(triggerGetMatch[1]);
+    return ok ? json({ ok: true }) : notFound('Trigger not found');
+  }
+
+  // ── Channels ─────────────────────────────────────────────
+
+  // GET /api/channels
+  if (req.method === 'GET' && path === '/api/channels') {
+    const { listChannels } = await import('../channels/manager.ts');
+    return json(listChannels());
+  }
+
+  // POST /api/channels/:id/start  and  POST /api/channels/:id/stop
+  const channelActionMatch = path.match(/^\/api\/channels\/([^/]+)\/(start|stop)$/);
+  if (req.method === 'POST' && channelActionMatch) {
+    const { startChannel, stopChannel } = await import('../channels/manager.ts');
+    try {
+      if (channelActionMatch[2] === 'start') {
+        await startChannel(channelActionMatch[1]);
+      } else {
+        await stopChannel(channelActionMatch[1]);
+      }
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
 
   // ── Plugins ──────────────────────────────────────────────
