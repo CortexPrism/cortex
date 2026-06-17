@@ -169,7 +169,25 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   });
 
   const child = proc.spawn();
-  const timer = setTimeout(() => killProcess(child), timeout);
+  const timer = setTimeout(() => {
+    try {
+      if (isWindows()) {
+        child.kill();
+      } else {
+        child.kill('SIGTERM');
+        // Give SIGTERM 2 seconds to work, then SIGKILL
+        setTimeout(() => {
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // already exited
+          }
+        }, 2000);
+      }
+    } catch {
+      // already exited
+    }
+  }, timeout);
   let timedOut = false;
 
   if (opts.stdin) {
@@ -223,7 +241,25 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
   });
 
   const child = proc.spawn();
-  const timer = setTimeout(() => killProcess(child), timeout);
+  const timer = setTimeout(() => {
+    try {
+      if (isWindows()) {
+        child.kill();
+      } else {
+        child.kill('SIGTERM');
+        // Give SIGTERM 2 seconds to work, then SIGKILL
+        setTimeout(() => {
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // already exited
+          }
+        }, 2000);
+      }
+    } catch {
+      // already exited
+    }
+  }, timeout);
   let timedOut = false;
 
   if (opts.stdin) {

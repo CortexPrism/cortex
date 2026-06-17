@@ -65,7 +65,8 @@ export function fuseModelSignals(
   for (const modelKey of allModels) {
     const [provider, model] = modelKey.split(':') as [ProviderKind, string];
     const contributions: Array<{ name: string; contributed: number }> = [];
-    let total = 0;
+    let weightedSum = 0;
+    let activeWeightSum = 0;
     let estimatedCost = 0;
     let estimatedQuality = 0;
 
@@ -75,7 +76,8 @@ export function fuseModelSignals(
         const weight = weights[name];
         const contributed = weight * match.score;
         contributions.push({ name, contributed });
-        total += contributed;
+        weightedSum += contributed;
+        activeWeightSum += weight;
 
         // Aggregate cost and quality estimates
         if (name === 'cost') {
@@ -86,6 +88,10 @@ export function fuseModelSignals(
         }
       }
     }
+
+    // Normalize by the sum of weights that actually fired so that having
+    // fewer active signals doesn't automatically push confidence below thresholds.
+    const total = activeWeightSum > 0 ? weightedSum / activeWeightSum : 0;
 
     modelScores.set(modelKey, {
       provider,

@@ -41,6 +41,7 @@ import { mqmCommand } from './cli/model-qm-cmd.ts';
 import { installCommand, uninstallCommand } from './cli/install.ts';
 import { restartCommand, startCommand } from './cli/start.ts';
 import { voiceCommand } from './cli/voice-cmd.ts';
+import { logCommand } from './cli/log-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -123,6 +124,7 @@ const program = new Command()
   .command('uninstall', uninstallCommand)
   .command('start', startCommand)
   .command('restart', restartCommand)
-  .command('voice', voiceCommand);
+  .command('voice', voiceCommand)
+  .command('log', logCommand);
 
 await program.parse(Deno.args);

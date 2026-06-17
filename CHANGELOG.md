@@ -9,6 +9,38 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **Structured logging system** (`src/utils/logger.ts`) — `LoggerRegistry` singleton with configurable
+  levels (`trace`, `debug`, `info`, `warn`, `error`, `silent`), pluggable transports (stdout, file,
+  OTLP, Langfuse), and per-namespace loggers via `logger(ns)`
+- **File transport with rotation** — writes to `~/.cortex/data/logs/cortex.log`; configurable
+  `fileMaxBytes` and `fileMaxFiles`; file-level threshold independent of stdout level so `warn+`
+  always lands on disk even when global level is `error`
+- **`cortex log` CLI command** (`src/cli/log-cmd.ts`) — subcommands: `show`, `tail`, `clear`,
+  `set-level`, `path`, `status`; supports `--level`, `--ns`, `--lines` filters and live tail mode
+- **Logging settings tab** (`src/server/ui.ts`) — new Settings → Logging pane with controls for log
+  level, file enable/path/rotation, OTLP endpoint, Grafana Cloud, and Langfuse credentials; saves
+  via `PUT /api/config` and applies the new level **live** without restart
+- **Live log-level apply on config save** (`src/server/router.ts`) — `PUT /api/config` now calls
+  `configureLogger` immediately when the payload contains a `logging` block
+- **Langfuse tracing in agent loop** (`src/agent/loop.ts`) — `traceCreate` per turn, `generationCreate`
+  per LLM round (with token usage), `spanCreate`/`spanUpdate` per tool call; all gated on
+  `isConfigured()` so there is zero overhead when Langfuse is not configured
+- **Startup log marker** (`src/server/server.ts`) — emits a `warn`-level entry on every server start
+  confirming the active log level and file path
+- **Observability documentation** (`docs/observability.md`) — covers log levels, config reference,
+  CLI usage, namespace list, Prometheus/Grafana, OTLP, and Langfuse integration
+
+### Fixed
+
+- **`cortex restart` killing shell wrapper instead of server process** (`src/cli/start.ts`) — switched
+  to `fuser -k <port>/tcp` so the actual Deno process holding the socket is killed, preventing the
+  new server from failing with `AddrInUse` and serving stale (uncached) code
+- **File transport not writing at verbose levels** (`src/utils/logger.ts`) — file rank was hardcoded
+  to `warn` floor regardless of configured level; now uses `Math.min(globalRank, FLOOR)` so setting
+  level to `debug` or `info` flows fully to the log file
+
 ---
 
 ## [0.33.0] — 2026-06-17

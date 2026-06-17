@@ -182,6 +182,27 @@ export interface OnboardingState {
   startedAt?: string;
 }
 
+export interface LoggingConfig {
+  level: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent';
+  fileEnabled: boolean;
+  filePath?: string;
+  fileMaxBytes?: number;
+  fileMaxFiles?: number;
+  otlp?: {
+    endpoint: string;
+    headers?: Record<string, string>;
+  };
+  langfuse?: {
+    publicKey: string;
+    secretKey: string;
+    baseUrl?: string;
+  };
+  grafana?: {
+    otlpEndpoint: string;
+    authToken: string;
+  };
+}
+
 export interface WebAuth {
   passwordHash?: string;
   passwordSalt?: string;
@@ -220,6 +241,8 @@ export interface CortexConfig {
   webAuth?: WebAuth;
   /** Voice/TTS configuration */
   voice?: import('../voice/types.ts').VoiceConfig;
+  /** Logging and observability configuration */
+  logging?: LoggingConfig;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -294,6 +317,12 @@ const DEFAULT_CONFIG: CortexConfig = {
   webAuth: {
     requireAuth: true,
   },
+  logging: {
+    level: 'error',
+    fileEnabled: true,
+    fileMaxBytes: 10_485_760,
+    fileMaxFiles: 5,
+  },
 };
 
 let _config: CortexConfig | null = null;
@@ -309,6 +338,7 @@ export async function loadConfig(): Promise<CortexConfig> {
       ...disk,
       update: { ...DEFAULT_CONFIG.update, ...(disk.update ?? {}) },
       pluginUpdate: { ...DEFAULT_CONFIG.pluginUpdate, ...(disk.pluginUpdate ?? {}) },
+      logging: { ...DEFAULT_CONFIG.logging, ...(disk.logging ?? {}) } as LoggingConfig,
     } as CortexConfig;
   } else {
     _config = { ...DEFAULT_CONFIG };

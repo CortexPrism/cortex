@@ -4037,6 +4037,7 @@ async function loadSettings() {
       <button class="mem-tab \${settingsActiveTab === 'ui' ? 'active' : ''}" onclick="switchSettingsTab('ui')" id="settings-tab-ui">UI & Appearance</button>
       <button class="mem-tab \${settingsActiveTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')" id="settings-tab-security">Security</button>
       <button class="mem-tab \${settingsActiveTab === 'voice' ? 'active' : ''}" onclick="switchSettingsTab('voice')" id="settings-tab-voice">Voice & TTS</button>
+      <button class="mem-tab \${settingsActiveTab === 'logging' ? 'active' : ''}" onclick="switchSettingsTab('logging')" id="settings-tab-logging">Logging</button>
     </div>
 
     <!-- General Settings Tab -->
@@ -4463,13 +4464,116 @@ async function loadSettings() {
         </div>
       </div>
     </div>
+
+    <!-- Logging Tab -->
+    <div id="settings-pane-logging" style="display:\${settingsActiveTab === 'logging' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Log Level & File</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Structured logging to <code style="color:var(--text2);">~/.cortex/data/logs/cortex.log</code>. Override at runtime with <code style="color:var(--text2);">CORTEX_LOG_LEVEL</code>.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Log Level</label>
+            <select class="inp" id="cfg-log-level">
+              <option value="trace" \${config.logging?.level==='trace'?'selected':''}>trace — maximum verbosity</option>
+              <option value="debug" \${config.logging?.level==='debug'?'selected':''}>debug — internal state</option>
+              <option value="info" \${config.logging?.level==='info'?'selected':''}>info — operational events</option>
+              <option value="warn" \${config.logging?.level==='warn'?'selected':''}>warn — recoverable issues</option>
+              <option value="error" \${(!config.logging?.level||config.logging?.level==='error')?'selected':''}>error — failures only (default)</option>
+              <option value="silent" \${config.logging?.level==='silent'?'selected':''}>silent — no output</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Applies to stdout and file transports</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">File Logging</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cfg-log-file-enabled" \${config.logging?.fileEnabled!==false?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Write logs to file (JSON-lines)</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max File Size (MB)</label>
+            <input class="inp" id="cfg-log-maxbytes" type="number" min="1" max="500" value="\${Math.round((config.logging?.fileMaxBytes??10485760)/1048576)}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Rotate log file when it exceeds this size</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max Rotated Files</label>
+            <input class="inp" id="cfg-log-maxfiles" type="number" min="1" max="20" value="\${config.logging?.fileMaxFiles??5}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Number of rotated backup files to keep</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveLoggingSettings()">Save Logging Settings</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">OpenTelemetry (OTLP)</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Push traces, logs, and metrics to any OTLP-compatible collector (Grafana Tempo, Jaeger, Honeycomb, etc.)</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">OTLP Endpoint</label>
+            <input class="inp" id="cfg-otlp-endpoint" placeholder="http://localhost:4318" value="\${esc(config.logging?.otlp?.endpoint??'')}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Base URL of your OTLP collector (no trailing slash)</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Authorization Header (optional)</label>
+            <input class="inp" id="cfg-otlp-auth" type="password" placeholder="Bearer &lt;token&gt;" value="\${esc(config.logging?.otlp?.headers?.Authorization??'')}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Sent as the <code style="color:var(--text2);">Authorization</code> header on every OTLP request</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveLoggingSettings()">Save OTLP Settings</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Grafana Cloud</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Send traces and logs directly to Grafana Cloud via OTLP. Overrides the generic OTLP endpoint when set.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Grafana OTLP Endpoint</label>
+            <input class="inp" id="cfg-grafana-endpoint" placeholder="https://otlp-gateway-prod-us-east-0.grafana.net/otlp" value="\${esc(config.logging?.grafana?.otlpEndpoint??'')}" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Access Policy Token</label>
+            <input class="inp" id="cfg-grafana-token" type="password" placeholder="glc_..." value="\${esc(config.logging?.grafana?.authToken??'')}" />
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveLoggingSettings()">Save Grafana Settings</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Langfuse (LLM Observability)</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Capture per-turn traces, tool spans, and LLM generations in <a href="https://langfuse.com" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">Langfuse</a>. Leave keys blank to disable.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Public Key</label>
+            <input class="inp" id="cfg-langfuse-pk" placeholder="pk-lf-..." value="\${esc(config.logging?.langfuse?.publicKey??'')}" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Secret Key</label>
+            <input class="inp" id="cfg-langfuse-sk" type="password" placeholder="sk-lf-..." value="\${esc(config.logging?.langfuse?.secretKey??'')}" />
+          </div>
+          <div style="grid-column:span 2;">
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Base URL (leave blank for Langfuse Cloud)</label>
+            <input class="inp" id="cfg-langfuse-url" placeholder="https://cloud.langfuse.com" value="\${esc(config.logging?.langfuse?.baseUrl??'')}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Set to your self-hosted instance URL if not using Langfuse Cloud</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveLoggingSettings()">Save Langfuse Settings</button>
+        </div>
+      </div>
+    </div>
   \`;
   refreshSecuritySection();
 }
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security', 'voice'];
+  const tabs = ['general', 'providers', 'router', 'updates', 'profile', 'ui', 'security', 'voice', 'logging'];
   tabs.forEach(t => {
     const tabBtn = document.getElementById('settings-tab-' + t);
     const pane = document.getElementById('settings-pane-' + t);
@@ -4680,6 +4784,33 @@ async function refreshSecuritySection() {
   const oldPassRow = document.getElementById('cfg-auth-oldpass-row');
   if (label) label.textContent = authStatus.hasPassword ? 'Change Password' : 'Set Password';
   if (oldPassRow) oldPassRow.style.display = authStatus.hasPassword ? 'block' : 'none';
+}
+
+async function saveLoggingSettings() {
+  const otlpEndpoint = document.getElementById('cfg-otlp-endpoint')?.value?.trim();
+  const otlpAuth = document.getElementById('cfg-otlp-auth')?.value?.trim();
+  const grafanaEndpoint = document.getElementById('cfg-grafana-endpoint')?.value?.trim();
+  const grafanaToken = document.getElementById('cfg-grafana-token')?.value?.trim();
+  const langfusePk = document.getElementById('cfg-langfuse-pk')?.value?.trim();
+  const langfuseSk = document.getElementById('cfg-langfuse-sk')?.value?.trim();
+  const langfuseUrl = document.getElementById('cfg-langfuse-url')?.value?.trim();
+
+  const logging = {
+    level: document.getElementById('cfg-log-level')?.value ?? 'error',
+    fileEnabled: document.getElementById('cfg-log-file-enabled')?.checked ?? true,
+    fileMaxBytes: (Number(document.getElementById('cfg-log-maxbytes')?.value) || 10) * 1048576,
+    fileMaxFiles: Number(document.getElementById('cfg-log-maxfiles')?.value) || 5,
+    otlp: otlpEndpoint ? { endpoint: otlpEndpoint, headers: otlpAuth ? { Authorization: otlpAuth } : undefined } : undefined,
+    grafana: grafanaEndpoint && grafanaToken ? { otlpEndpoint: grafanaEndpoint, authToken: grafanaToken } : undefined,
+    langfuse: langfusePk && langfuseSk ? { publicKey: langfusePk, secretKey: langfuseSk, baseUrl: langfuseUrl || undefined } : undefined,
+  };
+
+  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ logging }) });
+  if (res.ok) {
+    toast('Logging settings saved — restart server for full effect', 'success');
+  } else {
+    toast('Failed to save logging settings', 'error');
+  }
 }
 
 async function saveVoiceSettings() {

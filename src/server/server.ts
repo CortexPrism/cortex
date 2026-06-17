@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger.ts';
 import { handleApi } from './router.ts';
 import { handleWebSocket } from './ws.ts';
 import { handleNodeWebSocket } from '../hub/ws-node.ts';
@@ -6,7 +7,11 @@ import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { ensureDaemons, schedulePluginUpdateChecks } from '../cli/daemon.ts';
 import { loadConfig } from '../config/config.ts';
+import { configureLogger } from '../utils/logger.ts';
+import { PATHS } from '../config/paths.ts';
 import { hasPassword, parseCookies, requireAuth } from './auth.ts';
+
+const _log = logger('server');
 
 export interface ServeOptions {
   port: number;
@@ -16,13 +21,49 @@ export interface ServeOptions {
 export async function startServer(opts: ServeOptions): Promise<void> {
   await runMigrations();
 
+  // Initialise the logger from persisted config
+  const _serverConfig = await loadConfig();
+  const _loggingCfg = _serverConfig.logging ?? { level: 'error', fileEnabled: true };
+  configureLogger({
+    level: _loggingCfg.level as import('../utils/logger.ts').LogLevel,
+    fileEnabled: _loggingCfg.fileEnabled,
+    filePath: _loggingCfg.filePath ?? PATHS.logFile,
+    fileMaxBytes: _loggingCfg.fileMaxBytes,
+    fileMaxFiles: _loggingCfg.fileMaxFiles,
+  });
+
+  // Emit startup marker — always lands in file (warn >= FILE_MIN_LEVEL)
+  _log.warn(`Cortex server starting`, {
+    host: opts.host,
+    port: opts.port,
+    level: _loggingCfg.level ?? 'error',
+    logFile: _loggingCfg.filePath ?? PATHS.logFile,
+  });
+
+  // Wire up OTLP if configured
+  if (_loggingCfg.otlp?.endpoint || _loggingCfg.grafana?.otlpEndpoint) {
+    const { configureOtel } = await import('../observability/otel.ts');
+    const ep = _loggingCfg.grafana?.otlpEndpoint ?? _loggingCfg.otlp!.endpoint;
+    const hdrs: Record<string, string> = { ...(_loggingCfg.otlp?.headers ?? {}) };
+    if (_loggingCfg.grafana?.authToken) {
+      hdrs['Authorization'] = `Bearer ${_loggingCfg.grafana.authToken}`;
+    }
+    configureOtel({ endpoint: ep, headers: hdrs });
+  }
+
+  // Wire up Langfuse if configured
+  if (_loggingCfg.langfuse?.publicKey) {
+    const { configureLangfuse } = await import('../observability/langfuse.ts');
+    configureLangfuse(_loggingCfg.langfuse);
+  }
+
   // Register built-in skills and load filesystem skills
   try {
     const { registerBuiltinSkills: registerSkills } = await import('../memory/skills.ts');
     const loaded = await registerSkills();
-    console.log(`  Skills: registered/loaded ${loaded} skill(s)`);
+    _log.info(`Skills: registered/loaded ${loaded} skill(s)`);
   } catch (e) {
-    console.error(`  Skills: Failed to register builtin skills - ${(e as Error).message}`);
+    _log.error(`Skills: Failed to register builtin skills`, { error: (e as Error).message });
   }
 
   // Load plugins after migrations to ensure database is ready
@@ -30,7 +71,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     const { pluginManager } = await import('../plugins/manager.ts');
     await pluginManager.loadAll();
   } catch (e) {
-    console.error(`[plugins] Failed to load plugins: ${(e as Error).message}`);
+    _log.error(`Failed to load plugins`, { error: (e as Error).message });
   }
 
   ensureDaemons().catch(() => {});
@@ -38,11 +79,9 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   const { port, host } = opts;
 
-  console.log('');
-  console.log(`  Cortex server starting on http://${host}:${port}`);
-  console.log(`  WebSocket:    ws://${host}:${port}/ws`);
-  console.log(`  Node WS:      ws://${host}:${port}/ws/node`);
-  console.log(`  Press Ctrl+C to stop\n`);
+  _log.info(`Cortex server starting on http://${host}:${port}`, { host, port });
+  _log.info(`WebSocket: ws://${host}:${port}/ws`);
+  _log.info(`Node WS:   ws://${host}:${port}/ws/node`);
 
   const httpServer = Deno.serve(
     { port, hostname: host },
@@ -104,6 +143,6 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   );
 
   httpServer.finished.catch((err) => {
-    console.error(`Server error: ${(err as Error).message}`);
+    _log.error(`Server error`, { error: (err as Error).message });
   });
 }

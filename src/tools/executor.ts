@@ -1,7 +1,10 @@
+import { logger } from '../utils/logger.ts';
 import type { ToolCallRequest, ToolCallResult, ToolContext } from './types.ts';
 import type { ToolRegistry } from './registry.ts';
 import { logEvent } from '../db/lens.ts';
 import { validateToolCall } from '../security/validator.ts';
+
+const _log = logger('tools:executor');
 
 const TOOL_CALL_RE = /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
 
@@ -113,9 +116,7 @@ export async function executeTool(
     request.args,
     context.sessionId,
   ).catch((err) => {
-    console.error(
-      `[executor] Validator unavailable for ${request.toolName}: ${(err as Error).message}`,
-    );
+    _log.error(`Validator unavailable for ${request.toolName}`, { error: (err as Error).message });
     return { allowed: false, reason: `Validator unavailable: ${(err as Error).message}` };
   });
 

@@ -3,22 +3,23 @@ import { loadConfig, saveConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { ensureDir } from '@std/fs';
 import { join } from '@std/path';
+import { logger } from '../utils/logger.ts';
 import type { PluginConfigStore, PluginContext, PluginLogger, PluginStateStore } from './types.ts';
 
 function createLogger(pluginName: string): PluginLogger {
-  const prefix = `[plugin:${pluginName}]`;
+  const _log = logger(`plugin:${pluginName}`);
   return {
     info(msg: string) {
-      console.log(`${prefix} ${msg}`);
+      _log.info(msg);
     },
     warn(msg: string) {
-      console.warn(`${prefix} ${msg}`);
+      _log.warn(msg);
     },
     error(msg: string) {
-      console.error(`${prefix} ${msg}`);
+      _log.error(msg);
     },
     debug(msg: string) {
-      console.debug(`${prefix} ${msg}`);
+      _log.debug(msg);
     },
   };
 }

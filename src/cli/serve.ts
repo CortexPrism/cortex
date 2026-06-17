@@ -98,6 +98,7 @@ export async function startServerBackground(port: number, host: string): Promise
       execPath,
       'run',
       '--allow-all',
+      '--reload=file://',
       `--config=${configPath}`,
       mainPath,
       'serve',

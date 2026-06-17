@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
@@ -51,6 +52,8 @@ import {
   fileWriteTool,
 } from '../tools/builtin/workspace/index.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
+
+const _log = logger('server:ws');
 
 type WsMsg =
   | {
@@ -304,7 +307,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
       const { pluginManager } = await import('../plugins/manager.ts');
       await pluginManager.loadAll().catch((e) => {
-        console.error(`[ws] Plugin load warning: ${(e as Error).message}`);
+        _log.warn(`Plugin load warning`, { error: (e as Error).message });
       });
 
       send(ws, { type: 'start' });
@@ -335,18 +338,22 @@ export async function handleWebSocket(req: Request): Promise<Response> {
             try {
               await Deno.writeFile(filePath, binary);
             } catch (e) {
-              console.error(
-                `[ws] Failed to save uploaded file to ${filePath}: ${(e as Error).message}`,
-              );
+              _log.error(`Failed to save uploaded file`, {
+                path: filePath,
+                error: (e as Error).message,
+              });
             }
           }
           const existsInWorkingDir = await Deno.stat(`${workingDir}/${sanitized}`).then(() => true)
             .catch(() => false);
           const existsInWorkspace = await Deno.stat(`${workspaceDir}/${sanitized}`).then(() => true)
             .catch(() => false);
-          console.log(
-            `[ws] Uploaded ${sanitized} — workingDir:${existsInWorkingDir} workspaceDir:${existsInWorkspace} (size: ${binary.length})`,
-          );
+          _log.debug(`File uploaded`, {
+            filename: sanitized,
+            size: binary.length,
+            workingDir: existsInWorkingDir,
+            workspaceDir: existsInWorkspace,
+          });
           fileNote += `\n[File: ${sanitized} (${file.mimeType})`;
 
           const isImage = file.mimeType.startsWith('image/');
@@ -374,7 +381,10 @@ export async function handleWebSocket(req: Request): Promise<Response> {
               }
             } catch (e) {
               extractionWarnings++;
-              console.error(`[ws] PDF extraction failed for ${sanitized}: ${(e as Error).message}`);
+              _log.warn(`PDF extraction failed`, {
+                filename: sanitized,
+                error: (e as Error).message,
+              });
               fileNote +=
                 `\nPDF text extraction failed. Use the file_read tool to read: file_read("${sanitized}")`;
             }
@@ -565,7 +575,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         const chunk = decodeBase64(msg.data);
         addAudioChunk(sessionId ?? '', chunk);
       } catch (e) {
-        console.error('[ws:voice] audio_chunk error:', (e as Error).message);
+        _log.error(`audio_chunk error`, { error: (e as Error).message });
       }
       return;
     }
@@ -659,7 +669,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         // Broadcast voice state to other clients
         broadcast({ type: 'voice_state', sessionId, speaking: msg.speaking });
       } catch (e) {
-        console.error('[ws:voice] voice_state error:', (e as Error).message);
+        _log.error(`voice_state error`, { error: (e as Error).message });
       }
       return;
     }

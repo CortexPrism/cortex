@@ -88,6 +88,14 @@ export const shellTool: Tool = {
             child.kill();
           } else {
             child.kill('SIGTERM');
+            // Give SIGTERM 2 seconds to work, then SIGKILL
+            setTimeout(() => {
+              try {
+                child.kill('SIGKILL');
+              } catch {
+                // already exited
+              }
+            }, 2000);
           }
         } catch {
           // already exited
