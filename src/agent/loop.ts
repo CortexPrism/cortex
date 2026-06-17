@@ -91,6 +91,18 @@ export interface AgentTurnOptions {
   embedder?: EmbeddingProvider;
   enableReflection?: boolean;
   reasoningEffort?: string;
+  topP?: number;
+  repetitionPenalty?: number;
+  searchRecencyFilter?: string;
+  returnCitations?: boolean;
+  returnImages?: boolean;
+  httpReferer?: string;
+  xTitle?: string;
+  numCtx?: number;
+  numThread?: number;
+  keepAlive?: string;
+  dropParams?: boolean;
+  includeVeniceSystemPrompt?: boolean;
   userContentBlocks?: ContentBlock[];
   /**
    * Maximum tool-call rounds before the loop is halted.
@@ -562,13 +574,29 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       const useDirectStream = stream && onChunk && !hasTools;
       console.log(`[loop] round=${round} hasTools=${hasTools} useDirectStream=${useDirectStream}`);
 
+      const providerOpts = {
+        reasoningEffort: options.reasoningEffort,
+        topP: options.topP,
+        repetitionPenalty: options.repetitionPenalty,
+        searchRecencyFilter: options.searchRecencyFilter,
+        returnCitations: options.returnCitations,
+        returnImages: options.returnImages,
+        httpReferer: options.httpReferer,
+        xTitle: options.xTitle,
+        numCtx: options.numCtx,
+        numThread: options.numThread,
+        keepAlive: options.keepAlive,
+        dropParams: options.dropParams,
+        includeVeniceSystemPrompt: options.includeVeniceSystemPrompt,
+      };
+
       if (useDirectStream) {
         for await (
           const chunk of effectiveProvider.stream({
             messages: currentMessages,
             model: effectiveModel,
             systemPrompt: nodeAwareSystemPrompt,
-            reasoningEffort: options.reasoningEffort,
+            ...providerOpts,
           })
         ) {
           if (!chunk.done) {
@@ -591,7 +619,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
               messages: currentMessages,
               model: effectiveModel,
               systemPrompt: nodeAwareSystemPrompt,
-              reasoningEffort: options.reasoningEffort,
+              ...providerOpts,
               signal: abortCtrl.signal,
             })
           ) {

@@ -3939,6 +3939,82 @@ function providerLabel(kind) {
   return PROVIDER_META[kind]?.label ?? kind;
 }
 
+// Provider-specific extra settings fields.
+// Each entry is an array of field descriptors rendered dynamically in the modal.
+// type: 'select' | 'number' | 'text' | 'checkbox'
+const PROVIDER_EXTRA_FIELDS = {
+  anthropic: [
+    { key: 'reasoningEffort', label: 'Extended Thinking', type: 'select',
+      options: [['','Disabled'],['low','Low (1k tokens)'],['medium','Medium (4k tokens)'],['high','High (16k tokens)']],
+      hint: 'Enables Claude extended thinking — billed as additional output tokens' },
+  ],
+  google: [
+    { key: 'reasoningEffort', label: 'Thinking Budget', type: 'select',
+      options: [['','Disabled'],['low','Low (1k tokens)'],['medium','Medium (4k tokens)'],['high','High (16k tokens)']],
+      hint: 'Flash/Pro Thinking models only — sets thinkingBudget token count' },
+  ],
+  openai: [
+    { key: 'reasoningEffort', label: 'Reasoning Effort', type: 'select',
+      options: [['','Default'],['low','Low'],['medium','Medium'],['high','High']],
+      hint: 'o-series models only (o1, o3, o4-mini). Ignored by GPT-4 / GPT-4o.' },
+  ],
+  openrouter: [
+    { key: 'httpReferer', label: 'HTTP-Referer', type: 'text', placeholder: 'https://yoursite.com',
+      hint: 'Shown in OpenRouter dashboard and passed to downstream providers' },
+    { key: 'xTitle', label: 'X-Title', type: 'text', placeholder: 'My App',
+      hint: 'App display name shown in the OpenRouter usage dashboard' },
+  ],
+  perplexity: [
+    { key: 'searchRecencyFilter', label: 'Search Recency Filter', type: 'select',
+      options: [['','None'],['month','Past month'],['week','Past week'],['day','Past day'],['hour','Past hour']],
+      hint: 'Filter web search results by recency (Sonar models only)' },
+    { key: 'returnCitations', label: 'Return Citations', type: 'checkbox',
+      hint: 'Include source URLs as citations in the response' },
+    { key: 'returnImages', label: 'Return Images', type: 'checkbox',
+      hint: 'Include image results in the response (Sonar Pro only)' },
+  ],
+  together: [
+    { key: 'repetitionPenalty', label: 'Repetition Penalty', type: 'number',
+      min: 1.0, max: 2.0, step: 0.05, placeholder: '1.0',
+      hint: 'Penalises repeated tokens. 1.0 = no penalty, 2.0 = max' },
+  ],
+  fireworks: [
+    { key: 'repetitionPenalty', label: 'Repetition Penalty', type: 'number',
+      min: 1.0, max: 2.0, step: 0.05, placeholder: '1.0',
+      hint: 'Penalises repeated tokens. 1.0 = no penalty, 2.0 = max' },
+  ],
+  novita: [
+    { key: 'repetitionPenalty', label: 'Repetition Penalty', type: 'number',
+      min: 1.0, max: 2.0, step: 0.05, placeholder: '1.0',
+      hint: 'Penalises repeated tokens. 1.0 = no penalty, 2.0 = max' },
+  ],
+  ollama: [
+    { key: 'numCtx', label: 'Context Window (num_ctx)', type: 'number',
+      min: 512, max: 131072, step: 512, placeholder: '4096',
+      hint: 'Override the model context length. Larger values use more VRAM.' },
+    { key: 'numThread', label: 'CPU Threads (num_thread)', type: 'number',
+      min: 1, max: 128, step: 1, placeholder: 'auto',
+      hint: 'Number of CPU threads for inference. Leave blank for auto.' },
+    { key: 'keepAlive', label: 'Keep Alive', type: 'text', placeholder: '5m',
+      hint: 'How long to keep the model loaded: e.g. 5m, 1h, -1 (forever), 0 (unload immediately)' },
+  ],
+  lmstudio: [
+    { key: 'numCtx', label: 'Context Window (num_ctx)', type: 'number',
+      min: 512, max: 131072, step: 512, placeholder: '4096',
+      hint: 'Override the model context length in LM Studio.' },
+    { key: 'keepAlive', label: 'Keep Alive', type: 'text', placeholder: '5m',
+      hint: 'How long to keep the model loaded: e.g. 5m, 1h, -1 (forever)' },
+  ],
+  litellm: [
+    { key: 'dropParams', label: 'Drop Unsupported Params', type: 'checkbox',
+      hint: 'LiteLLM will silently ignore parameters not supported by the target model instead of erroring' },
+  ],
+  venice: [
+    { key: 'includeVeniceSystemPrompt', label: 'Include Venice System Prompt', type: 'checkbox',
+      hint: 'Prepend the Venice character/uncensored system prompt to every request' },
+  ],
+};
+
 let settingsActiveTab = 'general';
 
 async function loadSettings() {
@@ -4028,6 +4104,14 @@ async function loadSettings() {
                   \${p.temperature != null ? \`<span>Temp: <span style="color:var(--text);">\${p.temperature}</span></span>\` : ''}
                   \${p.maxTokens != null ? \`<span>Max tokens: <span style="color:var(--text);">\${p.maxTokens}</span></span>\` : ''}
                   \${p.topP != null ? \`<span>Top P: <span style="color:var(--text);">\${p.topP}</span></span>\` : ''}
+                  \${p.reasoningEffort ? \`<span>Reasoning: <span style="color:var(--text);">\${p.reasoningEffort}</span></span>\` : ''}
+                  \${p.repetitionPenalty != null ? \`<span>Rep penalty: <span style="color:var(--text);">\${p.repetitionPenalty}</span></span>\` : ''}
+                  \${p.searchRecencyFilter ? \`<span>Recency: <span style="color:var(--text);">\${p.searchRecencyFilter}</span></span>\` : ''}
+                  \${p.numCtx != null ? \`<span>ctx: <span style="color:var(--text);">\${p.numCtx}</span></span>\` : ''}
+                  \${p.keepAlive ? \`<span>keep-alive: <span style="color:var(--text);">\${p.keepAlive}</span></span>\` : ''}
+                  \${p.returnCitations ? \`<span style="color:#4ade80;">citations</span>\` : ''}
+                  \${p.dropParams ? \`<span style="color:var(--text3);">drop-params</span>\` : ''}
+                  \${p.includeVeniceSystemPrompt ? \`<span style="color:var(--text3);">venice-prompt</span>\` : ''}
                 </div>
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -4778,9 +4862,10 @@ async function showEditModelModal(kind) {
     </div>
   \`;
   document.body.appendChild(div);
+  onModalKindChange(p || {});
 }
 
-async function onModalKindChange() {
+async function onModalKindChange(existingValues) {
   const kind = document.getElementById('modal-kind')?.value;
   if (!kind) return;
   const meta = PROVIDER_META[kind];
@@ -4790,6 +4875,59 @@ async function onModalKindChange() {
   if (baseUrlWrap) baseUrlWrap.style.display = meta.needsBaseUrl ? 'block' : 'none';
   if (secretWrap) secretWrap.style.display = meta.needsSecret ? 'block' : 'none';
   if (baseUrlInput && meta.defaultBaseUrl) baseUrlInput.placeholder = meta.defaultBaseUrl;
+
+  // Inject / refresh provider-specific settings section
+  const existing = existingValues || {};
+  const extraFields = PROVIDER_EXTRA_FIELDS[kind] || [];
+  let extraWrap = document.getElementById('modal-extra-wrap');
+  if (extraFields.length === 0) {
+    if (extraWrap) extraWrap.remove();
+    return;
+  }
+  if (!extraWrap) {
+    extraWrap = document.createElement('div');
+    extraWrap.id = 'modal-extra-wrap';
+    const saveRow = document.querySelector('#model-modal .btn-primary')?.closest('div[style*="margin-top:16px"]');
+    if (saveRow) saveRow.parentNode.insertBefore(extraWrap, saveRow);
+    else document.querySelector('#model-modal .card > div:last-child')?.before(extraWrap);
+  }
+
+  const rows = extraFields.map(f => {
+    const val = existing[f.key];
+    let input = '';
+    if (f.type === 'select') {
+      const opts = f.options.map(([v, lbl]) =>
+        \`<option value="\${esc(v)}" \${val == v ? 'selected' : ''}>\${esc(lbl)}</option>\`
+      ).join('');
+      input = \`<select class="inp" id="modal-extra-\${f.key}" style="font-size:12px;">\${opts}</select>\`;
+    } else if (f.type === 'checkbox') {
+      input = \`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="modal-extra-\${f.key}" \${val ? 'checked' : ''} style="width:15px;height:15px;accent-color:var(--accent);" />
+        <span style="font-size:12px;color:var(--text2);">\${esc(f.label)}</span>
+      </label>\`;
+    } else {
+      const numAttrs = f.type === 'number'
+        ? \`type="number" min="\${f.min ?? ''}" max="\${f.max ?? ''}" step="\${f.step ?? 'any'}"\`
+        : 'type="text"';
+      input = \`<input class="inp" id="modal-extra-\${f.key}" \${numAttrs} placeholder="\${esc(f.placeholder ?? '')}" value="\${esc(val ?? '')}" style="font-size:12px;" />\`;
+    }
+    const labelRow = f.type === 'checkbox' ? '' :
+      \`<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">\${esc(f.label)}</label>\`;
+    return \`<div>\${labelRow}\${input}
+      \${f.hint ? \`<p style="font-size:10px;color:var(--text3);margin-top:2px;">\${esc(f.hint)}</p>\` : ''}
+    </div>\`;
+  }).join('');
+
+  extraWrap.innerHTML = \`
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">
+        \${esc(meta.label)} Settings
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+        \${rows}
+      </div>
+    </div>
+  \`;
 }
 
 async function fetchModelsForModal() {
@@ -4858,6 +4996,21 @@ async function saveModelFromModal() {
   if (temp) body.temperature = parseFloat(temp);
   if (maxTokens) body.maxTokens = parseInt(maxTokens, 10);
   if (topP) body.topP = parseFloat(topP);
+
+  // Collect provider-specific extra fields
+  const extraFields = PROVIDER_EXTRA_FIELDS[kind] || [];
+  for (const f of extraFields) {
+    const el = document.getElementById('modal-extra-' + f.key);
+    if (!el) continue;
+    if (f.type === 'checkbox') {
+      body[f.key] = el.checked;
+    } else if (f.type === 'number') {
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) body[f.key] = v;
+    } else {
+      if (el.value !== '') body[f.key] = el.value;
+    }
+  }
 
   try {
     const res = await fetch(BASE + '/api/config/provider', {

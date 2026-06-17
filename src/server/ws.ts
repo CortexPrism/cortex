@@ -197,7 +197,22 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       const router = buildRouter(config);
       const effectiveProvider = router ?? provider;
       const model = modelOverride || agent.model || config.providers[providerKind]?.model || 'unknown';
-      const reasoningEffort = reasoningEffortOverride ?? config.providers[providerKind]?.reasoningEffort;
+      const provCfg = config.providers[providerKind];
+      const reasoningEffort = reasoningEffortOverride ?? provCfg?.reasoningEffort;
+      const providerSpecificOpts = {
+        topP: provCfg?.topP,
+        repetitionPenalty: provCfg?.repetitionPenalty,
+        searchRecencyFilter: provCfg?.searchRecencyFilter,
+        returnCitations: provCfg?.returnCitations,
+        returnImages: provCfg?.returnImages,
+        httpReferer: provCfg?.httpReferer,
+        xTitle: provCfg?.xTitle,
+        numCtx: provCfg?.numCtx,
+        numThread: provCfg?.numThread,
+        keepAlive: provCfg?.keepAlive,
+        dropParams: provCfg?.dropParams,
+        includeVeniceSystemPrompt: provCfg?.includeVeniceSystemPrompt,
+      };
       const embedder = buildEmbedder(config);
 
       if (!sessionId) {
@@ -377,6 +392,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         systemPrompt: effectiveSystemPrompt,
         stream: true,
         reasoningEffort,
+        ...providerSpecificOpts,
         onChunk: (chunk) => {
         let safe = chunk;
         safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');

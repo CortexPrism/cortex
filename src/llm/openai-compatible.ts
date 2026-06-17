@@ -53,14 +53,24 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages,
       max_tokens: options.maxTokens,
       temperature: options.temperature,
+      top_p: options.topP,
       stream: false,
     };
 
-    if (options.reasoningEffort) {
-      (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
-    }
+    const extra = params as unknown as Record<string, unknown>;
+    if (options.reasoningEffort) extra.reasoning_effort = options.reasoningEffort;
+    if (options.repetitionPenalty != null) extra.repetition_penalty = options.repetitionPenalty;
+    if (options.searchRecencyFilter) extra.search_recency_filter = options.searchRecencyFilter;
+    if (options.returnCitations != null) extra.return_citations = options.returnCitations;
+    if (options.returnImages != null) extra.return_images = options.returnImages;
+    if (options.dropParams) extra.drop_params = true;
+    if (options.includeVeniceSystemPrompt != null) extra.venice_parameters = { include_venice_system_prompt: options.includeVeniceSystemPrompt };
 
-    const response = await this.client.chat.completions.create(params, { signal: options.signal });
+    const reqOpts: Record<string, unknown> = { signal: options.signal };
+    if (options.httpReferer) reqOpts.headers = { ...reqOpts.headers as object, 'HTTP-Referer': options.httpReferer };
+    if (options.xTitle) reqOpts.headers = { ...reqOpts.headers as object, 'X-Title': options.xTitle };
+
+    const response = await this.client.chat.completions.create(params, reqOpts as Parameters<typeof this.client.chat.completions.create>[1]);
 
     const content = response.choices[0]?.message?.content ?? '';
     const tokensIn = response.usage?.prompt_tokens ?? 0;
@@ -86,13 +96,25 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages,
       stream: true,
       stream_options: { include_usage: true },
+      temperature: options.temperature,
+      top_p: options.topP,
+      max_tokens: options.maxTokens,
     };
 
-    if (options.reasoningEffort) {
-      (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
-    }
+    const extraS = params as unknown as Record<string, unknown>;
+    if (options.reasoningEffort) extraS.reasoning_effort = options.reasoningEffort;
+    if (options.repetitionPenalty != null) extraS.repetition_penalty = options.repetitionPenalty;
+    if (options.searchRecencyFilter) extraS.search_recency_filter = options.searchRecencyFilter;
+    if (options.returnCitations != null) extraS.return_citations = options.returnCitations;
+    if (options.returnImages != null) extraS.return_images = options.returnImages;
+    if (options.dropParams) extraS.drop_params = true;
+    if (options.includeVeniceSystemPrompt != null) extraS.venice_parameters = { include_venice_system_prompt: options.includeVeniceSystemPrompt };
 
-    const stream = await this.client.chat.completions.create(params, { signal: options.signal });
+    const reqOptsS: Record<string, unknown> = { signal: options.signal };
+    if (options.httpReferer) reqOptsS.headers = { ...reqOptsS.headers as object, 'HTTP-Referer': options.httpReferer };
+    if (options.xTitle) reqOptsS.headers = { ...reqOptsS.headers as object, 'X-Title': options.xTitle };
+
+    const stream = await this.client.chat.completions.create(params, reqOptsS as Parameters<typeof this.client.chat.completions.create>[1]);
 
     let tokensIn = 0;
     let tokensOut = 0;
