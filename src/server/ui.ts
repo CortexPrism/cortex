@@ -436,6 +436,30 @@ const HTML = `<!DOCTYPE html>
   .bubble-agent { background: var(--bg3); border: 1px solid var(--border); border-radius:12px 12px 12px 4px; padding:12px 16px; max-width:88%; align-self:flex-start; }
   .bubble-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius:8px; padding:10px 14px; align-self:flex-start; font-size:13px; color:#fca5a5; }
   .bubble-tool { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.2); border-radius:8px; padding:8px 12px; align-self:flex-start; font-size:12px; color:#fde68a; font-family:'JetBrains Mono',monospace; max-width:88%; }
+  
+  /* Delete message button */
+  .delete-msg-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(239,68,68,0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .delete-msg-btn:hover { background: rgba(239,68,68,1); }
+  div[data-message-id]:hover .delete-msg-btn { opacity: 1; }
 
   /* Typing indicator */
   .typing-dot { width:6px; height:6px; background:var(--accent2); border-radius:50%; }
@@ -1029,7 +1053,8 @@ const HTML = `<!DOCTYPE html>
             <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
           </div>
           <span style="font-size:12px;color:var(--text3);">Thinking…</span>
-          <span id="token-live" style="font-size:11px;color:var(--text3);margin-left:auto;"></span>
+          <button id="reasoning-toggle" class="btn btn-ghost" onclick="toggleReasoningPanel()" style="padding:2px 8px;font-size:11px;margin-left:auto;display:none;" data-tip="View reasoning & tool calls">🔬 Reasoning</button>
+          <span id="token-live" style="font-size:11px;color:var(--text3);margin-left:8px;"></span>
         </div>
       </div>
     </div>
@@ -2352,6 +2377,8 @@ const BASE = window.location.origin;
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws';
 let ws, sessionId = null, agentBubble = null, agentRaw = '';
 let currentPage = 'chat';
+let currentReasoningData = '';
+let reasoningPanelOpen = false;
 
 // ── Toast notifications ─────────────────────────
 function toast(message, type = 'info', duration = 3000) {
@@ -2592,7 +2619,32 @@ async function restoreSession() {
       }
       scrollChat();
     }
-  } catch {}
+   } catch {}
+}
+
+// ── Reasoning Panel ──────────────────────────────────────────
+function toggleReasoningPanel() {
+  reasoningPanelOpen = !reasoningPanelOpen;
+  const chatArea = document.getElementById('chat-area');
+  if (!chatArea) return;
+  
+  let panel = document.getElementById('reasoning-panel');
+  if (reasoningPanelOpen) {
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'reasoning-panel';
+      panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:JetBrains Mono,monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
+      chatArea.appendChild(panel);
+    }
+    panel.textContent = currentReasoningData || '(No reasoning data)';
+    panel.style.display = 'block';
+    const btn = document.getElementById('reasoning-toggle');
+    if (btn) btn.style.background = 'rgba(6,182,212,0.2)';
+  } else {
+    if (panel) panel.style.display = 'none';
+    const btn = document.getElementById('reasoning-toggle');
+    if (btn) btn.style.background = '';
+  }
 }
 
 // ── WebSocket ───────────────────────────────────────────────
@@ -2624,28 +2676,47 @@ function connect() {
         document.getElementById('chat-session-id').textContent = '';
         loadAgentPanel();
         break;
-      case 'start':
-        agentRaw = '';
-        agentBubble = appendBubble('agent', '');
-        document.getElementById('thinking-bar').style.display = 'flex';
-        break;
+       case 'start':
+         agentRaw = '';
+         currentReasoningData = '';
+         reasoningPanelOpen = false;
+         const reasoningBtn = document.getElementById('reasoning-toggle');
+         if (reasoningBtn) {
+           reasoningBtn.style.display = 'none';
+           reasoningBtn.style.background = '';
+         }
+         const reasoningPanel = document.getElementById('reasoning-panel');
+         if (reasoningPanel) reasoningPanel.style.display = 'none';
+         agentBubble = appendBubble('agent', '');
+         document.getElementById('thinking-bar').style.display = 'flex';
+         break;
       case 'chunk':
-        agentRaw += msg.delta;
-        if (agentBubble) {
-          agentBubble.innerHTML = md(agentRaw);
-          scrollChat();
-        }
-        break;
-      case 'done':
-        document.getElementById('thinking-bar').style.display = 'none';
-        agentBubble = null;
-        appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
-        saveSession();
-        if (currentPage === 'lens') loadLens();
-        loadAgentPanel();
-        const ml = document.getElementById('model-label');
-        if (ml && msg.model) ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
-        break;
+         agentRaw += msg.delta;
+         if (agentBubble) {
+           agentBubble.innerHTML = md(agentRaw);
+           scrollChat();
+         }
+         break;
+       case 'reasoning':
+         // Show reasoning toggle button when we have reasoning data
+         const reasoningBtn = document.getElementById('reasoning-toggle');
+         if (reasoningBtn) reasoningBtn.style.display = 'inline-block';
+         // Store reasoning for later display
+         currentReasoningData = msg.content;
+         break;
+       case 'done':
+         document.getElementById('thinking-bar').style.display = 'none';
+         reasoningPanelOpen = false;
+         const reasoningPanel2 = document.getElementById('reasoning-panel');
+         if (reasoningPanel2) reasoningPanel2.style.display = 'none';
+         agentBubble = null;
+         appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
+         saveSession();
+         if (currentPage === 'lens') loadLens();
+         loadAgentPanel();
+         const ml = document.getElementById('model-label');
+         if (ml && msg.model) ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+         break;
       case 'error':
         document.getElementById('thinking-bar').style.display = 'none';
         appendBubble('error', msg.error);
@@ -2692,11 +2763,15 @@ function setBadge(state) {
 // ── Chat ────────────────────────────────────────────────────
 const chatLog = document.getElementById('chat-log');
 
-function appendBubble(role, content) {
+function appendBubble(role, content, messageId) {
   const wrap = document.createElement('div');
   wrap.style.display = 'flex';
   wrap.style.flexDirection = 'column';
   wrap.style.alignItems = role === 'user' ? 'flex-end' : 'flex-start';
+  wrap.style.position = 'relative';
+  if (messageId !== undefined) {
+    wrap.dataset.messageId = messageId;
+  }
 
   const bubble = document.createElement('div');
   if (role === 'user') { bubble.className = 'bubble-user'; bubble.style.fontSize = '14px'; bubble.textContent = content; }
@@ -2718,6 +2793,21 @@ function appendBubble(role, content) {
   }
   else if (role === 'tool') { bubble.className = 'bubble-tool'; bubble.textContent = content; }
   else { bubble.className = 'bubble-error'; bubble.textContent = content; }
+
+  // Add delete button if messageId is provided
+  if (messageId !== undefined) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-msg-btn';
+    deleteBtn.textContent = '×';
+    deleteBtn.title = 'Delete message';
+    deleteBtn.onclick = async () => {
+      if (confirm('Delete this message?')) {
+        await deleteMessage(messageId);
+        wrap.remove();
+      }
+    };
+    wrap.appendChild(deleteBtn);
+  }
 
   wrap.appendChild(bubble);
   chatLog.appendChild(wrap);
@@ -7995,14 +8085,27 @@ async function loadSessionMessages(id) {
   chatLog.innerHTML = '';
   for (const m of msgs) {
     if (m.role === 'user') {
-      appendBubble('user', m.content);
+      appendBubble('user', m.content, m.id);
     } else if (m.role === 'assistant') {
-      const b = appendBubble('agent', m.content);
+      const b = appendBubble('agent', m.content, m.id);
       b.innerHTML = md(m.content);
       if (m.token_count) appendMeta(0, m.token_count, 0, 0);
     }
   }
   scrollChat();
+}
+
+async function deleteMessage(messageId) {
+  if (!sessionId) return;
+  const res = await fetch(
+    BASE + '/api/sessions/' + encodeURIComponent(sessionId) + '/messages/' + messageId,
+    { method: 'DELETE' }
+  );
+  if (res.ok) {
+    toast('Message deleted', 'success');
+  } else {
+    toast('Failed to delete message', 'error');
+  }
 }
 
 async function closeSessionPanel(id) {
@@ -9158,10 +9261,27 @@ var _soulActiveTab = 'profile';
 var _soulRawMode = false;
 
 async function loadSoulFile() {
-  const userRes = await fetch(BASE + '/api/soul/user').then(r => r.json()).catch(() => ({ content: '' }));
-  const userMd = userRes.content || '';
-  document.getElementById('soul-raw-profile-text').value = userMd;
-  _soulParseUserMd(userMd);
+  console.log('[loadSoulFile] Starting...');
+  try {
+    const userRes = await fetch(BASE + '/api/soul/user').then(r => r.json()).catch(e => {
+      console.error('[loadSoulFile] Fetch error:', e);
+      return { content: '' };
+    });
+    const userMd = userRes.content || '';
+    console.log('[loadSoulFile] Loaded content length:', userMd.length);
+    console.log('[loadSoulFile] Content preview:', userMd.substring(0, 100));
+    const rawEl = document.getElementById('soul-raw-profile-text');
+    if (rawEl) {
+      rawEl.value = userMd;
+      console.log('[loadSoulFile] Set raw textarea value');
+    } else {
+      console.error('[loadSoulFile] Could not find soul-raw-profile-text element');
+    }
+    _soulParseUserMd(userMd);
+    console.log('[loadSoulFile] Completed parsing');
+  } catch (e) {
+    console.error('[loadSoulFile] Error:', e);
+  }
 }
 
 async function loadMemoryMd() {
@@ -9179,52 +9299,104 @@ async function saveMemoryMd() {
 }
 
 
+/**
+ * Parse USER.md markdown into form fields.
+ * Expected format:
+ *   # User Profile
+ *   **Name:** (name)
+ *   **Role:** (role)
+ *   ## Goals & Objectives
+ *   - (goals)
+ *   ## Current Projects
+ *   - (projects)
+ *   ## Technical Environment
+ *   - OS: (os)
+ *   - Editor/IDE: (editor)
+ *   - Languages: (langs)
+ *   - Tools: (tools)
+ *   ## Communication
+ *   - Preferred style: (style)
+ *   ## Working Context
+ *   (context)
+ */
 function _soulParseUserMd(md) {
+  console.log('[_soulParseUserMd] Parsing markdown, length:', md.length);
   const get = (heading) => {
-    const re = new RegExp('##\\s+' + heading + '[\\s\\S]*?\\n([\\s\\S]*?)(?=\\n##\\s|$)', 'i');
+    const re = new RegExp('##\\\\s+' + heading + '[\\\\s\\\\S]*?\\\\n([\\\\s\\\\S]*?)(?=\\\\n##\\\\s|$)', 'i');
     const m = md.match(re);
-    if (!m) return '';
-    return m[1].replace(/^[-*]\s*/gm, '').trim();
+    const result = m ? m[1].replace(/^[-*]\\s*/gm, '').trim() : '';
+    console.log('[_soulParseUserMd] get("' + heading + '"):', result.substring(0, 50));
+    return result;
   };
   const line = (label) => {
-    const re = new RegExp('\\*\\*' + label + ':\\*\\*\\s*(.+)', 'i');
+    const re = new RegExp('\\\\*\\\\*' + label + ':\\\\*\\\\*\\\\s*(.+)', 'i');
     const m = md.match(re);
-    return m ? m[1].replace(/^\(|\)$/g, '').trim() : '';
+    if (!m) {
+      console.log('[_soulParseUserMd] line("' + label + '"): (no match)');
+      return '';
+    }
+    let result = m[1].trim();
+    // Only remove parentheses if the entire value is wrapped (placeholder text)
+    if (result.match(/^\\([^)]+\\)$/)) {
+      result = '';
+    }
+    console.log('[_soulParseUserMd] line("' + label + '"):', result);
+    return result;
   };
-  document.getElementById('prof-name').value    = line('Name');
-  document.getElementById('prof-role').value    = line('Role');
-  document.getElementById('prof-goals').value   = get('Goals');
-  document.getElementById('prof-projects').value = get('Current Projects');
-  document.getElementById('prof-os').value      = line('OS') || _soulGetBullet(md, 'OS');
-  document.getElementById('prof-editor').value  = line('Editor/IDE') || _soulGetBullet(md, 'Editor');
-  document.getElementById('prof-langs').value   = line('Languages') || _soulGetBullet(md, 'Languages');
-  document.getElementById('prof-tools').value   = line('Tools') || _soulGetBullet(md, 'Tools');
-  document.getElementById('prof-style').value   = line('Preferred style') || _soulGetBullet(md, 'style');
-  document.getElementById('prof-context').value = get('Working Context');
+  
+  const name = line('Name');
+  const role = line('Role');
+  const goals = get('Goals & Objectives') || get('Goals');
+  const projects = get('Current Projects');
+  const os = line('OS') || _soulGetBullet(md, 'OS');
+  const editor = line('Editor/IDE') || _soulGetBullet(md, 'Editor');
+  const langs = line('Languages') || _soulGetBullet(md, 'Languages');
+  const tools = line('Tools') || _soulGetBullet(md, 'Tools');
+  const style = line('Preferred style') || _soulGetBullet(md, 'style');
+  const context = get('Working Context');
+  
+  console.log('[_soulParseUserMd] Extracted values:', { name, role, goals: goals.substring(0, 30), projects: projects.substring(0, 30) });
+  
+  document.getElementById('prof-name').value    = name;
+  document.getElementById('prof-role').value    = role;
+  document.getElementById('prof-goals').value   = goals;
+  document.getElementById('prof-projects').value = projects;
+  document.getElementById('prof-os').value      = os;
+  document.getElementById('prof-editor').value  = editor;
+  document.getElementById('prof-langs').value   = langs;
+  document.getElementById('prof-tools').value   = tools;
+  document.getElementById('prof-style').value   = style;
+  document.getElementById('prof-context').value = context;
+  
+  console.log('[_soulParseUserMd] Form fields populated');
 }
 
 function _soulGetBullet(md, key) {
-  const re = new RegExp('-\\s+' + key + ':\\s*(.+)', 'i');
+  const re = new RegExp('-\\\\s+' + key + ':\\\\s*(.+)', 'i');
   const m = md.match(re);
   return m ? m[1].trim() : '';
 }
 
+/**
+ * Build USER.md markdown from form fields.
+ * Generates the exact format expected by _soulParseUserMd.
+ */
 function _soulBuildUserMd() {
   const v = (id) => document.getElementById(id).value.trim();
-  const lines = (text) => text.split('\\n').filter(l => l.trim()).map(l => '- ' + l.trim()).join('\\n') || '- (not set)';
-  return '# User Profile\\n\\n' +
-    '**Name:** ' + (v('prof-name') || '(your name)') + '\\n' +
-    '**Role:** ' + (v('prof-role') || '(your role or profession)') + '\\n\\n' +
-    '## Goals & Objectives\\n' + (lines(v('prof-goals')) || '- (what are you working toward?)') + '\\n\\n' +
-    '## Current Projects\\n' + (lines(v('prof-projects')) || '- (active projects you want help with)') + '\\n\\n' +
-    '## Technical Environment\\n' +
-    '- OS: ' + (v('prof-os') || '(your operating system)') + '\\n' +
-    '- Editor/IDE: ' + (v('prof-editor') || '(your editor)') + '\\n' +
-    '- Languages: ' + (v('prof-langs') || '(programming languages you use)') + '\\n' +
-    '- Tools: ' + (v('prof-tools') || '(other tools in your stack)') + '\\n\\n' +
-    '## Communication\\n' +
-    '- Preferred style: ' + (v('prof-style') || 'direct and concise') + '\\n\\n' +
-    '## Working Context\\n' + (v('prof-context') || '(describe your project, environment, or ongoing work here)') + '\\n';
+  const lines = (text) => text.split('\\\\n').filter(l => l.trim()).map(l => '- ' + l.trim()).join('\\\\n') || '- (not set)';
+  return '# User Profile\\\\n\\\\n' +
+    '**Name:** ' + (v('prof-name') || '(your name)') + '\\\\n' +
+    '**Role:** ' + (v('prof-role') || '(your role or profession)') + '\\\\n\\\\n' +
+    '## Goals & Objectives\\\\n' + (lines(v('prof-goals')) || '- (what are you working toward?)') + '\\\\n\\\\n' +
+    '## Current Projects\\\\n' + (lines(v('prof-projects')) || '- (active projects you want help with)') + '\\\\n\\\\n' +
+    '## Technical Environment\\\\n' +
+    '- OS: ' + (v('prof-os') || '(your operating system)') + '\\\\n' +
+    '- Editor/IDE: ' + (v('prof-editor') || '(your editor)') + '\\\\n' +
+    '- Languages: ' + (v('prof-langs') || '(programming languages you use)') + '\\\\n' +
+    '- Tools: ' + (v('prof-tools') || '(other tools in your stack)') + '\\\\n\\\\n' +
+    '## Communication\\\\n' +
+    '- Preferred style: ' + (v('prof-style') || 'direct and concise') + '\\\\n\\\\n' +
+    '## Working Context\\\\n' + (v('prof-context') || '(describe your project, environment, or ongoing work here)') + '\\\\n';
 }
 
 
@@ -9235,13 +9407,13 @@ function soulToggleRaw() {
   const rawDiv = document.getElementById('soul-raw-profile');
   const formDiv = document.getElementById('soul-profile-form');
   if (_soulRawMode) {
-    // sync form → raw
-    document.getElementById('soul-raw-profile-text').value = _soulBuildUserMd();
+    // Show raw view - don't overwrite the loaded content
+    // The raw textarea is already populated by loadSoulFile()
     rawDiv.style.display  = 'block';
     // hide all form fields except the raw div
     Array.from(formDiv.children).forEach(el => { if (el.id !== 'soul-raw-profile') el.style.display = 'none'; });
   } else {
-    // sync raw → form
+    // sync raw → form (re-parse to capture any manual edits)
     _soulParseUserMd(document.getElementById('soul-raw-profile-text').value);
     rawDiv.style.display = 'none';
     Array.from(formDiv.children).forEach(el => el.style.display = '');

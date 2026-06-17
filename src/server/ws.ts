@@ -4,7 +4,7 @@ import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { initSessionDb } from '../db/migrate.ts';
-import { buildProvider, buildRouter } from '../llm/router.ts';
+import { buildProvider, buildRouter, PROVIDER_DEFAULT_CONTEXT_WINDOWS } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
 import type { ContentBlock } from '../llm/types.ts';
@@ -418,6 +418,8 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         }
       }
 
+      let capturedReasoning = '';
+      
       const result = await agentTurn({
         userMessage: effectiveMessage,
         provider: effectiveProvider,
@@ -429,10 +431,64 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         reasoningEffort,
         ...providerSpecificOpts,
         onChunk: (chunk) => {
+          // Capture raw reasoning/tool calls before stripping
+          capturedReasoning += chunk;
+          
+          // Strip tool call markup using the same robust logic as loop.ts
           let safe = chunk;
+          
+          // Remove <tool_call>...</tool_call> blocks
           safe = safe.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
           safe = safe.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
-          safe = safe.replace(/\{\s*"(tool|name)"\s*:[\s\S]*?\}/g, '');
+          
+          // Remove bare JSON tool calls using brace-depth walker for nested JSON
+          const bareToolRe = /\{\s*"(tool|name)"\s*:/g;
+          let bm: RegExpExecArray | null;
+          const regions: Array<[number, number]> = [];
+          while ((bm = bareToolRe.exec(safe)) !== null) {
+            const start = bm.index;
+            let depth = 0;
+            let inStr = false;
+            let esc = false;
+            let end = -1;
+            for (let i = start; i < safe.length; i++) {
+              const ch = safe[i];
+              if (esc) {
+                esc = false;
+                continue;
+              }
+              if (ch === '\\') {
+                esc = true;
+                continue;
+              }
+              if (ch === '"') {
+                inStr = !inStr;
+                continue;
+              }
+              if (inStr) continue;
+              if (ch === '{') depth++;
+              if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                  end = i + 1;
+                  break;
+                }
+              }
+            }
+            if (end > start) regions.push([start, end]);
+          }
+          // Remove matched regions right-to-left so indices stay valid
+          for (let i = regions.length - 1; i >= 0; i--) {
+            safe = safe.slice(0, regions[i][0]) + safe.slice(regions[i][1]);
+          }
+          
+          // Remove fenced code blocks that contain tool call JSON
+          safe = safe.replace(/```[\s\S]*?```/g, (block) => {
+            return /\{\s*"(tool|name)"\s*:/.test(block) ? '' : block;
+          });
+          
+          safe = safe.replace(/\n{3,}/g, '\n\n').trim();
+          
           if (safe.trim()) send(ws, { type: 'chunk', delta: safe });
         },
         registry,
@@ -445,6 +501,11 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         enableReflection: true,
         userContentBlocks: contentBlocks,
       });
+      
+      // Send captured reasoning separately if it contains tool calls
+      if (capturedReasoning && capturedReasoning.includes('"tool"')) {
+        send(ws, { type: 'reasoning', content: capturedReasoning });
+      }
 
       // Check for auto-TTS audio from pipeline hook
       try {
@@ -477,7 +538,9 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           `SELECT role, COALESCE(SUM(token_count), 0) as total FROM session_messages GROUP BY role`,
         );
         const usedTokens = byRole.reduce((sum, r) => sum + r.total, 0);
-        const maxContext = config.providers[providerKind]?.contextWindow ?? 200000;
+        const maxContext = config.providers[providerKind]?.contextWindow ??
+          PROVIDER_DEFAULT_CONTEXT_WINDOWS[providerKind] ??
+          200_000;
         const userTokens = byRole.find((r) => r.role === 'user')?.total ?? 0;
         const assistantTokens = byRole.find((r) => r.role === 'assistant')?.total ?? 0;
         const sysPromptTokens = Math.max(1, Math.round((systemPrompt?.length ?? 0) / 3.5));

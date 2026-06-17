@@ -7,63 +7,35 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
-## [Unreleased]
-
-### Changed
-
-- **Merged Logs into Activity page** — the separate "Logs" page has been consolidated into the
-  "Activity" page. Activity now includes all Logs controls: level filter (Errors only / Warnings+),
-  line limit selector (50/100/200/500), auto-refresh toggle, and inline error messages. Cost and
-  duration are now shown for every event. The dedicated `/api/logs` endpoint has been removed;
-  `GET /api/lens/recent` now accepts `level`, `type`, and `limit` params for server-side filtering.
+## [0.34.0] — 2026-06-17
 
 ### Added
 
-- **Structured logging system** (`src/utils/logger.ts`) — `LoggerRegistry` singleton with
-  configurable levels (`trace`, `debug`, `info`, `warn`, `error`, `silent`), pluggable transports
-  (stdout, file, OTLP, Langfuse), and per-namespace loggers via `logger(ns)`
-- **File transport with rotation** — writes to `~/.cortex/data/logs/cortex.log`; configurable
-  `fileMaxBytes` and `fileMaxFiles`; file-level threshold independent of stdout level so `warn+`
-  always lands on disk even when global level is `error`
-- **`cortex log` CLI command** (`src/cli/log-cmd.ts`) — subcommands: `show`, `tail`, `clear`,
-  `set-level`, `path`, `status`; supports `--level`, `--ns`, `--lines` filters and live tail mode
-- **Logging settings tab** (`src/server/ui.ts`) — new Settings → Logging pane with controls for log
-  level, file enable/path/rotation, OTLP endpoint, Grafana Cloud, and Langfuse credentials; saves
-  via `PUT /api/config` and applies the new level **live** without restart
-- **Live log-level apply on config save** (`src/server/router.ts`) — `PUT /api/config` now calls
-  `configureLogger` immediately when the payload contains a `logging` block
-- **Langfuse tracing in agent loop** (`src/agent/loop.ts`) — `traceCreate` per turn,
-  `generationCreate` per LLM round (with token usage), `spanCreate`/`spanUpdate` per tool call; all
-  gated on `isConfigured()` so there is zero overhead when Langfuse is not configured
-- **Startup log marker** (`src/server/server.ts`) — emits a `warn`-level entry on every server start
-  confirming the active log level and file path
-- **Observability documentation** (`docs/observability.md`) — covers log levels, config reference,
-  CLI usage, namespace list, Prometheus/Grafana, OTLP, and Langfuse integration
-- **Marketplace installed-status detection** (`src/server/ui.ts`) — marketplace plugin/agent cards
-  now check local install state via `/api/plugins` and `/api/agents`; installed items show a green
-  "installed" badge (plugins also distinguish "disabled") and replace the Install/Import button with
-  a grayed-out "Installed" indicator
-- **Marketplace card redesign** (`src/server/ui.ts`) — new `.card-mp` CSS class with colour-derived
-  icon square, hover shadow + lift (`translateY`), version as a blue badge, monospace slugs, license
-  display, and proper singular/plural download counts
-- **Dynamic per-model pricing** (`src/config/config.ts`) — `ProviderConfig` now supports an optional
-  `pricing` field (`{ "model": { in: 2.5, out: 10.0 } }`) that lets users override built-in
-  hardcoded pricing or add prices for models not in the defaults. Pricing is merged per-provider so
-  config values take precedence over compile-time constants. Displayed in `cortex models show` when
-  set.
+- **Reasoning inspection panel** (`src/server/ui.ts`) — new `[🔬 Reasoning]` toggle button appears
+  during agent operations when tools are used; clicking reveals a collapsible panel showing raw
+  tool calls, execution results, and agent decision-making; panel auto-hides when response completes
+  for a clean default UX
+- **Real-time incremental streaming** (`src/agent/loop.ts`) — chunks now emit to client as they
+  arrive during buffered streaming mode, eliminating delays from full-response buffering; maintains
+  ability to parse tool calls while providing live UI updates for multi-round tool execution flows
 
 ### Fixed
 
-- **`cortex restart` killing shell wrapper instead of server process** (`src/cli/start.ts`) —
-  switched to `fuser -k <port>/tcp` so the actual Deno process holding the socket is killed,
-  preventing the new server from failing with `AddrInUse` and serving stale (uncached) code
-- **File transport not writing at verbose levels** (`src/utils/logger.ts`) — file rank was hardcoded
-  to `warn` floor regardless of configured level; now uses `Math.min(globalRank, FLOOR)` so setting
-  level to `debug` or `info` flows fully to the log file
-- **Marketplace plugins all showing version `1.0.0`** (`src/server/router.ts`,
-  `src/plugins/update.ts`) — the marketplace API proxy now enriches plugin versions from GitHub
-  Releases/Tags API using the existing `checkGitHubRelease` logic (exported from `update.ts`);
-  results are cached in memory for 1 hour to avoid rate-limit churn
+- **Tool call JSON leaking into responses** (`src/server/ws.ts`) — replaced fragile regex pattern
+  with robust brace-depth walker algorithm that properly handles nested JSON, escaped characters,
+  and string boundaries; correctly strips `{"tool":...,"args":{...}}` patterns of arbitrary depth
+- **Missing output after tool execution** (`src/agent/loop.ts`) — multi-turn tool execution (search
+  → synthesis) now shows final response in real-time without requiring page refresh; incremental
+  streaming sends chunks immediately instead of waiting for full buffering
+- **Tool call JSON persisted to database** (`src/agent/loop.ts`) — responses are now stripped of
+  tool calls before storage in session history, ensuring clean session records and past conversations
+  remain readable and professional
+
+### Changed
+
+- **Tool call handling strategy** (`src/server/ws.ts`, `src/agent/loop.ts`) — captured all raw
+  reasoning separately from cleaned output; reasoning sent to client as optional 'reasoning' message
+  type; WebSocket handler double-checks stripping with brace-depth walker for defensive consistency
 
 ---
 
