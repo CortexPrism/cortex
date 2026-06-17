@@ -342,6 +342,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     }
   }
 
+  function stripToolCallMarkup(text: string): string {
+    let out = text;
+    out = out.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+    out = out.replace(/\{\s*"(tool|name)"\s*:[\s\S]*?\}/g, '');
+    out = out.replace(/```[\s\S]*?```/g, (block) => {
+      return /\{\s*"(tool|name)"\s*:/.test(block) ? '' : block;
+    });
+    return out.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   const collectedToolCalls: Array<
     { tool: string; params: Record<string, unknown>; result: string }
   > = [];
@@ -358,6 +368,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   try {
     let round = 0;
     let currentMessages = messages;
+    console.log(`[loop] turn=${turnId} tools=${registry ? 'yes' : 'no'} stream=${stream}`);
 
     while (round < MAX_TOOL_ROUNDS) {
       let roundResponse = '';
@@ -381,7 +392,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         };
       }
 
-      if (stream && onChunk && round === 0) {
+      // When tools are registered we always stream internally and buffer the full
+      // response before forwarding anything to the client.  This prevents
+      // complete() from hanging on slow providers and lets us inspect the response
+      // for tool calls before any output reaches the user.
+      // When no tools are registered we can stream directly to the client.
+      const hasTools = !!(registry && toolCtx);
+      const useDirectStream = stream && onChunk && !hasTools;
+      console.log(`[loop] round=${round} hasTools=${hasTools} useDirectStream=${useDirectStream}`);
+
+      if (useDirectStream) {
         for await (
           const chunk of effectiveProvider.stream({
             messages: currentMessages,
@@ -400,19 +420,35 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           }
         }
       } else {
-        const r = await effectiveProvider.complete({
-          messages: currentMessages,
-          model: effectiveModel,
-          systemPrompt: nodeAwareSystemPrompt,
-          reasoningEffort: options.reasoningEffort,
-        });
-        roundResponse = r.content;
-        tokensIn += r.tokensIn;
-        tokensOut += r.tokensOut;
-        costUsd += r.costUsd;
+        // Buffer via streaming — avoids complete() hanging on slow/large contexts.
+        // A 90-second AbortSignal prevents indefinite stalls on slow providers.
+        const abortCtrl = new AbortController();
+        const abortTimer = setTimeout(() => abortCtrl.abort(), 90_000);
+        try {
+          for await (
+            const chunk of effectiveProvider.stream({
+              messages: currentMessages,
+              model: effectiveModel,
+              systemPrompt: nodeAwareSystemPrompt,
+              reasoningEffort: options.reasoningEffort,
+              signal: abortCtrl.signal,
+            })
+          ) {
+            if (!chunk.done) {
+              roundResponse += chunk.delta;
+            } else {
+              tokensIn += chunk.tokensIn ?? 0;
+              tokensOut += chunk.tokensOut ?? 0;
+              costUsd += chunk.costUsd ?? 0;
+            }
+          }
+        } finally {
+          clearTimeout(abortTimer);
+        }
       }
 
       response = roundResponse;
+      console.log(`[loop] round=${round} responseLen=${roundResponse.length} preview=${JSON.stringify(roundResponse.slice(0, 120))}`);
 
       const postReasonCtx = createPipelineContext({
         stage: 'post-reason',
@@ -439,10 +475,20 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       if (!registry || !toolCtx) break;
 
       const toolCalls = parseToolCalls(roundResponse);
-      if (toolCalls.length === 0) break;
+      console.log(`[loop] round=${round} toolCallsFound=${toolCalls.length} names=${toolCalls.map((t) => t.toolName).join(',')}`);
+      if (toolCalls.length === 0) {
+        // No tool calls — this is the final clean response.  If we buffered
+        // (didn't stream above), emit it now so the user sees something.
+        console.log(`[loop] round=${round} final clean response — emitting via onChunk=${!!onChunk} useDirectStream=${useDirectStream}`);
+        if (!useDirectStream && onChunk) onChunk(roundResponse);
+        break;
+      }
 
-      if (round > 0 || !(stream && onChunk)) {
-        if (onChunk) onChunk(roundResponse);
+      // Has tool calls — emit the prose portion only (strip raw JSON/XML).
+      if (onChunk) {
+        const proseOnly = stripToolCallMarkup(roundResponse);
+        console.log(`[loop] round=${round} emitting prose (len=${proseOnly.length}) stripped from tool-call response`);
+        if (proseOnly.trim()) onChunk(proseOnly);
       }
 
       const toolResults = [];
@@ -471,7 +517,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           continue;
         }
 
+        console.log(`[loop] executing tool=${tc.toolName} args=${JSON.stringify(tc.args).slice(0, 120)}`);
         const result = await executeTool(tc, registry, toolCtx);
+        console.log(`[loop] tool=${tc.toolName} success=${result.success} outputLen=${result.output.length} error=${result.error ?? ''}`);
         state.toolCallsMade++;
 
         const postToolCtx = createPipelineContext({
@@ -498,16 +546,24 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }
 
       const resultText = formatToolResults(toolResults);
-      if (onChunk) onChunk(`\n\n${resultText}\n`);
+      // Tool results are internal context fed back to the LLM — never send raw
+      // XML to the client UI.
+
+      const roundsLeft = MAX_TOOL_ROUNDS - round - 1;
+      const followUpInstruction = roundsLeft <= 1
+        ? `${resultText}\n\nYou have used ${round + 1} tool rounds. You MUST now provide your final response to the user directly. Do NOT call any more tools.`
+        : `${resultText}\n\nBased on the tool output above, provide your complete response to the user. Only call another tool if the current output is genuinely insufficient — prefer summarising what you have.`;
 
       currentMessages = [
         ...currentMessages,
         { role: 'assistant' as const, content: roundResponse },
-        { role: 'user' as const, content: `${resultText}\n\nBased on the tool output above, provide your complete response to the user. Do NOT make additional tool calls unless absolutely necessary.` },
+        { role: 'user' as const, content: followUpInstruction },
       ];
 
+      console.log(`[loop] round=${round} done — advancing to round ${round + 1}`);
       round++;
     }
+    console.log(`[loop] exited while loop at round=${round} responseLen=${response.length}`);
   } catch (err) {
     errorMsg = (err as Error).message;
     throw err;

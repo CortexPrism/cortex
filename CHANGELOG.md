@@ -9,7 +9,39 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
-<!-- Changes staged for the next release go here. -->
+### Added
+
+- **Server log file** (`src/cli/serve.ts`, `src/config/paths.ts`) — background server process now
+  redirects all stdout/stderr to `~/.cortex/data/server.log` (appending across restarts) via a shell
+  redirect, replacing the previous silent `/dev/null` discard; `PATHS.serverLog` exposes the
+  canonical path
+- **Agent loop debug tracing** (`src/agent/loop.ts`) — `[loop]` prefixed `console.log` statements
+  on every tool round: turn ID, tool presence, stream mode, response length/preview, detected tool
+  call names, per-tool execution results (success, output length, error), prose emission length, and
+  final response emission path
+
+### Fixed
+
+- **Tool call JSON leaked to chat UI** (`src/agent/loop.ts`) — round 0 previously streamed the raw
+  LLM response (including `{"tool":"...","args":{...}}` JSON or `<tool_call>` XML) directly to
+  `onChunk` before tool call detection ran; all rounds now use a buffered internal `stream()` call
+  when tools are registered, and only clean prose is forwarded to the client
+- **`<tool_result>` XML leaked to chat UI** (`src/agent/loop.ts`, `src/server/ws.ts`) — raw
+  `<tool_result ...>` XML blocks were forwarded via `onChunk` after each tool execution; the
+  `onChunk` call for tool results is removed, and the `ws.ts` `onChunk` handler now strips
+  `<tool_call>`, `<tool_result>`, and bare JSON tool objects as a client-side safety net
+- **Duplicate tool call execution** (`src/tools/executor.ts`) — `parseToolCalls` ran both the
+  `<tool_call>` XML regex and `extractBareToolCalls` on the same text, causing every
+  `<tool_call>{"tool":...}</tool_call>` to be parsed and executed twice; fixed by stripping XML
+  regions from the text before the bare JSON scan
+- **LLM hang on tool follow-up rounds** (`src/agent/loop.ts`, `src/llm/openai-compatible.ts`,
+  `src/llm/types.ts`) — tool follow-up rounds used `complete()` which stalled indefinitely on slow
+  providers (DeepSeek) when given large contexts; all tool rounds now use buffered `stream()` with a
+  90-second `AbortSignal` timeout; `signal?: AbortSignal` added to `CompletionOptions` and wired
+  through `OpenAICompatibleProvider.stream()` and `complete()`
+- **Model looping on tools without producing a final answer** (`src/agent/loop.ts`) — follow-up
+  prompt after tool results now escalates per round: when ≤1 rounds remain the model receives a
+  hard instruction to stop calling tools and deliver its final response immediately
 
 ---
 

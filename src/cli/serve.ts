@@ -4,6 +4,7 @@ import { fromFileUrl, join } from '@std/path';
 import { findDenoProcesses, isCompiledBinary, isWindows, killProcessById } from '../utils/platform.ts';
 import { startServer } from '../server/server.ts';
 import { installServerService, uninstallServerService } from './service-helper.ts';
+import { PATHS } from '../config/paths.ts';
 
 export async function findServerProcess(
   port: number,
@@ -72,36 +73,40 @@ async function waitForServer(host: string, port: number, timeoutMs: number): Pro
 }
 
 export async function startServerBackground(port: number, host: string): Promise<boolean> {
+  await Deno.mkdir(PATHS.dataDir, { recursive: true });
+  const logPath = PATHS.serverLog;
+  const execPath = Deno.execPath();
+
   if (isCompiledBinary()) {
-    const cmd = new Deno.Command(Deno.execPath(), {
-      args: ['serve', '--port', String(port), '--host', host],
-      stdout: 'piped',
-      stderr: 'piped',
+    const shellCmd = `${execPath} serve --port ${port} --host ${host} >> ${logPath} 2>&1`;
+    new Deno.Command('sh', {
+      args: ['-c', shellCmd],
+      stdout: 'null',
+      stderr: 'null',
       stdin: 'null',
-    });
-    cmd.spawn();
+    }).spawn();
   } else {
     const projectRoot = fromFileUrl(new URL('../../', import.meta.url));
     const configPath = join(projectRoot, 'deno.json');
     const mainPath = join(projectRoot, 'src', 'main.ts');
-    const cmd = new Deno.Command(Deno.execPath(), {
-      args: [
-        'run',
-        '--allow-all',
-        `--config=${configPath}`,
-        mainPath,
-        'serve',
-        '--port',
-        String(port),
-        '--host',
-        host,
-      ],
+    const shellCmd = [
+      execPath,
+      'run',
+      '--allow-all',
+      `--config=${configPath}`,
+      mainPath,
+      'serve',
+      `--port ${port}`,
+      `--host ${host}`,
+      `>> ${logPath} 2>&1`,
+    ].join(' ');
+    new Deno.Command('sh', {
+      args: ['-c', shellCmd],
       cwd: projectRoot,
-      stdout: 'piped',
-      stderr: 'piped',
+      stdout: 'null',
+      stderr: 'null',
       stdin: 'null',
-    });
-    cmd.spawn();
+    }).spawn();
   }
 
   const alive = await waitForServer(host, port, 5000);

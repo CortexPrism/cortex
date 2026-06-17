@@ -78,7 +78,9 @@ export function parseToolCalls(text: string): ToolCallRequest[] {
     if (call) calls.push(call);
   }
 
-  calls.push(...extractBareToolCalls(text));
+  // Strip <tool_call> regions before bare-JSON scan to avoid double-counting
+  const strippedText = text.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+  calls.push(...extractBareToolCalls(strippedText));
 
   return calls;
 }

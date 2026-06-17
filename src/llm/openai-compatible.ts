@@ -60,7 +60,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
     }
 
-    const response = await this.client.chat.completions.create(params);
+    const response = await this.client.chat.completions.create(params, { signal: options.signal });
 
     const content = response.choices[0]?.message?.content ?? '';
     const tokensIn = response.usage?.prompt_tokens ?? 0;
@@ -92,7 +92,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
     }
 
-    const stream = await this.client.chat.completions.create(params);
+    const stream = await this.client.chat.completions.create(params, { signal: options.signal });
 
     let tokensIn = 0;
     let tokensOut = 0;
