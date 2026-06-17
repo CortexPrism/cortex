@@ -74,7 +74,7 @@ API keys and other credentials are stored in an encrypted SQLite database (`vaul
 
 No credentials are written to `config.json` in plain text once they have been vaulted.
 
-### Cortex Lens (Audit Log)
+### Activity (Audit Log)
 
 All activity is written to an append-only audit log in `lens.db`:
 

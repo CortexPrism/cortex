@@ -40,8 +40,8 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 - **24 LLM providers** — Anthropic Claude, OpenAI GPT, Google Gemini, Mistral, Groq, DeepSeek,
   OpenRouter, xAI Grok, Together AI, AWS Bedrock, Cohere, Ollama (local models), Cerebras,
-  Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI, LM Studio, LiteLLM,
-  Hugging Face, Alibaba (Qwen), Venice AI, Kilo AI
+  Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI, LM Studio, LiteLLM, Hugging Face,
+  Alibaba (Qwen), Venice AI, Kilo AI
 - **Multimodal input** — upload images and documents; native vision support for Anthropic and Google
   Gemini; PDF text auto-extracted for all providers
 - **Model Quartermaster (MQM)** — intelligent model selection that learns which model performs best
@@ -72,26 +72,26 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ### Built-in Tools
 
-| Category       | Tools                                                                                           |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo             |
-| Shell          | execute shell commands (sandboxed through policy validator)                                     |
-| Web            | web_search (DuckDuckGo, Brave, Tavily, SerpAPI), web_fetch (returns cleaned plain text)         |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                             |
-| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                                    |
-| Git workspace  | status, commit, push, pull, branch, clone                                                       |
-| Voice          | speak, listen (STT/TTS agent tools)                                                             |
-| Memory         | memory_note — persist notes to episodic memory                                                  |
-| Sub-agents     | spawn typed child agents for parallel and delegated tasks                                       |
-| Skills         | load_skill, skill_read, skill_write                                                             |
-| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                         |
-| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                                      |
+| Category       | Tools                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------- |
+| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo     |
+| Shell          | execute shell commands (sandboxed through policy validator)                             |
+| Web            | web_search (DuckDuckGo, Brave, Tavily, SerpAPI), web_fetch (returns cleaned plain text) |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                     |
+| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                            |
+| Git workspace  | status, commit, push, pull, branch, clone                                               |
+| Voice          | speak, listen (STT/TTS agent tools)                                                     |
+| Memory         | memory_note — persist notes to episodic memory                                          |
+| Sub-agents     | spawn typed child agents for parallel and delegated tasks                               |
+| Skills         | load_skill, skill_read, skill_write                                                     |
+| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                 |
+| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                              |
 
 ### Web UI & REST API
 
 - **Built-in HTTP server** — `cortex serve` starts a WebSocket-powered chat UI on port 3000
-- **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Cortex Lens, Memory, Jobs,
-  Sessions, Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, Logs
+- **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Activity, Memory, Jobs, Sessions,
+  Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, Activity
 - **File upload** — drag-and-drop or click to attach PDFs, images, and documents in chat
 - **REST API** — full HTTP API for sessions, memory, jobs, git, GitHub, and code execution
 - **Session persistence** — page refresh resumes the active session (full history preserved)
@@ -102,7 +102,8 @@ full-featured web UI, and enterprise-grade security — all running locally on y
   execution
 - **AES-256-GCM vault** — encrypted credential storage with PBKDF2 key derivation
 - **Default deny rules** — ships with protection against `rm -rf /`, fork bombs, direct disk writes
-- **Cortex Lens** — full audit log of all sessions, tool calls, LLM calls, and policy decisions
+- **Activity** — full audit log of all sessions, tool calls, LLM calls, and policy decisions with
+  cost tracking
 - **No telemetry** — all data stays on your machine
 
 ### Ops & Extensibility
@@ -480,14 +481,14 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 ### Environment Variables
 
-| Variable             | Purpose                                                      |
-| -------------------- | ------------------------------------------------------------ |
-| `CORTEX_DATA_DIR`    | Override data directory (default: `~/.cortex/data/`)         |
-| `CORTEX_CONFIG_DIR`  | Override config directory (default: `~/.cortex/`)            |
-| `CORTEX_VAULT_KEY`   | Vault decryption passphrase (required to use `cortex vault`) |
-| `CORTEX_LOG_LEVEL`   | Override log level (trace, debug, info, warn, error, silent) |
-| `GITHUB_TOKEN`       | GitHub personal access token for the `github` command        |
-| `OPENAI_API_KEY`     | OpenAI API key (alternative to config file)                  |
+| Variable            | Purpose                                                      |
+| ------------------- | ------------------------------------------------------------ |
+| `CORTEX_DATA_DIR`   | Override data directory (default: `~/.cortex/data/`)         |
+| `CORTEX_CONFIG_DIR` | Override config directory (default: `~/.cortex/`)            |
+| `CORTEX_VAULT_KEY`  | Vault decryption passphrase (required to use `cortex vault`) |
+| `CORTEX_LOG_LEVEL`  | Override log level (trace, debug, info, warn, error, silent) |
+| `GITHUB_TOKEN`      | GitHub personal access token for the `github` command        |
+| `OPENAI_API_KEY`    | OpenAI API key (alternative to config file)                  |
 
 ---
 
@@ -502,7 +503,7 @@ Start with `cortex serve` and open `http://127.0.0.1:3000`.
 | **Git**         | Visual git workspace — status, stage, commit, push, pull           |
 | **GitHub**      | PR management, issue tracking, repository browser                  |
 | **Code Runner** | Sandboxed code execution with language selection and live output   |
-| **Lens**        | Cortex Lens — full activity audit timeline                         |
+| **Activity**    | Full activity audit timeline with cost tracking and auto-refresh   |
 | **Memory**      | Search episodic and semantic memory                                |
 | **Jobs**        | View and manage scheduled jobs                                     |
 | **Sessions**    | Browse and resume past chat sessions                               |
@@ -593,8 +594,8 @@ Agent → Tool Intent → Policy Validator → Executor
    and network request. Managed with `cortex policy`.
 2. **AES-256-GCM vault** — all credentials stored encrypted; never written to config in plain text
    once vaulted.
-3. **Cortex Lens** — append-only audit log in `lens.db`; every tool call, LLM call, and policy
-   decision is recorded with timestamp and session context.
+3. **Activity** — append-only audit log in `lens.db`; every tool call, LLM call, and policy decision
+   is recorded with timestamp, cost, and session context.
 4. **Sandbox isolation** — code execution runs in ephemeral Docker containers with resource limits
    (CPU, memory, network disabled by default); subprocess fallback for systems without Docker.
 
@@ -642,7 +643,7 @@ CLI / Web UI / REST API
 | ------------ | ----------------------------------------- |
 | `cortex.db`  | Sessions, jobs, policies, services, nodes |
 | `memory.db`  | Episodic, semantic, and reflection memory |
-| `lens.db`    | Cortex Lens audit log                     |
+| `lens.db`    | Activity audit log                        |
 | `vault.db`   | Encrypted credential vault                |
 | `plugins.db` | Plugin registry                           |
 

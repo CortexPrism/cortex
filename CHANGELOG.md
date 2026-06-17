@@ -9,6 +9,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Changed
+
+- **Merged Logs into Activity page** — the separate "Logs" page has been consolidated into the
+  "Activity" page. Activity now includes all Logs controls: level filter (Errors only / Warnings+),
+  line limit selector (50/100/200/500), auto-refresh toggle, and inline error messages. Cost and
+  duration are now shown for every event. The dedicated `/api/logs` endpoint has been removed;
+  `GET /api/lens/recent` now accepts `level`, `type`, and `limit` params for server-side filtering.
+
 ### Added
 
 - **Structured logging system** (`src/utils/logger.ts`) — `LoggerRegistry` singleton with

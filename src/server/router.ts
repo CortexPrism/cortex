@@ -54,7 +54,12 @@ import { installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts
 import { pluginManager } from '../plugins/manager.ts';
 import type { PluginManifest } from '../plugins/types.ts';
 import { extractSettingsSchema } from '../plugins/extensions/config.ts';
-import { applyPluginUpdate, checkAllUpdates, checkGitHubRelease, extractGitHubOwnerRepo } from '../plugins/update.ts';
+import {
+  applyPluginUpdate,
+  checkAllUpdates,
+  checkGitHubRelease,
+  extractGitHubOwnerRepo,
+} from '../plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
@@ -410,14 +415,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
-  // GET /api/lens/recent?limit=50
+  // GET /api/lens/recent?limit=100&level=&type=
   if (req.method === 'GET' && path === '/api/lens/recent') {
-    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const limit = Number(url.searchParams.get('limit') ?? 100);
+    const level = url.searchParams.get('level') ?? '';
+    const type = url.searchParams.get('type') ?? '';
     const db = await getLensDb();
-    const events = await db.all(
-      `SELECT * FROM lens_events ORDER BY started_at DESC LIMIT ?`,
-      [limit],
-    );
+    let query = `SELECT * FROM lens_events`;
+    const clauses: string[] = [];
+    const params: string[] = [];
+    if (level === 'error') {
+      clauses.push(`event_type IN ('error','tool_error','tool_rejected','intent_rejected')`);
+    } else if (level === 'warning') {
+      clauses.push(`event_type IN ('warning','error','tool_error')`);
+    }
+    if (type) {
+      clauses.push(`event_type = ?`);
+      params.push(type);
+    }
+    if (clauses.length) {
+      query += ` WHERE ` + clauses.join(' AND ');
+    }
+    query += ` ORDER BY started_at DESC LIMIT ?`;
+    params.push(String(limit));
+    const events = await db.all(query, params);
     return json(events);
   }
 
@@ -1416,26 +1437,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'DELETE' && svcGetMatch) {
     await deleteService(svcGetMatch[1]);
     return json({ ok: true });
-  }
-
-  // ── Logs ─────────────────────────────────────────────────
-
-  // GET /api/logs?lines=100&level=
-  if (req.method === 'GET' && path === '/api/logs') {
-    const lines = Number(url.searchParams.get('lines') ?? 100);
-    const level = url.searchParams.get('level') ?? '';
-    const db = await getLensDb();
-    let query = `SELECT started_at, event_type, actor, action, summary, error FROM lens_events`;
-    const params: string[] = [];
-    if (level === 'error') {
-      query += ` WHERE event_type IN ('error','tool_error','tool_rejected','intent_rejected')`;
-    } else if (level === 'warning') {
-      query += ` WHERE event_type IN ('warning','error','tool_error')`;
-    }
-    query += ` ORDER BY started_at DESC LIMIT ?`;
-    params.push(String(lines));
-    const rows = await db.all(query, params);
-    return json(rows);
   }
 
   // ── Workspace API ────────────────────────────────────────

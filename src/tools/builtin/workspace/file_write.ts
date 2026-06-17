@@ -24,7 +24,8 @@ export const fileWriteTool: Tool = {
       {
         name: 'workspace',
         type: 'string',
-        description: 'Target workspace: "agent" (default), "global", or "config" (for SOUL.md, USER.md, MEMORY.md)',
+        description:
+          'Target workspace: "agent" (default), "global", or "config" (for SOUL.md, USER.md, MEMORY.md)',
         required: false,
         enum: ['agent', 'global', 'config'],
       },
