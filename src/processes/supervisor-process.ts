@@ -4,8 +4,9 @@ import {
   SCHEDULER_SOCK,
   VALIDATOR_SOCK,
 } from '../ipc/transport.ts';
-import { fromFileUrl } from '@std/path';
+import { fromFileUrl, join } from '@std/path';
 import { isWindows } from '../utils/platform.ts';
+import { PATHS } from '../config/paths.ts';
 
 interface ProcDef {
   name: string;
@@ -33,6 +34,9 @@ function getMainEntryPath(): string {
 
 async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
   await ensureSocketDir();
+  await Deno.mkdir(PATHS.logDir, { recursive: true });
+  const logPath = join(PATHS.logDir, `daemon-${proc.name}.log`);
+
   const execPath = Deno.execPath();
   const args: string[] = isCompiledBinary()
     ? ['--subprocess', proc.name]
@@ -41,11 +45,25 @@ async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
   const cmd = new Deno.Command(execPath, {
     args,
     stdout: 'null',
-    stderr: 'null',
+    stderr: 'piped',
     stdin: 'null',
   });
   const child = cmd.spawn();
   parentsToKill.add(child.pid);
+
+  (async () => {
+    try {
+      const file = await Deno.open(logPath, { write: true, create: true, append: true });
+      try {
+        for await (const chunk of child.stderr) {
+          await file.write(chunk);
+        }
+      } finally {
+        file.close();
+      }
+    } catch { /* best-effort logging */ }
+  })();
+
   return child;
 }
 

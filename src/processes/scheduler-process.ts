@@ -84,10 +84,11 @@ async function startIpc(): Promise<void> {
 
 export async function runScheduler(): Promise<void> {
   console.log('[scheduler] Starting Cortex Scheduler daemon...');
-  await runMigrations();
-  console.log('[scheduler] Ready. Poll interval:', POLL_INTERVAL_MS / 1000, 's');
 
   startIpc().catch(() => {});
+
+  await runMigrations();
+  console.log('[scheduler] Ready. Poll interval:', POLL_INTERVAL_MS / 1000, 's');
 
   await runDueJobs();
 
