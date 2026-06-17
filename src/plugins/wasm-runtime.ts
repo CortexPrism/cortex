@@ -12,7 +12,12 @@ function decodeWasmString(memory: WebAssembly.Memory, ptr: number, len: number):
   }
 }
 
-function encodeWasmString(memory: WebAssembly.Memory, str: string, outPtr: number, outLenPtr: number): void {
+function encodeWasmString(
+  memory: WebAssembly.Memory,
+  str: string,
+  outPtr: number,
+  outLenPtr: number,
+): void {
   const encoded = new TextEncoder().encode(str);
   const maxLen = new Uint32Array(memory.buffer, outLenPtr, 1)[0] || 65536;
   const copyLen = Math.min(encoded.length, maxLen);
@@ -85,10 +90,15 @@ export async function loadWasmPlugin(row: PluginRow): Promise<LoadedPlugin> {
       console.log(`[wasm:${row.name}] ${msg}`);
     },
     http_request(
-      methodPtr, methodLen,
-      urlPtr, urlLen,
-      bodyPtr, bodyLen,
-      outStatusPtr, outBodyPtr, outBodyLenPtr,
+      methodPtr,
+      methodLen,
+      urlPtr,
+      urlLen,
+      bodyPtr,
+      bodyLen,
+      outStatusPtr,
+      outBodyPtr,
+      outBodyLenPtr,
     ) {
       try {
         const method = decodeWasmString(memory, methodPtr, methodLen);
@@ -185,7 +195,13 @@ export async function loadWasmPlugin(row: PluginRow): Promise<LoadedPlugin> {
                 const t0 = Date.now();
                 try {
                   if (!exports.plugin_execute_tool || !exports.memory) {
-                    return { toolName: t.name, success: false, output: '', error: 'WASM plugin has no execute_tool export', durationMs: Date.now() - t0 };
+                    return {
+                      toolName: t.name,
+                      success: false,
+                      output: '',
+                      error: 'WASM plugin has no execute_tool export',
+                      durationMs: Date.now() - t0,
+                    };
                   }
                   const mem = exports.memory;
                   const toolNameEncoded = new TextEncoder().encode(t.name);
@@ -199,7 +215,11 @@ export async function loadWasmPlugin(row: PluginRow): Promise<LoadedPlugin> {
                   const outPtr = argsLenPtr + 4;
                   const outLenPtr = outPtr + 65536;
 
-                  const destToolName = new Uint8Array(mem.buffer, toolNamePtr, toolNameEncoded.length);
+                  const destToolName = new Uint8Array(
+                    mem.buffer,
+                    toolNamePtr,
+                    toolNameEncoded.length,
+                  );
                   destToolName.set(toolNameEncoded);
                   new Uint32Array(mem.buffer, toolNameLenPtr, 1)[0] = toolNameEncoded.length;
 
@@ -208,21 +228,43 @@ export async function loadWasmPlugin(row: PluginRow): Promise<LoadedPlugin> {
                   new Uint32Array(mem.buffer, argsLenPtr, 1)[0] = argsEncoded.length;
 
                   const result = exports.plugin_execute_tool(
-                    toolNamePtr, toolNameEncoded.length,
-                    argsPtr, argsEncoded.length,
-                    outPtr, outLenPtr,
+                    toolNamePtr,
+                    toolNameEncoded.length,
+                    argsPtr,
+                    argsEncoded.length,
+                    outPtr,
+                    outLenPtr,
                   );
 
                   const outLen = new Uint32Array(mem.buffer, outLenPtr, 1)[0];
-                  const outStr = new TextDecoder().decode(new Uint8Array(mem.buffer, outPtr, Math.min(outLen, 65536)));
+                  const outStr = new TextDecoder().decode(
+                    new Uint8Array(mem.buffer, outPtr, Math.min(outLen, 65536)),
+                  );
 
                   if (result === 0) {
-                    return { toolName: t.name, success: true, output: outStr, durationMs: Date.now() - t0 };
+                    return {
+                      toolName: t.name,
+                      success: true,
+                      output: outStr,
+                      durationMs: Date.now() - t0,
+                    };
                   } else {
-                    return { toolName: t.name, success: false, output: '', error: outStr || 'WASM tool execution failed', durationMs: Date.now() - t0 };
+                    return {
+                      toolName: t.name,
+                      success: false,
+                      output: '',
+                      error: outStr || 'WASM tool execution failed',
+                      durationMs: Date.now() - t0,
+                    };
                   }
                 } catch (e) {
-                  return { toolName: t.name, success: false, output: '', error: (e as Error).message, durationMs: Date.now() - t0 };
+                  return {
+                    toolName: t.name,
+                    success: false,
+                    output: '',
+                    error: (e as Error).message,
+                    durationMs: Date.now() - t0,
+                  };
                 }
               },
             });

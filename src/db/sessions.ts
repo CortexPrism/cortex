@@ -74,6 +74,19 @@ export async function archiveSession(id: string): Promise<void> {
   );
 }
 
+export async function updateSessionName(id: string, name: string): Promise<boolean> {
+  const db = await getCoreDb();
+  await db.run(
+    `UPDATE sessions SET name = ? WHERE id = ?`,
+    [name, id],
+  );
+  const session = await db.get<{ id: string }>(
+    `SELECT id FROM sessions WHERE id = ? AND name = ?`,
+    [id, name],
+  );
+  return !!session;
+}
+
 export async function incrementTurn(id: string): Promise<void> {
   const db = await getCoreDb();
   await db.run(

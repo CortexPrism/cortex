@@ -58,13 +58,11 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: options.model,
       messages,
-      ...(isReasoningModel
-        ? { max_completion_tokens: options.maxTokens }
-        : {
-          max_tokens: options.maxTokens,
-          temperature: options.temperature,
-          top_p: options.topP,
-        }),
+      ...(isReasoningModel ? { max_completion_tokens: options.maxTokens } : {
+        max_tokens: options.maxTokens,
+        temperature: options.temperature,
+        top_p: options.topP,
+      }),
       stream: false,
     };
 
@@ -117,13 +115,11 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages,
       stream: true,
       stream_options: { include_usage: true },
-      ...(isReasoningModel
-        ? { max_completion_tokens: options.maxTokens }
-        : {
-          temperature: options.temperature,
-          top_p: options.topP,
-          max_tokens: options.maxTokens,
-        }),
+      ...(isReasoningModel ? { max_completion_tokens: options.maxTokens } : {
+        temperature: options.temperature,
+        top_p: options.topP,
+        max_tokens: options.maxTokens,
+      }),
     };
 
     const extraS = params as unknown as Record<string, unknown>;

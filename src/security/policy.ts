@@ -11,6 +11,7 @@ export interface PolicyRule {
   pattern: string;
   reason: string | null;
   priority: number;
+  enabled: boolean;
   node_id: string | null;
   created_at: string;
 }
@@ -31,7 +32,7 @@ export async function checkPolicy(
   nodeId?: string,
 ): Promise<PolicyDecision> {
   const db = await getCoreDb();
-  let query = `SELECT * FROM policy_rules WHERE kind = ?`;
+  let query = `SELECT * FROM policy_rules WHERE kind = ? AND enabled = 1`;
   const params: InValue[] = [kind];
 
   // Filter: node-specific rules (applied to this node) OR global rules (node_id IS NULL)
@@ -96,6 +97,58 @@ export async function removePolicy(id: string): Promise<boolean> {
   const existing = await db.all(`SELECT id FROM policy_rules WHERE id = ? LIMIT 1`, [id]);
   if (!existing.length) return false;
   await db.run(`DELETE FROM policy_rules WHERE id = ?`, [id]);
+  return true;
+}
+
+export async function updatePolicy(id: string, opts: {
+  kind?: PolicyKind;
+  effect?: PolicyEffect;
+  pattern?: string;
+  reason?: string;
+  priority?: number;
+}): Promise<boolean> {
+  const db = await getCoreDb();
+  const existing = await db.get<{ id: string }>(
+    `SELECT id FROM policy_rules WHERE id = ?`,
+    [id],
+  );
+  if (!existing) return false;
+  const setClauses: string[] = [];
+  const params: InValue[] = [];
+  if (opts.kind !== undefined) {
+    setClauses.push('kind = ?');
+    params.push(opts.kind);
+  }
+  if (opts.effect !== undefined) {
+    setClauses.push('effect = ?');
+    params.push(opts.effect);
+  }
+  if (opts.pattern !== undefined) {
+    setClauses.push('pattern = ?');
+    params.push(opts.pattern);
+  }
+  if (opts.reason !== undefined) {
+    setClauses.push('reason = ?');
+    params.push(opts.reason);
+  }
+  if (opts.priority !== undefined) {
+    setClauses.push('priority = ?');
+    params.push(opts.priority);
+  }
+  if (setClauses.length === 0) return false;
+  params.push(id);
+  await db.run(`UPDATE policy_rules SET ${setClauses.join(', ')} WHERE id = ?`, params);
+  return true;
+}
+
+export async function setPolicyEnabled(id: string, enabled: boolean): Promise<boolean> {
+  const db = await getCoreDb();
+  const existing = await db.get<{ id: string }>(
+    `SELECT id FROM policy_rules WHERE id = ?`,
+    [id],
+  );
+  if (!existing) return false;
+  await db.run(`UPDATE policy_rules SET enabled = ? WHERE id = ?`, [enabled ? 1 : 0, id]);
   return true;
 }
 

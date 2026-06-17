@@ -69,12 +69,26 @@ export async function validateToolCall(
     }
   }
 
-  const WEB_TOOLS = new Set(['web_search', 'web_fetch', 'firecrawl', 'web_search_enhanced', 'web_fetch_enhanced', 'brave_search', 'tavily_search', 'serpapi_search']);
+  const WEB_TOOLS = new Set([
+    'web_search',
+    'web_fetch',
+    'firecrawl',
+    'web_search_enhanced',
+    'web_fetch_enhanced',
+    'brave_search',
+    'tavily_search',
+    'serpapi_search',
+  ]);
   if (WEB_TOOLS.has(toolName)) {
     let url = '';
-    if (toolName === 'web_search' || toolName === 'web_search_enhanced' || toolName === 'brave_search' || toolName === 'tavily_search' || toolName === 'serpapi_search') {
+    if (
+      toolName === 'web_search' || toolName === 'web_search_enhanced' ||
+      toolName === 'brave_search' || toolName === 'tavily_search' || toolName === 'serpapi_search'
+    ) {
       url = String(args.query ?? '');
-    } else if (toolName === 'web_fetch' || toolName === 'web_fetch_enhanced' || toolName === 'firecrawl') {
+    } else if (
+      toolName === 'web_fetch' || toolName === 'web_fetch_enhanced' || toolName === 'firecrawl'
+    ) {
       url = String(args.url ?? args.query ?? '');
     }
     const domainMatch = url.match(/https?:\/\/([^/\s]+)/);
@@ -225,10 +239,22 @@ export async function validateNodeDirective(
   }
 
   // Layer 2.5: Web domain policy checks for node directives
-  const WEB_TOOLS_NODE = new Set(['web_search', 'web_fetch', 'firecrawl', 'web_search_enhanced', 'web_fetch_enhanced', 'brave_search', 'tavily_search', 'serpapi_search']);
+  const WEB_TOOLS_NODE = new Set([
+    'web_search',
+    'web_fetch',
+    'firecrawl',
+    'web_search_enhanced',
+    'web_fetch_enhanced',
+    'brave_search',
+    'tavily_search',
+    'serpapi_search',
+  ]);
   if (WEB_TOOLS_NODE.has(toolName)) {
     let url = '';
-    if (toolName === 'web_search' || toolName === 'web_search_enhanced' || toolName === 'brave_search' || toolName === 'tavily_search' || toolName === 'serpapi_search') {
+    if (
+      toolName === 'web_search' || toolName === 'web_search_enhanced' ||
+      toolName === 'brave_search' || toolName === 'tavily_search' || toolName === 'serpapi_search'
+    ) {
       url = String(args.query ?? '');
     } else {
       url = String(args.url ?? args.query ?? '');

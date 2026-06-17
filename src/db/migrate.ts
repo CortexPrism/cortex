@@ -235,6 +235,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '021_workspace_type_config.sql',
       label: 'cortex.db (workspace_type config)',
     },
+    {
+      db: coreDb,
+      sqlFile: '022_policy_enabled.sql',
+      label: 'cortex.db (policy enabled)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
