@@ -11,6 +11,22 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Plugin update system** (`src/plugins/update.ts`) — checks for new plugin versions via GitHub
+  Releases API with automatic fallback to the Tags API for repos that tag commits directly without
+  creating a formal Release; semver tags (`vX.Y.Z` / `X.Y.Z`) are preferred
+- **`PluginUpdateConfig`** (`src/config/config.ts`) — new config block `pluginUpdate` with fields
+  `checkOnStartup`, `autoUpdate`, `checkIntervalHours`, and `githubToken`; deep-merged on load so
+  defaults are never lost when upgrading from an older config file
+- **Plugin update startup check & scheduler** (`src/cli/daemon.ts`) — on daemon start, checks all
+  installed plugins for updates; if `autoUpdate` is enabled applies them automatically; periodic
+  re-checks are scheduled via `schedulePluginUpdateChecks`
+- **`GET /api/plugins/check-updates`** (`src/server/router.ts`) — returns per-plugin version status
+  (current, latest, updateAvailable, error) using `pluginUpdate.githubToken` from config
+- **`POST /api/plugins/update-all`** (`src/server/router.ts`) — applies all available plugin updates
+  and returns per-plugin success/error detail
+- **Plugin Updates settings card** (`src/server/ui.ts`) — new card in the Updates settings pane with
+  interval, GitHub token (with PAT generation link), startup and auto-update checkboxes, and
+  **Save Plugin Settings**, **Check Now**, and **Update All** action buttons with inline results panel
 - **11 new LLM providers** — Cerebras, Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI,
   LM Studio, LiteLLM, Hugging Face Inference Router, Alibaba (Qwen), and Venice AI; each implemented
   as an `OpenAICompatibleProvider` subclass with verified base URLs and auth from official docs
@@ -71,6 +87,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed
 
+- **Plugin auto-update HTML parse crash** (`src/plugins/update.ts`) — `applyPluginUpdate` was
+  fetching the GitHub repo homepage URL as a JSON manifest, receiving HTML and crashing with
+  `Unexpected token '<'`; GitHub-sourced plugins now download the archive tarball at the resolved
+  tag (`refs/tags/vX.Y.Z.tar.gz`) instead
+- **Direct URL fallback skips GitHub URLs** (`src/plugins/update.ts`) — the manifest re-fetch
+  fallback in `checkUpdateForRow` now excludes `github.com` URLs, which are exclusively handled by
+  the Releases/Tags API path
+- **`githubToken` threaded through `applyPluginUpdate`** (`src/plugins/update.ts`, `src/cli/daemon.ts`,
+  `src/server/router.ts`) — token is now passed to the internal `checkUpdateForRow` call, preventing
+  unauthenticated GitHub API rate-limit failures that caused fallthrough to the HTML fetch path
+- **Route ordering for `/api/plugins/check-updates`** (`src/server/router.ts`) — moved specific
+  routes before the `GET /api/plugins/:name` catch-all which was intercepting them and returning 404
 - **Daily semantic decay was a no-op** (`src/memory/consolidate.ts`) — `runDailyConsolidation` queried
   the non-existent column `last_accessed_at`; corrected to `last_accessed` (the actual schema column),
   so decay scores are now updated on every daily cycle

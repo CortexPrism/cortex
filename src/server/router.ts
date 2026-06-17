@@ -53,6 +53,7 @@ import { installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts
 import { pluginManager } from '../plugins/manager.ts';
 import type { PluginManifest } from '../plugins/types.ts';
 import { extractSettingsSchema } from '../plugins/extensions/config.ts';
+import { applyPluginUpdate, checkAllUpdates } from '../plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
@@ -882,6 +883,33 @@ export async function handleApi(req: Request): Promise<Response | null> {
       .filter(Boolean)
       .flat();
     return json(panels);
+  }
+
+  // GET /api/plugins/check-updates
+  if (req.method === 'GET' && path === '/api/plugins/check-updates') {
+    const config = await loadConfig();
+    const githubToken = config.pluginUpdate?.githubToken ?? null;
+    const results = await checkAllUpdates(githubToken);
+    return json(results);
+  }
+
+  // POST /api/plugins/update-all
+  if (req.method === 'POST' && path === '/api/plugins/update-all') {
+    const config = await loadConfig();
+    const githubToken = config.pluginUpdate?.githubToken ?? null;
+    const checks = await checkAllUpdates(githubToken);
+    const available = checks.filter((r) => r.updateAvailable);
+    const results: { name: string; previousVersion: string; newVersion: string; error?: string }[] =
+      [];
+    for (const r of available) {
+      try {
+        const upd = await applyPluginUpdate(r.pluginName, githubToken);
+        results.push({ name: r.pluginName, previousVersion: upd.previousVersion, newVersion: upd.newVersion });
+      } catch (e) {
+        results.push({ name: r.pluginName, previousVersion: r.currentVersion, newVersion: r.currentVersion, error: (e as Error).message });
+      }
+    }
+    return json({ updated: results.length, results });
   }
 
   // GET /api/plugins/:name

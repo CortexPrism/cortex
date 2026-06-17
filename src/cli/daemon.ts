@@ -5,6 +5,8 @@ import { isCompiledBinary, killDenoProcesses } from '../utils/platform.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import { checkForUpdates } from '../update/mod.ts';
 import { loadConfig } from '../config/config.ts';
+import { applyPluginUpdate, checkAllUpdates } from '../plugins/update.ts';
+import { runMigrations } from '../db/migrate.ts';
 import {
   installDaemonService,
   installServerService,
@@ -52,6 +54,56 @@ async function autoCheck(): Promise<void> {
   } catch {
     // silently ignore check failures on startup
   }
+  await autoCheckPlugins();
+}
+
+async function autoCheckPlugins(): Promise<void> {
+  try {
+    const config = await loadConfig();
+    const pluginCfg = config.pluginUpdate ?? {
+      checkOnStartup: true,
+      autoUpdate: false,
+      checkIntervalHours: 24,
+      githubToken: null,
+    };
+    if (!pluginCfg.checkOnStartup) return;
+    await runMigrations();
+    const results = await checkAllUpdates(pluginCfg.githubToken);
+    const available = results.filter((r) => r.updateAvailable);
+    if (available.length === 0) return;
+    if (pluginCfg.autoUpdate) {
+      for (const r of available) {
+        try {
+          const upd = await applyPluginUpdate(r.pluginName, pluginCfg.githubToken);
+          console.error(
+            dim(`[plugins] Auto-updated ${r.pluginName}: ${upd.previousVersion} → ${upd.newVersion}`),
+          );
+        } catch (e) {
+          console.error(dim(`[plugins] Auto-update failed for ${r.pluginName}: ${(e as Error).message}`));
+        }
+      }
+    } else {
+      const names = available.map((r) => `${r.pluginName}@${r.latestVersion}`).join(', ');
+      console.error(dim(`[plugins] ${available.length} update(s) available: ${names}. Run \`cortex plugins update --all\` to apply.`));
+    }
+  } catch {
+    // silently ignore plugin check failures on startup
+  }
+}
+
+export function schedulePluginUpdateChecks(): void {
+  loadConfig().then((config) => {
+    const pluginCfg = config.pluginUpdate ?? {
+      checkOnStartup: true,
+      autoUpdate: false,
+      checkIntervalHours: 24,
+      githubToken: null,
+    };
+    const intervalMs = (pluginCfg.checkIntervalHours ?? 24) * 60 * 60 * 1000;
+    setInterval(() => {
+      autoCheckPlugins().catch(() => {});
+    }, intervalMs);
+  }).catch(() => {});
 }
 
 export async function ensureDaemons(): Promise<void> {

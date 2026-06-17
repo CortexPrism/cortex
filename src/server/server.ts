@@ -4,7 +4,7 @@ import { handleNodeWebSocket } from '../hub/ws-node.ts';
 import { serveUi } from './ui.ts';
 import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
 import { runMigrations } from '../db/migrate.ts';
-import { ensureDaemons } from '../cli/daemon.ts';
+import { ensureDaemons, schedulePluginUpdateChecks } from '../cli/daemon.ts';
 import { loadConfig } from '../config/config.ts';
 import { hasPassword, parseCookies, requireAuth } from './auth.ts';
 
@@ -34,6 +34,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   }
 
   ensureDaemons().catch(() => {});
+  schedulePluginUpdateChecks();
 
   const { port, host } = opts;
 

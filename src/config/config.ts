@@ -117,6 +117,13 @@ export interface UpdateConfig {
   gpgKeyPath: string | null;
 }
 
+export interface PluginUpdateConfig {
+  checkOnStartup: boolean;
+  autoUpdate: boolean;
+  checkIntervalHours: number;
+  githubToken: string | null;
+}
+
 export interface UserProfile {
   role?: string;
   primaryUseCase?: string;
@@ -177,6 +184,8 @@ export interface CortexConfig {
   /** Currently selected/default agent ID */
   defaultAgent: string;
   update: UpdateConfig;
+  /** Plugin update and auto-check settings */
+  pluginUpdate: PluginUpdateConfig;
   /** Plugin-scoped configuration keyed by plugin name */
   plugins?: Record<string, Record<string, unknown>>;
   /** User personalization data */
@@ -248,6 +257,12 @@ const DEFAULT_CONFIG: CortexConfig = {
     githubToken: null,
     gpgKeyPath: null,
   },
+  pluginUpdate: {
+    checkOnStartup: true,
+    autoUpdate: false,
+    checkIntervalHours: 24,
+    githubToken: null,
+  },
   plugins: {},
   ui: {
     enabled: true,
@@ -266,7 +281,13 @@ export async function loadConfig(): Promise<CortexConfig> {
 
   if (await exists(PATHS.configFile)) {
     const raw = await Deno.readTextFile(PATHS.configFile);
-    _config = { ...DEFAULT_CONFIG, ...JSON.parse(raw) } as CortexConfig;
+    const disk = JSON.parse(raw) as Partial<CortexConfig>;
+    _config = {
+      ...DEFAULT_CONFIG,
+      ...disk,
+      update: { ...DEFAULT_CONFIG.update, ...(disk.update ?? {}) },
+      pluginUpdate: { ...DEFAULT_CONFIG.pluginUpdate, ...(disk.pluginUpdate ?? {}) },
+    } as CortexConfig;
   } else {
     _config = { ...DEFAULT_CONFIG };
   }
