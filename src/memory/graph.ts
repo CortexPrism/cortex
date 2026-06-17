@@ -235,6 +235,16 @@ export async function searchEntities(query: string, limit = 10): Promise<GraphEn
   );
 }
 
+const ENTITY_STOP_WORDS = new Set([
+  'The', 'This', 'That', 'These', 'Those', 'There', 'Their', 'They', 'Them',
+  'With', 'From', 'Into', 'Upon', 'Also', 'Some', 'Such', 'Each', 'Both',
+  'More', 'Most', 'When', 'Then', 'Than', 'Have', 'Does', 'Will', 'Would',
+  'Could', 'Should', 'Here', 'Just', 'What', 'Which', 'While', 'Where',
+  'User', 'Assistant', 'Agent', 'Based', 'Note', 'Please', 'Return',
+  'True', 'False', 'None', 'Null', 'Error', 'Type', 'Value', 'Name',
+  'String', 'Number', 'Object', 'Array', 'Function', 'Class', 'Interface',
+]);
+
 export async function extractAndStoreEntities(text: string, sessionId?: string): Promise<void> {
   const patterns: Array<{ regex: RegExp; type: string }> = [
     { regex: /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g, type: 'concept' },
@@ -249,6 +259,7 @@ export async function extractAndStoreEntities(text: string, sessionId?: string):
     for (const match of matches) {
       const name = (match[1] ?? match[0]).trim();
       if (name.length >= 3 && name.length <= 80) {
+        if (type === 'concept' && ENTITY_STOP_WORDS.has(name.split(' ')[0])) continue;
         found.push({ name, type });
       }
     }

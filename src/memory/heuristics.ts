@@ -127,8 +127,8 @@ export async function boostImportanceFromAccess(): Promise<number> {
   const HEAVY_THRESHOLD = 10;
   const MODERATE_THRESHOLD = 5;
 
-  await db.run(
-    `UPDATE episodic_memory
+  const epResult = await db.client.execute({
+    sql: `UPDATE episodic_memory
      SET importance = CASE
        WHEN COALESCE(access_count, 0) >= ? THEN MIN(1.0, importance + 0.15)
        WHEN COALESCE(access_count, 0) >= ? THEN MIN(1.0, importance + 0.05)
@@ -136,11 +136,11 @@ export async function boostImportanceFromAccess(): Promise<number> {
      END,
          access_count = 0
      WHERE COALESCE(access_count, 0) >= ?`,
-    [HEAVY_THRESHOLD, MODERATE_THRESHOLD, MODERATE_THRESHOLD],
-  );
+    args: [HEAVY_THRESHOLD, MODERATE_THRESHOLD, MODERATE_THRESHOLD],
+  });
 
-  await db.run(
-    `UPDATE semantic_memory
+  const semResult = await db.client.execute({
+    sql: `UPDATE semantic_memory
      SET importance = CASE
        WHEN COALESCE(access_count, 0) >= ? THEN MIN(1.0, importance + 0.15)
        WHEN COALESCE(access_count, 0) >= ? THEN MIN(1.0, importance + 0.05)
@@ -148,30 +148,30 @@ export async function boostImportanceFromAccess(): Promise<number> {
      END,
          access_count = 0
      WHERE COALESCE(access_count, 0) >= ?`,
-    [HEAVY_THRESHOLD, MODERATE_THRESHOLD, MODERATE_THRESHOLD],
-  );
+    args: [HEAVY_THRESHOLD, MODERATE_THRESHOLD, MODERATE_THRESHOLD],
+  });
 
-  return 0;
+  return (epResult.rowsAffected ?? 0) + (semResult.rowsAffected ?? 0);
 }
 
 export async function slowDecayForFrequentAccess(): Promise<number> {
   const db = await getMemoryDb();
 
-  await db.run(
+  const epResult = await db.client.execute(
     `UPDATE episodic_memory
      SET half_life_days = MIN(90, COALESCE(half_life_days, 14.0) * 1.3)
      WHERE COALESCE(access_count, 0) >= 5
-       AND COALESCE(half_life_days, 14.0) <= 14.0`,
+       AND COALESCE(half_life_days, 14.0) < 90.0`,
   );
 
-  await db.run(
+  const semResult = await db.client.execute(
     `UPDATE semantic_memory
      SET half_life_days = MIN(180, COALESCE(half_life_days, 30.0) * 1.3)
      WHERE COALESCE(access_count, 0) >= 5
-       AND COALESCE(half_life_days, 30.0) <= 30.0`,
+       AND COALESCE(half_life_days, 30.0) < 180.0`,
   );
 
-  return 0;
+  return (epResult.rowsAffected ?? 0) + (semResult.rowsAffected ?? 0);
 }
 
 export async function strengthenCoOccurringEntities(): Promise<number> {
