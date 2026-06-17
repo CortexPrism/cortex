@@ -7,6 +7,41 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.35.2] — 2026-06-17
+
+### Fixed — High
+
+- **Persistent memory file formatting** — Fixed `appendToMemoryFile()` insertion point
+  calculation; `sectionBody.slice(lastBullet).indexOf('\\n')` always returned 0, causing
+  new entries to be inserted before the last bullet instead of after it.
+- **Chat auto-scroll** — `appendBubble()` and chunk handler now use `requestAnimationFrame`
+  for scroll-to-bottom to ensure DOM layout is complete before scrolling. `restoreSession()`
+  adds a delayed secondary scroll for mid-conversation resume.
+
+### Added — High
+
+- **Session titles** — Sessions now auto-generate a title from the first 60 characters of
+  the first user message. Added `updateSessionName()` in sessions DB layer, `PATCH
+  /api/sessions/:id` API endpoint, and title display in chat header, sidebar, and sessions
+  list.
+- **Session archiving** — Added archive and restore buttons to the sessions list. Archived
+  sessions are shown with reduced opacity. Archive API already existed (`POST
+  /api/sessions/:id/archive`); UI now exposes it.
+
+### Fixed — Medium
+
+- **Services/agents page loading** — Added `agents: loadAgents` and `services: loadServices`
+  to `showPage()` loaders so pages render on initial navigation instead of requiring a
+  manual refresh click.
+- **Skills tag filtering** — Replaced flat button pills with a `<select>` dropdown filter
+  for skill tags to declutter the toolbar when many tags are present.
+- **Policy management** — Added `enabled` column to `policy_rules` (migration 022),
+  enable/disable toggle checkboxes, inline editing of pattern and reason, and an add-policy
+  form in the Policies page. New API endpoints: `PATCH/DELETE /api/policies/:id`, `PUT
+  /api/policies/:id/toggle`, `POST /api/policies`.
+- **Discover tab filtering** — Marketplace Discover tab now hides plugins and agents that
+  are already installed, keeping the page clean and focused on new content.
+
 ## [0.35.1] — 2026-06-17
 
 ### Fixed — Critical
@@ -19,8 +54,9 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **o-series model support** — Added o1/o3 detection in both `openai.ts` and `openai-compatible.ts`;
   reasoning models now use `max_completion_tokens` instead of `max_tokens` and omit unsupported
   `temperature`/`top_p` parameters.
-- **Google Gemini generation config** — `temperature`, `topP`, and `maxOutputTokens` are now properly
-  passed to `generateContent()` and `generateContentStream()`, fixing silent parameter drops.
+- **Google Gemini generation config** — `temperature`, `topP`, and `maxOutputTokens` are now
+  properly passed to `generateContent()` and `generateContentStream()`, fixing silent parameter
+  drops.
 - **Tool registration** — `file_copy` and `file_move` tools are now registered in all three tool
   maps (chat CLI, WebSocket server, sub-agent entry), making them callable.
 - **File undo/redo** — Undo now uses `resolveWorkspacePath()` for path validation, supports restore
@@ -31,11 +67,11 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Enhanced tools registered** — `file_read_enhanced`, `web_search_enhanced`, and
   `web_fetch_enhanced` are now registered in the chat CLI and WebSocket server tool maps.
-- **Web domain policy validation** — Extended domain policy checks to cover `web_fetch`, `firecrawl`,
-  `brave_search`, `tavily_search`, `serpapi_search`, and all enhanced web tools. Node directive
-  validation also now includes web domain policy checks.
-- **FILE_TOOLS set** — Added `file_copy`, `file_move`, `file_undo`, `file_redo`, and `file_glob`
-  to the path-validation set in both `validateToolCall` and `validateNodeDirective`.
+- **Web domain policy validation** — Extended domain policy checks to cover `web_fetch`,
+  `firecrawl`, `brave_search`, `tavily_search`, `serpapi_search`, and all enhanced web tools. Node
+  directive validation also now includes web domain policy checks.
+- **FILE_TOOLS set** — Added `file_copy`, `file_move`, `file_undo`, `file_redo`, and `file_glob` to
+  the path-validation set in both `validateToolCall` and `validateNodeDirective`.
 - **WASM plugin loading** — WASM plugins are no longer skipped in `loadAllPlugins`. The loader now
   correctly dispatches to `loadWasmPlugin()` for `type: 'wasm'` plugins.
 
@@ -63,10 +99,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Router error logging** — Empty catch blocks in `buildCascadeRouter` and `buildThresholdRouter`
   now log warnings with the error message.
 - **WASM host functions** — Implemented `http_request` (fetch with timeout), `get_config` (env
-  vars), and `set_state`/`get_state` (in-memory Map). WASM tool execution now correctly encodes
-  and passes the tool name to `plugin_execute_tool`.
-- **OpenClaw migration** — `openclaw-migrate.ts` is now wired into the `import` command as a
-  `files` subcommand instead of being dead code.
+  vars), and `set_state`/`get_state` (in-memory Map). WASM tool execution now correctly encodes and
+  passes the tool name to `plugin_execute_tool`.
+- **OpenClaw migration** — `openclaw-migrate.ts` is now wired into the `import` command as a `files`
+  subcommand instead of being dead code.
 
 ### Fixed — Low
 
@@ -84,8 +120,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   `step.action`.
 - **Speak/Listen tools** — Added `['network:fetch']` capabilities to both tools.
 - **Miscellaneous** — Removed duplicate `web_fetch` tool entry in WebSocket server tool map; fixed
-  inconsistent `OllamaResponse` interface duplication; added null guards on Bedrock inference
-  config parameters; placed `afterText` variable outside try block in `file_patch` to fix scoping.
+  inconsistent `OllamaResponse` interface duplication; added null guards on Bedrock inference config
+  parameters; placed `afterText` variable outside try block in `file_patch` to fix scoping.
 
 ### Changed
 
@@ -106,9 +142,11 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Consolidated sidebar navigation** — reduced 7 nav sections to 5 with smarter categorization:
   - **Core** — Dashboard, Chat, Sessions (moved from Management)
   - **Intelligence** — Memory, Skills, Soul (moved from Configuration), Activity
-  - **Development** — Editor, Code Runner, Version Control (merged Git+GitHub), Projects (moved from Management)
+  - **Development** — Editor, Code Runner, Version Control (merged Git+GitHub), Projects (moved from
+    Management)
   - **Infrastructure** — Agents, Services, Nodes, Jobs, Automation (merged Hooks+Triggers), Channels
-  - **System** — Settings, Policies, Extensions (merged Plugins+Marketplace), Analytics, Quartermaster
+  - **System** — Settings, Policies, Extensions (merged Plugins+Marketplace), Analytics,
+    Quartermaster
 
 - **Merged related pages with internal tab navigation**:
   - Git + GitHub → **Version Control** (Local / Remote tabs)

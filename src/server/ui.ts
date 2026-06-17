@@ -980,6 +980,7 @@ const HTML = `<!DOCTYPE html>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span id="chat-agent-name" style="font-size:13px;font-weight:500;color:var(--accent2);"></span>
+      <span id="chat-session-name" style="font-size:13px;font-weight:500;color:var(--text2);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
         <select id="chat-agent-select" class="inp" style="width:140px;font-size:12px;padding:5px 8px;" onchange="switchChatAgent(this.value)">
@@ -1583,6 +1584,9 @@ const HTML = `<!DOCTYPE html>
             <option value="uses">Sort: Usage</option>
             <option value="date">Sort: Date</option>
           </select>
+          <select class="skill-sort" id="skill-tag-select" onchange="skillTagDropdown()" style="max-width:150px;">
+            <option value="">🏷 All tags</option>
+          </select>
           <!-- Filter tabs -->
           <div id="skills-tabs" style="display:flex;gap:4px;">
             <button class="skill-tab active" onclick="setSkillFilter('all')" data-filter="all">All</button>
@@ -1608,9 +1612,12 @@ const HTML = `<!DOCTYPE html>
 
   <!-- Page: Policies -->
   <div id="page-policies" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);">
-      <h1 style="font-size:15px;font-weight:600;">Security Policies</h1>
-      <p style="font-size:12px;color:var(--text3);margin-top:2px;">Cortex Policy Language rules — allow/deny by kind and pattern</p>
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Security Policies</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Cortex Policy Language rules — allow/deny by kind and pattern</p>
+      </div>
+      <button class="btn btn-primary" onclick="showNewPolicyForm()" style="font-size:11px;padding:6px 14px;">+ Add Policy</button>
     </div>
     <div id="policies-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:6px;"></div>
   </div>
@@ -2347,6 +2354,7 @@ let ws, sessionId = null, agentBubble = null, agentRaw = '';
 let currentPage = 'chat';
 let currentReasoningData = '';
 let reasoningPanelOpen = false;
+let sessionNamed = false;
 
 // ── Toast notifications ─────────────────────────
 function toast(message, type = 'info', duration = 3000) {
@@ -2426,6 +2434,7 @@ function timeAgo(dateStr) {
 function newChat() {
   chatLog.innerHTML = '';
   sessionId = null;
+  sessionNamed = false;
   agentBubble = null;
   agentRaw = '';
   document.getElementById('chat-session-id').textContent = '';
@@ -2586,6 +2595,8 @@ async function restoreSession() {
         }
       }
       scrollChat();
+      // Ensure scroll after all messages render
+      setTimeout(() => scrollChat(), 100);
     }
    } catch {}
 }
@@ -2670,10 +2681,10 @@ function connect() {
          break;
       case 'chunk':
          agentRaw += msg.delta;
-         if (agentBubble) {
-           agentBubble.innerHTML = md(agentRaw);
-           scrollChat();
-         }
+          if (agentBubble) {
+            agentBubble.innerHTML = md(agentRaw);
+            requestAnimationFrame(() => scrollChat());
+          }
          break;
        case 'reasoning':
          // Show reasoning toggle button when we have reasoning data
@@ -2786,7 +2797,7 @@ function appendBubble(role, content, messageId) {
 
   wrap.appendChild(bubble);
   chatLog.appendChild(wrap);
-  scrollChat();
+  requestAnimationFrame(() => scrollChat());
   return bubble;
 }
 
@@ -2934,6 +2945,18 @@ async function sendMessage() {
     }
   }
   ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId, model: currentModel || undefined, reasoningEffort: currentReasoning || undefined, files: filesData || undefined }));
+  // Auto-name session from first message
+  if (text && sessionId && !sessionNamed) {
+    sessionNamed = true;
+    const title = text.slice(0, 60).replace(/\n/g, ' ').trim() + (text.length > 60 ? '…' : '');
+    fetch(BASE + '/api/sessions/' + encodeURIComponent(sessionId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: title }),
+    }).catch(() => {});
+    document.getElementById('chat-session-name').textContent = title;
+    loadSessionsSidebar();
+  }
   el.value = '';
   el.style.height = 'auto';
   attachedFiles = [];
@@ -3102,6 +3125,7 @@ function showPage(name) {
     automation: loadHooksPage,
     channels: loadChannels,
     vcs: gitRefresh,
+    agents: loadAgents, services: loadServices,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -3130,10 +3154,10 @@ async function loadSessionsSidebar() {
     btn.className = 'sess-item' + (s.id === sessionId ? ' active' : '');
     const ts = new Date(s.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     btn.innerHTML = \`
-      <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\${s.id.slice(-12)}</div>
+      <div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\${esc(s.name || s.id.slice(-12))}</div>
       <div style="font-size:11px;color:var(--text3);">\${s.turn_count} turns · \${ts}</div>
     \`;
-    btn.title = s.id;
+    btn.title = s.name || s.id;
     el.appendChild(btn);
   }
 }
@@ -3840,6 +3864,12 @@ function setSkillTagFilter(tag) {
   renderSkillsList();
 }
 
+function skillTagDropdown() {
+  const sel = document.getElementById('skill-tag-select');
+  skillTagFilter = sel.value || null;
+  renderSkillsList();
+}
+
 function setSkillView(view) {
   skillView = view;
   document.getElementById('view-btn-card').classList.toggle('active', view === 'card');
@@ -4240,25 +4270,14 @@ async function loadSkills() {
     tags.forEach(t => allTags.add(t));
   }
 
-  // Render tag filters
-  const tagsContainer = document.getElementById('skills-tag-filters') || (() => {
-    const div = document.createElement('div');
-    div.id = 'skills-tag-filters';
-    div.style.display = 'flex';
-    div.style.flexWrap = 'wrap';
-    div.style.gap = '6px';
-    div.style.marginTop = '8px';
-    const tabsEl = document.getElementById('skills-tabs');
-    tabsEl.parentElement.insertBefore(div, tabsEl.nextSibling);
-    return div;
-  })();
-  
-  tagsContainer.innerHTML = Array.from(allTags).sort().map(tag => 
-    '<button class="skill-tag-btn' + (skillTagFilter === tag ? ' active' : '') + '" ' +
-    'data-tag="' + esc(tag) + '" ' +
-    'onclick="setSkillTagFilter(\\'' + esc(tag) + '\\')" ' +
-    'style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:' + (skillTagFilter === tag ? 'var(--accent2)' : 'transparent') + ';color:' + (skillTagFilter === tag ? 'var(--bg)' : 'var(--text3)') + ';cursor:pointer;transition:all 0.2s;">' + esc(tag) + '</button>'
-  ).join('');
+  // Populate tag dropdown
+  const tagsSelect = document.getElementById('skill-tag-select');
+  if (tagsSelect) {
+    tagsSelect.innerHTML = '<option value="">🏷 All tags</option>' +
+      Array.from(allTags).sort().map(tag =>
+        '<option value="' + esc(tag) + '"' + (skillTagFilter === tag ? ' selected' : '') + '>' + esc(tag) + '</option>'
+      ).join('');
+  }
 
   updateSkillBulkBar();
   renderSkillsList();
@@ -4393,27 +4412,135 @@ function toggleSkillDetail(card) {
 }
 
 // ── Policies ────────────────────────────────────────────────
+let editingPolicyId = null;
+
 async function loadPolicies() {
   const policies = await fetch(BASE + '/api/policies').then(r => r.json()).catch(() => []);
   const el = document.getElementById('policies-list');
-  if (!policies.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><p style="color:var(--text3);font-size:13px;">No security policies configured.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Default deny rules are always active. Use the CLI to add custom policies.</p></div>'; return; }
+  if (!policies.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><p style="color:var(--text3);font-size:13px;">No security policies configured.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Default deny rules are always active. Click "+ Add Policy" to create one.</p></div>'; return; }
 
   el.innerHTML = '';
   for (const p of policies) {
     const isAllow = p.effect === 'allow';
+    const isDisabled = !p.enabled;
     const d = document.createElement('div');
     d.className = 'card-sm';
     d.style.display = 'flex';
     d.style.alignItems = 'center';
     d.style.gap = '12px';
+    d.style.opacity = isDisabled ? '0.45' : '1';
     d.innerHTML = \`
+      <label style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;" title="\${p.enabled ? 'Enabled' : 'Disabled'}">
+        <input type="checkbox" \${p.enabled ? 'checked' : ''} onchange="togglePolicyEnabled('\\'' + p.id + '\\'', this.checked)" style="accent-color:var(--accent2);">
+      </label>
       <span class="badge" style="min-width:52px;justify-content:center;background:\${isAllow ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};color:\${isAllow ? '#4ade80' : '#f87171'};">\${p.effect}</span>
       <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);min-width:80px;justify-content:center;">\${p.kind}</span>
-      <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);flex:1;">\${esc(p.pattern)}</code>
-      <span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.reason ?? '')}</span>
+      \${editingPolicyId === p.id
+        ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:JetBrains Mono,monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
+        : '<code style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
+      \${editingPolicyId === p.id
+        ? '<input id="edit-policy-reason" class="inp" style="max-width:200px;font-size:11px;padding:4px 8px;" value="' + escAttr(p.reason ?? '') + '" placeholder="reason" />'
+        : '<span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.reason ?? '') + '</span>'}
       <span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">p\${p.priority}</span>
+      \${editingPolicyId === p.id
+        ? '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="savePolicyEdit(\\'' + p.id + '\\')">Save</button><button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="cancelPolicyEdit()">Cancel</button>'
+        : '<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="editPolicyInline(\\'' + p.id + '\\', \\'' + escAttr(p.pattern) + '\\', \\'' + escAttr(p.reason ?? '') + '\\')">✎</button>'}
+      <button class="btn" style="font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePolicyAction('\\'' + p.id + '\\')">✕</button>
     \`;
     el.appendChild(d);
+  }
+}
+
+async function togglePolicyEnabled(id, enabled) {
+  await fetch(\`\${BASE}/api/policies/\${encodeURIComponent(id)}/toggle\`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  loadPolicies();
+}
+
+function editPolicyInline(id, pattern, reason) {
+  editingPolicyId = id;
+  loadPolicies();
+}
+
+function cancelPolicyEdit() {
+  editingPolicyId = null;
+  loadPolicies();
+}
+
+async function savePolicyEdit(id) {
+  const pattern = document.getElementById('edit-policy-pattern')?.value?.trim();
+  const reason = document.getElementById('edit-policy-reason')?.value?.trim();
+  if (!pattern) { toast('Pattern is required', 'error'); return; }
+  await fetch(\`\${BASE}/api/policies/\${encodeURIComponent(id)}\`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pattern, reason: reason || null }),
+  });
+  editingPolicyId = null;
+  toast('Policy updated', 'success');
+  loadPolicies();
+}
+
+async function deletePolicyAction(id) {
+  const ok = await confirmAction('Delete Policy', 'Delete this policy rule?', 'Delete');
+  if (!ok) return;
+  const res = await fetch(\`\${BASE}/api/policies/\${encodeURIComponent(id)}\`, { method: 'DELETE' });
+  if (res.ok) {
+    toast('Policy deleted', 'success');
+    loadPolicies();
+  } else {
+    toast('Failed to delete policy', 'error');
+  }
+}
+
+function showNewPolicyForm() {
+  const el = document.getElementById('policies-list');
+  const form = document.createElement('div');
+  form.className = 'card-sm';
+  form.style.cssText = 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:rgba(99,102,241,0.05);border:1px dashed var(--accent2);';
+  form.innerHTML = \`
+    <select id="new-policy-kind" class="inp" style="font-size:11px;padding:4px 8px;width:110px;">
+      <option value="shell">shell</option>
+      <option value="tool">tool</option>
+      <option value="domain">domain</option>
+      <option value="capability">capability</option>
+      <option value="path">path</option>
+      <option value="computer">computer</option>
+    </select>
+    <select id="new-policy-effect" class="inp" style="font-size:11px;padding:4px 8px;width:80px;">
+      <option value="deny">deny</option>
+      <option value="allow">allow</option>
+    </select>
+    <input id="new-policy-pattern" class="inp" style="flex:1;min-width:150px;font-family:JetBrains Mono,monospace;font-size:12px;padding:4px 8px;" placeholder="regex pattern" />
+    <input id="new-policy-reason" class="inp" style="width:160px;font-size:11px;padding:4px 8px;" placeholder="reason (optional)" />
+    <input id="new-policy-priority" class="inp" type="number" style="width:60px;font-size:11px;padding:4px 8px;" value="100" />
+    <button class="btn btn-primary" style="font-size:11px;padding:4px 12px;" onclick="submitNewPolicy()">Add</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;" onclick="loadPolicies()">Cancel</button>
+  \`;
+  el.insertBefore(form, el.firstChild);
+}
+
+async function submitNewPolicy() {
+  const kind = document.getElementById('new-policy-kind')?.value;
+  const effect = document.getElementById('new-policy-effect')?.value;
+  const pattern = document.getElementById('new-policy-pattern')?.value?.trim();
+  const reason = document.getElementById('new-policy-reason')?.value?.trim();
+  const priority = parseInt(document.getElementById('new-policy-priority')?.value) || 100;
+  if (!pattern) { toast('Pattern is required', 'error'); return; }
+  const res = await fetch(BASE + '/api/policies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, effect, pattern, reason: reason || undefined, priority }),
+  });
+  if (res.ok) {
+    toast('Policy added', 'success');
+    loadPolicies();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    toast(err.error || 'Failed to add policy', 'error');
   }
 }
 
@@ -4738,21 +4865,24 @@ function renderSessionsList(sessions) {
     const chBg = channelColor(s.channel);
     const chTc = channelTextColor(s.channel);
     const hasParent = !!s.parent_session_id;
+    const isArchived = s.status === 'archived';
     return \`
-    <div class="card-sm" style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:6px;" onclick="openSession('\${s.id}')">
+    <div class="card-sm" style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:6px;\${isArchived ? 'opacity:0.55;' : ''}" onclick="openSession('\${s.id}')">
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          \${s.name ? '<span style="font-size:13px;font-weight:500;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.name) + '</span>' : ''}
           <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
           \${s.agent_id && s.agent_id !== 'default' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
           \${ch ? '<span class="badge" style="background:' + chBg + ';color:' + chTc + ';font-size:10px;">' + esc(ch) + '</span>' : ''}
           \${hasParent ? '<span class="badge" style="background:rgba(245,158,11,0.08);color:#fbbf24;font-size:10px;">⤷ child</span>' : ''}
-          <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':'var(--text3)'};">\${s.status}</span>
+          <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':s.status==='archived'?'rgba(107,114,128,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':s.status==='archived'?'#9ca3af':'var(--text3)'};">\${s.status}</span>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${new Date(s.started_at).toLocaleString()}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(99,102,241,0.1);color:var(--accent2);" onclick="event.stopPropagation();continueSession('\${s.id}')">▶ Continue</button>
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();exportSession('\${s.id}')">⬇ Export</button>
+        \${s.status !== 'archived' ? '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();archiveSessionAction(\\'' + s.id + '\\')">📦 Archive</button>' : '<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();unarchiveSessionAction(\\'' + s.id + '\\')">↩ Restore</button>'}
         <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
       </div>
     </div>
@@ -4855,6 +4985,28 @@ async function exportSession(id) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = \`cortex-session-\${id}.json\`; a.click();
   toast('Session exported', 'success');
+}
+
+async function archiveSessionAction(id) {
+  const res = await fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/archive\`, { method: 'POST' });
+  if (res.ok) {
+    toast('Session archived', 'success');
+    loadSessionsList();
+    loadSessionsSidebar();
+  } else {
+    toast('Failed to archive session', 'error');
+  }
+}
+
+async function unarchiveSessionAction(id) {
+  const res = await fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/resume\`, { method: 'POST' });
+  if (res.ok) {
+    toast('Session restored', 'success');
+    loadSessionsList();
+    loadSessionsSidebar();
+  } else {
+    toast('Failed to restore session', 'error');
+  }
 }
 
 async function deleteSession(id) {
@@ -6917,22 +7069,24 @@ async function loadMarketplace() {
       if (category) params.set('category', category);
       params.set('limit', '50');
       const data = await fetch(BASE + '/api/marketplace/plugins?' + params.toString()).then(r => r.json()).catch(() => null);
-      if (!data || !data.plugins?.length) {
+      const availablePlugins = data.plugins.filter(p => !installedPluginNames.has(p.name));
+      if (!availablePlugins.length) {
         el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><p style="color:var(--text3);font-size:13px;">No plugins found' + (search ? ' for "' + esc(search) + '"' : '') + '.</p></div>';
         return;
       }
-      el.innerHTML = data.plugins.map(pluginCard).join('');
+      el.innerHTML = availablePlugins.map(pluginCard).join('');
     } else {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (category) params.set('category', category);
       params.set('limit', '50');
       const data = await fetch(BASE + '/api/marketplace/agents?' + params.toString()).then(r => r.json()).catch(() => null);
-      if (!data || !data.agents?.length) {
+      const availableAgents = data.agents.filter(a => !installedAgentNames.has(a.name));
+      if (!availableAgents.length) {
         el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p style="color:var(--text3);font-size:13px;">No agents found' + (search ? ' for "' + esc(search) + '"' : '') + '.</p></div>';
         return;
       }
-      el.innerHTML = data.agents.map(agentCard).join('');
+      el.innerHTML = availableAgents.map(agentCard).join('');
     }
   } catch (e) {
     el.innerHTML = '<div style="text-align:center;padding:40px 20px;"><p style="color:#f87171;font-size:13px;">Failed to load marketplace: ' + esc(e.message) + '</p><p style="font-size:12px;color:var(--text3);margin-top:6px;">Make sure the Cortex server can reach https://cortexprism.io</p></div>';

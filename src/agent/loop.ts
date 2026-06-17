@@ -1206,5 +1206,14 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   }
 
   const durationMs = Date.now() - started;
-  return { response, tokensIn, tokensOut, costUsd, turnId, durationMs, hitToolCeiling, toolCallsMade: state.toolCallsMade };
+  return {
+    response,
+    tokensIn,
+    tokensOut,
+    costUsd,
+    turnId,
+    durationMs,
+    hitToolCeiling,
+    toolCallsMade: state.toolCallsMade,
+  };
 }

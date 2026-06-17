@@ -7,6 +7,7 @@ import {
   getSessionTree,
   listSessions,
   resumeSession,
+  updateSessionName,
 } from '../db/sessions.ts';
 import { getSessionEvents } from '../db/lens.ts';
 import { getLensDb, type InValue } from '../db/client.ts';
@@ -33,7 +34,13 @@ import {
   loadHumanSkills,
   storeSkill,
 } from '../memory/skills.ts';
-import { listPolicies } from '../security/policy.ts';
+import {
+  addPolicy,
+  listPolicies,
+  removePolicy as removePolicyDb,
+  setPolicyEnabled,
+  updatePolicy,
+} from '../security/policy.ts';
 import { getMemoryDb } from '../db/client.ts';
 import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../ipc/transport.ts';
 import {
@@ -367,6 +374,19 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true });
   }
 
+  // PATCH /api/sessions/:id — update name or other fields
+  const patchSessionMatch = path.match(/^\/api\/sessions\/([^/]+)$/);
+  if (req.method === 'PATCH' && patchSessionMatch) {
+    const session = await getSession(patchSessionMatch[1]);
+    if (!session) return notFound('Session not found');
+    const body = await req.json() as { name?: string };
+    if (body.name !== undefined) {
+      await updateSessionName(patchSessionMatch[1], body.name);
+      return json({ ok: true });
+    }
+    return json({ ok: false, error: 'No valid fields to update' });
+  }
+
   // GET /api/sessions/:id/events
   const eventsMatch = path.match(/^\/api\/sessions\/([^/]+)\/events$/);
   if (req.method === 'GET' && eventsMatch) {
@@ -621,6 +641,51 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/policies') {
     const policies = await listPolicies();
     return json(policies);
+  }
+
+  // PATCH /api/policies/:id — update policy fields
+  const patchPolicyMatch = path.match(/^\/api\/policies\/([^/]+)$/);
+  if (req.method === 'PATCH' && patchPolicyMatch) {
+    const body = await req.json() as {
+      kind?: string;
+      effect?: string;
+      pattern?: string;
+      reason?: string;
+      priority?: number;
+    };
+    const ok = await updatePolicy(patchPolicyMatch[1], body as any);
+    if (ok) return json({ ok: true });
+    return notFound('Policy not found');
+  }
+
+  // PUT /api/policies/:id/toggle — enable/disable
+  const togglePolicyMatch = path.match(/^\/api\/policies\/([^/]+)\/toggle$/);
+  if (req.method === 'PUT' && togglePolicyMatch) {
+    const body = await req.json() as { enabled: boolean };
+    const ok = await setPolicyEnabled(togglePolicyMatch[1], body.enabled);
+    if (ok) return json({ ok: true });
+    return notFound('Policy not found');
+  }
+
+  // DELETE /api/policies/:id
+  const delPolicyMatch = path.match(/^\/api\/policies\/([^/]+)$/);
+  if (req.method === 'DELETE' && delPolicyMatch) {
+    const ok = await removePolicyDb(delPolicyMatch[1]);
+    if (ok) return json({ ok: true });
+    return notFound('Policy not found');
+  }
+
+  // POST /api/policies — add new policy
+  if (req.method === 'POST' && path === '/api/policies') {
+    const body = await req.json() as {
+      kind: string;
+      effect: string;
+      pattern: string;
+      reason?: string;
+      priority?: number;
+    };
+    const id = await addPolicy(body as any);
+    return json({ ok: true, id });
   }
 
   // GET /api/memory/stats

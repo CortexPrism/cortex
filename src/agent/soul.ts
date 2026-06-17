@@ -287,8 +287,11 @@ export async function appendToMemoryFile(entry: string): Promise<void> {
     const sectionBody = text.slice(afterHeading, sectionEnd);
     const lastBullet = sectionBody.lastIndexOf('\n-');
     if (lastBullet !== -1) {
-      const insertAt = afterHeading + lastBullet + sectionBody.slice(lastBullet).indexOf('\n') + 1;
-      text = text.slice(0, insertAt) + line + '\n' + text.slice(insertAt);
+      const bulletStart = lastBullet + 1;
+      const nextNewline = sectionBody.indexOf('\n', bulletStart);
+      const bulletEnd = nextNewline === -1 ? sectionBody.length : nextNewline;
+      const insertAt = afterHeading + bulletEnd;
+      text = text.slice(0, insertAt) + '\n' + line + text.slice(insertAt);
     } else {
       // No bullets yet — insert right after the heading line
       const insertAt = afterHeading;

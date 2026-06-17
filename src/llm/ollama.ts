@@ -104,7 +104,12 @@ export class OllamaProvider implements LLMProvider {
     if (options.numCtx != null) ollamaOptsS.num_ctx = options.numCtx;
     if (options.numThread != null) ollamaOptsS.num_thread = options.numThread;
 
-    const streamBody: Record<string, unknown> = { model: options.model, messages, stream: true, options: ollamaOptsS };
+    const streamBody: Record<string, unknown> = {
+      model: options.model,
+      messages,
+      stream: true,
+      options: ollamaOptsS,
+    };
     if (options.keepAlive != null) streamBody.keep_alive = options.keepAlive;
 
     const response = await fetch(`${this.baseUrl}/api/chat`, {

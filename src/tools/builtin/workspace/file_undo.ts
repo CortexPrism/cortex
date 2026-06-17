@@ -64,9 +64,25 @@ export const fileUndoTool: Tool = {
             await db.run(
               `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-              [`undo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, `renamed from ${newPath}`, '', '', '', 'file_undo'],
+              [
+                `undo_${Date.now().toString(36)}`,
+                context.agentId,
+                context.sessionId ?? null,
+                workspaceType,
+                resolvedPath,
+                `renamed from ${newPath}`,
+                '',
+                '',
+                '',
+                'file_undo',
+              ],
             );
-            return { toolName: 'file_undo', success: true, output: `Undid rename: moved ${newPath} back to ${resolvedPath}`, durationMs: Date.now() - start };
+            return {
+              toolName: 'file_undo',
+              success: true,
+              output: `Undid rename: moved ${newPath} back to ${resolvedPath}`,
+              durationMs: Date.now() - start,
+            };
           } catch {
             throw new Error(`Cannot undo rename: file no longer exists at ${newPath}`);
           }
@@ -79,9 +95,25 @@ export const fileUndoTool: Tool = {
         await db.run(
           `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [`undo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, '', row.before_text, '', '', 'file_undo'],
+          [
+            `undo_${Date.now().toString(36)}`,
+            context.agentId,
+            context.sessionId ?? null,
+            workspaceType,
+            resolvedPath,
+            '',
+            row.before_text,
+            '',
+            '',
+            'file_undo',
+          ],
         );
-        return { toolName: 'file_undo', success: true, output: `Undid deletion of ${resolvedPath}`, durationMs: Date.now() - start };
+        return {
+          toolName: 'file_undo',
+          success: true,
+          output: `Undid deletion of ${resolvedPath}`,
+          durationMs: Date.now() - start,
+        };
       }
 
       if (RESTORE_TOOLS.has(tool)) {
@@ -89,9 +121,25 @@ export const fileUndoTool: Tool = {
         await db.run(
           `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [`undo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, row.after_text, row.before_text, '', '', 'file_undo'],
+          [
+            `undo_${Date.now().toString(36)}`,
+            context.agentId,
+            context.sessionId ?? null,
+            workspaceType,
+            resolvedPath,
+            row.after_text,
+            row.before_text,
+            '',
+            '',
+            'file_undo',
+          ],
         );
-        return { toolName: 'file_undo', success: true, output: `Undid edit to ${resolvedPath}`, durationMs: Date.now() - start };
+        return {
+          toolName: 'file_undo',
+          success: true,
+          output: `Undid edit to ${resolvedPath}`,
+          durationMs: Date.now() - start,
+        };
       }
 
       throw new Error(`Cannot undo operation of type: ${tool}`);
@@ -159,7 +207,18 @@ export const fileRedoTool: Tool = {
       await db.run(
         `INSERT INTO file_edit_log (id, agent_id, session_id, workspace_type, file_path, before_text, after_text, before_hash, after_hash, tool)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [`redo_${Date.now().toString(36)}`, context.agentId, context.sessionId ?? null, workspaceType, resolvedPath, row.after_text, row.before_text, '', '', 'file_redo'],
+        [
+          `redo_${Date.now().toString(36)}`,
+          context.agentId,
+          context.sessionId ?? null,
+          workspaceType,
+          resolvedPath,
+          row.after_text,
+          row.before_text,
+          '',
+          '',
+          'file_redo',
+        ],
       );
 
       return {
