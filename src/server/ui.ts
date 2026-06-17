@@ -918,9 +918,6 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
     </button>
-    <button class="nav-item" onclick="showPage('logs');closeMobileSidebar()" id="nav-logs">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Logs
-    </button>
     <button class="nav-item" onclick="showPage('quartermaster');closeMobileSidebar()" id="nav-quartermaster">
       <span class="icon">🧠</span>Quartermaster
     </button>
@@ -1180,15 +1177,15 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: Lens -->
+  <!-- Page: Activity -->
   <div id="page-lens" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <div>
-        <h1 style="font-size:15px;font-weight:600;">Activity Lens</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Real-time audit log of all agent events</p>
+        <h1 style="font-size:15px;font-weight:600;">Activity</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Audit log of all agent events — filterable with cost tracking</p>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="lens-filter" class="inp" style="width:160px;" onchange="loadLens()">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="lens-filter" class="inp" style="width:140px;" onchange="loadLens()">
           <option value="">All events</option>
           <option value="llm_call">LLM calls</option>
           <option value="tool_call">Tool calls</option>
@@ -1197,6 +1194,20 @@ const HTML = `<!DOCTYPE html>
           <option value="session_start">Sessions</option>
           <option value="error">Errors</option>
         </select>
+        <select id="lens-level" class="inp" style="width:130px;" onchange="loadLens()">
+          <option value="">All levels</option>
+          <option value="error">Errors only</option>
+          <option value="warning">Warnings+</option>
+        </select>
+        <select id="lens-lines" class="inp" style="width:100px;" onchange="loadLens()">
+          <option value="50">50 lines</option>
+          <option value="100" selected>100 lines</option>
+          <option value="200">200 lines</option>
+          <option value="500">500 lines</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="lens-autorefresh" onchange="toggleLensAutoRefresh()" style="accent-color:var(--accent);"> Auto
+        </label>
         <button class="btn btn-ghost" onclick="loadLens()">↻ Refresh</button>
       </div>
     </div>
@@ -2155,29 +2166,6 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: Logs -->
-  <div id="page-logs" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-      <div style="flex:1;"><h1 style="font-size:15px;font-weight:600;">Logs</h1><p style="font-size:12px;color:var(--text3);margin-top:2px;">Lens event log — filterable, auto-refresh</p></div>
-      <select id="log-level" class="inp" style="width:130px;" onchange="loadLogs()">
-        <option value="">All levels</option>
-        <option value="error">Errors only</option>
-        <option value="warning">Warnings+</option>
-      </select>
-      <select id="log-lines" class="inp" style="width:100px;" onchange="loadLogs()">
-        <option value="50">50 lines</option>
-        <option value="100" selected>100 lines</option>
-        <option value="200">200 lines</option>
-        <option value="500">500 lines</option>
-      </select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
-        <input type="checkbox" id="log-autorefresh" onchange="toggleLogAutoRefresh()" style="accent-color:var(--accent);"> Auto
-      </label>
-      <button class="btn btn-ghost" onclick="loadLogs()">↻</button>
-    </div>
-    <div id="logs-content" style="flex:1;overflow-y:auto;padding:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;"></div>
-  </div>
-
 </main>
 </div>
 
@@ -2940,13 +2928,13 @@ function renderRecentPages() {
       editor:'Editor', git:'Git', github:'GitHub', coderunner:'Code Runner', agents:'Agents',
       services:'Services', nodes:'Nodes', jobs:'Jobs', sessions:'Sessions', settings:'Settings',
       soul:'Soul', policies:'Policies', plugins:'Plugins', marketplace:'Marketplace',
-      dashboard:'Dashboard', analytics:'Analytics', logs:'Logs', quartermaster:'Quartermaster', modelqm:'Model Intel' };
+      dashboard:'Dashboard', analytics:'Analytics', quartermaster:'Quartermaster', modelqm:'Model Intel' };
     list.innerHTML = recent.map(p => \`<button class="nav-item compact" onclick="showPage('\${p}');closeMobileSidebar()">\${titles[p] || p}</button>\`).join('');
   } catch {}
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','hooks','triggers','channels','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','hooks','triggers','channels','sessions','settings','soul','policies','plugins','marketplace','analytics','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -2986,7 +2974,7 @@ function showPage(name) {
     lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
     skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings, plugins: loadPlugins,
-    marketplace: loadMarketplace, soul: loadSoulFile, logs: loadLogs, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
+    marketplace: loadMarketplace, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: loadNodes,
     quartermaster: loadQuartermaster,
@@ -3061,14 +3049,20 @@ const EVT_COLORS = {
   error:'#f87171', warning:'#fbbf24', meta_assessment:'#38bdf8',
 };
 
+let lensAutoRefreshTimer = null;
+
 async function loadLens() {
   const filter = document.getElementById('lens-filter')?.value ?? '';
-  const url = BASE + '/api/lens/recent?limit=100';
+  const level = document.getElementById('lens-level')?.value ?? '';
+  const lines = document.getElementById('lens-lines')?.value ?? '100';
+  const params = new URLSearchParams({ limit: lines });
+  if (level) params.set('level', level);
+  if (filter) params.set('type', filter);
+  const url = BASE + '/api/lens/recent?' + params.toString();
   const events = await fetch(url).then(r => r.json()).catch(() => []);
-  const filtered = filter ? events.filter(e => e.event_type === filter) : events;
 
   const el = document.getElementById('lens-log');
-  if (!filtered.length) {
+  if (!events.length) {
     el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">' +
       '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>' +
       '<p style="color:var(--text3);font-size:13px;">No events yet.</p>' +
@@ -3076,19 +3070,27 @@ async function loadLens() {
     return;
   }
 
-  el.innerHTML = filtered.map(ev => {
+  el.innerHTML = events.map(ev => {
     const color = EVT_COLORS[ev.event_type] ?? 'var(--text3)';
     const ts = new Date(ev.started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const rel = timeAgo(ev.started_at);
     const dur = ev.duration_ms ? \`<span style="color:var(--text3);">\${ev.duration_ms}ms</span>\` : '';
     const cost = ev.cost_usd > 0 ? \`<span style="color:#4ade80;">$\${Number(ev.cost_usd).toFixed(5)}</span>\` : '';
+    const err = ev.error ? \` <span style="color:#f87171;font-size:11px;">⚠ \${esc(ev.error.slice(0, 80))}</span>\` : '';
     return \`<div class="lens-row" title="\${new Date(ev.started_at).toLocaleString()}">
       <span style="color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:72px;" title="\${ts}">\${rel}</span>
-      <span style="color:\${color};min-width:160px;font-size:11px;font-weight:500;">\${ev.event_type}</span>
-      <span style="color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(ev.summary ?? ev.action ?? '')}</span>
+      <span style="color:\${color};min-width:150px;font-size:11px;font-weight:500;">\${ev.event_type}</span>
+      <span style="color:var(--text2);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(ev.actor)}</span>
+      <span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(ev.summary ?? ev.action ?? '')}\${err}</span>
       <span style="display:flex;gap:8px;align-items:center;">\${dur}\${cost}</span>
     </div>\`;
   }).join('');
+}
+
+function toggleLensAutoRefresh() {
+  const on = document.getElementById('lens-autorefresh').checked;
+  if (on) { lensAutoRefreshTimer = setInterval(loadLens, 5000); }
+  else { clearInterval(lensAutoRefreshTimer); lensAutoRefreshTimer = null; }
 }
 
 // ── Memory ──────────────────────────────────────────────────
@@ -6420,43 +6422,6 @@ async function deleteJobUI(id) {
   loadCronJobs();
 }
 
-// ── Logs ──────────────────────────────────────────────────────
-let logAutoRefreshTimer = null;
-
-async function loadLogs() {
-  const level = document.getElementById('log-level')?.value ?? '';
-  const lines = document.getElementById('log-lines')?.value ?? '100';
-  const rows = await fetch(\`\${BASE}/api/logs?lines=\${lines}&level=\${level}\`).then(r => r.json()).catch(() => []);
-  const el = document.getElementById('logs-content');
-  if (!el) return;
-  if (!rows.length) { el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:16px 24px;">No log entries found.</p>'; return; }
-  const typeColor = {
-    error:'#f87171', warning:'#fbbf24', tool_error:'#f87171', tool_rejected:'#fbbf24',
-    llm_call:'#818cf8', tool_call:'#fde68a', session_start:'#4ade80', session_end:'#9090a8',
-    memory_write:'#38bdf8', memory_read:'#38bdf8', policy_check:'#fb923c',
-  };
-  el.innerHTML = rows.map(r => {
-    const color = typeColor[r.event_type] ?? 'var(--text3)';
-    const ts = new Date(r.started_at).toLocaleTimeString('en-GB', { hour12: false });
-    const date = new Date(r.started_at).toLocaleDateString('en-GB');
-    const msg = r.summary ?? r.action ?? '';
-    const errPart = r.error ? \` <span style="color:#f87171;">⚠ \${esc(r.error)}</span>\` : '';
-    return \`<div style="display:flex;gap:0;padding:3px 16px;border-bottom:1px solid rgba(255,255,255,0.03);hover:background:rgba(255,255,255,0.02);">
-      <span style="color:var(--text3);min-width:90px;">\${date}</span>
-      <span style="color:var(--text3);min-width:70px;">\${ts}</span>
-      <span style="color:\${color};min-width:160px;">\${esc(r.event_type)}</span>
-      <span style="color:var(--text2);min-width:90px;">\${esc(r.actor)}</span>
-      <span style="color:var(--text);flex:1;">\${esc(msg)}\${errPart}</span>
-    </div>\`;
-  }).join('');
-}
-
-function toggleLogAutoRefresh() {
-  const on = document.getElementById('log-autorefresh').checked;
-  if (on) { logAutoRefreshTimer = setInterval(loadLogs, 5000); }
-  else { clearInterval(logAutoRefreshTimer); logAutoRefreshTimer = null; }
-}
-
 // ── Command palette ──────────────────────────
 const CMD_PAGES = [
   { id:'dashboard', label:'Dashboard', icon:'📊', desc:'System overview, daemon status, and widgets' },
@@ -6464,7 +6429,7 @@ const CMD_PAGES = [
   { id:'editor', label:'Editor', icon:'✏', desc:'Web file editor (CodeMirror)' },
   { id:'memory', label:'Memory', icon:'📚', desc:'Browse episodic, semantic, and graph memory' },
   { id:'skills', label:'Skills', icon:'⚡', desc:'Procedural memory — learned skill patterns' },
-  { id:'lens', label:'Activity', icon:'🔭', desc:'Real-time audit log of agent events' },
+  { id:'lens', label:'Activity', icon:'🔭', desc:'Filterable audit log with cost tracking and auto-refresh' },
   { id:'agents', label:'Agents', icon:'👥', desc:'Manage agent identities and selection' },
   { id:'services', label:'Services', icon:'⚙', desc:'Micro-service lifecycle management' },
   { id:'jobs', label:'Jobs', icon:'⏱', desc:'Scheduled cron, interval, and one-shot jobs' },
@@ -6474,7 +6439,6 @@ const CMD_PAGES = [
   { id:'policies', label:'Policies', icon:'🛡', desc:'Security policy rules' },
   { id:'plugins', label:'Plugins', icon:'🧩', desc:'ESM, MCP, and WASM plugin registry' },
   { id:'analytics', label:'Analytics', icon:'📈', desc:'Token usage, cost, session statistics' },
-  { id:'logs', label:'Logs', icon:'📋', desc:'Filterable event log' },
 ];
 
 let cmdPaletteCache = { agents: [], sessions: [] };
