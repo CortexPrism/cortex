@@ -2699,8 +2699,8 @@ function connect() {
          break;
        case 'reasoning':
          // Show reasoning toggle button when we have reasoning data
-         const reasoningBtn = document.getElementById('reasoning-toggle');
-         if (reasoningBtn) reasoningBtn.style.display = 'inline-block';
+         const reasoningBtnToggle = document.getElementById('reasoning-toggle');
+         if (reasoningBtnToggle) reasoningBtnToggle.style.display = 'inline-block';
          // Store reasoning for later display
          currentReasoningData = msg.content;
          break;
