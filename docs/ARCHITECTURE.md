@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.32.0.
+This document describes the implemented architecture of CortexPrism as of v0.33.0.
 
 ---
 
@@ -30,7 +30,7 @@ CortexPrism is a single-process agentic harness written in TypeScript/Deno. It e
 │   └──────────────────────────────────────────────┘             │
 │                                                                 │
 │   SQLite databases (WAL mode)                                   │
-│   cortex.db · memory.db · lens.db · vault.db · sess_*.db       │
+│   cortex.db · memory.db · lens.db · vault.db · plugins.db       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -173,7 +173,7 @@ Child → Parent:
 ### Providers
 
 | File | Provider | Notes |
-|---|---|---|
+|------|----------|-------|
 | `anthropic.ts` | Anthropic Claude | Server-sent events streaming |
 | `openai.ts` | OpenAI | `stream: true` mode |
 | `openai-compatible.ts` | Base class | Reusable for any OpenAI-compatible API |
@@ -187,6 +187,18 @@ Child → Parent:
 | `bedrock.ts` | AWS Bedrock | AWS SDK Converse API (Claude, Llama, Titan) |
 | `cohere.ts` | Cohere | Native v2 API via fetch |
 | `ollama.ts` | Ollama | Local models, NDJSON streaming |
+| `cerebras.ts` | Cerebras | OpenAI-compatible, Cerebras inference |
+| `fireworks.ts` | Fireworks | OpenAI-compatible, Fireworks AI |
+| `perplexity.ts` | Perplexity | OpenAI-compatible, online LLM with citations |
+| `nvidia.ts` | NVIDIA NIM | OpenAI-compatible, NVIDIA inference |
+| `moonshot.ts` | Moonshot (Kimi) | OpenAI-compatible, Moonshot AI |
+| `novita.ts` | Novita AI | OpenAI-compatible, Novita inference |
+| `lmstudio.ts` | LM Studio | OpenAI-compatible, local LLM server |
+| `litellm.ts` | LiteLLM | OpenAI-compatible, multi-provider proxy |
+| `huggingface.ts` | Hugging Face | OpenAI-compatible, HF Inference Router |
+| `alibaba.ts` | Alibaba (Qwen) | OpenAI-compatible, Alibaba Cloud |
+| `venice.ts` | Venice AI | OpenAI-compatible, privacy-focused LLMs |
+| `kilo.ts` | Kilo AI | OpenAI-compatible, Kilo-hosted models |
 
 All implement `LLMProvider`:
 
@@ -357,7 +369,7 @@ LLM response text
 ### Built-in Tools
 
 | Tool | File | Description |
-|---|---|---|
+|------|------|-------------|
 | `file_read` | `builtin/file_read.ts` | Read file contents; auto-extracts PDF text |
 | `file_write` | `builtin/workspace/file_write.ts` | Write or overwrite a file |
 | `file_edit` | `builtin/workspace/file_edit.ts` | Exact string replacements in files |
@@ -369,11 +381,14 @@ LLM response text
 | `file_info` | `builtin/workspace/file_info.ts` | File/directory metadata (size, type, timestamps) |
 | `file_search` | `builtin/workspace/file_search.ts` | Regex search across file contents |
 | `file_glob` | `builtin/workspace/file_glob.ts` | Find files matching glob patterns |
-| `file_undo` | `builtin/workspace/file_undo.ts` | Undo the last file change |
-| `file_redo` | `builtin/workspace/file_redo.ts` | Redo a previously undone change |
+| `file_undo` | `builtin/workspace/file_undo.ts` | Undo the last file change (also contains `file_redo`) |
 | `shell` | `builtin/shell.ts` | Execute local shell commands (approval gate) |
 | `web_search` | `builtin/web_search.ts` | Web search via DuckDuckGo |
 | `web_fetch` | `builtin/web_fetch.ts` | Fetch URL content as plain text |
+| `brave_search` | `builtin/web/brave_search.ts` | Web search via Brave Search API |
+| `tavily_search` | `builtin/web/tavily_search.ts` | Web search via Tavily API |
+| `serpapi_search` | `builtin/web/serpapi_search.ts` | Web search via SerpAPI |
+| `firecrawl` | `builtin/web/firecrawl.ts` | Web scraping via Firecrawl |
 | `code_exec` | `builtin/code_exec.ts` | Run code in isolated Docker sandbox |
 | `sub_agent` | `builtin/sub_agent.ts` | Delegate work to a sub-agent process |
 | `node_dispatch` | `builtin/node_dispatch.ts` | Dispatch tasks to remote distributed nodes |
@@ -381,8 +396,14 @@ LLM response text
 | `skill_read` | `builtin/skill_read.ts` | Read a skill file |
 | `skill_write` | `builtin/skill_write.ts` | Write a new skill file |
 | `dashboard_manage` | `builtin/dashboard_manage.ts` | Manage dashboard widgets |
+| `memory_note` | `builtin/memory_note.ts` | Persist notes to episodic memory |
 | `speak` | `builtin/speak.ts` | Text-to-speech via configured TTS provider |
 | `listen` | `builtin/listen.ts` | Speech-to-text via configured STT provider |
+| `git_push` | `builtin/github/git_push.ts` | Stage, commit, and push to remote |
+| `github_pr_create` | `builtin/github/pr_create.ts` | Create a pull request on GitHub |
+| `github_pr_list` | `builtin/github/pr_list.ts` | List pull requests for a repository |
+| `github_issue_create` | `builtin/github/issue_create.ts` | Create an issue on GitHub |
+| `github_issue_list` | `builtin/github/issue_list.ts` | List issues for a repository |
 
 ### Tool Interface
 
@@ -636,13 +657,13 @@ Server → Client:
 All databases use SQLite WAL mode via `@libsql/client`. Migrations are idempotent (checksum guard).
 
 | Migration | DB | Description |
-|---|---|---|
+|--------|-----|-------------|
 | 001_core.sql | cortex.db | sessions, turns, jobs |
 | 002_memory.sql | memory.db | 5-tier memory + FTS5 |
 | 003_lens.sql | lens.db | lens_events audit |
 | 004_vault.sql | vault.db | vault_entries + access_log |
 | 005_plugins.sql | plugins.db | plugin registry |
-| 006_session.sql | sess_*.db | per-session messages |
+| 006_session.sql | cortex.db | session_messages table |
 | 007_jobs_v2.sql | cortex.db | job scheduler columns |
 | 008_memory_embeddings.sql | memory.db | embedding + decay columns |
 | 009_policy.sql | cortex.db | policy_rules + default seeds |
@@ -650,6 +671,14 @@ All databases use SQLite WAL mode via `@libsql/client`. Migrations are idempoten
 | 011_workspace.sql | cortex.db | workspace_config + file_edit_log |
 | 012_plugins_enhanced.sql | plugins.db | enhanced plugin columns |
 | 013_sessions_parent.sql | cortex.db | parent_session_id for sub-agent tracking |
+| 014_skills_origin.sql | cortex.db | skills table with origin tracking |
+| 015_nodes.sql | cortex.db | distributed node registry |
+| 016_node_policies.sql | cortex.db | per-node policy rules |
+| 017_skills_metadata.sql | cortex.db | skills metadata extension |
+| 018_quartermaster.sql | cortex.db | tool orchestration learning (legacy QM) |
+| 019_model_quartermaster.sql | cortex.db | Model Quartermaster (MQM) intelligence |
+| 020_episodic_updated_at.sql | memory.db | episodic_memory updated_at + graph_relation_types seed |
+| 021_workspace_type_config.sql | cortex.db | workspace type configuration |
 
 ---
 
@@ -660,7 +689,7 @@ All databases use SQLite WAL mode via `@libsql/client`. Migrations are idempoten
 ```typescript
 interface CortexConfig {
   version: number;
-  defaultProvider: 'anthropic' | 'openai' | 'ollama' | 'google' | 'mistral' | 'groq' | 'deepseek' | 'openrouter' | 'xai' | 'together' | 'bedrock' | 'cohere';
+  defaultProvider: 'anthropic' | 'openai' | 'ollama' | 'google' | 'mistral' | 'groq' | 'deepseek' | 'openrouter' | 'xai' | 'together' | 'bedrock' | 'cohere' | 'cerebras' | 'fireworks' | 'perplexity' | 'nvidia' | 'moonshot' | 'novita' | 'lmstudio' | 'litellm' | 'huggingface' | 'alibaba' | 'venice' | 'kilo';
   providers: {
     anthropic?:  { kind: 'anthropic';  model: string; apiKey?: string };
     openai?:     { kind: 'openai';     model: string; apiKey?: string; baseUrl?: string };
@@ -768,11 +797,17 @@ INPUT → pre-assess → ASSESS → post-assess → pre-reason → REASON → po
 ### Built-in Hooks
 
 | Hook | Stage | Priority | Purpose |
-|---|---|---|---|
+|------|-------|----------|---------|
 | `@cortex/injection-guard` | pre-reason | 5 | Detects prompt injection |
+| `@cortex/model-quartermaster` | pre-llm, post-llm | 5 | MQM intelligent model selection |
+| `@cortex/quartermaster` | pre-tool, post-tool | 6 | Legacy tool orchestration learning |
+| `@cortex/summarization` | pre-reason | 8 | Context compaction at 80K token threshold |
 | `@cortex/content-safety` | pre-output | 10 | Blocks/redacts sensitive output |
-| `@cortex/audit-log` | post-output | 150 | Logs turn metrics |
-| `@cortex/cost-tracker` | post-tool | 200 | Emits token/cost metrics |
+| `@cortex/loop-detection` | pre-tool | 12 | Per-file edit tracking with escalation |
+| `@cortex/tool-output-sandbox` | post-tool | 15 | Large tool output capture |
+| `@cortex/pre-completion-checklist` | post-reason | 20 | Build-Verify-Fix enforcement |
+| `@cortex/audit-log` | post-output | 150 | Session/turn stat logging (non-disableable) |
+| `@cortex/cost-tracker` | post-tool, post-output | 200 | Token/cost metric emission |
 
 ### Abort Semantics
 Any hook can return `{ abort }` to stop the pipeline immediately. The abort message is delivered to the user and logged to Lens. The LLM is not called for the aborted stage.
@@ -791,7 +826,7 @@ Converts external events into agent turns via the scheduler.
 
 ## Observability (`src/observability/`)
 
-Prometheus-compatible metrics at `GET /metrics` with 15 metric families. OpenTelemetry-compatible trace spans with OTLP export support.
+Prometheus-compatible metrics at `GET /metrics` with 29 metric families. OpenTelemetry-compatible trace spans with OTLP export support.
 
 ---
 
@@ -804,24 +839,6 @@ Prometheus-compatible metrics at `GET /metrics` with 15 metric families. OpenTel
 ## MCP Server (`src/mcp/server.ts`)
 
 Cortex operates as a Model Context Protocol server. JSON-RPC 2.0 protocol (`initialize`, `tools/list`, `tools/call`). Dual transport: stdio (Claude Desktop/VS Code) and HTTP (`GET/POST /mcp`).
-
----
-
-## Pipeline Middleware (`src/pipeline/`)
-
-10-stage hook pipeline intercepting the agent loop at `pre-assess`, `post-assess`, `pre-reason`, `post-reason`, `pre-tool`, `post-tool`, `pre-reflect`, `post-reflect`, `pre-output`, `post-output`. Hooks support `abort`, `modifyInput`, `modifyLLMResponse`, `modifyOutput`, `injectMessages`, and `sideEffects` (log/metric/store/notify).
-
-Built-in hooks (high priority = earlier execution):
-- `@cortex/injection-guard` (priority 5, `pre-reason`) — Prompt injection detection
-- `@cortex/summarization` (priority 8, `pre-reason`) — Context compaction at 80K token threshold with graduated summarization and PII redaction
-- `@cortex/loop-detection` (priority 12, `pre-tool`) — Per-file edit tracking with escalation warnings at 5+ edits
-- `@cortex/content-safety` (priority 10, `pre-output`) — Harmful content blocking and PII redaction
-- `@cortex/tool-output-sandbox` (priority 15, `post-tool`) — Large tool output capture for external storage
-- `@cortex/pre-completion-checklist` (priority 20, `post-reason`) — Build-Verify-Fix enforcement
-- `@cortex/cost-tracker` (priority 200, `post-tool`/`post-output`) — Metric emission
-- `@cortex/audit-log` (priority 150, `post-output`) — Session/turn stat logging
-
-Hooks are composable, priority-ordered, with support for plugin-contributed hooks and per-hook disable toggles. Per-session state cleaned up on turn end to prevent memory leaks.
 
 ---
 

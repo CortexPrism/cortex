@@ -75,7 +75,7 @@ Code signing is required for distribution outside of developer mode.
 
 | Platform | Method | Documentation |
 |----------|--------|--------------|
-| Linux | `install.sh` (bash) | [linux.md](install/linux.md) |
+| Linux | `install.sh` (bash) | See [Quick Start](../README.md#quick-start) |
 | macOS | `install.sh` (bash) | [macos.md](install/macos.md) |
 | Windows | `install.ps1` (PowerShell) | [windows.md](install/windows.md) |
 
