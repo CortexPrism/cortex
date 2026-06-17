@@ -1,5 +1,9 @@
 # CortexPrism
 
+<p align="center">
+  <img src="docs/banner.png" alt="CortexPrism" width="100%"/>
+</p>
+
 > **The open-source AI agent harness with memory, tools, a web UI, and layered security — powered by
 > Deno.**
 

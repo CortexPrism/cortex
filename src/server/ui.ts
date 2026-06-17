@@ -496,6 +496,36 @@ const HTML = `<!DOCTYPE html>
   .skill-tab { padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; color:var(--text3); border:1px solid var(--border); background:transparent; }
   .skill-tab:hover { background:rgba(255,255,255,0.05); color:var(--text2); }
   .skill-tab.active { background:rgba(6,182,212,0.15); color:var(--accent2); border-color:rgba(6,182,212,0.3); }
+  /* Skill search / toolbar */
+  .skill-search { background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:11px; color:var(--text); font-family:'Inter',sans-serif; width:200px; outline:none; }
+  .skill-search:focus { border-color:var(--accent); }
+  .skill-search::placeholder { color:var(--text3); }
+  .skill-view-btn { padding:4px 8px; border-radius:4px; cursor:pointer; font-size:10px; color:var(--text3); border:1px solid var(--border); background:transparent; transition:all 0.15s; }
+  .skill-view-btn:hover { color:var(--text2); border-color:var(--text3); }
+  .skill-view-btn.active { background:rgba(6,182,212,0.15); color:var(--accent2); border-color:rgba(6,182,212,0.3); }
+  .skill-sort { background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:10px; color:var(--text2); font-family:'Inter',sans-serif; cursor:pointer; outline:none; }
+  .skill-sort:focus { border-color:var(--accent); }
+  /* Inline edit mode */
+  .skill-inline-input { background:var(--bg); border:1px solid var(--accent); border-radius:4px; padding:3px 6px; font-size:12px; color:var(--text); font-family:'Inter',sans-serif; outline:none; width:100%; }
+  .skill-inline-input.small { font-size:10px; }
+  .skill-inline-textarea { background:var(--bg); border:1px solid var(--accent); border-radius:4px; padding:6px 8px; font-size:11px; color:var(--text); font-family:'JetBrains Mono',monospace; outline:none; width:100%; min-height:60px; resize:vertical; }
+  .skill-check { display:none; }
+  .skill-check:checked + .skill-check-label::before { content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--bg); font-weight:700; background:var(--accent); border-radius:2px; }
+  .skill-check-label { width:14px; height:14px; border:1px solid var(--text3); border-radius:2px; cursor:pointer; position:relative; flex-shrink:0; }
+  .skill-card.selected { border-color:var(--accent); background:rgba(6,182,212,0.06); }
+  /* Bulk toolbar */
+  .skill-bulk-bar { display:none; align-items:center; gap:8px; padding:6px 10px; background:var(--bg2); border:1px solid var(--accent); border-radius:6px; font-size:11px; }
+  .skill-bulk-bar.visible { display:flex; }
+  /* List view */
+  .skill-list-item { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; cursor:pointer; transition:all 0.15s; }
+  .skill-list-item:hover { border-color:rgba(6,182,212,0.3); }
+  /* Inline edit row */
+  .skill-edit-row { display:flex; gap:6px; align-items:flex-start; }
+  .skill-edit-row .skill-inline-input { flex-shrink:0; }
+  .skill-inline-tags { display:flex; flex-wrap:wrap; gap:4px; }
+  .skill-inline-tag { display:inline-flex; align-items:center; gap:2px; padding:1px 5px; border-radius:3px; font-size:9px; background:rgba(59,130,246,0.1); color:var(--accent2); }
+  .skill-inline-tag .remove-tag { cursor:pointer; color:var(--text3); font-size:10px; }
+  .skill-inline-tag .remove-tag:hover { color:#f87171; }
   /* Skill Designer */
   .sd-tab { padding:8px 16px; cursor:pointer; font-size:11px; color:var(--text3); background:transparent; border:none; border-bottom:2px solid transparent; }
   .sd-tab:hover { color:var(--text2); background:rgba(255,255,255,0.03); }
@@ -1555,11 +1585,34 @@ const HTML = `<!DOCTYPE html>
       </div>
       <!-- Stats bar -->
       <div id="skills-stats" style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--text3);"></div>
-      <!-- Filter tabs -->
-      <div id="skills-tabs" style="display:flex;gap:4px;margin-top:10px;">
-        <button class="skill-tab active" onclick="setSkillFilter('all')" data-filter="all">All</button>
-        <button class="skill-tab" onclick="setSkillFilter('human')" data-filter="human">✍️ Human</button>
-        <button class="skill-tab" onclick="setSkillFilter('llm')" data-filter="llm">🧠 Learned</button>
+      <!-- Toolbar: search, view toggle, sort, filter tabs -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input class="skill-search" id="skill-search" type="text" placeholder="🔍 Search skills..." oninput="skillSearch(this.value)" />
+          <select class="skill-sort" id="skill-sort" onchange="skillSort()">
+            <option value="name">Sort: Name</option>
+            <option value="rate">Sort: Success rate</option>
+            <option value="uses">Sort: Usage</option>
+            <option value="date">Sort: Date</option>
+          </select>
+          <!-- Filter tabs -->
+          <div id="skills-tabs" style="display:flex;gap:4px;">
+            <button class="skill-tab active" onclick="setSkillFilter('all')" data-filter="all">All</button>
+            <button class="skill-tab" onclick="setSkillFilter('human')" data-filter="human">✍️ Human</button>
+            <button class="skill-tab" onclick="setSkillFilter('llm')" data-filter="llm">🧠 Learned</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <!-- Bulk actions -->
+          <div id="skill-bulk-bar" class="skill-bulk-bar">
+            <span id="skill-bulk-count" style="color:var(--accent2);"></span>
+            <button class="btn btn-ghost" onclick="skillBulkDelete()" style="font-size:10px;padding:3px 8px;color:#f87171;">🗑 Delete</button>
+            <button class="btn btn-ghost" onclick="skillSelectNone()" style="font-size:10px;padding:3px 8px;">✕ Clear</button>
+          </div>
+          <!-- View toggle -->
+          <button class="skill-view-btn active" onclick="setSkillView('card')" id="view-btn-card" title="Card view">▦</button>
+          <button class="skill-view-btn" onclick="setSkillView('list')" id="view-btn-list" title="List view">≡</button>
+        </div>
       </div>
     </div>
     <div id="skills-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
@@ -3703,11 +3756,16 @@ async function stopChannel(id) {
 let skillFilter = 'all';
 let skillTagFilter = null;
 let allSkills = [];
+let skillView = 'card';
+let skillSearchQuery = '';
+let skillSortField = 'name';
+let selectedSkills = new Set();
+let editingSkills = new Set();
 
 function setSkillFilter(filter) {
   skillFilter = filter;
   document.querySelectorAll('.skill-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === filter));
-  renderSkillsList();
+  loadSkills();
 }
 
 function setSkillTagFilter(tag) {
@@ -3716,10 +3774,479 @@ function setSkillTagFilter(tag) {
   renderSkillsList();
 }
 
+function setSkillView(view) {
+  skillView = view;
+  document.getElementById('view-btn-card').classList.toggle('active', view === 'card');
+  document.getElementById('view-btn-list').classList.toggle('active', view === 'list');
+  renderSkillsList();
+}
+
+function skillSearch(query) {
+  skillSearchQuery = query.trim().toLowerCase();
+  renderSkillsList();
+}
+
+function skillSort() {
+  skillSortField = document.getElementById('skill-sort').value;
+  renderSkillsList();
+}
+
+function toggleSkillSelect(name) {
+  if (selectedSkills.has(name)) {
+    selectedSkills.delete(name);
+  } else {
+    selectedSkills.add(name);
+  }
+  updateSkillBulkBar();
+  renderSkillsList();
+}
+
+function skillSelectAll() {
+  const filtered = getFilteredAndSortedSkills();
+  if (selectedSkills.size === filtered.length) {
+    selectedSkills.clear();
+  } else {
+    filtered.forEach(s => selectedSkills.add(s.name));
+  }
+  updateSkillBulkBar();
+  renderSkillsList();
+}
+
+function skillSelectNone() {
+  selectedSkills.clear();
+  updateSkillBulkBar();
+  renderSkillsList();
+}
+
+async function skillBulkDelete() {
+  if (selectedSkills.size === 0) return;
+  const names = Array.from(selectedSkills).join(', ');
+  const ok = await confirmAction('Bulk Delete', 'Delete ' + selectedSkills.size + ' skill(s): ' + names + '?', 'Delete All');
+  if (!ok) return;
+  let deleted = 0;
+  for (const name of selectedSkills) {
+    try {
+      const r = await fetch(BASE + '/api/skills?name=' + encodeURIComponent(name), { method: 'DELETE' });
+      if (r.ok) deleted++;
+    } catch(e) { /* continue */ }
+  }
+  selectedSkills.clear();
+  updateSkillBulkBar();
+  toast('Deleted ' + deleted + ' skill(s)', deleted > 0 ? 'success' : 'error');
+  loadSkills();
+}
+
+function updateSkillBulkBar() {
+  const bar = document.getElementById('skill-bulk-bar');
+  const count = document.getElementById('skill-bulk-count');
+  if (selectedSkills.size > 0) {
+    bar.classList.add('visible');
+    count.textContent = selectedSkills.size + ' selected';
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+async function duplicateSkill(name) {
+  try {
+    const r = await fetch(BASE + '/api/skills/detail?name=' + encodeURIComponent(name));
+    if (!r.ok) { alert('Failed to load skill'); return; }
+    const s = await r.json();
+    const newName = name + '-copy';
+    const body = {
+      name: newName,
+      description: s.description,
+      triggerPattern: s.trigger_pattern,
+      content: s.content,
+      steps: (() => { try { return JSON.parse(s.steps || '[]'); } catch(e) { return []; } })(),
+    };
+    let metadata;
+    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata || null); } catch(e) { metadata = null; }
+    if (metadata) body.metadata = metadata;
+    const r2 = await fetch(BASE + '/api/skills', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (r2.ok) {
+      toast('Duplicated as "' + newName + '"', 'success');
+      loadSkills();
+    } else {
+      const d = await r2.json().catch(() => ({}));
+      alert('Duplicate failed: ' + (d.error || 'Unknown error'));
+    }
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+function enterInlineEdit(name) {
+  editingSkills.add(name);
+  renderSkillsList();
+}
+
+function cancelInlineEdit(name) {
+  editingSkills.delete(name);
+  renderSkillsList();
+}
+
+async function saveInlineEdit(name, card) {
+  const descInput = card.querySelector('[data-iedit="desc"]');
+  const trigInput = card.querySelector('[data-iedit="trigger"]');
+  const contentArea = card.querySelector('[data-iedit="content"]');
+  const tagsInput = card.querySelector('[data-iedit="tags"]');
+  const diffInput = card.querySelector('[data-iedit="difficulty"]');
+  
+  // Find original skill data
+  const skill = allSkills.find(s => s.name === name);
+  let metadata = {};
+  try { metadata = skill.metadata && typeof skill.metadata === 'string' ? JSON.parse(skill.metadata) : (skill.metadata || {}); } catch(e) {}
+
+  const body = {
+    name: name,
+    description: descInput ? descInput.value.trim() || undefined : undefined,
+    triggerPattern: trigInput ? trigInput.value.trim() || undefined : undefined,
+    content: contentArea ? contentArea.value || undefined : undefined,
+  };
+
+  if (tagsInput || diffInput) {
+    const tags = tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : metadata.tags || [];
+    const diff = diffInput ? diffInput.value.trim() : metadata.difficulty || '';
+    body.metadata = {
+      tags: tags,
+      difficulty: diff || undefined,
+      examples: metadata.examples || [],
+      prerequisites: metadata.prerequisites || [],
+    };
+  }
+
+  const res = await fetch(BASE + '/api/skills', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (res.ok) {
+    editingSkills.delete(name);
+    toast('Skill updated', 'success');
+    loadSkills();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    alert('Save failed: ' + (data.error || 'Unknown error'));
+  }
+}
+
+function getFilteredAndSortedSkills() {
+  let filtered = allSkills.filter(s => {
+    if (skillTagFilter) {
+      let metadata = {};
+      try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+      const tags = Array.isArray(metadata.tags) ? metadata.tags : [];
+      if (!tags.includes(skillTagFilter)) return false;
+    }
+    if (skillSearchQuery) {
+      const searchIn = [
+        s.name,
+        s.description || '',
+        s.trigger_pattern || '',
+        s.content || '',
+      ].join(' ').toLowerCase();
+      if (!searchIn.includes(skillSearchQuery)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  switch (skillSortField) {
+    case 'rate':
+      filtered.sort((a, b) => (b.success_rate ?? 0) - (a.success_rate ?? 0));
+      break;
+    case 'uses':
+      filtered.sort((a, b) => (b.invocation_count ?? 0) - (a.invocation_count ?? 0));
+      break;
+    case 'date':
+      filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      break;
+    default:
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return filtered;
+}
+
+function renderSkillCard(s) {
+  const rate = Math.round((s.success_rate ?? 0) * 100);
+  const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
+  const isHuman = s.origin === 'human';
+  const isEditing = editingSkills.has(s.name);
+  const isSelected = selectedSkills.has(s.name);
+  const originBadge = isHuman
+    ? '<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:3px;">✍️ human</span>'
+    : '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 6px;border-radius:3px;">🧠 learned</span>';
+
+  let steps = [];
+  try { steps = JSON.parse(s.steps || '[]'); } catch(e) {}
+  let metadata = {};
+  try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+  const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
+  const difficulty = typeof metadata.difficulty === 'string' ? metadata.difficulty : '';
+  const examplesLen = Array.isArray(metadata.examples) ? metadata.examples.length : 0;
+  const contentPreview = s.content ? s.content.slice(0, 120) : '';
+  const descPreview = (s.description ?? '').slice(0, 100);
+
+  if (isEditing) {
+    // ── Inline Edit Mode ──
+    return '<div class="card" style="border-color:var(--accent);background:rgba(6,182,212,0.04);">' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+        // Name (read-only for inline edits - use designer for rename)
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:13px;font-weight:600;font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+          originBadge +
+          '<span style="font-size:10px;color:var(--accent2);margin-left:auto;">Editing...</span>' +
+        '</div>' +
+        // Description
+        '<div>' +
+          '<label style="font-size:10px;color:var(--text3);display:block;margin-bottom:2px;">Description</label>' +
+          '<input class="skill-inline-input" data-iedit="desc" value="' + escAttr(s.description || '') + '" placeholder="What this skill does" />' +
+        '</div>' +
+        // Trigger
+        '<div>' +
+          '<label style="font-size:10px;color:var(--text3);display:block;margin-bottom:2px;">Trigger Pattern</label>' +
+          '<input class="skill-inline-input" data-iedit="trigger" value="' + escAttr(s.trigger_pattern || '') + '" placeholder="Phrase that triggers this skill" />' +
+        '</div>' +
+        // Content
+        '<div>' +
+          '<label style="font-size:10px;color:var(--text3);display:block;margin-bottom:2px;">Content / Instructions (Markdown)</label>' +
+          '<textarea class="skill-inline-textarea" data-iedit="content" style="min-height:100px;">' + esc(s.content || '') + '</textarea>' +
+        '</div>' +
+        // Tags + Difficulty
+        '<div style="display:flex;gap:8px;">' +
+          '<div style="flex:1;">' +
+            '<label style="font-size:10px;color:var(--text3);display:block;margin-bottom:2px;">Tags (comma-separated)</label>' +
+            '<input class="skill-inline-input small" data-iedit="tags" value="' + escAttr(tags.join(', ')) + '" placeholder="design, frontend" />' +
+          '</div>' +
+          '<div style="flex:1;">' +
+            '<label style="font-size:10px;color:var(--text3);display:block;margin-bottom:2px;">Difficulty</label>' +
+            '<input class="skill-inline-input small" data-iedit="difficulty" value="' + escAttr(difficulty) + '" placeholder="intermediate" />' +
+          '</div>' +
+        '</div>' +
+        // Action buttons
+        '<div style="display:flex;gap:6px;align-items:center;border-top:1px solid var(--border);padding-top:10px;">' +
+          '<button class="btn btn-primary" onclick="saveInlineEdit(\\'' + esc(s.name) + '\\', this.parentElement.parentElement.parentElement)" style="font-size:11px;">💾 Save</button>' +
+          '<button class="btn btn-ghost" onclick="cancelInlineEdit(\\'' + esc(s.name) + '\\')" style="font-size:11px;">Cancel</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ── Normal Card View ──
+  const descTrunc = (s.description ?? '').slice(0, 80);
+  const needsExpand = (s.description ?? '').length > 80 || steps.length > 0 || s.content || tags.length > 0 || examplesLen > 0;
+
+  let html = '<div class="card' + (isSelected ? ' selected' : '') + '" style="cursor:pointer;position:relative;transition:all 0.2s ease;">' +
+    // Checkbox (top-left)
+    '<div style="position:absolute;top:10px;left:10px;z-index:2;" onclick="event.stopPropagation();">' +
+      '<input type="checkbox" class="skill-check" id="sk-check-' + escAttr(s.name) + '" ' + (isSelected ? 'checked' : '') + ' onchange="toggleSkillSelect(\\'' + esc(s.name) + '\\')" />' +
+      '<label class="skill-check-label" for="sk-check-' + escAttr(s.name) + '"></label>' +
+    '</div>' +
+    // Main content with left padding for checkbox
+    '<div onclick="toggleSkillDetail(this.parentElement)" style="padding-left:24px;">' +
+      // Header row
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:4px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
+          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+          originBadge +
+          (difficulty ? '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#a855f7;">' + esc(difficulty) + '</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation();">' +
+          '<div style="text-align:right;">' +
+            '<div style="font-size:14px;font-weight:600;color:' + rateColor + ';">' + rate + '%</div>' +
+            '<div style="font-size:10px;color:var(--text3);">v' + (s.version ?? 1) + ' · ' + (s.invocation_count ?? 0) + ' uses</div>' +
+          '</div>' +
+          (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Duplicate" onclick="duplicateSkill(\\'' + esc(s.name) + '\\')">⧉</button>' : '') +
+          (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Quick edit" onclick="enterInlineEdit(\\'' + esc(s.name) + '\\')">✏️</button>' : '') +
+          (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Open designer" onclick="openSkillDesigner(\\'' + esc(s.name) + '\\')">⚙️</button>' : '') +
+          '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;margin-left:2px;" onclick="deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
+        '</div>' +
+      '</div>' +
+      // Description + content preview
+      '<p style="font-size:12px;color:var(--text2);margin:0 0 6px 0;line-height:1.4;">' + esc(descTrunc) + ((s.description ?? '').length > 80 ? '…' : '') + '</p>' +
+      // Content snippet
+      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:JetBrains Mono,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
+      // Tags
+      (tags.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+        tags.slice(0, 5).map(tag => '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(tag) + '</span>').join('') +
+        (tags.length > 5 ? '<span style="font-size:9px;padding:2px 6px;border-radius:3px;color:var(--text3);">+' + (tags.length - 5) + '</span>' : '') +
+      '</div>' : '') +
+      // Steps badges or trigger
+      (steps.length > 0
+        ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">' +
+            steps.slice(0, 4).map(function(step, i) {
+              return '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);font-size:10px;padding:2px 6px;border-radius:3px;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 28)) + '</span>';
+            }).join('') +
+            (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
+          '</div>'
+        : '') +
+      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:JetBrains Mono,monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
+      // Expandable indicator
+      (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
+        '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
+        '<span>View details</span>' +
+      '</div>' : '') +
+      // Expandable detail section
+      (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
+        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:JetBrains Mono,monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
+        '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
+        (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
+        (Array.isArray(metadata.examples) && metadata.examples.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
+          metadata.examples.slice(0, 3).map(function(ex) {
+            return '<div style="font-size:10px;color:var(--text2);padding:2px 0;margin-left:12px;">• ' + esc(ex.slice(0, 80)) + '</div>';
+          }).join('') : '') +
+        (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;margin-bottom:6px;" onclick="event.stopPropagation();openSkillDesigner(\\'' + esc(s.name) + '\\')">⚙️ Open Designer</button>' : '') +
+        (s.content ? '<div style="margin-top:6px;font-size:10px;color:var(--text2);white-space:pre-wrap;max-height:150px;overflow-y:auto;background:var(--bg2);padding:8px;border-radius:4px;border:1px solid var(--border);">' + esc(s.content.slice(0, 1500)) + '</div>' : '') +
+        (steps.length > 0 ? '<div style="margin-top:6px;"><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">All steps:</div>' +
+          steps.map(function(step, i) {
+            return '<div style="font-size:10px;color:var(--text2);padding:3px 0;line-height:1.4;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 100)) + (step.tool ? ' <span style="color:var(--accent2);font-size:9px;">[' + esc(step.tool) + ']</span>' : '') + '</div>';
+          }).join('') + '</div>' : '') +
+      '</div>' : '') +
+    '</div>' +
+  '</div>';
+
+  return html;
+}
+
+function renderSkillListItem(s) {
+  const rate = Math.round((s.success_rate ?? 0) * 100);
+  const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
+  const isHuman = s.origin === 'human';
+  const isSelected = selectedSkills.has(s.name);
+  const isEditing = editingSkills.has(s.name);
+  const originBadge = isHuman
+    ? '<span style="font-size:9px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 4px;border-radius:2px;">✍️</span>'
+    : '<span style="font-size:9px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 4px;border-radius:2px;">🧠</span>';
+
+  let metadata = {};
+  try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+  const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
+
+  let html = '<div class="skill-list-item' + (isSelected ? ' selected' : '') + '" onclick="toggleSkillSelect(\\'' + esc(s.name) + '\\')">' +
+    '<label class="skill-check-label" onclick="event.stopPropagation();">' +
+      '<input type="checkbox" class="skill-check" ' + (isSelected ? 'checked' : '') + ' onchange="toggleSkillSelect(\\'' + esc(s.name) + '\\')" />' +
+    '</label>' +
+    '<div style="flex:1;min-width:0;">' +
+      '<div style="display:flex;align-items:center;gap:6px;">' +
+        '<span style="font-size:13px;font-weight:600;font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+        originBadge +
+        '<span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((s.description || '').slice(0, 60)) + '</span>' +
+      '</div>' +
+      (tags.length > 0 ? '<div style="display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;">' + tags.slice(0, 3).map(t => '<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(t) + '</span>').join('') + '</div>' : '') +
+    '</div>' +
+    '<div style="text-align:right;font-size:12px;font-weight:600;color:' + rateColor + ';min-width:36px;">' + rate + '%</div>' +
+    '<div style="font-size:10px;color:var(--text3);min-width:50px;text-align:right;">v' + (s.version ?? 1) + ' · ' + (s.invocation_count ?? 0) + '</div>' +
+    '<div style="display:flex;gap:2px;" onclick="event.stopPropagation();">' +
+      (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 5px;" title="Edit" onclick="enterInlineEdit(\\'' + esc(s.name) + '\\')">✏️</button>' : '') +
+      (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 5px;" title="Open designer" onclick="openSkillDesigner(\\'' + esc(s.name) + '\\')">⚙️</button>' : '') +
+      '<button class="btn btn-ghost" style="font-size:10px;padding:2px 5px;" title="Delete" onclick="deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+async function loadSkills() {
+  const url = skillFilter === 'all' ? (BASE + '/api/skills') : (BASE + '/api/skills?origin=' + skillFilter);
+  const [skills, stats] = await Promise.all([
+    fetch(url).then(r => r.json()).catch(() => []),
+    fetch(BASE + '/api/skills/stats').then(r => r.json()).catch(() => ({ total: 0, human: 0, llm: 0, avgSuccessRate: 0 })),
+  ]);
+  allSkills = skills;
+
+  // Stats bar
+  const statsEl = document.getElementById('skills-stats');
+  const avgPct = Math.round((stats.avgSuccessRate ?? 0) * 100);
+  statsEl.innerHTML = '<span>Total: <b>' + stats.total + '</b></span>' +
+    '<span>✍️ Human: <b>' + stats.human + '</b></span>' +
+    '<span>🧠 Learned: <b>' + stats.llm + '</b></span>' +
+    (stats.total > 0 ? '<span>Avg success: <b>' + avgPct + '%</b></span>' : '');
+
+  // Collect all unique tags for filter
+  const allTags = new Set();
+  for (const s of skills) {
+    let metadata = {};
+    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
+    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
+    tags.forEach(t => allTags.add(t));
+  }
+
+  // Render tag filters
+  const tagsContainer = document.getElementById('skills-tag-filters') || (() => {
+    const div = document.createElement('div');
+    div.id = 'skills-tag-filters';
+    div.style.display = 'flex';
+    div.style.flexWrap = 'wrap';
+    div.style.gap = '6px';
+    div.style.marginTop = '8px';
+    const tabsEl = document.getElementById('skills-tabs');
+    tabsEl.parentElement.insertBefore(div, tabsEl.nextSibling);
+    return div;
+  })();
+  
+  tagsContainer.innerHTML = Array.from(allTags).sort().map(tag => 
+    '<button class="skill-tag-btn' + (skillTagFilter === tag ? ' active' : '') + '" ' +
+    'data-tag="' + esc(tag) + '" ' +
+    'onclick="setSkillTagFilter(\\'' + esc(tag) + '\\')" ' +
+    'style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:' + (skillTagFilter === tag ? 'var(--accent2)' : 'transparent') + ';color:' + (skillTagFilter === tag ? 'var(--bg)' : 'var(--text3)') + ';cursor:pointer;transition:all 0.2s;">' + esc(tag) + '</button>'
+  ).join('');
+
+  updateSkillBulkBar();
+  renderSkillsList();
+}
+
+function renderSkillsList() {
+  const el = document.getElementById('skills-list');
+  const filtered = getFilteredAndSortedSkills();
+
+  if (!allSkills.length) {
+    el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">' +
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' +
+      '<p style="color:var(--text3);font-size:13px;">No skills yet.</p>' +
+      '<p style="color:var(--text3);font-size:11px;margin-top:4px;">Skills come from two sources: <b>human-authored</b> (.cortex/skills/*/SKILL.md files) and <b>learned</b> (extracted automatically from agent sessions).</p>' +
+      '<p style="color:var(--text3);font-size:11px;margin-top:2px;">Use the "Load .cortex/skills" button above to import human-authored skills, or run sessions to generate learned skills.</p>' +
+      '</div>';
+    return;
+  }
+
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:13px;">No skills match your current filters.</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  for (const s of filtered) {
+    const d = document.createElement('div');
+    if (skillView === 'list') {
+      d.innerHTML = renderSkillListItem(s);
+    } else {
+      d.innerHTML = renderSkillCard(s);
+    }
+    el.appendChild(d);
+  }
+
+  // Add select-all row in list view
+  if (skillView === 'list') {
+    const selectAllDiv = document.createElement('div');
+    selectAllDiv.className = 'skill-list-item';
+    selectAllDiv.style.background = 'transparent';
+    selectAllDiv.style.borderColor = 'transparent';
+    selectAllDiv.style.cursor = 'pointer';
+    selectAllDiv.innerHTML = '<label class="skill-check-label">' +
+      '<input type="checkbox" class="skill-check" ' + (selectedSkills.size === filtered.length && filtered.length > 0 ? 'checked' : '') + ' onchange="skillSelectAll()" />' +
+      '</label>' +
+      '<span style="font-size:10px;color:var(--text3);">' + (selectedSkills.size === filtered.length && filtered.length > 0 ? 'Deselect all' : 'Select all') + ' (' + filtered.length + ')</span>';
+    el.insertBefore(selectAllDiv, el.firstChild);
+  }
+}
+
 async function loadHumanSkills() {
   try {
     const r = await fetch(BASE + '/api/skills/load-human', { method: 'POST' }).then(r => r.json());
-    alert('Loaded ' + (r.loaded ?? 0) + ' skill(s) from .cortex/skills/');
+    toast('Loaded ' + (r.loaded ?? 0) + ' skill(s) from .cortex/skills/', 'success');
     loadSkills();
   } catch(e) { alert('Failed: ' + e.message); }
 }
@@ -3787,175 +4314,15 @@ async function deleteSkill(name) {
 }
 
 function toggleSkillDetail(card) {
-  const detail = card.querySelector('.skill-detail');
+  const detailEl = card.querySelector('.skill-detail');
   const chevron = card.querySelector('.skill-expand-chevron');
-  if (detail) {
-    const isHidden = detail.style.display === 'none';
-    detail.style.display = isHidden ? 'block' : 'none';
+  if (detailEl) {
+    const isHidden = detailEl.style.display === 'none';
+    detailEl.style.display = isHidden ? 'block' : 'none';
     if (chevron) {
       chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
     }
-    card.style.background = isHidden ? 'var(--bg1)' : 'var(--bg0)';
-  }
-}
-
-async function loadSkills() {
-  const url = skillFilter === 'all' ? (BASE + '/api/skills') : (BASE + '/api/skills?origin=' + skillFilter);
-  const [skills, stats] = await Promise.all([
-    fetch(url).then(r => r.json()).catch(() => []),
-    fetch(BASE + '/api/skills/stats').then(r => r.json()).catch(() => ({ total: 0, human: 0, llm: 0, avgSuccessRate: 0 })),
-  ]);
-  allSkills = skills;
-
-  // Stats bar
-  const statsEl = document.getElementById('skills-stats');
-  const avgPct = Math.round((stats.avgSuccessRate ?? 0) * 100);
-  statsEl.innerHTML = '<span>Total: <b>' + stats.total + '</b></span>' +
-    '<span>✍️ Human: <b>' + stats.human + '</b></span>' +
-    '<span>🧠 Learned: <b>' + stats.llm + '</b></span>' +
-    (stats.total > 0 ? '<span>Avg success: <b>' + avgPct + '%</b></span>' : '');
-
-  // Collect all unique tags for filter
-  const allTags = new Set();
-  for (const s of skills) {
-    let metadata = {};
-    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
-    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
-    tags.forEach(t => allTags.add(t));
-  }
-
-  // Render tag filters
-  const tagsContainer = document.getElementById('skills-tag-filters') || (() => {
-    const div = document.createElement('div');
-    div.id = 'skills-tag-filters';
-    div.style.display = 'flex';
-    div.style.flexWrap = 'wrap';
-    div.style.gap = '6px';
-    div.style.marginTop = '8px';
-    document.getElementById('skills-tabs').parentElement.insertBefore(div, document.getElementById('skills-tabs').nextSibling);
-    return div;
-  })();
-  
-  tagsContainer.innerHTML = Array.from(allTags).sort().map(tag => 
-    '<button class="skill-tag-btn' + (skillTagFilter === tag ? ' active' : '') + '" ' +
-    'data-tag="' + esc(tag) + '" ' +
-    'onclick="setSkillTagFilter(\\'' + esc(tag) + '\\')" ' +
-    'style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:' + (skillTagFilter === tag ? 'var(--accent2)' : 'transparent') + ';color:' + (skillTagFilter === tag ? 'var(--bg)' : 'var(--text3)') + ';cursor:pointer;transition:all 0.2s;">' + esc(tag) + '</button>'
-  ).join('');
-
-  renderSkillsList();
-}
-
-function renderSkillsList() {
-  const el = document.getElementById('skills-list');
-
-  if (!allSkills.length) {
-    el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">' +
-      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' +
-      '<p style="color:var(--text3);font-size:13px;">No skills yet.</p>' +
-      '<p style="color:var(--text3);font-size:11px;margin-top:4px;">Skills come from two sources: <b>human-authored</b> (.cortex/skills/*/SKILL.md files) and <b>learned</b> (extracted automatically from agent sessions).</p>' +
-      '<p style="color:var(--text3);font-size:11px;margin-top:2px;">Use the "Load .cortex/skills" button above to import human-authored skills, or run sessions to generate learned skills.</p>' +
-      '</div>';
-    return;
-  }
-
-  // Filter skills by tag
-  const filteredSkills = allSkills.filter(s => {
-    if (!skillTagFilter) return true;
-    let metadata = {};
-    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
-    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []);
-    return tags.includes(skillTagFilter);
-  });
-
-  if (!filteredSkills.length) {
-    el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:13px;">No skills match the selected tag.</div>';
-    return;
-  }
-
-  el.innerHTML = '';
-  for (const s of filteredSkills) {
-    const rate = Math.round((s.success_rate ?? 0) * 100);
-    const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
-    const isHuman = s.origin === 'human';
-    const originBadge = isHuman
-      ? '<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:3px;">✍️ human</span>'
-      : '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 6px;border-radius:3px;">🧠 learned</span>';
-
-    let steps = [];
-    try { steps = JSON.parse(s.steps || '[]'); } catch(e) {}
-
-    const d = document.createElement('div');
-    d.className = 'card';
-    d.style.cursor = 'pointer';
-    d.onclick = function() { toggleSkillDetail(d); };
-    d.style.transition = 'all 0.2s ease';
-
-    const descTrunc = (s.description ?? '').slice(0, 80);
-    let metadata = {};
-    try { metadata = s.metadata && typeof s.metadata === 'string' ? JSON.parse(s.metadata) : (s.metadata ?? {}); } catch(e) {}
-    const tags = (Array.isArray(metadata.tags) ? metadata.tags : []).slice(0, 3);
-    const difficulty = typeof metadata.difficulty === 'string' ? metadata.difficulty : '';
-    const examplesLen = Array.isArray(metadata.examples) ? metadata.examples.length : 0;
-    const needsExpand = (s.description ?? '').length > 80 || steps.length > 0 || s.content || tags.length > 0 || examplesLen > 0;
-    
-    d.innerHTML = 
-      // Header row: name, origin badge, stats, delete button
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex:1;">' +
-          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
-          originBadge +
-          (difficulty ? '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#a855f7;">' + esc(difficulty) + '</span>' : '') +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
-          '<div style="text-align:right;">' +
-            '<div style="font-size:14px;font-weight:600;color:' + rateColor + ';">' + rate + '%</div>' +
-            '<div style="font-size:10px;color:var(--text3);">v' + (s.version ?? 1) + ' · ' + (s.invocation_count ?? 0) + ' uses</div>' +
-          '</div>' +
-          '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;margin-left:4px;" onclick="event.stopPropagation();deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
-        '</div>' +
-      '</div>' +
-      // Description
-      '<p style="font-size:12px;color:var(--text2);margin:0 0 8px 0;line-height:1.4;">' + esc(descTrunc) + (descTrunc.length > 0 && (s.description ?? '').length > 80 ? '…' : '') + '</p>' +
-      // Tags
-      (tags.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">' +
-        tags.map(function(tag) {
-          return '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(tag) + '</span>';
-        }).join('') +
-      '</div>' : '') +
-      // Steps badges or trigger
-      (steps.length > 0 
-        ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">' +
-            steps.slice(0, 4).map(function(step, i) {
-              return '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);font-size:10px;padding:2px 6px;border-radius:3px;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 28)) + '</span>';
-            }).join('') +
-            (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
-          '</div>'
-        : '') +
-          (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Trigger: <span style="color:var(--accent2);font-family:JetBrains Mono,monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
-      // Expandable indicator
-      (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
-        '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
-        '<span>View details</span>' +
-      '</div>' : '') +
-      // Expandable detail section
-      (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
-        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:JetBrains Mono,monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
-        '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
-        (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
-        (Array.isArray(metadata.examples) && metadata.examples.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
-          metadata.examples.slice(0, 3).map(function(ex) {
-            return '<div style="font-size:10px;color:var(--text2);padding:2px 0;margin-left:12px;">• ' + esc(ex.slice(0, 80)) + '</div>';
-          }).join('') : '') +
-        (isHuman ? '<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;margin-bottom:6px;" onclick="event.stopPropagation();openSkillDesigner(\\'' + esc(s.name) + '\\')">✏️ Edit</button>' : '') +
-        (s.content ? '<div style="margin-top:6px;font-size:10px;color:var(--text2);white-space:pre-wrap;max-height:150px;overflow-y:auto;background:var(--bg2);padding:8px;border-radius:4px;border:1px solid var(--border);">' + esc(s.content.slice(0, 1500)) + '</div>' : '') +
-        (steps.length > 0 ? '<div style="margin-top:6px;"><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">All steps:</div>' +
-          steps.map(function(step, i) {
-            return '<div style="font-size:10px;color:var(--text2);padding:3px 0;line-height:1.4;">' + (i+1) + '. ' + esc(String(step.action ?? step.description ?? '').slice(0, 100)) + (step.tool ? ' <span style="color:var(--accent2);font-size:9px;">[' + esc(step.tool) + ']</span>' : '') + '</div>';
-          }).join('') + '</div>' : '') +
-      '</div>' : '');
-
-    el.appendChild(d);
+    card.style.background = isHidden ? 'var(--bg2)' : 'var(--bg3)';
   }
 }
 
@@ -3988,6 +4355,7 @@ async function loadPolicies() {
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+function escAttr(s) { return esc(s); }
 
 // ── Status page ──────────────────────────────────────────────
 async function loadStatus() {
