@@ -450,11 +450,27 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { initSessionDb } = await import('../db/migrate.ts');
     const db = await initSessionDb(msgsMatch[1]);
     const rows = await db.all<
-      { role: string; content: string; token_count: number; created_at: string }
+      { id: number; role: string; content: string; token_count: number; created_at: string }
     >(
-      `SELECT role, content, token_count, created_at FROM session_messages ORDER BY id ASC`,
+      `SELECT id, role, content, token_count, created_at FROM session_messages ORDER BY id ASC`,
     );
     return json(rows);
+  }
+
+  // DELETE /api/sessions/:id/messages/:messageId
+  const deleteMsgMatch = path.match(/^\/api\/sessions\/([^/]+)\/messages\/(\d+)$/);
+  if (req.method === 'DELETE' && deleteMsgMatch) {
+    const sessionId = deleteMsgMatch[1];
+    const messageId = parseInt(deleteMsgMatch[2], 10);
+    const session = await getSession(sessionId);
+    if (!session) return notFound('Session not found');
+    const { initSessionDb } = await import('../db/migrate.ts');
+    const db = await initSessionDb(sessionId);
+    await db.run(
+      `DELETE FROM session_messages WHERE id = ?`,
+      [messageId],
+    );
+    return json({ success: true, messageId });
   }
 
   // POST /api/upload — file upload for chat attachments

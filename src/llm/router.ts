@@ -33,6 +33,37 @@ import type {
 import type { CortexConfig, ProviderConfig, ProviderKind } from '../config/config.ts';
 
 // ═══════════════════════════════════════════════════════════════════
+// Default context windows by provider (in tokens)
+// ═══════════════════════════════════════════════════════════════════
+
+export const PROVIDER_DEFAULT_CONTEXT_WINDOWS: Record<ProviderKind, number> = {
+  anthropic: 200_000, // Claude 3.5 Sonnet
+  openai: 128_000, // GPT-4 Turbo
+  google: 2_000_000, // Gemini 1.5 Pro
+  mistral: 128_000, // Mistral Large
+  groq: 128_000, // Mixtral 8x7B
+  deepseek: 1_000_000, // DeepSeek v4 lite/pro (1M context)
+  openrouter: 200_000, // Varies by model
+  xai: 128_000, // Grok
+  together: 32_000, // Varies by model
+  bedrock: 200_000, // Claude on Bedrock
+  cohere: 128_000, // Command R+
+  ollama: 128_000, // Varies by model
+  kilo: 200_000,
+  cerebras: 128_000,
+  fireworks: 32_000,
+  perplexity: 127_000,
+  nvidia: 128_000,
+  moonshot: 128_000,
+  novita: 128_000,
+  lmstudio: 128_000,
+  litellm: 128_000,
+  huggingface: 128_000,
+  alibaba: 128_000,
+  venice: 200_000,
+};
+
+// ═══════════════════════════════════════════════════════════════════
 // Provider factory (unchanged)
 // ═══════════════════════════════════════════════════════════════════
 
