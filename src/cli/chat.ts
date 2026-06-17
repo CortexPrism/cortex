@@ -24,6 +24,11 @@ import { loadSkillTool } from '../tools/builtin/load_skill.ts';
 import { skillWriteTool } from '../tools/builtin/skill_write.ts';
 import { skillReadTool } from '../tools/builtin/skill_read.ts';
 import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
+import { memoryNoteTool } from '../tools/builtin/memory_note.ts';
+import { braveSearchTool } from '../tools/builtin/web/brave_search.ts';
+import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
+import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
+import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
 import {
   formatSkillsAsAvailableList,
   getAllHumanSkills,
@@ -186,6 +191,11 @@ export const chatCommand = new Command()
         skill_write: skillWriteTool,
         skill_read: skillReadTool,
         dashboard_manage: dashboardManageTool,
+        memory_note: memoryNoteTool,
+        brave_search: braveSearchTool,
+        tavily_search: tavilySearchTool,
+        serpapi_search: serpapiSearchTool,
+        firecrawl: firecrawlTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {

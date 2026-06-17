@@ -11,6 +11,17 @@ import { TogetherProvider } from './together.ts';
 import { BedrockProvider } from './bedrock.ts';
 import { CohereProvider } from './cohere.ts';
 import { KiloProvider } from './kilo.ts';
+import { CerebrasProvider } from './cerebras.ts';
+import { FireworksProvider } from './fireworks.ts';
+import { PerplexityProvider } from './perplexity.ts';
+import { NvidiaProvider } from './nvidia.ts';
+import { MoonshotProvider } from './moonshot.ts';
+import { NovitaProvider } from './novita.ts';
+import { LMStudioProvider } from './lmstudio.ts';
+import { LiteLLMProvider } from './litellm.ts';
+import { HuggingFaceProvider } from './huggingface.ts';
+import { AlibabaProvider } from './alibaba.ts';
+import { VeniceProvider } from './venice.ts';
 import type { CompletionChunk, CompletionOptions, CompletionResult, ContentBlock, LLMProvider, Message } from './types.ts';
 import type { CortexConfig, ProviderConfig, ProviderKind } from '../config/config.ts';
 
@@ -71,6 +82,48 @@ function createProvider(kind: ProviderKind, cfg: ProviderConfig): LLMProvider {
     case 'kilo':
       if (!cfg.apiKey) throw new Error('Kilo API key is required.');
       return new KiloProvider(cfg.apiKey);
+
+    case 'cerebras':
+      if (!cfg.apiKey) throw new Error('Cerebras API key is required.');
+      return new CerebrasProvider(cfg.apiKey);
+
+    case 'fireworks':
+      if (!cfg.apiKey) throw new Error('Fireworks API key is required.');
+      return new FireworksProvider(cfg.apiKey);
+
+    case 'perplexity':
+      if (!cfg.apiKey) throw new Error('Perplexity API key is required.');
+      return new PerplexityProvider(cfg.apiKey);
+
+    case 'nvidia':
+      if (!cfg.apiKey) throw new Error('NVIDIA NIM API key is required.');
+      return new NvidiaProvider(cfg.apiKey);
+
+    case 'moonshot':
+      if (!cfg.apiKey) throw new Error('Moonshot API key is required.');
+      return new MoonshotProvider(cfg.apiKey);
+
+    case 'novita':
+      if (!cfg.apiKey) throw new Error('Novita API key is required.');
+      return new NovitaProvider(cfg.apiKey);
+
+    case 'lmstudio':
+      return new LMStudioProvider(cfg.baseUrl ?? 'http://localhost:1234');
+
+    case 'litellm':
+      return new LiteLLMProvider(cfg.apiKey ?? 'litellm', cfg.baseUrl ?? 'http://localhost:4000');
+
+    case 'huggingface':
+      if (!cfg.apiKey) throw new Error('HuggingFace API key is required.');
+      return new HuggingFaceProvider(cfg.apiKey);
+
+    case 'alibaba':
+      if (!cfg.apiKey) throw new Error('Alibaba Cloud API key is required.');
+      return new AlibabaProvider(cfg.apiKey);
+
+    case 'venice':
+      if (!cfg.apiKey) throw new Error('Venice AI API key is required.');
+      return new VeniceProvider(cfg.apiKey);
 
     default:
       throw new Error(`Unknown provider kind: ${kind}`);

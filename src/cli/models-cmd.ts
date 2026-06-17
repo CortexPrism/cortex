@@ -18,6 +18,17 @@ const PROVIDER_KINDS: ProviderKind[] = [
   'bedrock',
   'cohere',
   'kilo',
+  'cerebras',
+  'fireworks',
+  'perplexity',
+  'nvidia',
+  'moonshot',
+  'novita',
+  'lmstudio',
+  'litellm',
+  'huggingface',
+  'alibaba',
+  'venice',
 ];
 
 function isProviderKind(v: string): v is ProviderKind {

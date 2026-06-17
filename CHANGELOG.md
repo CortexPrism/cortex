@@ -11,6 +11,55 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **11 new LLM providers** — Cerebras, Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI,
+  LM Studio, LiteLLM, Hugging Face Inference Router, Alibaba (Qwen), and Venice AI; each implemented
+  as an `OpenAICompatibleProvider` subclass with verified base URLs and auth from official docs
+  (`src/llm/cerebras.ts`, `fireworks.ts`, `perplexity.ts`, `nvidia.ts`, `moonshot.ts`, `novita.ts`,
+  `lmstudio.ts`, `litellm.ts`, `huggingface.ts`, `alibaba.ts`, `venice.ts`)
+- **Model listing for all new providers** (`src/server/models.ts`) — dedicated `*Models()` functions
+  registered in the `LISTERS` map; Perplexity falls back to a static curated list as it exposes no
+  `/models` endpoint
+- **Dynamic provider + model selects in agent modal** (`src/server/ui.ts`) — agent create/edit modal
+  now populates providers from `/api/providers/configured` (only keys with API key set) and
+  auto-fetches models for the chosen provider via `onAgentProviderChange()`
+- **`GET /api/providers/configured`** (`src/server/router.ts`) — returns only providers that have an
+  API key (or `baseUrl` for Ollama) configured, used by the agent modal and QM settings
+- **Quartermaster unified page** (`src/server/ui.ts`) — merged the former separate "Quartermaster"
+  and "Model Intel" nav items into a single page with **Tool Orchestration** and **Model Intelligence**
+  section tabs plus a ⚙ settings panel
+- **QM Settings panel** (`src/server/ui.ts`, `src/server/router.ts`) — inline settings to
+  enable/disable Model Intelligence, pin a dedicated QM provider + model (ideal for Ollama/LM Studio),
+  choose strategy (conservative / balanced / aggressive), and set the observe threshold; saved via
+  `POST /api/qm/config`
+- **`GET/POST /api/qm/config`** (`src/server/router.ts`) — read and write `modelSelection` config
+  block including new `quartermasterProvider` and `quartermasterModel` fields
+- **`POST /api/qm/reset`** (`src/server/router.ts`) — clears all learned QM patterns, decisions,
+  tool stats, and signal weights
+- **`GET /api/qm/patterns`** (`src/server/router.ts`) — dedicated endpoint for learned tool-sequence
+  patterns, replacing the patterns tab's reuse of `/api/qm/health`
+- **QM patterns tab rework** (`src/server/ui.ts`) — now pulls real pattern rows (tool sequence,
+  hit/success counts, avg confidence) from `/api/qm/patterns`; renders a progress bar per pattern
+- **QM decisions tab rework** (`src/server/ui.ts`) — shows aggregate accuracy header, signal
+  contribution per decision, session suffix, and pending-evaluation count
+- **First-time password setup** (`src/server/router.ts`, `src/server/ui.ts`) — `POST /api/auth/change-password`
+  now skips session auth when no password exists yet; settings Security tab dynamically shows
+  "Set Password" vs "Change Password" and hides the current-password field on first use;
+  a new session cookie is returned immediately after the password is set
+- **`quartermasterProvider` / `quartermasterModel` config fields** (`src/config/config.ts`) —
+  optional fields on `ModelSelectionConfig` to pin model routing to a specific provider
+- **Request-flow architecture doc** (`docs/request-flow.md`) — Mermaid flowchart covering the full
+  lifecycle of a user message through pipeline hooks, metacognition, hybrid memory, LLM rounds, tool
+  execution, sub-agents, reflection, and output streaming
+- **Memory health CLI** (`src/cli/memory-cmd.ts`) — `cortex memory health` prints per-tier stats
+  (total, active, stale counts; avg decay, importance, and access frequency) for episodic, semantic,
+  graph, and reflection memory with colour-coded decay indicators
+- **Memory heuristics CLI** (`src/cli/memory-cmd.ts`) — `cortex memory heuristics` manually triggers
+  a full heuristic learning cycle and reports rows affected per pass (importance boosted, decay
+  slowed, relations strengthened, auto-tagged)
+- **`updated_at` on `episodic_memory`** (`src/db/migrations/020_episodic_updated_at.sql`) — adds the
+  missing column (backfilled from `created_at`) that hourly consolidation was silently failing to
+  write; also registers the six missing `graph_relation_types` rows (`related_to`, `is_part_of`,
+  `is_instance_of`, `contradicts`, `supports`, `causes`)
 - **Server log file** (`src/cli/serve.ts`, `src/config/paths.ts`) — background server process now
   redirects all stdout/stderr to `~/.cortex/data/server.log` (appending across restarts) via a shell
   redirect, replacing the previous silent `/dev/null` discard; `PATHS.serverLog` exposes the
@@ -22,6 +71,30 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed
 
+- **Daily semantic decay was a no-op** (`src/memory/consolidate.ts`) — `runDailyConsolidation` queried
+  the non-existent column `last_accessed_at`; corrected to `last_accessed` (the actual schema column),
+  so decay scores are now updated on every daily cycle
+- **Heuristic cycle metrics always reported zero** (`src/memory/heuristics.ts`) — `boostImportanceFromAccess`
+  and `slowDecayForFrequentAccess` both hardcoded `return 0`; they now use `db.client.execute` to
+  obtain `rowsAffected` and return the real updated-row count
+- **Half-life extension only fired once** (`src/memory/heuristics.ts`) — `slowDecayForFrequentAccess`
+  guarded with `half_life_days <= default`, preventing re-triggering after the first extension; changed
+  to `< max` so frequently-accessed memories keep extending toward the ceiling on each cycle
+- **Reflection patterns duplicated on every turn** (`src/agent/reflect.ts`) — `storeReflection` used
+  `ON CONFLICT DO NOTHING` with a random ID, so the same pattern string accumulated hundreds of rows;
+  it now looks up by `pattern` text first and performs a weighted confidence update + `supporting_events`
+  increment on existing rows, only inserting when the pattern is genuinely new
+- **Memory injection missing metadata context** (`src/memory/inject.ts`) — `formatHit` only showed
+  label and age; it now also surfaces `category`, `tags`, `topics`, and `entities` inline so the LLM
+  receives richer context for each recalled memory
+- **Noisy knowledge graph entities** (`src/memory/graph.ts`) — `extractAndStoreEntities` was creating
+  graph nodes for every capitalized word (e.g. "User", "Assistant", "Based", "String"); an
+  `ENTITY_STOP_WORDS` set now filters common English words and agent-specific noise before insertion
+- **Bare JSON tool calls leaked to chat UI** (`src/agent/loop.ts`) — `stripToolCallMarkup` used a
+  non-greedy regex `\{...\}` that stopped at the first `}`, so nested args like
+  `{"tool":"file_read","args":{"path":"..."}}` were only partially removed and the remainder was
+  rendered in the UI; replaced with the same brace-depth walker used by `extractBareToolCalls`,
+  collecting full-span regions right-to-left before removal
 - **Tool call JSON leaked to chat UI** (`src/agent/loop.ts`) — round 0 previously streamed the raw
   LLM response (including `{"tool":"...","args":{...}}` JSON or `<tool_call>` XML) directly to
   `onChunk` before tool call detection ran; all rounds now use a buffered internal `stream()` call

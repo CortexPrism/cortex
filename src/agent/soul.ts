@@ -228,13 +228,60 @@ export async function initSoulFiles(
   return { created, skipped };
 }
 
-export async function appendToMemoryFile(content: string): Promise<void> {
-  const existing = (await readIfExists(PATHS.memoryFile)) ?? MEMORY_TEMPLATE;
-  const timestamp = new Date().toISOString().slice(0, 10);
-  await Deno.writeTextFile(
-    PATHS.memoryFile,
-    `${existing}\n\n---\n*Updated ${timestamp}*\n${content}`,
-  );
+/**
+ * Map a memory category to the appropriate MEMORY.md section heading.
+ */
+function categoryToSection(category: string): string {
+  switch (category.toLowerCase()) {
+    case 'identity':
+    case 'preference':
+    case 'correction':
+      return 'About the User';
+    case 'project':
+      return 'Project Context';
+    case 'decision':
+      return 'Key Decisions';
+    case 'ongoing':
+      return 'Ongoing Work';
+    default:
+      return 'Preferences';
+  }
+}
+
+export async function appendToMemoryFile(entry: string): Promise<void> {
+  await Deno.mkdir(PATHS.configDir, { recursive: true });
+  let text = (await readIfExists(PATHS.memoryFile)) ?? MEMORY_TEMPLATE;
+
+  // Extract category tag if present: "- [category] content"
+  const tagMatch = entry.match(/^-\s*\[([^\]]+)\]\s*(.+)$/);
+  const category = tagMatch ? tagMatch[1] : 'general';
+  const line = tagMatch ? `- ${tagMatch[2]}` : entry;
+  const section = categoryToSection(category);
+  const sectionHeading = `## ${section}`;
+
+  if (text.includes(sectionHeading)) {
+    // Insert the new line after the last existing bullet in that section
+    const sectionStart = text.indexOf(sectionHeading);
+    const afterHeading = text.indexOf('\n', sectionStart) + 1;
+    // Find the end of this section (next ## or end of file)
+    const nextSection = text.indexOf('\n## ', afterHeading);
+    const sectionEnd = nextSection === -1 ? text.length : nextSection;
+    const sectionBody = text.slice(afterHeading, sectionEnd);
+    const lastBullet = sectionBody.lastIndexOf('\n-');
+    if (lastBullet !== -1) {
+      const insertAt = afterHeading + lastBullet + sectionBody.slice(lastBullet).indexOf('\n') + 1;
+      text = text.slice(0, insertAt) + line + '\n' + text.slice(insertAt);
+    } else {
+      // No bullets yet — insert right after the heading line
+      const insertAt = afterHeading;
+      text = text.slice(0, insertAt) + line + '\n' + text.slice(insertAt);
+    }
+  } else {
+    // Section doesn't exist — append it
+    text = text.trimEnd() + `\n\n${sectionHeading}\n${line}\n`;
+  }
+
+  await Deno.writeTextFile(PATHS.memoryFile, text);
 }
 
 export function buildSystemPrompt(

@@ -139,14 +139,16 @@ export async function loadAgentIdentity(
     result.soul = await readOrDefault(agent.soulFile || PATHS.soulFile, DEFAULT_SOUL);
   }
 
-  // User file
-  if (agent.userFile && await exists(agent.userFile)) {
-    result.user = await Deno.readTextFile(agent.userFile);
+  // User file — agent-specific first, then global fallback
+  const userPath = agent.userFile || PATHS.userFile;
+  if (await exists(userPath)) {
+    result.user = await Deno.readTextFile(userPath);
   }
 
-  // Memory file
-  if (agent.memoryFile && await exists(agent.memoryFile)) {
-    result.memory = await Deno.readTextFile(agent.memoryFile);
+  // Memory file — agent-specific first, then global fallback
+  const memoryPath = agent.memoryFile || PATHS.memoryFile;
+  if (await exists(memoryPath)) {
+    result.memory = await Deno.readTextFile(memoryPath);
   }
 
   return result;

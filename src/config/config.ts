@@ -14,7 +14,18 @@ export type ProviderKind =
   | 'together'
   | 'bedrock'
   | 'cohere'
-  | 'kilo';
+  | 'kilo'
+  | 'cerebras'
+  | 'fireworks'
+  | 'perplexity'
+  | 'nvidia'
+  | 'moonshot'
+  | 'novita'
+  | 'lmstudio'
+  | 'litellm'
+  | 'huggingface'
+  | 'alibaba'
+  | 'venice';
 
 export interface ProviderConfig {
   kind: ProviderKind;
@@ -58,6 +69,10 @@ export interface ModelSelectionConfig {
   allowedProviders?: ProviderKind[];
   enforceConfidence: number;
   suggestConfidence: number;
+  /** Dedicated provider for Quartermaster model-selection decisions (overrides default) */
+  quartermasterProvider?: ProviderKind;
+  /** Dedicated model for Quartermaster model-selection decisions */
+  quartermasterModel?: string;
 }
 
 /** Defines a named, selectable agent with its own identity, model, tools, and behaviour. */
@@ -193,6 +208,17 @@ const DEFAULT_CONFIG: CortexConfig = {
     bedrock: undefined,
     cohere: undefined,
     kilo: undefined,
+    cerebras: undefined,
+    fireworks: undefined,
+    perplexity: undefined,
+    nvidia: undefined,
+    moonshot: undefined,
+    novita: undefined,
+    lmstudio: undefined,
+    litellm: undefined,
+    huggingface: undefined,
+    alibaba: undefined,
+    venice: undefined,
   },
   agent: {
     name: 'Cortex',

@@ -13,7 +13,8 @@ import {
 } from '../tools/executor.ts';
 import type { EmbeddingProvider } from '../memory/embeddings.ts';
 import { injectMemory } from '../memory/inject.ts';
-import { writeEpisodic } from '../memory/store.ts';
+import { writeEpisodic, writeSemantic } from '../memory/store.ts';
+import { appendToMemoryFile } from './soul.ts';
 import { reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
@@ -30,7 +31,48 @@ import type { ProviderKind } from '../config/config.ts';
 
 let builtinHooksRegistered = false;
 
-const MAX_TOOL_ROUNDS = 8;
+const PREFERENCE_PATTERNS: Array<{ re: RegExp; extract: (m: RegExpMatchArray) => string; category: string }> = [
+  {
+    re: /(?:call|refer to|name) (?:yourself|you) (?:as )?["']?([\w\s-]{1,40})["']?/i,
+    extract: (m) => `The user wants the assistant to be called "${m[1].trim()}".`,
+    category: 'identity',
+  },
+  {
+    re: /(?:i(?:'m| am)|my name(?:'s| is)) ([A-Z][\w\s]{1,30})/,
+    extract: (m) => `The user's name is ${m[1].trim()}.`,
+    category: 'preference',
+  },
+  {
+    re: /(?:always|please always|i (?:prefer|want|like)) (.{10,120})/i,
+    extract: (m) => `User preference: ${m[1].trim()}.`,
+    category: 'preference',
+  },
+  {
+    re: /(?:don't|do not|never|stop) (.{5,80})/i,
+    extract: (m) => `User instruction: do not ${m[1].trim()}.`,
+    category: 'preference',
+  },
+  {
+    re: /(?:remember that|note that|keep in mind) (.{5,200})/i,
+    extract: (m) => `User wants this remembered: ${m[1].trim()}.`,
+    category: 'preference',
+  },
+];
+
+async function detectAndPersistPreference(userMessage: string): Promise<void> {
+  for (const { re, extract, category } of PREFERENCE_PATTERNS) {
+    const m = userMessage.match(re);
+    if (!m) continue;
+    const content = extract(m);
+    await Promise.all([
+      appendToMemoryFile(`- [${category}] ${content}`),
+      writeSemantic({ content, category, importance: 0.9 }),
+    ]).catch(() => {});
+    break;
+  }
+}
+
+const DEFAULT_MAX_TOOL_ROUNDS = 8;
 
 const FALLBACK_SYSTEM_PROMPT =
   'You are Cortex, an intelligent agentic assistant. Be helpful, precise, and honest.';
@@ -50,6 +92,23 @@ export interface AgentTurnOptions {
   enableReflection?: boolean;
   reasoningEffort?: string;
   userContentBlocks?: ContentBlock[];
+  /**
+   * Maximum tool-call rounds before the loop is halted.
+   * Defaults to 8. Callers running long research, monitoring, or
+   * multi-phase tasks can raise this per-request.
+   */
+  maxToolRounds?: number;
+  /**
+   * Number of most-recent messages to always include as the causal
+   * anchor window. Defaults to 20.
+   */
+  historyRecencyWindow?: number;
+  /**
+   * How many semantically relevant older messages (beyond the recency
+   * window) to surface via keyword search. Set to 0 to disable.
+   * Defaults to 5.
+   */
+  historySemanticK?: number;
 }
 
 export interface AgentTurnResult {
@@ -59,19 +118,87 @@ export interface AgentTurnResult {
   costUsd: number;
   turnId: string;
   durationMs: number;
+  /** True when the loop was halted at maxToolRounds with work still in progress. */
+  hitToolCeiling?: boolean;
 }
 
-async function loadHistory(db: Db, limit = 50): Promise<Message[]> {
-  const rows = await db.all<{ role: string; content: string }>(
-    `SELECT role, content FROM session_messages
+async function loadHybridHistory(
+  db: Db,
+  query: string,
+  recencyWindow = 20,
+  semanticK = 5,
+): Promise<Message[]> {
+  // ── 1. Causal anchor: the most recent N messages (always included, in order) ──
+  const recentRows = await db.all<{ id: number; role: string; content: string }>(
+    `SELECT id, role, content FROM session_messages
      WHERE role IN ('user', 'assistant')
      ORDER BY id DESC LIMIT ?`,
-    [limit],
+    [recencyWindow],
   );
-  return rows.reverse().map((r) => ({
-    role: r.role as 'user' | 'assistant',
-    content: r.content,
-  }));
+  recentRows.reverse();
+  const recentIds = new Set(recentRows.map((r) => r.id));
+  const oldestRecentId = recentRows.length > 0 ? recentRows[0].id : Number.MAX_SAFE_INTEGER;
+
+  // ── 2. Semantic supplement: keyword-search older messages beyond the window ──
+  let supplementBlock = '';
+  if (semanticK > 0 && oldestRecentId > 1) {
+    const terms = query
+      .replace(/["'\-*()]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 4)
+      .slice(0, 8)
+      .join(' ');
+
+    if (terms.length > 0) {
+      const oldRows = await db.all<{ id: number; role: string; content: string; created_at: string }>(
+        `SELECT id, role, content, created_at FROM session_messages
+         WHERE role IN ('user', 'assistant')
+           AND id < ?
+           AND content LIKE ?
+         ORDER BY id DESC LIMIT ?`,
+        [oldestRecentId, `%${terms.split(' ')[0]}%`, semanticK * 4],
+      );
+
+      // Score by number of query terms found, pick top semanticK
+      const scored = oldRows
+        .filter((r) => !recentIds.has(r.id))
+        .map((r) => {
+          const lower = r.content.toLowerCase();
+          const hits = terms.split(' ').filter((t) => lower.includes(t)).length;
+          return { ...r, hits };
+        })
+        .filter((r) => r.hits > 0)
+        .sort((a, b) => b.hits - a.hits || b.id - a.id)
+        .slice(0, semanticK)
+        .sort((a, b) => a.id - b.id); // restore chronological order
+
+      if (scored.length > 0) {
+        const lines = scored.map((r) => {
+          const ts = r.created_at ? ` (${r.created_at.slice(0, 16)})` : '';
+          const preview = r.content.slice(0, 600);
+          return `[turn-${r.id} · ${r.role}${ts}]: ${preview}`;
+        });
+        supplementBlock =
+          `[Relevant earlier context retrieved from this session — treat as background, not the live conversation thread]
+${lines.join('\n\n')}
+[End of earlier context]`;
+      }
+    }
+  }
+
+  // ── 3. Assemble: supplement injected as a system-style user message before recency window ──
+  const messages: Message[] = [];
+  if (supplementBlock) {
+    messages.push({ role: 'user' as const, content: supplementBlock });
+    messages.push({
+      role: 'assistant' as const,
+      content: 'Understood. I have noted the earlier context above.',
+    });
+  }
+  for (const r of recentRows) {
+    messages.push({ role: r.role as 'user' | 'assistant', content: r.content });
+  }
+  return messages;
 }
 
 async function persistMessage(
@@ -163,7 +290,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     recordUserMessage(sessionId, effectiveInput);
   }).catch(() => {});
 
-  const history = await loadHistory(sessionDb);
+  const recencyWindow = options.historyRecencyWindow ?? 20;
+  const semanticK = options.historySemanticK ?? 5;
+  const history = await loadHybridHistory(sessionDb, effectiveInput, recencyWindow, semanticK);
   const messages: Message[] = [...history];
 
   if (
@@ -178,11 +307,14 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     };
   }
 
+  const maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
+
   let response = '';
   let tokensIn = 0;
   let tokensOut = 0;
   let costUsd = 0;
   let errorMsg: string | undefined;
+  let hitToolCeiling = false;
 
   const registry = options.registry;
   const toolCtx: ToolContext | undefined = registry && options.toolContext
@@ -399,7 +531,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     let currentMessages = messages;
     console.log(`[loop] turn=${turnId} tools=${registry ? 'yes' : 'no'} stream=${stream}`);
 
-    while (round < MAX_TOOL_ROUNDS) {
+    while (round < maxToolRounds) {
       let roundResponse = '';
 
       const preReasonCtx = createPipelineContext({
@@ -578,9 +710,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       // Tool results are internal context fed back to the LLM — never send raw
       // XML to the client UI.
 
-      const roundsLeft = MAX_TOOL_ROUNDS - round - 1;
+      const roundsLeft = maxToolRounds - round - 1;
       const followUpInstruction = roundsLeft <= 1
-        ? `${resultText}\n\nYou have used ${round + 1} tool rounds. You MUST now provide your final response to the user directly. Do NOT call any more tools.`
+        ? `${resultText}\n\nYou have used ${round + 1} of ${maxToolRounds} allowed tool rounds. Provide your final response now. If the task is genuinely incomplete, summarise what has been done and what remains so it can be continued in the next turn.`
         : `${resultText}\n\nBased on the tool output above, provide your complete response to the user. Only call another tool if the current output is genuinely insufficient — prefer summarising what you have.`;
 
       currentMessages = [
@@ -591,6 +723,10 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       console.log(`[loop] round=${round} done — advancing to round ${round + 1}`);
       round++;
+    }
+    if (round >= maxToolRounds && response === '') {
+      hitToolCeiling = true;
+      console.log(`[loop] hit tool ceiling at round=${round}/${maxToolRounds}`);
     }
     console.log(`[loop] exited while loop at round=${round} responseLen=${response.length}`);
   } catch (err) {
@@ -669,6 +805,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         embedder: options.embedder,
       }).catch(() => {}),
       extractAndStoreEntities(`${userMessage} ${response}`, sessionId).catch(() => {}),
+      detectAndPersistPreference(userMessage).catch(() => {}),
       options.enableReflection && response
         ? reflectOnTurn(
           userMessage,
@@ -677,7 +814,19 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           effectiveModel,
           options.reasoningEffort,
         )
-          .then((r) => storeReflection(sessionId, r))
+          .then(async (r) => {
+            await storeReflection(sessionId, r);
+            // Feed reflection back into QM so wasCorrect gets resolved
+            if (collectedToolCalls.length > 0) {
+              const { learn } = await import('../quartermaster/mod.ts');
+              learn({
+                sessionId,
+                turnId,
+                reflection: r,
+                actualToolCalls: collectedToolCalls.map((t) => t.tool),
+              }).catch(() => {});
+            }
+          })
           .catch(() => {})
         : Promise.resolve(),
       logEvent({
@@ -722,5 +871,5 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   }
 
   const durationMs = Date.now() - started;
-  return { response, tokensIn, tokensOut, costUsd, turnId, durationMs };
+  return { response, tokensIn, tokensOut, costUsd, turnId, durationMs, hitToolCeiling };
 }

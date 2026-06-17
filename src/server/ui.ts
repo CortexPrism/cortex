@@ -18,6 +18,17 @@ const PROVIDER_OPTIONS = [
   { kind: 'cohere', label: 'Cohere' },
   { kind: 'kilo', label: 'Kilo (AI Gateway)' },
   { kind: 'ollama', label: 'Ollama' },
+  { kind: 'cerebras', label: 'Cerebras' },
+  { kind: 'fireworks', label: 'Fireworks AI' },
+  { kind: 'perplexity', label: 'Perplexity' },
+  { kind: 'nvidia', label: 'NVIDIA NIM' },
+  { kind: 'moonshot', label: 'Moonshot (Kimi)' },
+  { kind: 'novita', label: 'Novita AI' },
+  { kind: 'lmstudio', label: 'LM Studio' },
+  { kind: 'litellm', label: 'LiteLLM' },
+  { kind: 'huggingface', label: 'Hugging Face' },
+  { kind: 'alibaba', label: 'Alibaba (Qwen)' },
+  { kind: 'venice', label: 'Venice AI' },
 ];
 const PROVIDER_OPTIONS_HTML = PROVIDER_OPTIONS.map((p) =>
   `<option value="${p.kind}">${p.label}</option>`
@@ -897,10 +908,7 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Logs
     </button>
     <button class="nav-item" onclick="showPage('quartermaster');closeMobileSidebar()" id="nav-quartermaster">
-      <span class="icon">📊</span>Quartermaster
-    </button>
-    <button class="nav-item" onclick="showPage('modelqm');closeMobileSidebar()" id="nav-modelqm">
-      <span class="icon">🧠</span>Model Intel
+      <span class="icon">🧠</span>Quartermaster
     </button>
   </nav>
 
@@ -1189,6 +1197,7 @@ const HTML = `<!DOCTYPE html>
         <button class="mem-tab" onclick="switchMemoryTab('graph')" id="memtab-graph">Graph</button>
         <button class="mem-tab" onclick="switchMemoryTab('reflections')" id="memtab-reflections">Reflections</button>
         <button class="mem-tab" onclick="switchMemoryTab('health')" id="memtab-health">Health</button>
+        <button class="mem-tab" onclick="switchMemoryTab('persistent')" id="memtab-persistent">Persistent</button>
       </div>
     </div>
 
@@ -1227,6 +1236,25 @@ const HTML = `<!DOCTYPE html>
     <!-- Health Tab -->
     <div id="mem-pane-health" style="display:none;flex:1;overflow:auto;padding:16px 24px;">
       <div id="health-content"></div>
+    </div>
+
+    <!-- Persistent Memory Tab (MEMORY.md) -->
+    <div id="mem-pane-persistent" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;">
+      <div style="max-width:700px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;gap:8px;">
+          <input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />
+          <button class="btn btn-ghost" onclick="appendMemoryNote()">+ Add Note</button>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">MEMORY.md</label>
+          <textarea id="soul-raw-memory-text" style="width:100%;min-height:460px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveMemoryMd()">Save MEMORY.md</button>
+          <span id="mem-persist-status" style="font-size:11px;color:var(--text3);align-self:center;"></span>
+        </div>
+        <p style="font-size:11px;color:var(--text3);">Injected into every session prompt. The agent writes here automatically via the <code style="background:var(--bg3);padding:1px 4px;border-radius:3px;">memory_note</code> tool.</p>
+      </div>
     </div>
   </div>
 
@@ -1505,14 +1533,30 @@ const HTML = `<!DOCTYPE html>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name *</label><input class="inp" id="ag-name" placeholder="My Agent" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="ag-desc" placeholder="What this agent does" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider (optional override)</label>
-          <select class="inp" id="ag-provider"><option value="">Default</option>${PROVIDER_OPTIONS_HTML}</select>
+          <select class="inp" id="ag-provider" onchange="onAgentProviderChange()"><option value="">Default (use global)</option></select>
         </div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model (optional override)</label><input class="inp" id="ag-model" placeholder="e.g. gpt-4o-mini" /></div>
+        <div id="ag-model-wrap">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Model (optional override) <span id="ag-model-status" style="color:var(--text3);font-weight:400;"></span></label>
+          <select class="inp" id="ag-model" style="display:none;"><option value="">Default for provider</option></select>
+          <input class="inp" id="ag-model-text" placeholder="e.g. gpt-4o-mini" />
+        </div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature (0–2)</label><input class="inp" id="ag-temp" type="number" step="0.1" min="0" max="2" placeholder="Default" style="width:100px;" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">System Prompt (appended to soul)</label><textarea class="inp" id="ag-sysprompt" placeholder="Additional instructions…" style="resize:vertical;min-height:60px;font-size:12px;"></textarea></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tool Allow-list (comma-separated, empty=all)</label><input class="inp" id="ag-tools" placeholder="file_read, web_search, code_exec" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tags (comma-separated)</label><input class="inp" id="ag-tags" placeholder="coding, research" /></div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Soul (inline or leave blank for default)</label><textarea class="inp" id="ag-soul" placeholder="Custom agent identity…" style="resize:vertical;min-height:80px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea></div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px;">Agent Behaviour / Soul</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px;">
+            <button type="button" class="ag-tmpl-btn" data-val="developer" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">👨‍💻 Developer</button>
+            <button type="button" class="ag-tmpl-btn" data-val="professional" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">💼 Professional</button>
+            <button type="button" class="ag-tmpl-btn" data-val="friendly" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">😊 Friendly</button>
+            <button type="button" class="ag-tmpl-btn" data-val="analyst" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">📊 Analyst</button>
+            <button type="button" class="ag-tmpl-btn" data-val="minimalist" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">◻ Minimalist</button>
+            <button type="button" class="ag-tmpl-btn" data-val="creative" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">🎨 Creative</button>
+            <button type="button" onclick="document.getElementById('ag-soul').value=''" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:10px;">✕ Clear</button>
+          </div>
+          <textarea class="inp" id="ag-soul" placeholder="Leave blank to use the default SOUL.md, or paste / pick a template above…" style="resize:vertical;min-height:80px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button class="btn btn-primary" onclick="submitAgentForm()" id="agent-submit-btn">Create Agent</button>
@@ -1589,123 +1633,267 @@ const HTML = `<!DOCTYPE html>
     <div id="plugin-panels-content" style="flex:1;overflow:hidden;"></div>
   </div>
 
-  <!-- Page: Soul -->
+  <!-- Page: Soul / Profile -->
   <div id="page-soul" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div><h1 style="font-size:15px;font-weight:600;">Soul / Identity</h1><p style="font-size:12px;color:var(--text3);margin-top:2px;">SOUL.md · USER.md · MEMORY.md — injected into every system prompt</p></div>
+    <div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">User Profile</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Tells the assistant who you are — injected into every session prompt via USER.md</p>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <select id="soul-file-select" class="inp" style="width:140px;" onchange="loadSoulFile()">
-          <option value="soul">SOUL.md</option>
-          <option value="user">USER.md</option>
-          <option value="memory">MEMORY.md</option>
-        </select>
-        <button class="btn btn-primary" onclick="saveSoulFile()">Save</button>
+        <button class="btn btn-ghost" id="soul-raw-toggle" onclick="soulToggleRaw()" style="font-size:11px;">⌨ Raw</button>
+        <button class="btn btn-primary" onclick="soulSaveActive()" id="soul-save-btn">Save</button>
       </div>
     </div>
-    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
-      <div id="soul-file-path" style="font-size:11px;color:var(--text3);padding:6px 24px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;"></div>
-      <textarea id="soul-editor" style="flex:1;background:var(--bg3);border:none;outline:none;padding:20px 24px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;resize:none;"></textarea>
-      <div style="border-top:1px solid var(--border);padding:12px 24px;background:var(--bg2);display:flex;gap:8px;align-items:center;">
-        <input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />
-        <button class="btn btn-ghost" onclick="appendMemoryNote()">Append Note</button>
+
+    <!-- ── Profile tab (USER.md) ── -->
+    <div id="soul-pane-profile" style="flex:1;overflow-y:auto;padding:24px;">
+      <div id="soul-profile-form" style="max-width:680px;display:flex;flex-direction:column;gap:18px;">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">YOUR NAME</label>
+            <input class="inp" id="prof-name" placeholder="e.g. Alice" style="width:100%;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">ROLE / PROFESSION</label>
+            <input class="inp" id="prof-role" placeholder="e.g. Full-stack developer" style="width:100%;" />
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">GOALS & OBJECTIVES</label>
+          <textarea class="inp" id="prof-goals" placeholder="What are you working toward?" style="width:100%;min-height:70px;resize:vertical;font-size:12px;"></textarea>
+        </div>
+
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">CURRENT PROJECTS</label>
+          <textarea class="inp" id="prof-projects" placeholder="Active projects you want help with" style="width:100%;min-height:60px;resize:vertical;font-size:12px;"></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">OPERATING SYSTEM</label>
+            <input class="inp" id="prof-os" placeholder="e.g. macOS 14, Ubuntu 22" style="width:100%;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">EDITOR / IDE</label>
+            <input class="inp" id="prof-editor" placeholder="e.g. VS Code, Neovim" style="width:100%;" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">LANGUAGES</label>
+            <input class="inp" id="prof-langs" placeholder="e.g. TypeScript, Python, Rust" style="width:100%;" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">OTHER TOOLS</label>
+            <input class="inp" id="prof-tools" placeholder="e.g. Docker, Postgres, Git" style="width:100%;" />
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">COMMUNICATION STYLE</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="prof-style-btns">
+            <button class="prof-style-btn" data-val="direct and concise" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Direct & Concise</button>
+            <button class="prof-style-btn" data-val="detailed and thorough" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Detailed & Thorough</button>
+            <button class="prof-style-btn" data-val="casual and friendly" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Casual & Friendly</button>
+            <button class="prof-style-btn" data-val="technical and precise" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Technical & Precise</button>
+          </div>
+          <input class="inp" id="prof-style" placeholder="or describe your preferred style…" style="width:100%;margin-top:8px;" />
+        </div>
+
+        <div>
+          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">WORKING CONTEXT</label>
+          <textarea class="inp" id="prof-context" placeholder="Describe your project, environment, or ongoing work" style="width:100%;min-height:80px;resize:vertical;font-size:12px;"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;padding:14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);align-items:flex-start;">
+          <span style="font-size:18px;">✨</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">Ask the assistant to fill this in</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Start a chat and say: <em>"Please fill out my user profile based on what you know about me"</em></div>
+            <button class="btn btn-ghost" onclick="soulAskLlm('profile')" style="font-size:11px;">Open Chat with Prompt</button>
+          </div>
+        </div>
+
+        <!-- Raw fallback for profile -->
+        <div id="soul-raw-profile" style="display:none;">
+          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">RAW USER.md</label>
+          <textarea id="soul-raw-profile-text" style="width:100%;min-height:300px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+        </div>
       </div>
     </div>
+
   </div>
 
-  <!-- Page: Quartermaster -->
+  <!-- Page: Quartermaster (unified — Tool Orchestration + Model Intelligence) -->
   <div id="page-quartermaster" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
         <h1 style="font-size:15px;font-weight:600;">Quartermaster</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Tool Orchestration Learning System — observes agent tool patterns and predicts next actions</p>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Adaptive orchestration — tool pattern learning &amp; intelligent model routing</p>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
+        <span id="qm-auto-refresh-label" style="font-size:10px;color:var(--text3);display:none;">Auto-refresh: 5s</span>
         <button class="btn btn-ghost" onclick="loadQuartermaster()" style="font-size:11px;">↻ Refresh</button>
       </div>
     </div>
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;">
-      <button class="qm-tab active" onclick="switchQmTab('overview')" id="qmtab-overview" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Overview</button>
-      <button class="qm-tab" onclick="switchQmTab('patterns')" id="qmtab-patterns" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Patterns</button>
-      <button class="qm-tab" onclick="switchQmTab('decisions')" id="qmtab-decisions" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Decisions</button>
-    </div>
-    <div id="qm-pane-overview" style="display:flex;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:16px;">
-      <div id="qm-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div id="qm-accuracy-card" class="card" style="padding:16px;">
-          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Prediction Accuracy</h3>
-          <div style="height:160px;"><canvas id="qm-accuracy-chart"></canvas></div>
-        </div>
-        <div id="qm-weights-card" class="card" style="padding:16px;">
-          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Signal Weights</h3>
-          <div id="qm-weights-content"></div>
-        </div>
-      </div>
-      <div id="qm-tool-stats" class="card" style="padding:16px;">
-        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Tool Statistics</h3>
-        <div id="qm-tool-stats-content"></div>
-      </div>
-    </div>
-    <div id="qm-pane-patterns" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:8px;">
-      <div id="qm-patterns-content"></div>
-    </div>
-    <div id="qm-pane-decisions" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:8px;">
-      <div id="qm-decisions-content"></div>
-    </div>
-  </div>
 
-  <!-- Model Quartermaster page -->
-  <div id="page-modelqm" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">Model Intelligence</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Model Quartermaster — learns which LLM to use for each task based on historical performance</p>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <span id="mqm-auto-refresh" style="font-size:10px;color:var(--text3);">Auto-refresh: 5s</span>
-        <button class="btn btn-ghost" onclick="loadModelQm()" style="font-size:11px;">↻ Refresh</button>
-      </div>
+    <!-- Section selector: Tools | Models -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;background:var(--bg2);flex-shrink:0;">
+      <button class="qm-section active" id="qmsec-tools" onclick="switchQmSection('tools')"
+        style="padding:9px 18px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;letter-spacing:0.02em;">
+        🔧 Tool Orchestration
+      </button>
+      <button class="qm-section" id="qmsec-models" onclick="switchQmSection('models')"
+        style="padding:9px 18px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;letter-spacing:0.02em;">
+        🧠 Model Intelligence
+      </button>
+      <button onclick="qmOpenSettings()" title="Settings"
+        style="margin-left:auto;padding:6px 10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">⚙</button>
     </div>
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;">
-      <button class="mqm-tab active" onclick="switchMqmTab('overview')" id="mqmtab-overview" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Overview</button>
-      <button class="mqm-tab" onclick="switchMqmTab('models')" id="mqmtab-models" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Models</button>
-      <button class="mqm-tab" onclick="switchMqmTab('accuracy')" id="mqmtab-accuracy" style="padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:12px;">Accuracy</button>
-    </div>
-    <div id="mqm-pane-overview" style="display:flex;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:16px;">
-      <div id="mqm-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div id="mqm-weights-card" class="card" style="padding:16px;">
-          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Signal Weights</h3>
-          <div id="mqm-weights-content"></div>
+
+    <!-- ── Tool Orchestration section ── -->
+    <div id="qm-section-tools" style="display:flex;flex:1;flex-direction:column;overflow:hidden;">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;flex-shrink:0;">
+        <button class="qm-tab active" onclick="switchQmTab('overview')" id="qmtab-overview" style="padding:7px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:11px;">Overview</button>
+        <button class="qm-tab" onclick="switchQmTab('patterns')" id="qmtab-patterns" style="padding:7px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:11px;">Patterns</button>
+        <button class="qm-tab" onclick="switchQmTab('decisions')" id="qmtab-decisions" style="padding:7px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:11px;">Decisions</button>
+      </div>
+      <div id="qm-pane-overview" style="display:flex;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:14px;">
+        <div id="qm-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div id="qm-accuracy-card" class="card" style="padding:14px;">
+            <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Prediction Accuracy</h3>
+            <div style="height:140px;"><canvas id="qm-accuracy-chart"></canvas></div>
+          </div>
+          <div id="qm-weights-card" class="card" style="padding:14px;">
+            <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Signal Weights</h3>
+            <div id="qm-weights-content"></div>
+          </div>
         </div>
-        <div id="mqm-topmodels-card" class="card" style="padding:16px;">
-          <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Top Models</h3>
-          <div id="mqm-topmodels-content"></div>
+        <div id="qm-tool-stats" class="card" style="padding:14px;">
+          <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Tool Statistics</h3>
+          <div id="qm-tool-stats-content"></div>
         </div>
       </div>
-      <div id="mqm-recent-decisions-card" class="card" style="padding:16px;flex:1;">
-        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Recent Decisions</h3>
-        <div id="mqm-decisions-content"></div>
+      <div id="qm-pane-patterns" style="display:none;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:8px;">
+        <div id="qm-patterns-content"></div>
+      </div>
+      <div id="qm-pane-decisions" style="display:none;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:8px;">
+        <div id="qm-decisions-content"></div>
       </div>
     </div>
-    <div id="mqm-pane-models" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:10px;">
-      <div id="mqm-models-filter" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-        <span style="font-size:11px;color:var(--text3);">Filter by category:</span>
-        <button class="mqm-cat-btn active" onclick="filterMqmModels('all')" id="mqm-cat-all" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">All</button>
-        <button class="mqm-cat-btn" onclick="filterMqmModels('code')" id="mqm-cat-code" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Code</button>
-        <button class="mqm-cat-btn" onclick="filterMqmModels('analysis')" id="mqm-cat-analysis" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Analysis</button>
-        <button class="mqm-cat-btn" onclick="filterMqmModels('creative')" id="mqm-cat-creative" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Creative</button>
-        <button class="mqm-cat-btn" onclick="filterMqmModels('factual')" id="mqm-cat-factual" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Factual</button>
+
+    <!-- ── Model Intelligence section ── -->
+    <div id="qm-section-models" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;flex-shrink:0;">
+        <button class="mqm-tab active" onclick="switchMqmTab('overview')" id="mqmtab-overview" style="padding:7px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:11px;">Overview</button>
+        <button class="mqm-tab" onclick="switchMqmTab('models')" id="mqmtab-models" style="padding:7px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:11px;">Models</button>
+        <button class="mqm-tab" onclick="switchMqmTab('accuracy')" id="mqmtab-accuracy" style="padding:7px 12px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;font-size:11px;">Accuracy</button>
       </div>
-      <div id="mqm-models-content"></div>
+      <div id="mqm-pane-overview" style="display:flex;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:14px;">
+        <div id="mqm-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div id="mqm-weights-card" class="card" style="padding:14px;">
+            <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Signal Weights</h3>
+            <div id="mqm-weights-content"></div>
+          </div>
+          <div id="mqm-topmodels-card" class="card" style="padding:14px;">
+            <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Top Models</h3>
+            <div id="mqm-topmodels-content"></div>
+          </div>
+        </div>
+        <div id="mqm-recent-decisions-card" class="card" style="padding:14px;">
+          <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Recent Decisions</h3>
+          <div id="mqm-decisions-content"></div>
+        </div>
+      </div>
+      <div id="mqm-pane-models" style="display:none;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:10px;">
+        <div id="mqm-models-filter" style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+          <span style="font-size:11px;color:var(--text3);">Filter:</span>
+          <button class="mqm-cat-btn active" onclick="filterMqmModels('all')" id="mqm-cat-all" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">All</button>
+          <button class="mqm-cat-btn" onclick="filterMqmModels('code')" id="mqm-cat-code" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Code</button>
+          <button class="mqm-cat-btn" onclick="filterMqmModels('analysis')" id="mqm-cat-analysis" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Analysis</button>
+          <button class="mqm-cat-btn" onclick="filterMqmModels('creative')" id="mqm-cat-creative" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Creative</button>
+          <button class="mqm-cat-btn" onclick="filterMqmModels('factual')" id="mqm-cat-factual" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;">Factual</button>
+        </div>
+        <div id="mqm-models-content"></div>
+      </div>
+      <div id="mqm-pane-accuracy" style="display:none;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:14px;">
+        <div class="card" style="padding:14px;">
+          <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Prediction Accuracy (24h)</h3>
+          <div style="height:200px;"><canvas id="mqm-accuracy-chart"></canvas></div>
+        </div>
+        <div class="card" style="padding:14px;">
+          <h3 style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Accuracy by Category</h3>
+          <div id="mqm-category-accuracy"></div>
+        </div>
+      </div>
     </div>
-    <div id="mqm-pane-accuracy" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;flex-direction:column;gap:16px;">
-      <div class="card" style="padding:16px;">
-        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Prediction Accuracy (24h)</h3>
-        <div style="height:220px;"><canvas id="mqm-accuracy-chart"></canvas></div>
+
+    <!-- ── Settings section (shared, always available via gear) ── -->
+    <div id="qm-pane-settings" style="display:none;flex:1;overflow-y:auto;padding:18px 24px;flex-direction:column;gap:14px;">
+      <div class="card" style="padding:18px;max-width:560px;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;">Model Intelligence Settings</h3>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-size:12px;font-weight:500;color:var(--text);">Enable Model Intelligence (MQM)</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">Automatically route agent requests to the best-fit LLM based on learned patterns</div>
+            </div>
+            <input type="checkbox" id="qm-cfg-enabled" style="width:18px;height:18px;cursor:pointer;" onchange="qmCfgDirty()">
+          </label>
+          <div style="border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:8px;">Dedicated Quartermaster LLM</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Pin model routing to a specific provider — ideal for local models (Ollama, LM Studio). Leave blank to use all configured providers.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Provider</label>
+                <select id="qm-cfg-provider" class="inp" style="width:100%;font-size:12px;" onchange="qmCfgDirty();qmFetchModels()">
+                  <option value="">— any configured provider —</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Model</label>
+                <div style="display:flex;gap:6px;">
+                  <input type="text" id="qm-cfg-model" class="inp" placeholder="e.g. llama3.2, gpt-4o-mini" list="qm-cfg-model-list" style="flex:1;font-size:12px;" oninput="qmCfgDirty()">
+                  <datalist id="qm-cfg-model-list"></datalist>
+                  <button class="btn btn-ghost" onclick="qmFetchModels()" style="font-size:11px;padding:4px 8px;white-space:nowrap;" id="qm-fetch-models-btn" title="Fetch available models">↻</button>
+                </div>
+                <span id="qm-model-fetch-status" style="font-size:10px;color:var(--text3);margin-top:2px;display:block;"></span>
+              </div>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:14px;">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px;">Behaviour</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Strategy</label>
+                <select id="qm-cfg-mode" class="inp" style="width:100%;font-size:12px;" onchange="qmCfgDirty()">
+                  <option value="conservative">Conservative — high confidence required</option>
+                  <option value="balanced" selected>Balanced — default</option>
+                  <option value="aggressive">Aggressive — prefers switching models</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Observe Threshold</label>
+                <input type="number" id="qm-cfg-threshold" class="inp" min="10" max="500" step="10" style="width:100%;font-size:12px;" oninput="qmCfgDirty()">
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding-top:4px;">
+            <button class="btn btn-primary" id="qm-cfg-save" onclick="saveQmConfig()" style="font-size:12px;">Save Settings</button>
+            <span id="qm-cfg-status" style="font-size:11px;color:var(--text3);"></span>
+          </div>
+        </div>
       </div>
-      <div class="card" style="padding:16px;">
-        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Accuracy by Category</h3>
-        <div id="mqm-category-accuracy"></div>
+      <div class="card" style="padding:18px;max-width:560px;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Reset</h3>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Clear all learned patterns, decisions, tool stats, and signal weights. This cannot be undone.</p>
+        <button class="btn" style="font-size:12px;background:var(--bg3);color:#f87171;border-color:#f87171;" onclick="qmResetAll()">Reset All QM Data</button>
       </div>
     </div>
   </div>
@@ -2546,7 +2734,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster','modelqm'];
+const PAGES = ['dashboard','chat','editor','git','github','coderunner','memory','skills','lens','agents','services','nodes','jobs','sessions','settings','soul','policies','plugins','marketplace','analytics','logs','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -2590,7 +2778,6 @@ function showPage(name) {
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: loadNodes,
     quartermaster: loadQuartermaster,
-    modelqm: loadModelQm,
     dashboard: loadDashboard,
   };
   if (loaders[name]) loaders[name]();
@@ -2701,13 +2888,14 @@ function decayColor(score) {
 function switchMemoryTab(name) {
   document.querySelectorAll('.mem-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('memtab-'+name).classList.add('active');
-  ['search','graph','reflections','health'].forEach(p => {
+  ['search','graph','reflections','health','persistent'].forEach(p => {
     const el = document.getElementById('mem-pane-'+p);
     if (el) el.style.display = p === name ? 'flex' : 'none';
   });
   if (name === 'graph') searchGraphEntities();
   if (name === 'reflections') loadReflections();
   if (name === 'health') loadMemoryHealth();
+  if (name === 'persistent') loadMemoryMd();
 }
 
 async function loadMemoryStats() {
@@ -3719,19 +3907,30 @@ async function deleteSession(id) {
 // ── Settings ─────────────────────────────────────────────────
 
 const PROVIDER_META = {
-  openai:     { label: 'OpenAI',      defaultModel: 'gpt-4o',        needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  anthropic:  { label: 'Anthropic',   defaultModel: 'claude-sonnet-4-5', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  google:     { label: 'Google Gemini', defaultModel: 'gemini-2.0-flash', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  mistral:    { label: 'Mistral',     defaultModel: 'mistral-large-latest', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  groq:       { label: 'Groq',        defaultModel: 'llama-3.3-70b-versatile', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  deepseek:   { label: 'DeepSeek',    defaultModel: 'deepseek-chat', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  openrouter: { label: 'OpenRouter',  defaultModel: 'openai/gpt-4o', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  xai:        { label: 'xAI (Grok)',  defaultModel: 'grok-2-latest', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  together:   { label: 'Together AI', defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  bedrock:    { label: 'AWS Bedrock', defaultModel: 'anthropic.claude-3-5-sonnet-20240620-v1:0', needsBaseUrl: true, needsSecret: true, defaultBaseUrl: 'us-east-1' },
-  cohere:     { label: 'Cohere',      defaultModel: 'command-r-plus', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  kilo:       { label: 'Kilo (AI Gateway)', defaultModel: 'kilo/sonnet', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
-  ollama:     { label: 'Ollama',      defaultModel: 'llama3.2',     needsBaseUrl: true,  needsSecret: false, defaultBaseUrl: 'http://localhost:11434' },
+  openai:      { label: 'OpenAI',           defaultModel: 'gpt-4o',                                          needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  anthropic:   { label: 'Anthropic',        defaultModel: 'claude-sonnet-4-5',                               needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  google:      { label: 'Google Gemini',    defaultModel: 'gemini-2.0-flash',                                needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  mistral:     { label: 'Mistral',          defaultModel: 'mistral-large-latest',                            needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  groq:        { label: 'Groq',             defaultModel: 'llama-3.3-70b-versatile',                         needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  deepseek:    { label: 'DeepSeek',         defaultModel: 'deepseek-chat',                                   needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  openrouter:  { label: 'OpenRouter',       defaultModel: 'openai/gpt-4o',                                   needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  xai:         { label: 'xAI (Grok)',       defaultModel: 'grok-2-latest',                                   needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  together:    { label: 'Together AI',      defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',         needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  bedrock:     { label: 'AWS Bedrock',      defaultModel: 'anthropic.claude-3-5-sonnet-20240620-v1:0',       needsBaseUrl: true,  needsSecret: true,  defaultBaseUrl: 'us-east-1' },
+  cohere:      { label: 'Cohere',           defaultModel: 'command-r-plus',                                  needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  kilo:        { label: 'Kilo (AI Gateway)',defaultModel: 'kilo/sonnet',                                     needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  ollama:      { label: 'Ollama',           defaultModel: 'llama3.2',                                        needsBaseUrl: true,  needsSecret: false, defaultBaseUrl: 'http://localhost:11434' },
+  cerebras:    { label: 'Cerebras',         defaultModel: 'llama-3.3-70b',                                   needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  fireworks:   { label: 'Fireworks AI',     defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct', needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  perplexity:  { label: 'Perplexity',       defaultModel: 'sonar-pro',                                       needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  nvidia:      { label: 'NVIDIA NIM',       defaultModel: 'meta/llama-3.3-70b-instruct',                     needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  moonshot:    { label: 'Moonshot (Kimi)',  defaultModel: 'kimi-k2-0711-preview',                            needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  novita:      { label: 'Novita AI',        defaultModel: 'meta-llama/llama-3.3-70b-instruct',               needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  lmstudio:    { label: 'LM Studio',        defaultModel: 'local-model',                                     needsBaseUrl: true,  needsSecret: false, defaultBaseUrl: 'http://localhost:1234' },
+  litellm:     { label: 'LiteLLM',          defaultModel: 'gpt-4o',                                          needsBaseUrl: true,  needsSecret: false, defaultBaseUrl: 'http://localhost:4000' },
+  huggingface: { label: 'Hugging Face',     defaultModel: 'meta-llama/Llama-3.3-70B-Instruct',               needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  alibaba:     { label: 'Alibaba (Qwen)',   defaultModel: 'qwen-plus',                                       needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  venice:      { label: 'Venice AI',        defaultModel: 'llama-3.3-70b',                                   needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
 };
 
 const PROVIDER_KINDS = Object.keys(PROVIDER_META);
@@ -4049,8 +4248,8 @@ async function loadSettings() {
         </div>
         
         <div style="margin-top:16px;">
-          <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Change Password</div>
-          <div>
+          <div id="cfg-auth-pw-label" style="font-size:12px;font-weight:500;margin-bottom:8px;">Set Password</div>
+          <div id="cfg-auth-oldpass-row" style="display:none;">
             <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Current Password</label>
             <input class="inp" id="cfg-auth-oldpass" type="password" placeholder="Enter current password" />
           </div>
@@ -4138,6 +4337,7 @@ async function loadSettings() {
       </div>
     </div>
   \`;
+  refreshSecuritySection();
 }
 
 function switchSettingsTab(tabName) {
@@ -4149,6 +4349,7 @@ function switchSettingsTab(tabName) {
     if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
   });
+  if (tabName === 'security') refreshSecuritySection();
 }
 
 async function saveGeneralSettings() {
@@ -4256,22 +4457,25 @@ async function saveSecuritySettings() {
     return;
   }
   
-  // Change password if provided
+  // Change/set password if provided
   if (newPass && newPass.length >= 8) {
-    if (!oldPass) {
+    let authStatus = { hasPassword: false };
+    try { authStatus = await fetch(BASE + '/api/auth/status').then(r => r.json()); } catch { /* ignore */ }
+    if (authStatus.hasPassword && !oldPass) {
       toast('Current password is required to change password', 'error');
       return;
     }
     const passRes = await fetch(BASE + '/api/auth/change-password', { 
       method: 'POST', 
       headers: {'Content-Type':'application/json'}, 
-      body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass }) 
+      body: JSON.stringify({ oldPassword: oldPass || '', newPassword: newPass }) 
     });
     if (passRes.ok) {
       toast('Security settings and password updated', 'success');
       document.getElementById('cfg-auth-oldpass').value = '';
       document.getElementById('cfg-auth-newpass').value = '';
       document.getElementById('cfg-auth-confirmpass').value = '';
+      refreshSecuritySection();
     } else {
       const data = await passRes.json();
       toast(data.error || 'Password change failed', 'error');
@@ -4281,6 +4485,15 @@ async function saveSecuritySettings() {
   } else {
     toast('Security settings saved', 'success');
   }
+}
+
+async function refreshSecuritySection() {
+  let authStatus = { hasPassword: false };
+  try { authStatus = await fetch(BASE + '/api/auth/status').then(r => r.json()); } catch { /* ignore */ }
+  const label = document.getElementById('cfg-auth-pw-label');
+  const oldPassRow = document.getElementById('cfg-auth-oldpass-row');
+  if (label) label.textContent = authStatus.hasPassword ? 'Change Password' : 'Set Password';
+  if (oldPassRow) oldPassRow.style.display = authStatus.hasPassword ? 'block' : 'none';
 }
 
 async function saveVoiceSettings() {
@@ -4643,15 +4856,95 @@ async function deleteAgent(id) {
   }
 }
 
+async function loadAgentModalProviders(selectedProvider) {
+  const sel = document.getElementById('ag-provider');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Default (use global)</option>';
+  try {
+    const providers = await fetch(BASE + '/api/providers/configured').then(r => r.json()).catch(() => []);
+    for (const p of providers) {
+      const meta = PROVIDER_META[p.kind];
+      const label = meta ? meta.label : p.kind;
+      const opt = document.createElement('option');
+      opt.value = p.kind;
+      opt.textContent = label;
+      if (p.kind === selectedProvider) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    if (providers.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— No providers configured —';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+  } catch {}
+  if (selectedProvider) await onAgentProviderChange(selectedProvider);
+}
+
+async function onAgentProviderChange(preselectedModel) {
+  const kind = document.getElementById('ag-provider')?.value;
+  const modelSelect = document.getElementById('ag-model');
+  const modelText = document.getElementById('ag-model-text');
+  const modelStatus = document.getElementById('ag-model-status');
+  if (!modelSelect || !modelText) return;
+
+  if (!kind) {
+    modelSelect.style.display = 'none';
+    modelText.style.display = '';
+    modelText.value = typeof preselectedModel === 'string' ? preselectedModel : '';
+    if (modelStatus) modelStatus.textContent = '';
+    return;
+  }
+
+  if (modelStatus) modelStatus.textContent = 'loading…';
+  modelText.style.display = 'none';
+  modelSelect.style.display = '';
+
+  try {
+    const res = await fetch(BASE + '/api/providers/' + kind + '/models');
+    if (res.ok) {
+      const models = await res.json();
+      const currentVal = typeof preselectedModel === 'string' ? preselectedModel : modelText.value;
+      modelSelect.innerHTML = '<option value="">Default for provider</option>'
+        + models.map(m => {
+            const id = m.id || m;
+            const label = m.name ? m.name + ' (' + id + ')' : id;
+            return '<option value="' + esc(id) + '"' + (id === currentVal ? ' selected' : '') + '>' + esc(label) + '</option>';
+          }).join('');
+      if (currentVal && !modelSelect.value) {
+        const opt = document.createElement('option');
+        opt.value = currentVal;
+        opt.textContent = currentVal;
+        opt.selected = true;
+        modelSelect.appendChild(opt);
+      }
+      if (modelStatus) modelStatus.textContent = models.length + ' models';
+    } else {
+      modelSelect.style.display = 'none';
+      modelText.style.display = '';
+      if (modelStatus) modelStatus.textContent = 'could not load models';
+    }
+  } catch {
+    modelSelect.style.display = 'none';
+    modelText.style.display = '';
+    if (modelStatus) modelStatus.textContent = 'could not load models';
+  }
+}
+
 function showNewAgentForm() {
   document.getElementById('agent-modal-title').textContent = 'Create Agent';
   document.getElementById('agent-submit-btn').textContent = 'Create Agent';
   document.getElementById('ag-edit-id').value = '';
-  ['ag-name','ag-desc','ag-model','ag-sysprompt','ag-tools','ag-tags','ag-soul'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('ag-provider').value = '';
+  ['ag-name','ag-desc','ag-sysprompt','ag-tools','ag-tags','ag-soul'].forEach(id => document.getElementById(id).value = '');
+  const modelSel = document.getElementById('ag-model');
+  const modelText = document.getElementById('ag-model-text');
+  if (modelSel) { modelSel.innerHTML = '<option value="">Default for provider</option>'; modelSel.style.display = 'none'; }
+  if (modelText) { modelText.value = ''; modelText.style.display = ''; }
   document.getElementById('ag-temp').value = '';
   document.getElementById('ag-status').textContent = '';
   document.getElementById('new-agent-modal').style.display = 'flex';
+  loadAgentModalProviders('');
 }
 
 async function editAgent(id) {
@@ -4663,8 +4956,6 @@ async function editAgent(id) {
   document.getElementById('ag-edit-id').value = a.id;
   document.getElementById('ag-name').value = a.name || '';
   document.getElementById('ag-desc').value = a.description || '';
-  document.getElementById('ag-provider').value = a.provider || '';
-  document.getElementById('ag-model').value = a.model || '';
   document.getElementById('ag-temp').value = a.temperature != null ? a.temperature : '';
   document.getElementById('ag-sysprompt').value = a.systemPrompt || '';
   document.getElementById('ag-tools').value = (a.tools || []).join(', ');
@@ -4672,6 +4963,8 @@ async function editAgent(id) {
   document.getElementById('ag-soul').value = a.soul || '';
   document.getElementById('ag-status').textContent = '';
   document.getElementById('new-agent-modal').style.display = 'flex';
+  await loadAgentModalProviders(a.provider || '');
+  if (a.model) await onAgentProviderChange(a.model);
 }
 
 function hideAgentModal() {
@@ -4689,7 +4982,9 @@ async function submitAgentForm() {
     name,
     description: document.getElementById('ag-desc').value.trim() || undefined,
     provider: document.getElementById('ag-provider').value || undefined,
-    model: document.getElementById('ag-model').value.trim() || undefined,
+    model: (document.getElementById('ag-model').style.display !== 'none'
+      ? document.getElementById('ag-model').value
+      : document.getElementById('ag-model-text').value.trim()) || undefined,
     temperature: temp ? Number(temp) : undefined,
     systemPrompt: document.getElementById('ag-sysprompt').value.trim() || undefined,
     tools: tools ? tools.split(',').map(s => s.trim()).filter(Boolean) : undefined,
@@ -5123,28 +5418,7 @@ async function importMarketplaceAgent(slug) {
   }
 }
 
-// ── Soul ──────────────────────────────────────────────────────
-async function loadSoulFile() {
-  const key = document.getElementById('soul-file-select')?.value ?? 'soul';
-  const data = await fetch(\`\${BASE}/api/soul/\${key}\`).then(r => r.json()).catch(() => null);
-  if (!data) return;
-  document.getElementById('soul-editor').value = data.content;
-  document.getElementById('soul-file-path').textContent = data.path;
-}
-async function saveSoulFile() {
-  const key = document.getElementById('soul-file-select').value;
-  const content = document.getElementById('soul-editor').value;
-  await fetch(\`\${BASE}/api/soul/\${key}\`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content }) });
-  toast('Soul file saved', 'success');
-}
-async function appendMemoryNote() {
-  const note = document.getElementById('memory-note').value.trim();
-  if (!note) return;
-  const res = await fetch(BASE + '/api/soul/memory/append', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ note }) });
-  if (res.ok) toast('Note appended', 'success');
-  document.getElementById('memory-note').value = '';
-  if (document.getElementById('soul-file-select').value === 'memory') loadSoulFile();
-}
+// ── Soul (legacy stub — real implementations in Soul/Profile UI section below) ──
 
 // ── Cron ──────────────────────────────────────────────────────
 async function loadCronJobs() {
@@ -5433,7 +5707,7 @@ document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     if (currentPage === 'editor' && editorInstance) { e.preventDefault(); editorSave(); }
     if (document.getElementById('skill-designer').style.display !== 'none') { e.preventDefault(); skillDesignerSave(); }
-    if (currentPage === 'soul') { e.preventDefault(); saveSoulFile(); }
+    if (currentPage === 'soul') { e.preventDefault(); soulSaveActive(); }
   }
   // / focus chat input (when not in an input)
   if (e.key === '/' && document.activeElement === document.body) {
@@ -7011,6 +7285,31 @@ setInterval(editorRefreshTree, 30_000);
 // ── Quartermaster Monitoring ─────────────────────────────────────────────────
 let qmAccuracyChart = null;
 
+function switchQmSection(name) {
+  ['tools','models'].forEach(s => {
+    const btn = document.getElementById('qmsec-' + s);
+    const sec = document.getElementById('qm-section-' + s);
+    const isActive = s === name;
+    if (btn) {
+      btn.style.borderBottomColor = isActive ? 'var(--accent)' : 'transparent';
+      btn.style.color = isActive ? 'var(--accent)' : 'var(--text2)';
+    }
+    if (sec) sec.style.display = isActive ? 'flex' : 'none';
+  });
+  // hide settings pane when switching sections
+  const sp = document.getElementById('qm-pane-settings');
+  if (sp) sp.style.display = 'none';
+
+  const label = document.getElementById('qm-auto-refresh-label');
+  if (name === 'models') {
+    loadModelQm();
+    if (label) label.style.display = '';
+  } else {
+    loadQmOverview();
+    if (label) label.style.display = 'none';
+  }
+}
+
 function switchQmTab(name) {
   document.querySelectorAll('.qm-tab').forEach(t => {
     t.classList.toggle('active', false);
@@ -7027,16 +7326,34 @@ function switchQmTab(name) {
     const el = document.getElementById('qm-pane-' + p);
     if (el) el.style.display = p === name ? 'flex' : 'none';
   });
+  // hide settings pane when switching tool tabs
+  const sp = document.getElementById('qm-pane-settings');
+  if (sp) sp.style.display = 'none';
   if (name === 'overview') loadQmOverview();
   if (name === 'patterns') loadQmPatterns();
   if (name === 'decisions') loadQmDecisions();
+}
+
+function qmOpenSettings() {
+  // Hide both sections, show settings pane
+  ['tools','models'].forEach(s => {
+    const sec = document.getElementById('qm-section-' + s);
+    if (sec) sec.style.display = 'none';
+    const btn = document.getElementById('qmsec-' + s);
+    if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = 'var(--text2)'; }
+  });
+  const sp = document.getElementById('qm-pane-settings');
+  if (sp) sp.style.display = 'flex';
+  loadQmSettings();
 }
 
 async function loadQuartermaster() {
   const data = await fetch(BASE + '/api/qm/health').then(r => r.json()).catch(() => null);
   if (data) {
     window._qmData = data;
-    loadQmOverview();
+    // Determine which section is currently visible and load accordingly
+    const modelsVisible = document.getElementById('qm-section-models')?.style.display !== 'none';
+    if (modelsVisible) loadModelQm(); else loadQmOverview();
   } else {
     document.getElementById('qm-summary-cards').innerHTML =
       '<div style="grid-column:1/-1;padding:20px;color:var(--text3);font-size:13px;text-align:center;">No quartermaster data available. The QM activates after 50 tool calls have been observed in a session.</div>';
@@ -7148,36 +7465,31 @@ function loadQmOverview() {
 async function loadQmPatterns() {
   const el = document.getElementById('qm-patterns-content');
   el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Loading…</p>';
-  const data = await fetch(BASE + '/api/qm/health').then(r => r.json()).catch(() => null);
-  if (!data) { el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Failed to load.</p>'; return; }
-  const decisions = data.recentDecisions || [];
-  if (decisions.length === 0) {
-    el.innerHTML = '<p style="color:var(--text3);font-size:12px;">No patterns recorded yet. Patterns are learned after several tool call sequences.</p>';
+  const patterns = await fetch(BASE + '/api/qm/patterns?limit=50').then(r => r.json()).catch(() => null);
+  if (!patterns) { el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Failed to load.</p>'; return; }
+  if (patterns.length === 0) {
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;">No patterns recorded yet. Patterns emerge after tool call sequences are observed and evaluated via reflection.</p>';
     return;
   }
-  const bySession = {};
-  for (const d of decisions) {
-    const key = d.sessionId || 'unknown';
-    if (!bySession[key]) bySession[key] = { total: 0, correct: 0, modes: {} };
-    bySession[key].total++;
-    if (d.wasCorrect === 1) bySession[key].correct++;
-    bySession[key].modes[d.mode] = (bySession[key].modes[d.mode] || 0) + 1;
-  }
-  el.innerHTML = \`<div style="display:flex;flex-direction:column;gap:10px;">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Prediction Patterns by Session</div>
-    \${Object.entries(bySession).map(([sid, stats]) => {
-      const acc = stats.total > 0 ? (stats.correct / stats.total * 100).toFixed(0) : '0';
-      const modeStr = Object.entries(stats.modes).map(([m,c]) => m + ':' + c).join(' · ');
-      return \`<div class="card" style="padding:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:12px;font-weight:500;color:var(--text);">\${sid.slice(-16)}</div>
-            <div style="font-size:10px;color:var(--text3);">\${stats.total} predictions · \${modeStr}</div>
+  el.innerHTML = \`<div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Learned Tool Sequence Patterns (\${patterns.length})</div>
+    \${patterns.map(p => {
+      const successRate = p.hitCount > 0 ? (p.successCount / p.hitCount * 100).toFixed(0) : '0';
+      const color = Number(successRate) >= 70 ? '#4ade80' : Number(successRate) >= 40 ? '#fbbf24' : '#f87171';
+      const seq = Array.isArray(p.toolSequence) ? p.toolSequence.join(' → ') : p.toolSequence;
+      return \`<div class="card" style="padding:10px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\${seq}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px;">\${p.hitCount} hits · \${p.successCount} successes · conf: \${((p.avgConfidence||0)*100).toFixed(0)}%</div>
           </div>
-          <div style="font-size:16px;font-weight:700;color:\${Number(acc) >= 70 ? '#4ade80' : Number(acc) >= 50 ? '#fbbf24' : '#f87171'};">\${acc}%</div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:15px;font-weight:700;color:\${color};">\${successRate}%</div>
+            <div style="font-size:9px;color:var(--text3);">success</div>
+          </div>
         </div>
         <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:6px;">
-          <div style="height:100%;width:\${acc}%;background:\${Number(acc) >= 70 ? '#4ade80' : Number(acc) >= 50 ? '#fbbf24' : '#f87171'};border-radius:2px;"></div>
+          <div style="height:100%;width:\${successRate}%;background:\${color};border-radius:2px;transition:width 0.4s;"></div>
         </div>
       </div>\`;
     }).join('')}
@@ -7187,31 +7499,139 @@ async function loadQmPatterns() {
 async function loadQmDecisions() {
   const el = document.getElementById('qm-decisions-content');
   el.innerHTML = '<p style="color:var(--text3);font-size:12px;">Loading…</p>';
-  const decisions = await fetch(BASE + '/api/qm/recent?limit=30').then(r => r.json()).catch(() => []);
+  const decisions = await fetch(BASE + '/api/qm/recent?limit=50').then(r => r.json()).catch(() => []);
   if (!decisions || decisions.length === 0) {
-    el.innerHTML = '<p style="color:var(--text3);font-size:12px;">No decisions recorded yet.</p>';
+    el.innerHTML = '<p style="color:var(--text3);font-size:12px;">No decisions recorded yet. The QM makes predictions once it has observed enough tool calls in a session (threshold: 50).</p>';
     return;
   }
   const modeColors = { automate: '#fbbf24', suggest: '#818cf8', defer: '#55556a' };
+  const total = decisions.length;
+  const correct = decisions.filter(d => d.wasCorrect === 1).length;
+  const pending = decisions.filter(d => d.wasCorrect === null).length;
+  const accPct = (total - pending) > 0 ? (correct / (total - pending) * 100).toFixed(1) : '—';
   el.innerHTML = \`<div style="display:flex;flex-direction:column;gap:6px;">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Recent Decisions</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);">Recent Decisions (\${total})</div>
+      <div style="font-size:11px;color:var(--text3);">Accuracy: <b style="color:\${accPct !== '—' && Number(accPct) >= 60 ? '#4ade80' : '#fbbf24'};">\${accPct}%</b> · \${pending} pending eval</div>
+    </div>
     \${decisions.map(d => {
       const correctLabel = d.wasCorrect === null ? '⏳' : d.wasCorrect === 1 ? '✓' : '✗';
       const correctColor = d.wasCorrect === null ? '#55556a' : d.wasCorrect === 1 ? '#4ade80' : '#f87171';
       const confPct = ((d.confidence || 0) * 100).toFixed(0);
+      const signals = Array.isArray(d.signalsUsed) ? d.signalsUsed.slice(0,3).map(s => s.name + ':' + ((s.contributed||0)*100).toFixed(0) + '%').join(', ') : '';
       return \`<div class="card" style="padding:8px 12px;display:flex;align-items:center;gap:10px;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:\${modeColors[d.mode] || '#55556a'};flex-shrink:0;" title="\${d.mode}"></span>
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            \${d.mode === 'defer' ? 'Deferred (no prediction)' : \`Predicted <b>\${d.predictedTool}</b>\`}
-            \${d.actualTool ? \` → actual: <b>\${d.actualTool}</b>\` : ''}
+            \${d.mode === 'defer' ? '<span style="color:var(--text3);">Deferred (no prediction)</span>' : \`Predicted <b>\${d.predictedTool || '?'}</b>\${d.actualTool ? \` → actual: <b>\${d.actualTool}</b>\` : ''}\`}
           </div>
-          <div style="font-size:10px;color:var(--text3);">\${d.confidence ? confPct + '% confidence' : ''}\${d.signalsUsed ? ' · ' + d.signalsUsed.slice(0,3).map(s => s.name).join(', ') : ''}</div>
+          <div style="font-size:10px;color:var(--text3);">\${d.confidence ? confPct + '% conf' : ''}\${signals ? ' · ' + signals : ''}\${d.sessionId ? ' · ' + d.sessionId.slice(-10) : ''}</div>
         </div>
-        <span style="font-size:14px;font-weight:700;color:\${correctColor};flex-shrink:0;">\${correctLabel}</span>
+        <span style="font-size:14px;font-weight:700;color:\${correctColor};flex-shrink:0;" title="\${d.wasCorrect === null ? 'Pending evaluation' : d.wasCorrect === 1 ? 'Correct' : 'Incorrect'}">\${correctLabel}</span>
       </div>\`;
     }).join('')}
   </div>\`;
+}
+
+async function loadQmSettings() {
+  const [cfg, config] = await Promise.all([
+    fetch(BASE + '/api/qm/config').then(r => r.json()).catch(() => ({})),
+    fetch(BASE + '/api/config').then(r => r.json()).catch(() => null),
+  ]);
+  const el = id => document.getElementById(id);
+
+  // Populate provider dropdown with configured providers only
+  const provSel = el('qm-cfg-provider');
+  if (provSel && config?.providers) {
+    const configured = Object.keys(config.providers).filter(k => config.providers[k]?.model || config.providers[k]?.apiKey);
+    provSel.innerHTML = '<option value="">— any configured provider —</option>'
+      + configured.map(k => '<option value="' + k + '">' + providerLabel(k) + '</option>').join('');
+  }
+
+  if (el('qm-cfg-enabled')) el('qm-cfg-enabled').checked = !!cfg.enabled;
+  if (provSel) provSel.value = cfg.quartermasterProvider || '';
+  if (el('qm-cfg-model')) el('qm-cfg-model').value = cfg.quartermasterModel || '';
+  if (el('qm-cfg-mode')) el('qm-cfg-mode').value = cfg.mode || 'balanced';
+  if (el('qm-cfg-threshold')) el('qm-cfg-threshold').value = cfg.observeThreshold ?? 50;
+  const status = el('qm-cfg-status');
+  if (status) status.textContent = '';
+
+  // Pre-load models if a provider is already selected
+  if (cfg.quartermasterProvider) qmFetchModels(true);
+}
+
+let _qmFetchingModels = false;
+async function qmFetchModels(silent = false) {
+  if (_qmFetchingModels) return;
+  const provSel = document.getElementById('qm-cfg-provider');
+  const kind = provSel?.value;
+  if (!kind) return;
+  const statusEl = document.getElementById('qm-model-fetch-status');
+  const btn = document.getElementById('qm-fetch-models-btn');
+  _qmFetchingModels = true;
+  if (!silent) { if (btn) btn.textContent = '…'; if (statusEl) statusEl.textContent = 'Loading…'; }
+  try {
+    const res = await fetch(BASE + '/api/providers/' + kind + '/models');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const models = await res.json();
+    const dl = document.getElementById('qm-cfg-model-list');
+    if (dl) dl.innerHTML = models.map(m => '<option value="' + (m.id || m) + '">' + (m.name || m.id || m) + '</option>').join('');
+    if (statusEl) statusEl.textContent = models.length + ' models available';
+  } catch(e) {
+    if (statusEl && !silent) statusEl.textContent = 'Could not fetch models — type manually';
+  } finally {
+    _qmFetchingModels = false;
+    if (btn) btn.textContent = '↻';
+  }
+}
+
+function qmCfgDirty() {
+  const status = document.getElementById('qm-cfg-status');
+  if (status) status.textContent = '● unsaved changes';
+}
+
+async function saveQmConfig() {
+  const btn = document.getElementById('qm-cfg-save');
+  const status = document.getElementById('qm-cfg-status');
+  btn.disabled = true;
+  if (status) status.textContent = 'Saving…';
+  try {
+    const body = {
+      enabled: document.getElementById('qm-cfg-enabled').checked,
+      quartermasterProvider: document.getElementById('qm-cfg-provider').value || undefined,
+      quartermasterModel: document.getElementById('qm-cfg-model').value.trim() || undefined,
+      mode: document.getElementById('qm-cfg-mode').value,
+      observeThreshold: Number(document.getElementById('qm-cfg-threshold').value) || 50,
+    };
+    const res = await fetch(BASE + '/api/qm/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+    if (res.success) {
+      if (status) { status.textContent = '✓ Saved'; status.style.color = '#4ade80'; }
+      setTimeout(() => { if (status) { status.textContent = ''; status.style.color = 'var(--text3)'; } }, 2500);
+    } else {
+      if (status) { status.textContent = 'Error saving'; status.style.color = '#f87171'; }
+    }
+  } catch(e) {
+    if (status) { status.textContent = 'Error: ' + e.message; status.style.color = '#f87171'; }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function qmResetAll() {
+  if (!confirm('Reset ALL Quartermaster data? This will erase all learned patterns, decisions, tool stats and signal weights. This cannot be undone.')) return;
+  try {
+    await fetch(BASE + '/api/qm/reset', { method: 'POST' });
+    loadQuartermaster();
+    const status = document.getElementById('qm-cfg-status');
+    if (status) { status.textContent = '✓ Reset complete'; status.style.color = '#4ade80'; }
+    setTimeout(() => { if (status) { status.textContent = ''; status.style.color = 'var(--text3)'; } }, 2500);
+  } catch(e) {
+    alert('Reset failed: ' + e.message);
+  }
 }
 // ── End Quartermaster ────────────────────────────────────────────────────────
 
@@ -7237,7 +7657,8 @@ async function loadModelQm() {
 function startMqmAutoRefresh() {
   if (mqmAutoRefresh) clearInterval(mqmAutoRefresh);
   mqmAutoRefresh = setInterval(() => {
-    if (currentPage === 'modelqm') loadModelQm();
+    const sec = document.getElementById('qm-section-models');
+    if (currentPage === 'quartermaster' && sec && sec.style.display !== 'none') loadModelQm();
   }, 5000);
 }
 
@@ -7454,8 +7875,13 @@ async function loadMqmAccuracy() {
 }
 
 function switchMqmTab(name) {
-  document.querySelectorAll('.mqm-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('mqmtab-' + name)?.classList.add('active');
+  document.querySelectorAll('.mqm-tab').forEach(t => {
+    t.classList.remove('active');
+    t.style.borderBottomColor = 'transparent';
+    t.style.color = 'var(--text2)';
+  });
+  const tabBtn = document.getElementById('mqmtab-' + name);
+  if (tabBtn) { tabBtn.classList.add('active'); tabBtn.style.borderBottomColor = 'var(--accent)'; tabBtn.style.color = 'var(--accent)'; }
   ['overview','models','accuracy'].forEach(p => {
     const el = document.getElementById('mqm-pane-' + p);
     if (el) el.style.display = p === name ? 'flex' : 'none';
@@ -7463,6 +7889,162 @@ function switchMqmTab(name) {
   if (name === 'models') loadMqmModels();
   if (name === 'accuracy') loadMqmAccuracy();
 }
+// ── Soul / Profile UI ──────────────────────────────────────────────────────
+
+var _soulActiveTab = 'profile';
+var _soulRawMode = false;
+
+async function loadSoulFile() {
+  const userRes = await fetch(BASE + '/api/soul/user').then(r => r.json()).catch(() => ({ content: '' }));
+  const userMd = userRes.content || '';
+  document.getElementById('soul-raw-profile-text').value = userMd;
+  _soulParseUserMd(userMd);
+}
+
+async function loadMemoryMd() {
+  const res = await fetch(BASE + '/api/soul/memory').then(r => r.json()).catch(() => ({ content: '' }));
+  document.getElementById('soul-raw-memory-text').value = res.content || '';
+}
+
+async function saveMemoryMd() {
+  const md = document.getElementById('soul-raw-memory-text').value;
+  const statusEl = document.getElementById('mem-persist-status');
+  statusEl.textContent = 'Saving…';
+  await fetch(BASE + '/api/soul/memory', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: md }) });
+  statusEl.textContent = '✓ Saved';
+  setTimeout(() => { statusEl.textContent = ''; }, 2000);
+}
+
+
+function _soulParseUserMd(md) {
+  const get = (heading) => {
+    const re = new RegExp('##\\s+' + heading + '[\\s\\S]*?\\n([\\s\\S]*?)(?=\\n##\\s|$)', 'i');
+    const m = md.match(re);
+    if (!m) return '';
+    return m[1].replace(/^[-*]\s*/gm, '').trim();
+  };
+  const line = (label) => {
+    const re = new RegExp('\\*\\*' + label + ':\\*\\*\\s*(.+)', 'i');
+    const m = md.match(re);
+    return m ? m[1].replace(/^\(|\)$/g, '').trim() : '';
+  };
+  document.getElementById('prof-name').value    = line('Name');
+  document.getElementById('prof-role').value    = line('Role');
+  document.getElementById('prof-goals').value   = get('Goals');
+  document.getElementById('prof-projects').value = get('Current Projects');
+  document.getElementById('prof-os').value      = line('OS') || _soulGetBullet(md, 'OS');
+  document.getElementById('prof-editor').value  = line('Editor/IDE') || _soulGetBullet(md, 'Editor');
+  document.getElementById('prof-langs').value   = line('Languages') || _soulGetBullet(md, 'Languages');
+  document.getElementById('prof-tools').value   = line('Tools') || _soulGetBullet(md, 'Tools');
+  document.getElementById('prof-style').value   = line('Preferred style') || _soulGetBullet(md, 'style');
+  document.getElementById('prof-context').value = get('Working Context');
+}
+
+function _soulGetBullet(md, key) {
+  const re = new RegExp('-\\s+' + key + ':\\s*(.+)', 'i');
+  const m = md.match(re);
+  return m ? m[1].trim() : '';
+}
+
+function _soulBuildUserMd() {
+  const v = (id) => document.getElementById(id).value.trim();
+  const lines = (text) => text.split('\\n').filter(l => l.trim()).map(l => '- ' + l.trim()).join('\\n') || '- (not set)';
+  return '# User Profile\\n\\n' +
+    '**Name:** ' + (v('prof-name') || '(your name)') + '\\n' +
+    '**Role:** ' + (v('prof-role') || '(your role or profession)') + '\\n\\n' +
+    '## Goals & Objectives\\n' + (lines(v('prof-goals')) || '- (what are you working toward?)') + '\\n\\n' +
+    '## Current Projects\\n' + (lines(v('prof-projects')) || '- (active projects you want help with)') + '\\n\\n' +
+    '## Technical Environment\\n' +
+    '- OS: ' + (v('prof-os') || '(your operating system)') + '\\n' +
+    '- Editor/IDE: ' + (v('prof-editor') || '(your editor)') + '\\n' +
+    '- Languages: ' + (v('prof-langs') || '(programming languages you use)') + '\\n' +
+    '- Tools: ' + (v('prof-tools') || '(other tools in your stack)') + '\\n\\n' +
+    '## Communication\\n' +
+    '- Preferred style: ' + (v('prof-style') || 'direct and concise') + '\\n\\n' +
+    '## Working Context\\n' + (v('prof-context') || '(describe your project, environment, or ongoing work here)') + '\\n';
+}
+
+
+function soulToggleRaw() {
+  _soulRawMode = !_soulRawMode;
+  const btn = document.getElementById('soul-raw-toggle');
+  btn.textContent = _soulRawMode ? '🗂 Form' : '⌨ Raw';
+  const rawDiv = document.getElementById('soul-raw-profile');
+  const formDiv = document.getElementById('soul-profile-form');
+  if (_soulRawMode) {
+    // sync form → raw
+    document.getElementById('soul-raw-profile-text').value = _soulBuildUserMd();
+    rawDiv.style.display  = 'block';
+    // hide all form fields except the raw div
+    Array.from(formDiv.children).forEach(el => { if (el.id !== 'soul-raw-profile') el.style.display = 'none'; });
+  } else {
+    // sync raw → form
+    _soulParseUserMd(document.getElementById('soul-raw-profile-text').value);
+    rawDiv.style.display = 'none';
+    Array.from(formDiv.children).forEach(el => el.style.display = '');
+  }
+}
+
+async function soulSaveActive() {
+  const btn = document.getElementById('soul-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const md = _soulRawMode
+      ? document.getElementById('soul-raw-profile-text').value
+      : _soulBuildUserMd();
+    await fetch(BASE + '/api/soul/user', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: md }) });
+    btn.textContent = '✓ Saved';
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Save'; }, 1800);
+  } catch(e) {
+    btn.textContent = 'Error'; btn.disabled = false;
+    console.error(e);
+  }
+}
+
+function soulPickStyle(el) {
+  document.querySelectorAll('.prof-style-btn').forEach(b => { b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.borderColor = 'var(--border)'; });
+  el.style.background = 'var(--accent)'; el.style.color = '#fff'; el.style.borderColor = 'var(--accent)';
+  document.getElementById('prof-style').value = el.dataset.val;
+}
+
+async function agSoulTemplate(el) {
+  const tmpl = el.dataset.val;
+  try {
+    const templates = await fetch(BASE + '/api/soul/templates').then(r => r.json()).catch(() => []);
+    const found = templates.find(t => t.id === tmpl);
+    if (found) {
+      document.getElementById('ag-soul').value = found.content;
+      document.querySelectorAll('.ag-tmpl-btn').forEach(b => { b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; });
+      el.style.background = 'var(--accent)'; el.style.color = '#fff';
+    }
+  } catch(e) { console.error('agSoulTemplate', e); }
+}
+
+async function appendMemoryNote() {
+  const inp = document.getElementById('memory-note');
+  const note = inp.value.trim();
+  if (!note) return;
+  await fetch(BASE + '/api/soul/memory/append', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }) });
+  inp.value = '';
+  // Reload memory textarea
+  const res = await fetch(BASE + '/api/soul/memory').then(r => r.json()).catch(() => ({ content: '' }));
+  document.getElementById('soul-raw-memory-text').value = res.content || '';
+}
+
+function soulAskLlm(type) {
+  const prompts = {
+    profile: "Please fill out my user profile based on what you know about me from our conversations. Update each section of USER.md with what you've learned.",
+  };
+  const msg = prompts[type] || '';
+  showPage('chat');
+  setTimeout(() => {
+    const inp = document.getElementById('chat-input');
+    if (inp) { inp.value = msg; inp.focus(); }
+  }, 300);
+}
+
+// ── End Soul / Profile UI ───────────────────────────────────────────────────
+
 // ── End Model Quartermaster UI ──────────────────────────────────────────────
 
 // Handle browser back/forward

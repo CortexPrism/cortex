@@ -380,7 +380,7 @@ export async function logDecision(
 }
 
 export async function getDecisions(
-  sessionId: string,
+  sessionId: string | undefined,
   limit = 20,
 ): Promise<QmDecision[]> {
   const db = await getCoreDb();
@@ -396,13 +396,19 @@ export async function getDecisions(
     was_correct: number | null;
     created_at: string;
   }>(
-    `SELECT id, turn_id, session_id, mode, predicted_tool, actual_tool,
-            confidence, signals_used, was_correct, created_at
-     FROM qm_decisions
-     WHERE session_id = ?
-     ORDER BY created_at DESC
-     LIMIT ?`,
-    [sessionId, limit],
+    sessionId
+      ? `SELECT id, turn_id, session_id, mode, predicted_tool, actual_tool,
+                confidence, signals_used, was_correct, created_at
+         FROM qm_decisions
+         WHERE session_id = ?
+         ORDER BY created_at DESC
+         LIMIT ?`
+      : `SELECT id, turn_id, session_id, mode, predicted_tool, actual_tool,
+                confidence, signals_used, was_correct, created_at
+         FROM qm_decisions
+         ORDER BY created_at DESC
+         LIMIT ?`,
+    sessionId ? [sessionId, limit] : [limit],
   );
   return rows.map((r) => ({
     id: r.id,

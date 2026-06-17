@@ -19,10 +19,15 @@ import { loadSkillTool } from '../tools/builtin/load_skill.ts';
 import { skillWriteTool } from '../tools/builtin/skill_write.ts';
 import { skillReadTool } from '../tools/builtin/skill_read.ts';
 import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
+import { memoryNoteTool } from '../tools/builtin/memory_note.ts';
 import { speakTool } from '../tools/builtin/speak.ts';
 import { listenTool } from '../tools/builtin/listen.ts';
 import { shellTool } from '../tools/builtin/shell.ts';
 import { webFetchTool } from '../tools/builtin/web_fetch.ts';
+import { braveSearchTool } from '../tools/builtin/web/brave_search.ts';
+import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
+import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
+import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
 import { fileGlobTool } from '../tools/builtin/workspace/file_glob.ts';
 import {
   githubIssueCreateTool,
@@ -257,11 +262,16 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         skill_write: skillWriteTool,
         skill_read: skillReadTool,
         dashboard_manage: dashboardManageTool,
+        memory_note: memoryNoteTool,
         speak: speakTool,
         listen: listenTool,
         shell: shellTool,
         web_fetch: webFetchTool,
         file_glob: fileGlobTool,
+        brave_search: braveSearchTool,
+        tavily_search: tavilySearchTool,
+        serpapi_search: serpapiSearchTool,
+        firecrawl: firecrawlTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {
@@ -381,6 +391,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           workspaceDir,
         },
         embedder,
+        enableReflection: true,
         userContentBlocks: contentBlocks,
       });
 

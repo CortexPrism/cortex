@@ -165,12 +165,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ authenticated: valid });
   }
 
-  // POST /api/auth/change-password (authenticated only)
+  // POST /api/auth/change-password (authenticated, or first-time setup when no password exists)
   if (req.method === 'POST' && path === '/api/auth/change-password') {
-    const cookies = parseCookies(req.headers.get('cookie') || '');
-    const sessionId = cookies['cortex_session'];
-    if (!sessionId || !validateSession(sessionId)) {
-      return json({ error: 'Unauthorized' }, 401);
+    const pwExists = await hasPassword();
+    if (pwExists) {
+      const cookies = parseCookies(req.headers.get('cookie') || '');
+      const sessionId = cookies['cortex_session'];
+      if (!sessionId || !validateSession(sessionId)) {
+        return json({ error: 'Unauthorized' }, 401);
+      }
     }
     const { oldPassword, newPassword } = await req.json() as {
       oldPassword: string;
@@ -181,7 +184,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
       if (!success) {
         return json({ error: 'Current password is incorrect' }, 401);
       }
-      return json({ success: true });
+      const session = createSession();
+      return json({ success: true }, 200, setSessionCookie(session.id));
     } catch (e) {
       return json({ error: (e as Error).message }, 400);
     }
@@ -661,6 +665,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true });
   }
 
+  // GET /api/providers/configured — list providers that have an API key configured
+  if (req.method === 'GET' && path === '/api/providers/configured') {
+    const config = await loadConfig();
+    const configured = Object.entries(config.providers)
+      .filter(([k, p]) => p && (p.apiKey || k === 'ollama'))
+      .map(([k, p]) => ({ kind: k, model: p?.model || '' }));
+    return json(configured);
+  }
+
   // GET /api/providers/:kind/models?apiKey=...&baseUrl=... — fetch models from provider
   const modelsMatch = path.match(/^\/api\/providers\/(\w+)\/models$/);
   if (req.method === 'GET' && modelsMatch) {
@@ -1017,6 +1030,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // ── Soul files ───────────────────────────────────────────
 
+  // GET /api/soul/templates — return all personality template names + content (no side effects)
+  if (req.method === 'GET' && path === '/api/soul/templates') {
+    const { PERSONALITY_TEMPLATES, TEMPLATE_DESCRIPTIONS } = await import('../agent/soul.ts');
+    const templates = Object.entries(PERSONALITY_TEMPLATES).map(([id, content]) => ({
+      id,
+      description: TEMPLATE_DESCRIPTIONS[id] ?? '',
+      content,
+    }));
+    return json(templates);
+  }
+
   // GET /api/soul/:file  (soul | user | memory)
   const soulGetMatch = path.match(/^\/api\/soul\/(soul|user|memory)$/);
   if (req.method === 'GET' && soulGetMatch) {
@@ -1039,9 +1063,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
       : fileKey === 'user'
       ? PATHS.userFile
       : PATHS.memoryFile;
-    const { content } = await req.json() as { content: string };
+    const body = await req.json() as { content?: string; template?: string };
     await Deno.mkdir(PATHS.configDir, { recursive: true });
-    await Deno.writeTextFile(filePath, content);
+    const finalContent = (body.template && fileKey === 'soul')
+      ? generatePersonalitySoul(body.template)
+      : (body.content ?? '');
+    await Deno.writeTextFile(filePath, finalContent);
     return json({ ok: true });
   }
 
@@ -1860,10 +1887,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/qm/recent?session=<id>&limit=20
   if (req.method === 'GET' && path === '/api/qm/recent') {
     const { getDecisions } = await import('../quartermaster/mod.ts');
-    const sessionId = url.searchParams.get('session') ?? '';
+    const sessionId = url.searchParams.get('session') ?? undefined;
     const limit = Number(url.searchParams.get('limit') ?? 20);
     const decisions = await getDecisions(sessionId, limit);
     return json(decisions);
+  }
+
+  // GET /api/qm/patterns?limit=30
+  if (req.method === 'GET' && path === '/api/qm/patterns') {
+    const { getPatterns } = await import('../quartermaster/mod.ts');
+    const limit = Number(url.searchParams.get('limit') ?? 30);
+    const patterns = await getPatterns(limit);
+    return json(patterns);
   }
 
   // GET /api/qm/weights
@@ -1885,18 +1920,52 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { getQmSummary, getQmAccuracyTrend } = await import(
       '../quartermaster/monitor.ts'
     );
-    const { getSignalWeights, getToolStats, getDecisions } = await import(
+    const { getSignalWeights, getToolStats, getDecisions, getPatterns } = await import(
       '../quartermaster/mod.ts'
     );
     const sessionId = url.searchParams.get('session') ?? undefined;
-    const [summary, weights, toolStats, recentDecisions, accuracyTrend] = await Promise.all([
-      getQmSummary(sessionId),
-      getSignalWeights(),
-      getToolStats(),
-      getDecisions(sessionId ?? '', 10),
-      getQmAccuracyTrend(sessionId),
-    ]);
-    return json({ summary, weights, toolStats, recentDecisions, accuracyTrend });
+    const [summary, weights, toolStats, recentDecisions, accuracyTrend, patterns] =
+      await Promise.all([
+        getQmSummary(sessionId),
+        getSignalWeights(),
+        getToolStats(),
+        getDecisions(sessionId, 20),
+        getQmAccuracyTrend(sessionId),
+        getPatterns(30),
+      ]);
+    return json({ summary, weights, toolStats, recentDecisions, accuracyTrend, patterns });
+  }
+
+  // POST /api/qm/reset
+  if (req.method === 'POST' && path === '/api/qm/reset') {
+    const { resetAll } = await import('../quartermaster/mod.ts');
+    await resetAll();
+    return json({ success: true });
+  }
+
+  // GET /api/qm/config
+  if (req.method === 'GET' && path === '/api/qm/config') {
+    const config = await loadConfig();
+    return json(config.modelSelection ?? {});
+  }
+
+  // POST /api/qm/config
+  if (req.method === 'POST' && path === '/api/qm/config') {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    config.modelSelection = {
+      enabled: body.enabled !== undefined ? Boolean(body.enabled) : (config.modelSelection?.enabled ?? false),
+      mode: (body.mode as 'conservative' | 'balanced' | 'aggressive') ?? config.modelSelection?.mode ?? 'balanced',
+      observeThreshold: Number(body.observeThreshold ?? config.modelSelection?.observeThreshold ?? 50),
+      enforceConfidence: Number(body.enforceConfidence ?? config.modelSelection?.enforceConfidence ?? 0.85),
+      suggestConfidence: Number(body.suggestConfidence ?? config.modelSelection?.suggestConfidence ?? 0.65),
+      costBudget: body.costBudget !== undefined ? Number(body.costBudget) : config.modelSelection?.costBudget,
+      allowedProviders: (body.allowedProviders as ProviderKind[] | undefined) ?? config.modelSelection?.allowedProviders,
+      quartermasterProvider: (body.quartermasterProvider as ProviderKind | undefined) ?? config.modelSelection?.quartermasterProvider,
+      quartermasterModel: (body.quartermasterModel as string | undefined) ?? config.modelSelection?.quartermasterModel,
+    };
+    await saveConfig(config);
+    return json({ success: true, modelSelection: config.modelSelection });
   }
 
   // ── Model Quartermaster Monitoring API ──────────────────────

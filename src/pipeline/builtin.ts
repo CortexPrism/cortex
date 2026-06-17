@@ -343,7 +343,16 @@ class ModelQuartermasterHook implements PipelineHook {
       if (!config.modelSelection?.enabled) return {};
 
       if (ctx.stage === 'pre-llm') {
-        const candidates = getCandidateModels(config.providers);
+        const qmProvider = config.modelSelection.quartermasterProvider;
+        const qmModel = config.modelSelection.quartermasterModel;
+
+        let candidates = getCandidateModels(config.providers);
+
+        if (qmProvider && qmModel) {
+          // When a dedicated QM provider/model is configured, use only that as the candidate
+          candidates = [{ provider: qmProvider, model: qmModel }];
+        }
+
         if (candidates.length === 0) return {};
 
         const requestContext = buildRequestContext(
@@ -362,7 +371,7 @@ class ModelQuartermasterHook implements PipelineHook {
             mode: config.modelSelection.mode,
             costBudgetUsd: config.modelSelection.costBudget,
             qualityThreshold: config.modelSelection.qualityThreshold,
-            allowedProviders: config.modelSelection.allowedProviders,
+            allowedProviders: qmProvider ? [qmProvider] : config.modelSelection.allowedProviders,
             enforceConfidence: config.modelSelection.enforceConfidence,
             suggestConfidence: config.modelSelection.suggestConfidence,
           },
