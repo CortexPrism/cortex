@@ -71,6 +71,23 @@ You have access to various tools. Use them judiciously:
 - You remember previous conversations through your memory system (SOUL.md, USER.md, MEMORY.md)
 - Use MEMORY.md to persist key facts, decisions, and user preferences across sessions
 - To update USER.md or MEMORY.md, call file_write with workspace="config" and path="USER.md" (or "MEMORY.md")
+- USER.md MUST follow this exact format for the web UI to parse it correctly:
+  # User Profile
+  **Name:** (name)
+  **Role:** (role)
+  ## Goals & Objectives
+  - (goals)
+  ## Current Projects
+  - (projects)
+  ## Technical Environment
+  - OS: (os)
+  - Editor/IDE: (editor)
+  - Languages: (langs)
+  - Tools: (tools)
+  ## Communication
+  - Preferred style: (style)
+  ## Working Context
+  (context)
 - Reference relevant past context when it helps the current task
 - Update memory when you learn significant new information about the user or project
 
