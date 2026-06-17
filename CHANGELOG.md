@@ -7,7 +7,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
-## [Unreleased]
+## [0.34.0] — 2026-06-17
 
 ### Added
 
@@ -18,8 +18,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   screenshot capture, clicking (left/right/middle/double/triple), mouse movement and dragging, text
   typing, keyboard shortcuts, scrolling, and wait operations
 - **Virtual Display Management** (`src/computer-use/display.ts`) — automatic X11 virtual display
-  (Xvfb) lifecycle management with display number allocation to support multiple concurrent sessions,
-  health checking, and graceful shutdown
+  (Xvfb) lifecycle management with display number allocation to support multiple concurrent
+  sessions, health checking, and graceful shutdown
 - **Screenshot Capture** (`src/computer-use/screenshot.ts`) — flexible screenshot capture supporting
   multiple tools (scrot, ImageMagick, xwd) with automatic fallback, PNG and JPEG format support,
   configurable quality settings, and smart file storage to avoid tool output truncation
@@ -31,8 +31,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   key holding for specified durations, and normalized key name mapping for cross-platform
   compatibility
 - **Action Executor** (`src/computer-use/executor.ts`) — orchestrates display, mouse, and keyboard
-  controllers with configurable timeouts, error handling, screenshot directory management, and action
-  validation
+  controllers with configurable timeouts, error handling, screenshot directory management, and
+  action validation
 - **Security Integration** — computer use actions integrated with policy validation system, approval
   gates requiring user confirmation for each action, sensitive data detection (passwords, API keys)
   with automatic blocking, and comprehensive audit logging via Cortex Lens
@@ -42,26 +42,29 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Docker Support** (`docker/computer-use.Dockerfile`) — pre-built Docker image with Ubuntu 22.04,
   Xvfb, xdotool, scrot, XFCE desktop environment, Firefox, Chromium, LibreOffice, and automatic Xvfb
   startup for isolated GUI automation
-- **Configuration System** — computer use configuration stored in main config file with enable/disable
-  toggle, all settings persisted across restarts, and tool automatically disabled when not configured
+- **Configuration System** — computer use configuration stored in main config file with
+  enable/disable toggle, all settings persisted across restarts, and tool automatically disabled
+  when not configured
 - **Tool Capabilities** — added four new capability types: `computer:screenshot`, `computer:mouse`,
   `computer:keyboard`, and `computer:control` for granular permission control
-- **Policy Support** — added `computer` policy kind to security system for fine-grained access control
-  of computer use actions
+- **Policy Support** — added `computer` policy kind to security system for fine-grained access
+  control of computer use actions
 - **Documentation** (`docs/computer-use/README.md`) — comprehensive guide covering requirements,
   installation instructions for multiple Linux distributions, usage examples, available actions with
   parameters, common key names, security features, troubleshooting guide, example workflows (web
   research, document editing), and architecture overview
-- **Tests** (`tests/computer-use/display_test.ts`) — automated tests for display management including
-  availability checks, lifecycle management, and multi-display support
+- **Tests** (`tests/computer-use/display_test.ts`) — automated tests for display management
+  including availability checks, lifecycle management, and multi-display support
 
 **Requirements (Linux):**
+
 - `xvfb` — X Virtual Frame Buffer for virtual displays
 - `xdotool` — Command-line X11 automation for mouse and keyboard
 - `scrot` — Screenshot utility (or ImageMagick as fallback)
 - `x11-utils` — X11 utilities
 
 **Installation:**
+
 ```bash
 # Debian/Ubuntu
 sudo apt-get install xvfb xdotool scrot x11-utils
@@ -74,6 +77,7 @@ sudo pacman -S xorg-server-xvfb xdotool scrot xorg-utils
 ```
 
 **Available Actions:**
+
 - `screenshot` — capture current display state
 - `left_click`, `right_click`, `middle_click` — click at coordinates
 - `double_click`, `triple_click` — multi-click operations
@@ -87,6 +91,7 @@ sudo pacman -S xorg-server-xvfb xdotool scrot xorg-utils
 - `wait` — pause execution between actions
 
 **Security Features:**
+
 - All actions require user approval by default (configurable)
 - Actions validated against security policies before execution
 - Sensitive data detection prevents typing passwords/API keys
@@ -167,19 +172,63 @@ sudo pacman -S xorg-server-xvfb xdotool scrot xorg-utils
 - Settings UI now includes Tools & APIs tab and Computer Use tab for easy configuration management
 - WebSocket chunk handling now uses buffering to prevent split tool calls from leaking through
 
----
+#### Reasoning Inspection & Tool Call Improvements
 
-## [0.34.0] — 2026-06-17
-
-### Added
-
-- **Reasoning inspection panel** (`src/server/ui.ts`) — new `[🔬 Reasoning]` toggle button appears
+- **Reasoning inspection panel** (`src/server/ui.ts`) — new `🔬 Reasoning` toggle button appears
   during agent operations when tools are used; clicking reveals a collapsible panel showing raw tool
   calls, execution results, and agent decision-making; panel auto-hides when response completes for
   a clean default UX
 - **Real-time incremental streaming** (`src/agent/loop.ts`) — chunks now emit to client as they
   arrive during buffered streaming mode, eliminating delays from full-response buffering; maintains
   ability to parse tool calls while providing live UI updates for multi-round tool execution flows
+
+#### Structured Logging & Observability
+
+- **Logger registry** (`src/utils/logger.ts`) — configurable logging system with pluggable
+  transports (console, file, OTLP), per-namespace log levels, and structured JSON output
+- **File transport** — warning-level and above written to `~/.cortex/data/cortex.log` by default;
+  all levels written when verbose mode configured
+- **`cortex log` CLI** (`src/cli/log-cmd.ts`) — `show`, `tail`, `clear`, `set-level`, `path`, and
+  `status` subcommands for log management from the terminal
+- **Logging settings UI** — new Logging tab in Settings with controls for level (debug/trace), file
+  logging toggle, rotation settings, OTLP endpoint, Grafana dashboard link, and Langfuse
+- **Langfuse tracing** (`src/observability/langfuse.ts`) — trace per agent turn, generation span per
+  LLM round with token usage metrics, span per tool call with input/output capture
+- **OTLP export** (`src/observability/otel.ts`) — OpenTelemetry trace/span export compatible with
+  Grafana Tempo, Jaeger, and other OTLP receivers
+- **Settings persistence** — `PUT /api/config` applies logging configuration changes live without
+  requiring a server restart
+- **Observability docs** (`docs/observability.md`) — comprehensive guide covering log levels,
+  configuration, CLI commands, namespaces, OTLP setup, and Langfuse integration
+
+#### Provider & Model Management
+
+- **Configurable model pricing** — every provider now accepts an optional `pricing` config map that
+  overrides built-in defaults; pricing visible in `cortex models show`; all 22 providers wired
+- **Provider context windows** (`src/llm/router.ts`) — `PROVIDER_DEFAULT_CONTEXT_WINDOWS` export for
+  dynamic context window lookup per provider, preventing silent truncation
+- **Individual message deletion** — `DELETE /api/sessions/:id/messages/:messageId` endpoint for
+  removing specific messages from a session with real-time UI delete button on hover
+
+#### Web UI — Navigation & Pages
+
+- **Projects page** — CRUD management for workspace projects with name, description, and agent
+  assignment; stats bar with project count
+- **Hooks page** — pipeline hook management with enable/disable toggles, stage selection, and
+  admin-only visibility controls
+- **Triggers page** — trigger management with cron/GitHub/file-watch type selectors, directory/file
+  pattern fields, branch filters, and enabled toggles
+- **Channels page** — channel adapter configuration with type selectors (Discord), API token fields,
+  enable/disable toggles, and admin-only flags
+- **Marketplace card redesign** — new `.card-mp` CSS with colour-derived icons, hover lift
+  animations, version badges, monospace slugs, and green "installed" detection badges
+- **Marketplace plugin version enrichment** — proxy checks GitHub releases/tags for real version
+  numbers with 1-hour cache; installed plugins/agents detected via API and shown with green badges
+- **Activity page enhanced** — replaced separate Logs page with unified Activity view featuring
+  level filter (errors/warnings), line limit selector (50/100/200/500), auto-refresh toggle, actor
+  column, and inline error formatting
+- **SVG banner** — new banner with CortexPrism logo, title, tagline, and version badges added to
+  README and docs
 
 ### Fixed
 
@@ -195,20 +244,26 @@ sudo pacman -S xorg-server-xvfb xdotool scrot xorg-utils
 - **Duplicate `reasoningBtn` variable declaration** (`src/server/ui.ts`) — renamed second `const`
   declaration to `reasoningBtnToggle` to fix `SyntaxError: Identifier has already been declared`;
   nested `case` blocks in a `switch` share the same scope
-- **Reasoning panel showing raw XML/tool calls** (`src/server/ui.ts`) — panel now extracts only ``
-  content via regex instead of displaying unfiltered `capturedReasoning` with structured tool calls
-  and markup tags
+- **Reasoning panel showing raw XML/tool calls** (`src/server/ui.ts`) — panel now extracts only
+  reasoning content via regex instead of displaying unfiltered `capturedReasoning` with structured
+  tool calls and markup tags
 - **Reasoning panel persisting across messages** (`src/server/ui.ts`) — panel DOM element now
   properly removed via `.remove()` on `case 'start'` instead of only hidden with `display: none`
 - **Reasoning panel force-closed on response completion** (`src/server/ui.ts`) — removed unnecessary
   `reasoningPanelOpen = false` and panel hide in `case 'done'` so user maintains control over panel
   visibility
+- **`cortex restart` port conflict** — uses `fuser -k <port>/tcp` to kill actual server process
+  instead of shell wrapper, fixing `AddrInUse` on restart
 
 ### Changed
 
 - **Tool call handling strategy** (`src/server/ws.ts`, `src/agent/loop.ts`) — captured all raw
   reasoning separately from cleaned output; reasoning sent to client as optional 'reasoning' message
   type; WebSocket handler double-checks stripping with brace-depth walker for defensive consistency
+- **Logs page merged into Activity** — removed separate Logs page and consolidated into enhanced
+  Activity page with level filtering, line limits, auto-refresh, and actor column
+- **USER.md format requirements** — documented format expectations in soul.ts for consistent UI
+  parsing
 
 ---
 
