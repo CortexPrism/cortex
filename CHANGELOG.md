@@ -52,6 +52,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Special escalation for lens.db (audit logs) to human approval
   - Context-aware supervision with audit trails
 
+- **structured_extract tool** — LLM-powered entity and relationship extraction:
+  - JSON-Schema validation for extracted data
+  - Multi-format input support: plain text, HTML, JSON
+  - Pattern-based extraction (emails, phones, URLs)
+  - Streaming output for large extractions (JSONL format)
+  - Schema-based validation with strict/lenient modes
+  - Input length handling with graceful truncation
+  - Configurable extraction descriptions
+
 - **browser tool** — Headless browser automation with security supervision:
   - Actions: navigate, click, type, screenshot, snapshot, evaluate, wait, close
   - Playwright-powered Chromium automation (lazy-loaded singleton)
