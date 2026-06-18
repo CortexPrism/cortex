@@ -5,6 +5,79 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.39.0] — 2026-06-18
+
+### Added — Multi-Channel Integration Suite
+
+- **9 built-in channel plugins** — Full `ChannelPlugin` interface implementations for all
+  major communication platforms:
+
+  - `DiscordChannelPlugin` — Gateway v10 WebSocket, rich embeds, threads, file upload,
+    reactions, rate limiting (50 req/s)
+  - `SlackChannelPlugin` — Socket Mode, Block Kit rich messages, interactive buttons,
+    thread support, file uploads
+  - `TelegramChannelPlugin` — Long-polling + webhook modes, inline keyboards, multi-format
+    file uploads, Markdown formatting
+  - `TeamsChannelPlugin` — Microsoft Graph API, Adaptive Cards, OAuth client credentials
+    flow, SharePoint file upload
+  - `MattermostChannelPlugin` — WebSocket + REST v4, threads, reactions, typing indicators
+  - `RocketChatChannelPlugin` — DDP WebSocket protocol, threads, reactions, file uploads
+  - `WhatsAppChannelPlugin` — Cloud API integration, media upload (image/video/audio/doc),
+    reaction support, webhook handling
+  - `GoogleChatChannelPlugin` — Chat API, service account JWT auth (RS256 via Web Crypto),
+    card messages, threads
+  - `LarkChannelPlugin` — Tenant access token, interactive cards, multi-format uploads
+
+- **Shared infrastructure** (`src/channels/_shared/`):
+  - `WebSocketManager` — Reusable WebSocket client with auto-reconnection, heartbeat
+    management, message queuing (bounded at 1000)
+  - `HttpClient` — Typed HTTP client with retry logic, timeout handling, rate limit
+    detection, FormData awareness
+  - `RateLimiter` — Token bucket algorithm with bounded queues (10000), per-platform
+    configuration
+  - `Logger` — Structured logging utility with level filtering (trace/debug/info/warn/error)
+
+- **Channel configuration store** (`src/channels/store.ts`) — Full CRUD for channel configs,
+  vault-backed encrypted credential storage, helper to build `ChannelConfig` from records
+
+- **Database migrations**:
+  - `028_channel_sessions.sql` — Platform session tracking with platform/channel/user indexes
+  - `029_channel_messages.sql` — Bidirectional message mapping with direction tracking
+  - `030_channels_config.sql` — Channel configuration with vault refs and agent assignment
+
+- **CLI channel management** (`channels` command):
+  - `cortex channels` — List all configured channels
+  - `cortex channels add` — Interactive setup for all 9 platforms with credential collection
+  - `cortex channels start/stop <id>` — Channel lifecycle management
+  - `cortex channels test <id>` — Connection validation without full activation
+  - `cortex channels remove <id>` — Secure deletion with confirmation
+
+- **Documentation**: Quick reference guide (`docs/channels-quick-reference.md`) with setup
+  instructions, troubleshooting, and performance tips for all platforms
+
+### Changed
+
+- **Discord adapter refactored** — `DiscordAdapter` renamed to `DiscordChannelPlugin`,
+  implements full `ChannelPlugin` interface (9/9 methods), legacy adapter preserved as
+  `discord_legacy.ts`
+
+### Fixed
+
+- **HttpClient FormData Content-Type bug** — No longer adds `application/json` header
+  to FormData requests (which broke file uploads)
+- **Telegram polling offset** — Added `offset` parameter to `getUpdates` to prevent
+  duplicate message processing
+- **Slack WebSocket reconnection** — Disabled built-in WebSocketManager auto-reconnect
+  for Slack (URLs expire, must fetch new URL)
+- **Bounded queues** — WebSocketManager (1000) and RateLimiter (10000) now enforce
+  maximum queue sizes to prevent memory exhaustion
+- **API error messages** — Slack, Telegram, Lark, and WhatsApp now include API error
+  details in thrown exceptions
+- **Message truncation warnings** — Discord (2000), Slack (4000), Telegram (4096),
+  WhatsApp (4096) now log warnings when messages are truncated
+
+---
+
 ## [0.38.3] — 2026-06-18
 
 ### Changed — Phase 5

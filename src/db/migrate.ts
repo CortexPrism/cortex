@@ -265,6 +265,21 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '027_lens_sensitivity.sql',
       label: 'lens.db (sensitivity)',
     },
+    {
+      db: coreDb,
+      sqlFile: '028_channel_sessions.sql',
+      label: 'cortex.db (channel sessions)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '029_channel_messages.sql',
+      label: 'cortex.db (channel messages)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '030_channels_config.sql',
+      label: 'cortex.db (channels config)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
