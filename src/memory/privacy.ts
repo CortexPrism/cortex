@@ -1,4 +1,5 @@
 import { getMemoryDb } from '../db/client.ts';
+import { deleteVectorRecords } from './store.ts';
 
 export interface MemoryPrivacyPolicy {
   agentId: string;
@@ -38,6 +39,11 @@ export async function enforceMemoryRetention(maxDays: number): Promise<void> {
   const db = await getMemoryDb();
   const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000).toISOString();
 
+  const [episodicIds, semanticIds] = await Promise.all([
+    db.all<{ id: string }>(`SELECT id FROM episodic_memory WHERE created_at < ?`, [cutoff]),
+    db.all<{ id: string }>(`SELECT id FROM semantic_memory WHERE created_at < ?`, [cutoff]),
+  ]);
+
   await db.run(
     `DELETE FROM episodic_memory WHERE created_at < ?`,
     [cutoff],
@@ -50,4 +56,6 @@ export async function enforceMemoryRetention(maxDays: number): Promise<void> {
     `DELETE FROM reflection_memory WHERE created_at < ?`,
     [cutoff],
   );
+
+  await deleteVectorRecords([...episodicIds, ...semanticIds].map((row) => row.id));
 }

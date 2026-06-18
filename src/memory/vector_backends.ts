@@ -43,6 +43,7 @@ export interface MemoryVectorStore {
   readonly name: string;
   ensureReady(dims: number): Promise<void>;
   upsert(record: VectorMemoryRecord): Promise<void>;
+  delete(ids: string[]): Promise<void>;
   search(opts: VectorStoreOptions): Promise<VectorMemoryHit[]>;
   health(): Promise<{ ok: boolean; detail?: string }>;
 }
@@ -170,6 +171,18 @@ class QdrantVectorStore implements MemoryVectorStore {
     );
   }
 
+  async delete(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await requestJson(
+      `${this.url}/collections/${encodeURIComponent(this.collection)}/points/delete?wait=true`,
+      {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({ points: ids }),
+      },
+    );
+  }
+
   async search(opts: VectorStoreOptions): Promise<VectorMemoryHit[]> {
     await this.ensureReady(opts.vector.length);
     const must: Array<Record<string, unknown>> = [{ key: 'record_type', match: { value: opts.type } }];
@@ -247,6 +260,15 @@ class PineconeVectorStore implements MemoryVectorStore {
     });
   }
 
+  async delete(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await requestJson(`${this.host}/vectors/delete`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({ namespace: this.namespace, ids }),
+    });
+  }
+
   async search(opts: VectorStoreOptions): Promise<VectorMemoryHit[]> {
     const data = await requestJson(`${this.host}/query`, {
       method: 'POST',
@@ -297,7 +319,9 @@ class ChromaVectorStore implements MemoryVectorStore {
   }
 
   private headers(): HeadersInit {
-    return this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {};
+    return this.apiKey
+      ? { Authorization: `Bearer ${this.apiKey}`, 'x-chroma-token': this.apiKey }
+      : {};
   }
 
   private collectionBase(): string {
@@ -362,6 +386,16 @@ class ChromaVectorStore implements MemoryVectorStore {
         documents: [record.text],
         metadatas: [payloadFromRecord(record)],
       }),
+    });
+  }
+
+  async delete(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const collectionId = await this.resolveCollectionId();
+    await requestJson(`${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/delete`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({ ids }),
     });
   }
 
