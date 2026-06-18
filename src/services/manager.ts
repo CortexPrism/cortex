@@ -361,13 +361,16 @@ function stopHealthCheck(id: string): void {
 // ── Auto-start registered services ─────────────────────────
 
 export async function startAutoServices(): Promise<void> {
-  serviceManagerBooted = true;
   const services = await listServices();
+  const startJobs: Array<Promise<void>> = [];
   for (const s of services) {
-    if (s.autoStart && s.status === 'stopped') {
-      startService(s.id).catch(() => {});
+    if (s.autoStart && !runningServices.has(s.id)) {
+      startJobs.push(startService(s.id).catch(() => {}));
     }
   }
+
+  await Promise.all(startJobs);
+  serviceManagerBooted = true;
 }
 
 export function isServiceManagerActive(): boolean {

@@ -4,6 +4,7 @@ import { buildProvider } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import { consolidateReflections } from '../agent/reflect.ts';
 import { runHeuristicCycle } from './heuristics.ts';
+import { deleteVectorRecords } from './store.ts';
 
 const CONSOLIDATION_JOBS = [
   {
@@ -102,14 +103,22 @@ export async function runDailyConsolidation(): Promise<void> {
      SET decay_score = MAX(0.01,
        decay_score * (1.0 / (1.0 + (julianday('now') - julianday(last_accessed)) / half_life_days))
      )
-     WHERE last_accessed IS NOT NULL`,
+      WHERE last_accessed IS NOT NULL`,
+  );
+
+  const staleRows = await db.all<{ id: string }>(
+    `SELECT id FROM semantic_memory
+     WHERE decay_score < 0.05
+       AND created_at < datetime('now', '-30 days')`,
   );
 
   await db.run(
     `DELETE FROM semantic_memory
      WHERE decay_score < 0.05
-       AND created_at < datetime('now', '-30 days')`,
+        AND created_at < datetime('now', '-30 days')`,
   );
+
+  await deleteVectorRecords(staleRows.map((row) => row.id));
 
   await runHeuristicCycle().catch(() => {});
 }

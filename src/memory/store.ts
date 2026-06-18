@@ -26,6 +26,13 @@ async function mirrorVectorWrite(record: VectorMemoryRecord): Promise<void> {
   await vectorStore.upsert(record).catch(() => {});
 }
 
+export async function deleteVectorRecords(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const vectorStore = await getMemoryVectorStore().catch(() => null);
+  if (!vectorStore) return;
+  await vectorStore.delete(ids).catch(() => {});
+}
+
 export interface EpisodicEntry {
   id: string;
   session_id: string | null;
@@ -106,7 +113,7 @@ export async function writeEpisodic(opts: {
   );
 
   if (embedding) {
-    await mirrorVectorWrite({
+    void mirrorVectorWrite({
       id,
       type: 'episodic',
       text: opts.summary,
@@ -182,7 +189,7 @@ export async function writeSemantic(opts: {
   );
 
   if (embedding) {
-    await mirrorVectorWrite({
+    void mirrorVectorWrite({
       id,
       type: 'semantic',
       text: opts.summary ?? opts.content,
@@ -304,9 +311,6 @@ export async function searchByVector(
   sessionId?: string,
 ): Promise<MemoryHit[]> {
   const vectorStore = await getMemoryVectorStore().catch(() => null);
-  const remoteHits = vectorStore
-    ? await vectorStore.search({ type, vector: queryVec, limit, sessionId }).catch(() => [])
-    : [];
 
   const toMemoryHit = (hit: VectorMemoryHit): MemoryHit => ({
     id: hit.id,
@@ -323,8 +327,15 @@ export async function searchByVector(
     accessCount: hit.accessCount,
   });
 
-  const remoteMap = new Map(remoteHits.map((hit) => [hit.id, hit]));
-  const merged: MemoryHit[] = remoteHits.map(toMemoryHit);
+  if (vectorStore) {
+    try {
+      return (await vectorStore.search({ type, vector: queryVec, limit, sessionId })).map(
+        toMemoryHit,
+      );
+    } catch {
+      // fall back to SQLite when the remote backend is unavailable
+    }
+  }
 
   const db = await getMemoryDb();
   const table = type === 'episodic' ? 'episodic_memory' : 'semantic_memory';
@@ -362,7 +373,6 @@ export async function searchByVector(
 
   const scored = rows
     .map((r) => {
-      if (remoteMap.has(r.id)) return null;
       const vec = blobToVector(r.embedding);
       if (!vec) return null;
       const sim = cosineSim(queryVec, vec);
@@ -370,10 +380,9 @@ export async function searchByVector(
     })
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => b.score - a.score)
-    .slice(0, Math.max(0, limit - merged.length));
+    .slice(0, limit);
 
-  for (const r of scored) {
-    merged.push({
+  return scored.map((r) => ({
       id: r.id,
       type,
       text: r.text,
@@ -386,10 +395,7 @@ export async function searchByVector(
       category: type === 'semantic' ? (r.category ?? undefined) : undefined,
       decayScore: r.decay_score,
       accessCount: r.access_count ?? undefined,
-    });
-  }
-
-  return merged.slice(0, limit);
+  }));
 }
 
 function cosineSim(a: EmbeddingVector, b: EmbeddingVector): number {

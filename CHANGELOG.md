@@ -13,6 +13,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Pluggable memory vector stores** (`src/config/config.ts`, `src/memory/store.ts`, `src/memory/vector_backends.ts`) — memory writes now mirror embeddings into built-in Qdrant, ChromaDB, and Pinecone adapters when configured, with SQLite remaining the authoritative fallback.
 
+- **Memory hardening pass** (`src/server/router.ts`, `src/services/manager.ts`, `src/memory/privacy.ts`, `src/memory/consolidate.ts`) — daemon restart now requires auth, auto-start reconciles runtime state on boot, vector-store mirroring is non-blocking, and retention/pruning now removes remote vector records too.
+
 ## [0.41.2] — 2026-06-18
 
 ### Changed

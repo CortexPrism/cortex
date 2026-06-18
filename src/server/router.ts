@@ -3778,6 +3778,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/daemons/:name/restart
   const daemonRestartMatch = path.match(/^\/api\/daemons\/([^/]+)\/restart$/);
   if (req.method === 'POST' && daemonRestartMatch) {
+    const authResult = await requireAuth(req);
+    if (!authResult.authenticated) {
+      return authResult.response!;
+    }
+
     const name = daemonRestartMatch[1];
     if (name === 'service-manager') {
       const { startAutoServices } = await import('../services/manager.ts');
