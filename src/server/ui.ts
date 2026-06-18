@@ -4382,30 +4382,31 @@ function renderChannels(channels) {
     el.innerHTML = \`<div style="text-align:center;color:var(--text3);padding:60px 20px;font-size:13px;">
       <div style="font-size:40px;margin-bottom:12px;">📡</div>
       <div style="font-weight:600;color:var(--text2);margin-bottom:4px;">No channels configured</div>
-      <div>Click <strong style="color:#22c55e;">+ Add Channel</strong> to connect a platform.</div>
+      <div>Click <strong style="color:var(--accent2);">Add Channel</strong> to connect a platform.</div>
       <div style="margin-top:8px;font-size:11px;">Discord · Slack · Telegram · Teams · Mattermost · RocketChat · WhatsApp · Google Chat · Lark</div>
     </div>\`;
     return;
   }
   el.innerHTML = '';
   for (const c of channels) {
-    const statusColor = c.enabled ? '#22c55e' : '#fbbf24';
+    const statusColor = c.enabled ? 'var(--accent-green)' : '#fbbf24';
     const statusLabel = c.enabled ? 'active' : 'inactive';
     const d = document.createElement('div');
-    d.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+    d.className = 'card-mp';
+    d.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;';
     d.innerHTML = \`
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:600;font-size:13px;">\${esc(c.name || c.id)}</span>
-          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${esc(c.protocol)}</span>
-          <span style="font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.04);color:\${statusColor};">⬤ \${statusLabel}</span>
+          <span style="font-weight:600;font-size:13px;color:var(--text);">\${esc(c.name || c.id)}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;color:var(--text2);">\${esc(c.protocol)}</span>
+          <span style="font-size:11px;padding:1px 7px;border-radius:10px;color:\${statusColor};">⬤ \${statusLabel}</span>
         </div>
         <div style="margin-top:4px;font-size:11px;color:var(--text3);">Agent: <strong>\${esc(c.agentId)}</strong></div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         \${c.enabled
           ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="stopChannel(\${esc(JSON.stringify(c.id))})">Stop</button>\`
-          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="startChannel(\${esc(JSON.stringify(c.id))})">Start</button>\`}
+          : \`<button class="btn btn-ghost" style="font-size:11px;color:var(--accent-green);" onclick="startChannel(\${esc(JSON.stringify(c.id))})">Start</button>\`}
         <button class="btn btn-ghost" style="font-size:11px;color:var(--text3);" onclick="deleteChannel(\${esc(JSON.stringify(c.id))})" title="Remove">✕</button>
       </div>
     \`;
@@ -4441,47 +4442,43 @@ async function showAddChannelModal() {
     channelTypes = await fetch(BASE + '/api/channels/types').then(r => r.json()).catch(() => []);
   }
 
-  const typeOptions = channelTypes.map(t => \`<option value="\${esc(t.id)}">\${esc(t.name)}</option>\`).join('');
+  const typeOptions = channelTypes.map(t => '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>').join('');
 
-  const modal = document.createElement('div');
-  modal.id = 'add-channel-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;';
-  modal.innerHTML = \`
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;width:480px;max-height:80vh;overflow-y:auto;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-        <h2 style="font-size:15px;font-weight:600;">Add Channel</h2>
-        <button class="btn btn-ghost" style="font-size:18px;padding:0 6px;" onclick="closeAddChannelModal()">✕</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Channel ID</label>
-          <input id="add-ch-id" class="input" style="width:100%;box-sizing:border-box;" placeholder="my-channel" />
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Name</label>
-          <input id="add-ch-name" class="input" style="width:100%;box-sizing:border-box;" placeholder="My Channel" />
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Platform</label>
-          <select id="add-ch-type" class="input" style="width:100%;box-sizing:border-box;" onchange="updateAddChannelAuth()">\${typeOptions}</select>
-        </div>
-        <div id="add-ch-auth-fields" style="display:flex;flex-direction:column;gap:10px;"></div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Agent ID</label>
-          <input id="add-ch-agent" class="input" style="width:100%;box-sizing:border-box;" value="default" />
-        </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="submitAddChannel()">Add Channel</button>
-      </div>
-    </div>
-  \`;
-  document.body.appendChild(modal);
-  modal.onclick = (e) => { if (e.target === modal) closeAddChannelModal(); };
+  // Remove any existing modal
+  closeAddChannelModal();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'add-channel-overlay';
+  overlay.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;';
+  overlay.onclick = (e) => { if (e.target === overlay) closeAddChannelModal(); };
+
+  overlay.innerHTML = '' +
+    '<div class="card" style="width:480px;max-height:85vh;overflow-y:auto;">' +
+      '<h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Add Channel</h2>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+        '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Channel ID</label>' +
+        '<input id="add-ch-id" class="inp" placeholder="my-channel" style="font-size:12px;"></div>' +
+        '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Display Name</label>' +
+        '<input id="add-ch-name" class="inp" placeholder="My Channel" style="font-size:12px;"></div>' +
+        '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Platform</label>' +
+        '<select id="add-ch-type" class="inp" onchange="updateAddChannelAuth()" style="font-size:12px;">' + typeOptions + '</select></div>' +
+        '<div id="add-ch-auth-fields" style="display:flex;flex-direction:column;gap:10px;"></div>' +
+        '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Agent ID</label>' +
+        '<input id="add-ch-agent" class="inp" value="default" style="font-size:12px;"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:16px;">' +
+        '<button class="btn btn-primary" onclick="submitAddChannel()">Add Channel</button>' +
+        '<button class="btn btn-ghost" onclick="closeAddChannelModal()">Cancel</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
   updateAddChannelAuth();
 }
 
 function closeAddChannelModal() {
-  const m = document.getElementById('add-channel-modal');
-  if (m) m.remove();
+  const overlay = document.getElementById('add-channel-overlay');
+  if (overlay) overlay.remove();
 }
 
 function updateAddChannelAuth() {
@@ -4490,33 +4487,26 @@ function updateAddChannelAuth() {
   const el = document.getElementById('add-ch-auth-fields');
   if (!cfg) { el.innerHTML = ''; return; }
 
-  let html = '<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:2px;">Credentials</div>';
+  let html = '<div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:2px;">Credentials</div>';
   for (const f of (cfg.auth || [])) {
     const inputType = f.type === 'password' ? 'password' : 'text';
-    html += \`<div>
-      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
-      <input id="add-ch-auth-\${esc(f.key)}" type="\${inputType}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${esc(f.label)}" />
-    </div>\`;
+    html += '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">' + esc(f.label) + '</label>' +
+      '<input id="add-ch-auth-' + esc(f.key) + '" type="' + inputType + '" class="inp" placeholder="' + esc(f.label) + '" style="font-size:12px;"></div>';
   }
   for (const f of (cfg.extra || [])) {
     if (f.ifMode) {
-      html += \`<div id="add-ch-extra-\${esc(f.key)}-wrap" style="display:none;">
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
-        <input id="add-ch-extra-\${esc(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${esc(f.label)}" />
-      </div>\`;
+      html += '<div id="add-ch-extra-' + esc(f.key) + '-wrap" style="display:none;">' +
+        '<label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">' + esc(f.label) + '</label>' +
+        '<input id="add-ch-extra-' + esc(f.key) + '" type="' + (f.type||'text') + '" class="inp" placeholder="' + esc(f.label) + '" style="font-size:12px;"></div>';
       continue;
     }
     if (f.type === 'select' && f.options) {
-      const opts = f.options.map(o => \`<option value="\${esc(o)}"\${o === f.default ? ' selected' : ''}>\${esc(o)}</option>\`).join('');
-      html += \`<div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
-        <select id="add-ch-extra-\${esc(f.key)}" class="input" style="width:100%;box-sizing:border-box;" onchange="updateAddChannelAuth()">\${opts}</select>
-      </div>\`;
+      const opts = f.options.map(o => '<option value="' + esc(o) + '"' + (o === f.default ? ' selected' : '') + '>' + esc(o) + '</option>').join('');
+      html += '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">' + esc(f.label) + '</label>' +
+        '<select id="add-ch-extra-' + esc(f.key) + '" class="inp" onchange="updateAddChannelAuth()" style="font-size:12px;">' + opts + '</select></div>';
     } else {
-      html += \`<div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
-        <input id="add-ch-extra-\${esc(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" value="\${esc(f.default || '')}" placeholder="\${esc(f.label)}" />
-      </div>\`;
+      html += '<div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">' + esc(f.label) + '</label>' +
+        '<input id="add-ch-extra-' + esc(f.key) + '" type="' + (f.type||'text') + '" class="inp" value="' + esc(f.default || '') + '" placeholder="' + esc(f.label) + '" style="font-size:12px;"></div>';
     }
   }
   el.innerHTML = html;
