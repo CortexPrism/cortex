@@ -2667,7 +2667,7 @@ function toggleReasoningPanel() {
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'reasoning-panel';
-      panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
+       panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
       chatArea.appendChild(panel);
     }
     renderReasoningPanel(panel);
