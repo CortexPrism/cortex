@@ -18,6 +18,7 @@ import { memorySearchTool } from './builtin/memory_search.ts';
 import { dbQueryTool } from './builtin/db_query.ts';
 import { browserTool } from './builtin/browser.ts';
 import { docsSearchTool } from './builtin/docs_search.ts';
+import { structuredExtractTool } from './builtin/structured_extract.ts';
 import { speakTool } from './builtin/speak.ts';
 import { listenTool } from './builtin/listen.ts';
 import { shellTool } from './builtin/shell.ts';
@@ -190,6 +191,7 @@ export async function registerAllBuiltins(
   const utilityTools = {
     memory_note: memoryNoteTool,
     memory_search: memorySearchTool,
+    structured_extract: structuredExtractTool,
     speak: speakTool,
     listen: listenTool,
     dashboard_manage: dashboardManageTool,
