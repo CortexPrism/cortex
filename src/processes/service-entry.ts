@@ -29,6 +29,7 @@ import { codeExecTool } from '../tools/builtin/code_exec.ts';
 import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
 import { computerTool } from '../tools/builtin/computer.ts';
+import { mcpAgentTool } from '../tools/builtin/mcp_agent.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 const flags = parse(Deno.args, {
@@ -92,6 +93,7 @@ async function main(): Promise<void> {
     node_dispatch: nodeDispatchTool,
     dashboard_manage: dashboardManageTool,
     computer: computerTool,
+    mcp_agent: mcpAgentTool,
   };
   const toolList = def.tools
     ? def.tools.split(',').map((s) => s.trim()).filter(Boolean)
