@@ -98,11 +98,22 @@ When you need to do multiple independent things at once, make multiple \`sub_age
     }
 
     const startTime = Date.now();
+    const subAgentId = `sa_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const chunks: string[] = [];
 
     // Resolve sub-agent type configuration
     const subAgentType = args.type as SubAgentType | undefined;
     const typeDef = subAgentType ? getSubAgentType(subAgentType) : undefined;
+
+    // Notify client that a sub-agent has started
+    if (context.onProgress) {
+      context.onProgress({
+        type: 'sub_agent_start',
+        id: subAgentId,
+        task,
+        subAgentType,
+      });
+    }
 
     try {
       const iter = spawnSubAgent({
@@ -125,17 +136,42 @@ When you need to do multiple independent things at once, make multiple \`sub_age
         switch (event.type) {
           case 'chunk':
             chunks.push(event.delta);
+            if (context.onProgress) {
+              context.onProgress({
+                type: 'sub_agent_chunk',
+                id: subAgentId,
+                delta: event.delta,
+              });
+            }
             break;
           case 'done': {
             const duration = Date.now() - startTime;
+            const result = event.result.response || chunks.join('');
+            if (context.onProgress) {
+              context.onProgress({
+                type: 'sub_agent_end',
+                id: subAgentId,
+                result,
+                success: event.result.success,
+              });
+            }
             return {
               toolName: 'sub_agent',
               success: event.result.success,
-              output: event.result.response || chunks.join(''),
+              output: result,
               durationMs: duration,
             };
           }
           case 'error':
+            if (context.onProgress) {
+              context.onProgress({
+                type: 'sub_agent_end',
+                id: subAgentId,
+                result: chunks.join(''),
+                success: false,
+                error: event.error,
+              });
+            }
             return {
               toolName: 'sub_agent',
               success: false,
@@ -146,6 +182,15 @@ When you need to do multiple independent things at once, make multiple \`sub_age
         }
       }
 
+      if (context.onProgress) {
+        context.onProgress({
+          type: 'sub_agent_end',
+          id: subAgentId,
+          result: chunks.join(''),
+          success: false,
+          error: 'Sub-agent finished without returning a result',
+        });
+      }
       return {
         toolName: 'sub_agent',
         success: false,
@@ -154,6 +199,15 @@ When you need to do multiple independent things at once, make multiple \`sub_age
         durationMs: Date.now() - startTime,
       };
     } catch (e) {
+      if (context.onProgress) {
+        context.onProgress({
+          type: 'sub_agent_end',
+          id: subAgentId,
+          result: chunks.join(''),
+          success: false,
+          error: `Sub-agent error: ${(e as Error).message}`,
+        });
+      }
       return {
         toolName: 'sub_agent',
         success: false,

@@ -5,6 +5,31 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.40.0] — 2026-06-18
+
+### Added — Sub-Agent Progress Streaming & Improved Metacognition
+
+- **Real-time sub-agent progress in chat UI** — Sub-agent work is now displayed as
+  live-streamed, collapsible cards in the main chat. Each sub-agent shows its type,
+  task description, spinning progress indicator, streaming output, and completion
+  status (DONE/FAILED). (`src/tools/types.ts`, `src/tools/builtin/sub_agent.ts`,
+  `src/server/ui.ts`, `src/server/ws.ts`)
+
+- **Tool progress streaming API** — New `ToolProgressEvent` discriminated union and
+  `onProgress` callback on `ToolContext` enables any tool to stream real-time
+  progress events to the client during execution. (`src/tools/types.ts`)
+
+- **Scoring-based metacognition system** — Replaced the linear if-else chain with a
+  weighted scoring engine across four decision dimensions (delegate, parallelize,
+  plan_with_rollback, direct). Added confidence scores, signal breakdown, expanded
+  keyword sets, and more delegation triggers (multi-step code tasks, code+research
+  combos, deep investigation). (`src/agent/metacog.ts`)
+
+- **Stronger system prompt guidance** — Meta-cognition prefix now uses directive
+  language ("You MUST use the sub_agent tool"), includes available sub-agent type
+  descriptions, and frames delegation as the recommended approach for complex tasks.
+  (`src/agent/metacog.ts`)
+
 ## [0.39.0] — 2026-06-18
 
 ### Added — Multi-Channel Integration Suite
