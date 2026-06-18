@@ -29,9 +29,10 @@ export async function createSession(
     [id],
   );
   if (existing) return;
+  // Sessions are sensitive by default (contain user interactions)
   await db.run(
-    `INSERT INTO sessions (id, name, agent_id, channel, status, turn_count, started_at, parent_session_id)
-     VALUES (?, ?, ?, ?, 'active', 0, datetime('now'), ?)`,
+    `INSERT INTO sessions (id, name, agent_id, channel, status, turn_count, sensitivity, started_at, parent_session_id)
+     VALUES (?, ?, ?, ?, 'active', 0, 'sensitive', datetime('now'), ?)`,
     [id, name ?? null, agentId ?? 'default', channel, parentSessionId ?? null],
   );
 }

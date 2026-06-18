@@ -1,5 +1,53 @@
 import type { Tool, ToolDefinition } from './types.ts';
 
+// Builtin tool imports (consolidated from all entry points)
+import { fileReadTool } from './builtin/file_read.ts';
+import { fileReadEnhancedTool } from './builtin/file_read_enhanced.ts';
+import { webSearchTool } from './builtin/web_search.ts';
+import { webSearchEnhancedTool } from './builtin/web/search_enhanced.ts';
+import { webFetchEnhancedTool } from './builtin/web/fetch_enhanced.ts';
+import { codeExecTool } from './builtin/code_exec.ts';
+import { subAgentTool } from './builtin/sub_agent.ts';
+import { nodeDispatchTool } from './builtin/node_dispatch.ts';
+import { loadSkillTool } from './builtin/load_skill.ts';
+import { skillWriteTool } from './builtin/skill_write.ts';
+import { skillReadTool } from './builtin/skill_read.ts';
+import { dashboardManageTool } from './builtin/dashboard_manage.ts';
+import { memoryNoteTool } from './builtin/memory_note.ts';
+import { speakTool } from './builtin/speak.ts';
+import { listenTool } from './builtin/listen.ts';
+import { shellTool } from './builtin/shell.ts';
+import { webFetchTool } from './builtin/web_fetch.ts';
+import { braveSearchTool } from './builtin/web/brave_search.ts';
+import { tavilySearchTool } from './builtin/web/tavily_search.ts';
+import { serpapiSearchTool } from './builtin/web/serpapi_search.ts';
+import { firecrawlTool } from './builtin/web/firecrawl.ts';
+import { computerTool } from './builtin/computer.ts';
+import { mcpAgentTool } from './builtin/mcp_agent.ts';
+import { fileGlobTool } from './builtin/workspace/file_glob.ts';
+import {
+  githubIssueCreateTool,
+  githubIssueListTool,
+  githubPRCreateTool,
+  githubPRListTool,
+  gitPushTool,
+} from './builtin/github/index.ts';
+import {
+  fileCopyTool,
+  fileDeleteTool,
+  fileEditTool,
+  fileInfoTool,
+  fileListTool,
+  fileMoveTool,
+  filePatchTool,
+  fileRedoTool,
+  fileRenameTool,
+  fileSearchTool,
+  fileTreeTool,
+  fileUndoTool,
+  fileWriteTool,
+} from './builtin/workspace/index.ts';
+
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
 
@@ -42,3 +90,131 @@ export class ToolRegistry {
 }
 
 export const globalRegistry = new ToolRegistry();
+
+/**
+ * Register all builtin tools
+ * Centralized registration function to eliminate duplication across entry points
+ *
+ * @param registry — Tool registry instance (defaults to globalRegistry)
+ * @param includeCodograph — Include codegraph tools (async imports, default: true)
+ * @returns Promise<Record<string, Tool>> — Map of all registered tools
+ */
+export async function registerAllBuiltins(
+  registry: ToolRegistry = globalRegistry,
+  includeCodograph = true,
+): Promise<Record<string, Tool>> {
+  // ═════════════════════════════════════════════════════════
+  // File System Tools (workspace with undo/redo)
+  // ═════════════════════════════════════════════════════════
+  const fileTools = {
+    file_read: fileReadTool,
+    file_read_enhanced: fileReadEnhancedTool,
+    file_write: fileWriteTool,
+    file_edit: fileEditTool,
+    file_patch: filePatchTool,
+    file_delete: fileDeleteTool,
+    file_rename: fileRenameTool,
+    file_copy: fileCopyTool,
+    file_move: fileMoveTool,
+    file_list: fileListTool,
+    file_tree: fileTreeTool,
+    file_info: fileInfoTool,
+    file_search: fileSearchTool,
+    file_glob: fileGlobTool,
+    file_undo: fileUndoTool,
+    file_redo: fileRedoTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
+  // Web Tools (search, fetch, crawl)
+  // ═════════════════════════════════════════════════════════
+  const webTools = {
+    web_search: webSearchTool,
+    web_search_enhanced: webSearchEnhancedTool,
+    web_fetch: webFetchTool,
+    web_fetch_enhanced: webFetchEnhancedTool,
+    brave_search: braveSearchTool,
+    tavily_search: tavilySearchTool,
+    serpapi_search: serpapiSearchTool,
+    firecrawl: firecrawlTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
+  // Code Execution & Computer Control
+  // ═════════════════════════════════════════════════════════
+  const execTools = {
+    code_exec: codeExecTool,
+    shell: shellTool,
+    computer: computerTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
+  // Agent Orchestration & Skills
+  // ═════════════════════════════════════════════════════════
+  const agentTools = {
+    sub_agent: subAgentTool,
+    node_dispatch: nodeDispatchTool,
+    load_skill: loadSkillTool,
+    skill_write: skillWriteTool,
+    skill_read: skillReadTool,
+    mcp_agent: mcpAgentTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
+  // GitHub Integration
+  // ═════════════════════════════════════════════════════════
+  const githubTools = {
+    github_pr_create: githubPRCreateTool,
+    github_pr_list: githubPRListTool,
+    github_issue_create: githubIssueCreateTool,
+    github_issue_list: githubIssueListTool,
+    git_push: gitPushTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
+  // Memory & Voice
+  // ═════════════════════════════════════════════════════════
+  const utilityTools = {
+    memory_note: memoryNoteTool,
+    speak: speakTool,
+    listen: listenTool,
+    dashboard_manage: dashboardManageTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
+  // Codegraph Tools (async imports)
+  // ═════════════════════════════════════════════════════════
+  const codegraphTools: Record<string, Tool> = {};
+
+  if (includeCodograph) {
+    codegraphTools.code_index = (await import('./builtin/codegraph/code_index.ts')).default;
+    codegraphTools.code_search_symbol =
+      (await import('./builtin/codegraph/code_search_symbol.ts')).default;
+    codegraphTools.code_trace_path = (await import('./builtin/codegraph/code_trace_path.ts'))
+      .default;
+    codegraphTools.code_get_architecture =
+      (await import('./builtin/codegraph/code_architecture.ts')).default;
+    codegraphTools.code_analyze_impact = (await import('./builtin/codegraph/code_impact.ts'))
+      .default;
+    codegraphTools.code_list_projects =
+      (await import('./builtin/codegraph/code_list_projects.ts')).default;
+  }
+
+  // Combine all tools
+  const allTools = {
+    ...fileTools,
+    ...webTools,
+    ...execTools,
+    ...agentTools,
+    ...githubTools,
+    ...utilityTools,
+    ...codegraphTools,
+  };
+
+  // Register all tools
+  for (const tool of Object.values(allTools)) {
+    registry.register(tool);
+  }
+
+  return allTools;
+}
