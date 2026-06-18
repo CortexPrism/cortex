@@ -992,6 +992,9 @@ const HTML = `<!DOCTYPE html>
 <!-- ── Main area ─────────────────────────────────────────── -->
 <main class="main-area" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;" role="main" aria-label="Content area">
 
+  <!-- Global sub-navigation bar (shown for tabbed pages) -->
+  <div id="global-subnav" style="display:none;padding:8px 24px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;" role="tablist"></div>
+
   <!-- Page: Chat -->
   <div id="page-chat" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
 
@@ -3662,30 +3665,26 @@ function showPage(name) {
     metacognition: loadMetacognition,
   };
   if (loaders[name]) loaders[name]();
+  // Hide global subnav for non-tabbed pages
+  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,mcp:1,policies:1,vault:1,remote:1,computer:1};
+  if (!tabbed[name]) hideSubNav();
 }
 
 // ── Sub-navigation tab injection ──────────────────────────
-function injectSubNav(pageId, defaultLabel, tabs, activePageId) {
-  var existing = document.getElementById('subnav-' + pageId);
-  if (existing) {
-    // Update active state
-    var act = activePageId || pageId;
-    existing.querySelectorAll('button').forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.classList.remove('active'); });
-    var activeBtn = document.getElementById('subtab-' + pageId + '-' + act);
-    if (activeBtn) { activeBtn.style.borderBottomColor = 'var(--accent)'; activeBtn.classList.add('active'); }
-    return;
-  }
-  var page = document.getElementById('page-' + pageId);
-  if (!page) return;
-  var bar = document.createElement('div');
-  bar.id = 'subnav-' + pageId;
-  bar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:0;background:var(--bg2);flex-shrink:0;';
-  var act = activePageId || pageId;
-  bar.innerHTML = tabs.map(function(t, i) {
-    return '<button class="btn btn-ghost' + (t[0] === act ? ' active' : '') + '" onclick="switchSubTab(event,\\'' + pageId + '\\',\\'' + t[0] + '\\')" id="subtab-' + pageId + '-' + t[0] + '" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (t[0] === act ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
+function injectSubNav(groupId, _defaultLabel, tabs, activePageId) {
+  var bar = document.getElementById('global-subnav');
+  if (!bar) return;
+  var act = activePageId || groupId;
+  bar.setAttribute('data-group', groupId);
+  bar.setAttribute('data-active', act);
+  bar.innerHTML = tabs.map(function(t) {
+    return '<button class="btn btn-ghost' + (t[0] === act ? ' active' : '') + '" onclick="switchSubTab(event,\\'' + groupId + '\\',\\'' + t[0] + '\\')" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (t[0] === act ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
   }).join('');
-  var header = page.querySelector('div:first-of-type');
-  if (header) header.after(bar);
+  bar.style.display = 'flex';
+}
+function hideSubNav() {
+  var bar = document.getElementById('global-subnav');
+  if (bar) bar.style.display = 'none';
 }
 function switchSubTab(event, pageId, targetPage) {
   var bar = document.getElementById('subnav-' + pageId);
