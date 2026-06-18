@@ -1885,7 +1885,7 @@ const HTML = `<!DOCTYPE html>
             <button type="button" class="ag-tmpl-btn" data-val="creative" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">🎨 Creative</button>
             <button type="button" onclick="document.getElementById('ag-soul').value=''" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:10px;">✕ Clear</button>
           </div>
-          <textarea class="inp" id="ag-soul" placeholder="Leave blank to use the default SOUL.md, or paste / pick a template above…" style="resize:vertical;min-height:70px;font-family:JetBrains Mono,monospace;font-size:12px;"></textarea>
+          <textarea class="inp" id="ag-soul" placeholder="Leave blank to use the default SOUL.md, or paste / pick a template above…" style="resize:vertical;min-height:70px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px;">
@@ -2575,7 +2575,7 @@ const HTML = `<!DOCTYPE html>
               <span id="daemon-log-refresh-countdown" style="color:var(--text3);"></span> Auto-refresh
             </label>
           </div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:JetBrains Mono,monospace;font-size:11px;max-height:300px;overflow-y:auto;color:var(--text2);white-space:pre-wrap;" id="daemon-log-content"></div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;max-height:300px;overflow-y:auto;color:var(--text2);white-space:pre-wrap;" id="daemon-log-content"></div>
         </div>
       </div>
     </div>
@@ -2793,7 +2793,7 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Description</label>
         <input id="wf-desc-input" class="inp" placeholder="What does this workflow do?" style="font-size:12px;"></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Steps (JSON)</label>
-        <textarea id="wf-steps-input" class="inp" rows="8" placeholder='[{"kind":"step","name":"my-step","action":"shell","params":{"command":"echo hello"}}]' style="font-size:11px;font-family:JetBrains Mono,monospace;"></textarea></div>
+        <textarea id="wf-steps-input" class="inp" rows="8" placeholder='[{"kind":"step","name":"my-step","action":"shell","params":{"command":"echo hello"}}]' style="font-size:11px;font-family:'JetBrains Mono',monospace;"></textarea></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button class="btn btn-primary" onclick="saveWorkflow()">Save</button>
@@ -8079,7 +8079,7 @@ async function loadAgents() {
       ac.push('</div>');
       if (a.systemPrompt) ac.push('<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.systemPrompt) + '</div>');
       var wsDir = wsMap[a.id] || '';
-      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">' + esc(wsDir) + '</div>');
+      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">' + esc(wsDir) + '</div>');
       ac.push('</div><div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">');
       if (a.id !== currentAgentId) ac.push('<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent(\\'' + a.id + '\\')">Activate</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
@@ -11961,7 +11961,7 @@ function selectWorkflow(id) {
   el.innerHTML = '<div style="padding:20px;width:100%;height:100%;overflow-y:auto;">' +
     '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">' + esc(w.name) + '</h3>' +
     '<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">' + esc(w.description || '') + '</p>' +
-    '<div style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--text2);background:var(--bg2);padding:12px;border-radius:8px;white-space:pre-wrap;max-height:400px;overflow:auto;">' +
+    '<div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text2);background:var(--bg2);padding:12px;border-radius:8px;white-space:pre-wrap;max-height:400px;overflow:auto;">' +
     esc(JSON.stringify(w.definition || w.steps || w, null, 2)) + '</div></div>';
 }
 function showWorkflowCreateModal() {
@@ -12297,7 +12297,7 @@ async function selectMCPConnection(name) {
         return '<div class="card-sm" style="margin-bottom:8px;">' +
           '<div style="font-weight:500;font-size:13px;">' + esc(t.name) + '</div>' +
           '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '') + '</div>' +
-          (t.inputSchema ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:JetBrains Mono,monospace;background:var(--bg2);padding:6px;border-radius:4px;max-height:120px;overflow:auto;">' + esc(JSON.stringify(t.inputSchema, null, 2)) + '</div>' : '') +
+          (t.inputSchema ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace;background:var(--bg2);padding:6px;border-radius:4px;max-height:120px;overflow:auto;">' + esc(JSON.stringify(t.inputSchema, null, 2)) + '</div>' : '') +
           '</div>';
       }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load tools</div>'; }
@@ -12709,7 +12709,7 @@ async function loadTools() {
       var reqCount = params.filter(function(p) { return p.required; }).length;
       return '<div class="card" style="display:flex;flex-direction:column;">' +
         '<div style="display:flex;justify-content:space-between;align-items:start;">' +
-        '<div><div style="font-weight:500;font-size:13px;font-family:JetBrains Mono,monospace;">' + esc(t.name) + '</div>' +
+        '<div><div style="font-weight:500;font-size:13px;font-family:'JetBrains Mono',monospace;">' + esc(t.name) + '</div>' +
         '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '').substring(0, 100) + '</div></div>' +
         '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="toggleTool(\\'' + escAttr(t.name) + '\\')">Toggle</button></div>' +
         '<div style="font-size:10px;color:var(--text3);margin-top:6px;">' +
@@ -13417,7 +13417,7 @@ function vcsShowDiff() {
   fetch(url).then(function(r) { return r.json(); }).then(function(data) {
     if (data.diff) {
       var w = window.open('', '_blank', 'width=800,height=600');
-      w.document.write('<pre style="font-family:JetBrains Mono,monospace;font-size:12px;">' + esc(data.diff) + '</pre>');
+      w.document.write('<pre style="font-family:'JetBrains Mono',monospace;font-size:12px;">' + esc(data.diff) + '</pre>');
     } else {
       toast('No diff available', 'success');
     }
@@ -13552,8 +13552,8 @@ async function loadMetrics() {
         var shortName = k.split('{')[0];
         var labels = k.indexOf('{') > -1 ? ' <span style="color:var(--text3);font-size:9px;">' + esc(k.slice(k.indexOf('{'))) + '</span>' : '';
         return '<tr style="border-bottom:1px solid var(--border);">' +
-          '<td style="padding:4px 0;font-family:JetBrains Mono,monospace;font-size:10px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(shortName) + labels + '</td>' +
-          '<td style="padding:4px 0;text-align:right;font-family:JetBrains Mono,monospace;color:var(--accent2);">' + gauges[k] + '</td></tr>';
+          '<td style="padding:4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(shortName) + labels + '</td>' +
+          '<td style="padding:4px 0;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--accent2);">' + gauges[k] + '</td></tr>';
       }).join('') + '</tbody></table>';
     if (cKeys.length) {
       html += '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">Counters</h3>' +
@@ -13563,8 +13563,8 @@ async function loadMetrics() {
         '<th style="padding:4px 0;color:var(--text3);text-align:right;">Total</th></tr></thead><tbody>' +
         cKeys.sort().slice(0, 50).map(function(k) {
           return '<tr style="border-bottom:1px solid var(--border);">' +
-            '<td style="padding:4px 0;font-family:JetBrains Mono,monospace;font-size:10px;">' + esc(k) + '</td>' +
-            '<td style="padding:4px 0;text-align:right;font-family:JetBrains Mono,monospace;color:var(--accent2);">' + counters[k] + '</td></tr>';
+            '<td style="padding:4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;">' + esc(k) + '</td>' +
+            '<td style="padding:4px 0;text-align:right;font-family:'JetBrains Mono',monospace;color:var(--accent2);">' + counters[k] + '</td></tr>';
         }).join('') + '</tbody></table>';
     }
     html += '<div style="margin-top:8px;font-size:10px;color:var(--text3);">Auto-refresh every 15s</div>';
@@ -13581,7 +13581,7 @@ function extendCPLEditor() {
   div.id = 'pol-cpl-section';
   div.style.cssText = 'margin-top:16px;padding:12px;background:var(--bg2);border-radius:8px;';
   div.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">CPL Policy Editor</h3>' +
-    '<textarea id="pol-cpl-editor" class="inp" rows="8" placeholder="policies:\\n  - name: allow-read\\n    kind: path\\n    pattern: ^/tmp/.*\\n    action: allow" style="font-size:11px;font-family:JetBrains Mono,monospace;width:100%;resize:vertical;"></textarea>' +
+    '<textarea id="pol-cpl-editor" class="inp" rows="8" placeholder="policies:\\n  - name: allow-read\\n    kind: path\\n    pattern: ^/tmp/.*\\n    action: allow" style="font-size:11px;font-family:'JetBrains Mono',monospace;width:100%;resize:vertical;"></textarea>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
     '<button class="btn btn-primary" onclick="cplValidate()" style="font-size:10px;padding:3px 10px;">Validate</button>' +
     '<button class="btn btn-ghost" onclick="cplImport()" style="font-size:10px;padding:3px 10px;">Import</button></div>' +
@@ -13657,7 +13657,7 @@ function refreshSubAgentProcesses() {
         return;
       }
       el.innerHTML = data.processes.map(function(p) {
-        return '<div style="padding:4px 0;font-size:10px;font-family:JetBrains Mono,monospace;display:flex;gap:8px;">' +
+        return '<div style="padding:4px 0;font-size:10px;font-family:'JetBrains Mono',monospace;display:flex;gap:8px;">' +
           '<span style="color:var(--accent2);">PID ' + p.pid + '</span>' +
           '<span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.cmd) + '</span></div>';
       }).join('');
