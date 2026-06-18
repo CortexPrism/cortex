@@ -3837,17 +3837,17 @@ function showPage(name) {
 
   const loaders = {
     lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
-    skills: loadSkills, policies: loadPolicies, analytics: loadAnalytics,
+    skills: () => { loadSkills(); extendSkillsPage(); }, policies: loadPolicies, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: loadSettings,
-    extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); },
+    extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: loadNodes,
-    quartermaster: loadQuartermaster,
+    quartermaster: () => { loadQuartermaster(); extendQuartermaster(); },
     dashboard: loadDashboard,
     projects: loadProjects,
-    automation: loadHooksPage,
+    automation: () => { loadHooksPage(); extendAutomationPage(); },
     channels: loadChannels,
-    vcs: gitRefresh,
+    vcs: () => { gitRefresh(); extendVCSPage(); },
     agents: loadAgents, services: loadServices,
     codegraph: loadCodegraphPage,
     workflow: loadWorkflowsPage,
@@ -3862,7 +3862,7 @@ function showPage(name) {
     reflection: loadReflectionPage,
     tools: loadTools,
     metacognition: loadMetacognition,
-    voice: loadVoiceConfig,
+    voice: () => { loadVoiceConfig(); extendVoicePage(); },
   };
   if (loaders[name]) loaders[name]();
 }
@@ -12533,6 +12533,177 @@ async function testClassification() {
   } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Test failed</span>'; }
 }
 
+// ── Phase 4: Orphaned API Endpoint Connections ────────────────────────────
+
+// ── Skills: Export, Merge, Dependencies, Health ──
+var skillsPageExtended = false;
+function extendSkillsPage() {
+  if (skillsPageExtended) return;
+  var header = document.querySelector('#page-skills > div:first-of-type');
+  if (!header) { setTimeout(extendSkillsPage, 500); return; }
+  skillsPageExtended = true;
+  var btnRow = header.querySelector('[style*="display:flex;gap"]');
+  if (!btnRow) return;
+  btnRow.innerHTML += '<button class="btn btn-ghost" onclick="skillsExport()" style="font-size:12px;">📤 Export</button>' +
+    '<button class="btn btn-ghost" onclick="skillsShowMerge()" style="font-size:12px;">🔀 Merge</button>';
+  // Add Dependency tab
+  var tabs = document.querySelector('#page-skills [style*="display:flex;gap"]');
+  if (tabs && !document.getElementById('skills-tab-deps')) {
+    tabs.innerHTML += '<button class="btn btn-ghost" onclick="skillsShowDeps()" id="skills-tab-deps" style="font-size:11px;padding:4px 10px;">Dependencies</button>';
+  }
+}
+async function skillsExport() {
+  try {
+    var res = await fetch(BASE + '/api/skills/export', { method: 'POST' });
+    var data = await res.json();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'skills-export.json'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Skills exported', 'success');
+  } catch(e) { toast('Export failed', 'error'); }
+}
+function skillsShowMerge() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async function() {
+    var file = input.files[0];
+    if (!file) return;
+    try {
+      var text = await file.text();
+      var res = await fetch(BASE + '/api/skills/merge', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: text
+      });
+      if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Merge failed', 'error'); return; }
+      toast('Skills merged', 'success');
+      loadSkills();
+    } catch(e) { toast('Merge failed', 'error'); }
+  };
+  input.click();
+}
+function skillsShowDeps() {
+  var name = prompt('Enter skill name for dependency graph:');
+  if (!name) return;
+  fetch(BASE + '/api/skills/dependencies?name=' + encodeURIComponent(name))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var deps = data.dependencies || data.depends_on || [];
+      toast(name + ' depends on: ' + (deps.length ? deps.join(', ') : 'none'), 'success');
+    }).catch(function() { toast('Failed', 'error'); });
+}
+function skillsShowHealth(name) {
+  if (!name) { name = prompt('Enter skill name:'); if (!name) return; }
+  fetch(BASE + '/api/skills/health?name=' + encodeURIComponent(name))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var info = 'Health for ' + name + ':\n' +
+        'Utility: ' + (data.utility_score ? (data.utility_score * 100).toFixed(0) + '%' : 'N/A') + '\n' +
+        'Freshness: ' + (data.freshness ? (data.freshness * 100).toFixed(0) + '%' : 'N/A') + '\n' +
+        'Success Rate: ' + (data.success_rate ? (data.success_rate * 100).toFixed(0) + '%' : 'N/A');
+      alert(info);
+    }).catch(function() { toast('Failed', 'error'); });
+}
+
+// ── Editor: Workspace History Tab ──
+var editorExtended = false;
+function extendEditorPage() {
+  if (editorExtended) return;
+  var header = document.querySelector('#page-editor > div:first-of-type');
+  if (!header) { setTimeout(extendEditorPage, 500); return; }
+  editorExtended = true;
+  var tabs = document.querySelector('#page-editor [style*="display:flex;gap"]');
+  if (tabs && !document.getElementById('editor-tab-history')) {
+    tabs.innerHTML += '<button class="btn btn-ghost" onclick="editorShowHistory()" id="editor-tab-history" style="font-size:11px;padding:4px 10px;">History</button>';
+  }
+}
+function editorShowHistory() {
+  var content = document.querySelector('#page-editor > div:last-of-type');
+  if (!content) return;
+  content.innerHTML = '<div class="widget-loading">Loading file history…</div>';
+  fetch(BASE + '/api/workspace/history?limit=50')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || !data.length) { content.innerHTML = '<div class="empty">No file history</div>'; return; }
+      content.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+        '<thead><tr style="border-bottom:1px solid var(--border);">' +
+        '<th style="padding:4px 0;color:var(--text3);text-align:left;">File</th>' +
+        '<th style="padding:4px 0;color:var(--text3);text-align:left;">Agent</th>' +
+        '<th style="padding:4px 0;color:var(--text3);text-align:left;">Time</th></tr></thead><tbody>' +
+        (Array.isArray(data) ? data : []).map(function(h) {
+          return '<tr style="border-bottom:1px solid var(--border);">' +
+            '<td style="padding:4px 0;">' + esc(h.path || h.file_path || '') + '</td>' +
+            '<td style="padding:4px 0;color:var(--text2);">' + esc(h.agentId || '') + '</td>' +
+            '<td style="padding:4px 0;color:var(--text2);">' + timeAgo(h.timestamp || h.created_at) + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }).catch(function() { content.innerHTML = '<div class="empty">Failed to load</div>'; });
+}
+
+// ── QM/MQM: Config Buttons ──
+function extendQuartermaster() {
+  var header = document.querySelector('#page-quartermaster > div:first-of-type');
+  if (!header) return;
+  var btnRow = header.querySelector('[style*="display:flex;gap"]');
+  if (!btnRow || document.getElementById('qm-config-btn')) return;
+  btnRow.innerHTML += '<button class="btn btn-ghost" onclick="qmShowConfig()" id="qm-config-btn" style="font-size:12px;">⚙ Config</button>';
+}
+function qmShowConfig() {
+  prompt('QM/MQM config is available via Settings → AI & Models. Quartermaster provider/model settings affect tool orchestration and model selection strategies.');
+}
+
+// ── Voice: Provider Browser ──
+function extendVoicePage() {
+  try {
+    fetch(BASE + '/api/voice/providers').then(function(r) { return r.json(); }).then(function(data) {
+      var el = document.getElementById('voice-providers-info');
+      if (!el) return;
+      el.innerHTML = '<div style="font-size:11px;color:var(--text2);margin-top:8px;">' +
+        'STT: ' + (data.sttProviders || []).join(', ') + ' | ' +
+        'TTS: ' + (data.ttsProviders || []).join(', ') + '</div>';
+    }).catch(function(){});
+  } catch(e) {}
+}
+
+// ── Automation: Webhook Test-Fire ──
+function extendAutomationPage() {
+  var el = document.querySelector('#page-automation');
+  if (!el || document.getElementById('auto-test-wh-btn')) return;
+  var header = el.querySelector('div:first-of-type [style*="display:flex;gap"]');
+  if (!header) { setTimeout(extendAutomationPage, 500); return; }
+  header.innerHTML += '<button class="btn btn-ghost" onclick="autoTestWebhook()" id="auto-test-wh-btn" style="font-size:12px;">🧪 Test Webhook</button>';
+}
+function autoTestWebhook() {
+  var name = prompt('Enter webhook name to test-fire:');
+  if (!name) return;
+  fetch(BASE + '/api/webhooks/' + encodeURIComponent(name), { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function() { toast('Webhook test sent', 'success'); })
+    .catch(function() { toast('Test failed', 'error'); });
+}
+
+// ── VCS: Git Diff Viewer ──
+function extendVCSPage() {
+  var el = document.querySelector('#page-vcs');
+  if (!el || document.getElementById('vcs-diff-btn')) return;
+  var header = el.querySelector('div:first-of-type [style*="display:flex;gap"]');
+  if (!header) { setTimeout(extendVCSPage, 500); return; }
+  header.innerHTML += '<button class="btn btn-ghost" onclick="vcsShowDiff()" id="vcs-diff-btn" style="font-size:12px;">📋 View Diff</button>';
+}
+function vcsShowDiff() {
+  var agentId = prompt('Enter agent ID for git diff (leave empty for global):');
+  var url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/git/diff'
+    : BASE + '/api/workspace/agents/default/git/diff';
+  fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.diff) {
+      var w = window.open('', '_blank', 'width=800,height=600');
+      w.document.write('<pre style="font-family:JetBrains Mono,monospace;font-size:12px;">' + esc(data.diff) + '</pre>');
+    } else {
+      toast('No diff available', 'success');
+    }
+  }).catch(function() { toast('Failed', 'error'); });
+}
+
 // Initialize page extensions on first visit
 (function initPageExtensions() {
   patchMemoryLoader();
@@ -12540,6 +12711,15 @@ async function testClassification() {
   patchCoderunnerLoader();
   patchPoliciesLoader();
   extendSettings();
+  skillsPageExtended = false;
+  setTimeout(function() {
+    if (currentPage === 'skills') extendSkillsPage();
+    if (currentPage === 'editor') extendEditorPage();
+    if (currentPage === 'quartermaster') extendQuartermaster();
+    if (currentPage === 'voice') extendVoicePage();
+    if (currentPage === 'automation') extendAutomationPage();
+    if (currentPage === 'vcs') extendVCSPage();
+  }, 800);
 })();
 
 // Handle browser back/forward
