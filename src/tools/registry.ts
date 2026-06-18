@@ -14,6 +14,7 @@ import { skillWriteTool } from './builtin/skill_write.ts';
 import { skillReadTool } from './builtin/skill_read.ts';
 import { dashboardManageTool } from './builtin/dashboard_manage.ts';
 import { memoryNoteTool } from './builtin/memory_note.ts';
+import { memorySearchTool } from './builtin/memory_search.ts';
 import { speakTool } from './builtin/speak.ts';
 import { listenTool } from './builtin/listen.ts';
 import { shellTool } from './builtin/shell.ts';
@@ -176,6 +177,7 @@ export async function registerAllBuiltins(
   // ═════════════════════════════════════════════════════════
   const utilityTools = {
     memory_note: memoryNoteTool,
+    memory_search: memorySearchTool,
     speak: speakTool,
     listen: listenTool,
     dashboard_manage: dashboardManageTool,
