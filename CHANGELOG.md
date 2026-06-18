@@ -42,6 +42,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Security supervisor integration for SENSITIVE/SECRET hits
   - Returns ranked results with confidence scores and timestamps
 
+- **db_query tool** — Read-only database querying with security supervision:
+  - Query cortex (sessions/agents), memory (episodic/semantic/reflection/graph), lens (audit),
+    plugins (registry), or session-specific databases
+  - Strict read-only enforcement: blocks INSERT, UPDATE, DELETE, DROP, ALTER, CREATE
+  - Allows SELECT, WITH (CTEs), PRAGMA (schema introspection), EXPLAIN
+  - Multiple output formats: table (ASCII), JSON, CSV
+  - Automatic sensitivity classification on results
+  - Special escalation for lens.db (audit logs) to human approval
+  - Context-aware supervision with audit trails
+
 - **Human approval flows**:
   - CLI: Color-coded prompts with y/n/details options
   - Web UI: Modal with request details, supervisor reasoning, sample data
