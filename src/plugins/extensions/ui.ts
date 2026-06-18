@@ -18,6 +18,7 @@ export function createUiApi(pluginName: string): CortexUiApi {
     onEvent(_event: string, _handler: (data: unknown) => void) {
       (window as unknown as { addEventListener: (t: string, h: (e: MessageEvent) => void) => void })
         .addEventListener('message', (msg: MessageEvent) => {
+          if (msg.origin !== globalThis.location.origin) return;
           if (msg.data?.type === 'cortex-event') {
             _handler(msg.data.payload);
           }
@@ -63,6 +64,7 @@ export function generatePanelJs(pluginName: string): string {
     },
     onEvent: function(event, handler) {
       window.addEventListener('message', function(msg) {
+        if (msg.origin !== self.location.origin) return;
         if (msg.data && msg.data.type === 'cortex-event' && msg.data.event === event) {
           handler(msg.data.data);
         }

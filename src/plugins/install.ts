@@ -1,5 +1,5 @@
 import { ensureDir } from '@std/fs';
-import { join, resolve as resolvePath } from '@std/path';
+import { join, normalize, resolve as resolvePath } from '@std/path';
 import { resolveHomeDir } from '../utils/platform.ts';
 import type { PluginKind } from './types.ts';
 import { installPlugin } from './registry.ts';
@@ -95,7 +95,14 @@ async function extractTar(tarData: Uint8Array, destDir: string): Promise<string[
     }
 
     if (header.type === '0' || header.type === '\x00') {
-      const filePath = join(destDir, rawName);
+      const filePath = normalize(join(destDir, rawName));
+      const destDirNorm = normalize(destDir);
+      if (!filePath.startsWith(destDirNorm + '/') && filePath !== destDirNorm) {
+        if (header.size > 0) {
+          offset += Math.ceil(header.size / TAR_BLOCK_SIZE) * TAR_BLOCK_SIZE;
+        }
+        continue;
+      }
       const dir = resolvePath(filePath, '..');
       await ensureDir(dir);
 
@@ -132,7 +139,14 @@ async function extractTar(tarData: Uint8Array, destDir: string): Promise<string[
         continue;
       }
 
-      const filePath = join(destDir, longName);
+      const filePath = normalize(join(destDir, longName));
+      const destDirNorm = normalize(destDir);
+      if (!filePath.startsWith(destDirNorm + '/') && filePath !== destDirNorm) {
+        if (next.size > 0) {
+          offset += Math.ceil(next.size / TAR_BLOCK_SIZE) * TAR_BLOCK_SIZE;
+        }
+        continue;
+      }
       const parentDir = resolvePath(filePath, '..');
       await ensureDir(parentDir);
 
@@ -213,6 +227,10 @@ export async function installFromMarketplace(
   const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
     join(resolveHomeDir(), '.cortex', 'data');
   const pluginDir = join(dataDir, 'plugins', manifest.name);
+  const baseDir = normalize(join(dataDir, 'plugins'));
+  if (!normalize(pluginDir).startsWith(baseDir + '/') && normalize(pluginDir) !== baseDir) {
+    throw new Error(`Invalid plugin name: "${manifest.name}"`);
+  }
 
   let localEntryPoint = manifest.entryPoint;
   let downloaded = false;
@@ -302,10 +320,14 @@ export async function installFromUrl(
     return;
   }
 
-  const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
+  const dataDir2 = Deno.env.get('CORTEX_DATA_DIR') ??
     join(resolveHomeDir(), '.cortex', 'data');
-  const pluginDir = join(dataDir, 'plugins', manifest.name);
-  await ensureDir(pluginDir);
+  const pluginDir2 = join(dataDir2, 'plugins', manifest.name);
+  const baseDir2 = normalize(join(dataDir2, 'plugins'));
+  if (!normalize(pluginDir2).startsWith(baseDir2 + '/') && normalize(pluginDir2) !== baseDir2) {
+    throw new Error(`Invalid plugin name: "${manifest.name}"`);
+  }
+  await ensureDir(pluginDir2);
 
   let pkgUrl: string | null = null;
 
@@ -333,8 +355,8 @@ export async function installFromUrl(
     if (res.ok) {
       const buffer = new Uint8Array(await res.arrayBuffer());
       const decompressed = buffer[0] === 0x1f && buffer[1] === 0x8b ? await gunzip(buffer) : buffer;
-      await extractTar(decompressed, pluginDir);
-      const localEntryPoint = resolveEntryPoint(manifest.entryPoint, pluginDir);
+      await extractTar(decompressed, pluginDir2);
+      const localEntryPoint = resolveEntryPoint(manifest.entryPoint, pluginDir2);
       await installPlugin({
         name: manifest.name,
         version: manifest.version,
@@ -360,7 +382,7 @@ export async function installFromUrl(
     entryPoint: manifest.entryPoint.startsWith('https://') ||
         manifest.entryPoint.startsWith('http://')
       ? manifest.entryPoint
-      : resolveEntryPoint(manifest.entryPoint, pluginDir),
+      : resolveEntryPoint(manifest.entryPoint, pluginDir2),
     runtime: (manifest.runtime as 'deno' | 'wasm') || 'deno',
     capabilities: (manifest.capabilities ?? []) as never[],
     author: manifest.author,

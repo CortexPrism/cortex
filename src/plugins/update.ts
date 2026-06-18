@@ -1,7 +1,7 @@
 import { getPlugin, listPlugins, updatePlugin } from './registry.ts';
 import { pluginManager } from './manager.ts';
 import { buildGitHubArchiveUrl, downloadFromUrl, downloadPluginPackage } from './install.ts';
-import { join } from '@std/path';
+import { join, normalize } from '@std/path';
 import { resolveHomeDir } from '../utils/platform.ts';
 import type { PluginManifest, PluginRow } from './types.ts';
 
@@ -250,6 +250,10 @@ export async function applyPluginUpdate(
   const dataDir = Deno.env.get('CORTEX_DATA_DIR') ??
     join(resolveHomeDir(), '.cortex', 'data');
   const pluginDir = join(dataDir, 'plugins', pluginName);
+  const baseDir = normalize(join(dataDir, 'plugins'));
+  if (!normalize(pluginDir).startsWith(baseDir + '/') && normalize(pluginDir) !== baseDir) {
+    throw new Error(`Invalid plugin name: "${pluginName}"`);
+  }
 
   // GitHub-sourced plugin: download the archive at the new tag, then read manifest from disk
   const ghInfo = source ? extractGitHubOwnerRepo(source) : null;
