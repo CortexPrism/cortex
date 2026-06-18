@@ -58,3 +58,5 @@ docs/research/
 .devin/
 
 AGENTS.md
+
+.playwright-mcp/
