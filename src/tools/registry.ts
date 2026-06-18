@@ -17,6 +17,7 @@ import { memoryNoteTool } from './builtin/memory_note.ts';
 import { memorySearchTool } from './builtin/memory_search.ts';
 import { dbQueryTool } from './builtin/db_query.ts';
 import { browserTool } from './builtin/browser.ts';
+import { docsSearchTool } from './builtin/docs_search.ts';
 import { speakTool } from './builtin/speak.ts';
 import { listenTool } from './builtin/listen.ts';
 import { shellTool } from './builtin/shell.ts';
@@ -140,6 +141,7 @@ export async function registerAllBuiltins(
     tavily_search: tavilySearchTool,
     serpapi_search: serpapiSearchTool,
     firecrawl: firecrawlTool,
+    docs_search: docsSearchTool,
   };
 
   // ═════════════════════════════════════════════════════════
