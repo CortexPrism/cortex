@@ -19,7 +19,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.34.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.36.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 
 **CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
@@ -79,10 +79,34 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 ### Memory System
 
-- **5-tier memory** — episodic (FTS5 full-text search), semantic (vector embeddings), and reflection
-  (learned patterns) with multi-strategy retrieval and decay scoring
+- **5-tier memory** — episodic (FTS5 full-text search), semantic (vector embeddings), procedural
+  (skills), and reflection (learned patterns) with multi-strategy retrieval and decay scoring
 - **Automatic memory injection** — relevant memories are injected into each turn's system prompt
 - **Memory search CLI** — keyword, semantic, and hybrid search from the terminal
+
+### Skills System
+
+- **Self-learning skills** — the agent automatically extracts reusable procedural patterns from
+  successful tool-call sequences and stores them as versioned, quality-scored skills
+- **Skill lifecycle** — 6-state lifecycle (candidate → verified → released → degraded → deprecated →
+  archived) with automatic health monitoring and staleness detection
+- **Embedding-based retrieval** — skills are matched to user queries via cosine similarity over
+  precomputed embeddings, with lexical fallback for cold starts
+- **Skill deduplication** — similar skills are automatically detected and merged, preserving steps
+  and bumping versions; LLM-extracted skills are deduplicated on creation
+- **Dependency tracking** — skills can declare `depends_on` and `conflicts_with` relationships;
+  deletion is blocked if other skills depend on the target
+- **Trust tiering** — 4-tier system (1=LLM-extracted, 4=built-in vetted) gates agent skill exposure
+- **Health system** — composite quality scores from utility, freshness, redundancy, and failure
+  risk; automatic maintenance deprecates stale/low-quality skills
+- **Tool-accessible** — `load_skill`, `skill_read`, `skill_write`
+  (create/update/delete/merge/promote/deprecate)
+- **Web UI & REST API** — full skill library management with lifecycle badges, trust stars,
+  dependency graphs, health reports, and bulk operations
+- **Skill SDK** — define skills as TypeScript modules (`src/skills/builtin/`) or markdown files in
+  `.cortex/skills/<name>/SKILL.md` with YAML frontmatter
+
+See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 ### Built-in Tools
 
@@ -97,7 +121,7 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 | Voice          | speak, listen (STT/TTS agent tools)                                                     |
 | Memory         | memory_note — persist notes to episodic memory                                          |
 | Sub-agents     | spawn typed child agents for parallel and delegated tasks                               |
-| Skills         | load_skill, skill_read, skill_write                                                     |
+| Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)      |
 | Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                 |
 | Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                              |
 
@@ -567,7 +591,17 @@ DELETE /api/agents/:id
 GET    /api/services
 POST   /api/services
 GET    /api/skills
+GET    /api/skills/stats
+GET    /api/skills/detail?name=<name>
 POST   /api/skills
+POST   /api/skills/merge
+POST   /api/skills/deprecate
+POST   /api/skills/promote
+POST   /api/skills/load-human
+POST   /api/skills/export
+GET    /api/skills/dependencies?name=<name>
+GET    /api/skills/health?name=<name>
+DELETE /api/skills?name=<name>
 GET    /api/soul/templates
 GET    /api/workspace/files
 GET    /api/workspace/git/status
