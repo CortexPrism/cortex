@@ -14,6 +14,7 @@ import {
   requiresHuman,
   requiresSupervisor,
 } from '../../security/classification.ts';
+import { requestHumanApproval } from '../../security/approval.ts';
 import { requestSupervisorDecision } from '../../security/supervisor.ts';
 import type { SensitivityLevel } from '../../security/classification.ts';
 
@@ -107,7 +108,7 @@ export const memorySearchTool: Tool = {
       const embedder = buildEmbedder(config);
 
       // Search memory
-      const hits = await retrieve(query, embedder, { limit: maxResults * 2 });
+      const hits = await retrieve(query, embedder, { limit: maxResults * 2, sessionId });
 
       // Filter by tier
       let filtered = hits;
@@ -122,12 +123,6 @@ export const memorySearchTool: Tool = {
       }
 
       // Filter by session if specified
-      if (sessionId && tier !== 'reflection' && tier !== 'graph') {
-        // Session scoping is metadata-based; would require DB query for full support
-        // For now, we return all results with note that session filtering requires DB access
-        // TODO: Implement full session-scoped filtering via DB query on session_id column
-      }
-
       // Slice to requested limit
       const results = filtered.slice(0, maxResults);
 
@@ -159,9 +154,30 @@ export const memorySearchTool: Tool = {
         }
 
         if (requiresHuman(sensitivity)) {
-          // TODO: Integrate human approval flow
-          // For now, proceed with supervisor approval
-          // In production, would call requestWebUIApproval or requestHumanApproval
+          const approved = context.approvalGate
+            ? await context.approvalGate('memory_search', query, results[0]?.text)
+            : await requestHumanApproval(
+              {
+                tool: 'memory_search',
+                query,
+                requestReason: reason || 'Sensitive memory access',
+                sessionId: context.sessionId || 'unknown',
+                agentId: context.agentId || 'unknown',
+                dataClassification: sensitivity,
+                sampleData: results.length > 0 ? results[0].text : undefined,
+              },
+              'Human approval required for SECRET memory access.',
+            );
+
+          if (!approved) {
+            return {
+              toolName: 'memory_search',
+              success: false,
+              output: '',
+              error: 'Access denied by human approval',
+              durationMs: Date.now() - start,
+            };
+          }
         }
       }
 

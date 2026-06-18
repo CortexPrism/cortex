@@ -6,6 +6,7 @@
 
 import type { ModelCandidate, ModelDecision, ModelPrediction, RequestContext } from './types.ts';
 import type { ProviderKind } from '../config/config.ts';
+import { getCoreDb } from '../db/client.ts';
 import { gatherModelSignals } from './signals.ts';
 import { fuseModelSignals, getTopModelPrediction } from './fusion.ts';
 import { getModelSignalWeights, getSessionState, logModelDecision } from './store.ts';
@@ -59,7 +60,7 @@ export class ModelArbiter {
     turnId: string,
   ): Promise<ModelDecision> {
     // 1. Apply constraints to filter candidates
-    const filtered = this.applyConstraints(candidates, sessionId);
+    const filtered = await this.applyConstraints(candidates, sessionId);
 
     if (filtered.length === 0) {
       // No candidates after filtering - defer to default
@@ -108,22 +109,72 @@ export class ModelArbiter {
   /**
    * Apply constraints to filter candidates
    */
-  private applyConstraints(
+  private async applyConstraints(
     candidates: ModelCandidate[],
     sessionId: string,
-  ): ModelCandidate[] {
+  ): Promise<ModelCandidate[]> {
     let filtered = [...candidates];
+    const db = await getCoreDb();
+    const state = await getSessionState(sessionId);
+    const remainingBudget = state?.costBudgetUsd != null
+      ? Math.max(0, state.costBudgetUsd - (state.costSpentUsd ?? 0))
+      : this.config.costBudgetUsd;
+
+    const candidateStats = await Promise.all(
+      filtered.map(async (candidate) => {
+        const stats = await db.get<{
+          total_calls: number;
+          successful_calls: number;
+          avg_quality: number;
+          avg_cost_usd: number;
+        }>(
+          `SELECT total_calls, successful_calls, avg_quality, avg_cost_usd
+           FROM mqm_model_stats
+           WHERE provider = ? AND model = ?`,
+          [candidate.provider, candidate.model],
+        ).catch(() => null);
+
+        const totalCalls = stats?.total_calls ?? 0;
+        const successRate = totalCalls > 0 ? (stats?.successful_calls ?? 0) / totalCalls : 1;
+        const avgQuality = stats?.avg_quality ?? 0.5;
+        const avgCost = stats?.avg_cost_usd ?? 0.5;
+
+        return { candidate, totalCalls, successRate, avgQuality, avgCost };
+      }),
+    );
 
     // Filter by allowed providers
     if (this.config.allowedProviders && this.config.allowedProviders.length > 0) {
       filtered = filtered.filter((c) => this.config.allowedProviders!.includes(c.provider));
     }
 
-    // TODO: Filter by cost budget if specified
-    // Would need to check session state for current spending
+    if (remainingBudget != null) {
+      const relevant = candidateStats.filter((row) =>
+        filtered.some((c) => c.provider === row.candidate.provider && c.model === row.candidate.model)
+      );
+      const budgetFiltered = relevant.filter((row) => row.avgCost <= remainingBudget);
+      if (budgetFiltered.length > 0) {
+        filtered = filtered.filter((c) =>
+          budgetFiltered.some((row) => row.candidate.provider === c.provider && row.candidate.model === c.model)
+        );
+      } else if (relevant.length > 0) {
+        const cheapest = relevant.reduce((best, row) => row.avgCost < best.avgCost ? row : best);
+        filtered = filtered.filter((c) =>
+          c.provider === cheapest.candidate.provider && c.model === cheapest.candidate.model
+        );
+      }
+    }
 
-    // TODO: Filter unhealthy providers
-    // Would need provider health tracking
+    const healthyFiltered = candidateStats
+      .filter((row) =>
+        filtered.some((c) => c.provider === row.candidate.provider && c.model === row.candidate.model)
+      )
+      .filter((row) => row.totalCalls < 5 || (row.successRate >= 0.4 && row.avgQuality >= 0.3))
+      .map((row) => row.candidate);
+
+    if (healthyFiltered.length > 0) {
+      filtered = healthyFiltered;
+    }
 
     return filtered;
   }

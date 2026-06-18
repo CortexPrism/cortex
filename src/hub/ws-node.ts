@@ -440,6 +440,7 @@ export interface DirectivePending {
   sessionId: string;
   directiveId: string;
   nodeId: string;
+  createdAt: number;
   resolve: (
     result: { success: boolean; output: string; error?: string; durationMs: number },
   ) => void;
@@ -451,6 +452,23 @@ const pendingDirectives = new Map<string, DirectivePending>();
 
 export function getPendingCount(): number {
   return pendingDirectives.size;
+}
+
+export function getPendingDirectives(): Array<{
+  id: string;
+  agent: string;
+  node: string;
+  sent: string;
+  ageMs: number;
+}> {
+  const now = Date.now();
+  return [...pendingDirectives.values()].map((pending) => ({
+    id: pending.directiveId,
+    agent: pending.sessionId,
+    node: pending.nodeId,
+    sent: new Date(pending.createdAt).toISOString(),
+    ageMs: now - pending.createdAt,
+  }));
 }
 
 export async function dispatchDirective(
@@ -534,6 +552,7 @@ export function dispatchAndWait(
       sessionId: directive.sessionId,
       directiveId: directive.id,
       nodeId: agentId,
+      createdAt: Date.now(),
       resolve,
       reject,
       timer,

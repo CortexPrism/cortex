@@ -11,7 +11,7 @@ export function getAgentWorkspaceDir(agentId: string): string {
 }
 
 export function getGlobalWorkspaceDir(): string {
-  return PATHS.workspacesDir;
+  return Deno.cwd();
 }
 
 const CONFIG_SOUL_FILES = new Set(['SOUL.md', 'USER.md', 'MEMORY.md']);

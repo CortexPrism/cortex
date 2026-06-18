@@ -5,6 +5,24 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.41.2] — 2026-06-18
+
+### Changed
+
+- **Stubbed workflow completion** (`src/server/router.ts`, `src/server/ui.ts`, `src/server/ws.ts`,
+  `src/hub/ws-node.ts`, `src/memory/store.ts`, `src/tools/builtin/memory_search.ts`) — update
+  checks now hit the correct endpoint, computer-use screenshots/actions are backed by persisted
+  data, pending remote directives are listed from live state, import history is persisted, and
+  memory search now respects session scope and approval flow.
+
+- **Model Quartermaster and supervisor selection** (`src/model-quartermaster/arbiter.ts`,
+  `src/model-quartermaster/mod.ts`, `src/security/supervisor.ts`) — budget and health constraints
+  now filter candidates, estimated quality is derived from active signals, and the supervisor can
+  consult MQM when model selection is enabled.
+
+- **Workspace global path fix** (`src/workspace/paths.ts`) — global workspace paths now resolve to
+  the current workspace root so the existing workspace-path contract matches the tests and CLI.
+
 ## [0.41.1] — 2026-06-18
 
 ### Changed

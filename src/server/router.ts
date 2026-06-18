@@ -80,9 +80,11 @@ import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
-import { dirname, join } from '@std/path';
+import { basename, dirname, join } from '@std/path';
+import { encodeBase64 } from '@std/encoding/base64';
 import { resolveHomeDir } from '../utils/platform.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
+import { getPendingDirectives } from '../hub/ws-node.ts';
 import {
   deleteAgent,
   getAgent,
@@ -124,6 +126,68 @@ function err(msg: string, status = 500): Response {
 // In-memory cache of GitHub versions for marketplace plugins (TTL: 1 hour)
 const gitHubVersionCache = new Map<string, { version: string; ts: number }>();
 const GITHUB_CACHE_TTL = 3600_000;
+
+async function getComputerScreenshotDir(): Promise<string> {
+  return join(PATHS.dataDir, 'screenshots');
+}
+
+async function listComputerScreenshots(): Promise<Array<{
+  name: string;
+  data: string;
+  timestamp: string;
+  path: string;
+}>> {
+  const dir = await getComputerScreenshotDir();
+  const shots: Array<{ name: string; data: string; timestamp: string; path: string }> = [];
+
+  if (!await exists(dir)) return shots;
+
+  for await (const entry of Deno.readDir(dir)) {
+    if (!entry.isFile) continue;
+    if (!/\.(png|jpe?g)$/i.test(entry.name)) continue;
+
+    const path = join(dir, entry.name);
+    try {
+      const stat = await Deno.stat(path);
+      const data = await Deno.readFile(path);
+      shots.push({
+        name: basename(path),
+        data: encodeBase64(data),
+        timestamp: stat.mtime?.toISOString() ?? stat.birthtime?.toISOString() ?? new Date().toISOString(),
+        path,
+      });
+    } catch {
+      // Ignore unreadable screenshots
+    }
+  }
+
+  return shots.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 24);
+}
+
+async function listComputerActions(): Promise<Array<{
+  started_at: string;
+  action: string;
+  summary: string | null;
+  error: string | null;
+  duration_ms: number | null;
+  session_id: string | null;
+}>> {
+  const db = await getLensDb();
+  return await db.all<{
+    started_at: string;
+    action: string;
+    summary: string | null;
+    error: string | null;
+    duration_ms: number | null;
+    session_id: string | null;
+  }>(
+    `SELECT started_at, action, summary, error, duration_ms, session_id
+     FROM lens_events
+     WHERE action LIKE 'tool:computer%'
+     ORDER BY started_at DESC
+     LIMIT 100`,
+  );
+}
 
 export async function handleApi(req: Request): Promise<Response | null> {
   const url = new URL(req.url);
@@ -3584,19 +3648,29 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/computer/screenshots') {
     const { isComputerUseAvailable } = await import('../computer-use/display.ts');
     const available = isComputerUseAvailable();
-    return json({ screenshots: [], available });
+    const screenshots = await listComputerScreenshots();
+    return json({ screenshots, available });
   }
 
   // GET /api/computer/actions
   if (req.method === 'GET' && path === '/api/computer/actions') {
-    return json([]);
+    return json(await listComputerActions());
   }
 
   // GET /api/computer/config
   if (req.method === 'GET' && path === '/api/computer/config') {
     const { isComputerUseAvailable } = await import('../computer-use/display.ts');
     const available = isComputerUseAvailable();
-    return json({ available, resolution: '1920x1080', dpi: 96 });
+    const config = await loadConfig();
+    const cu = config.computerUse;
+    return json({
+      available,
+      resolution: cu?.displayWidth && cu?.displayHeight
+        ? `${cu.displayWidth}x${cu.displayHeight}`
+        : '1920x1080',
+      dpi: 96,
+      requireApproval: cu?.requireApproval ?? true,
+    });
   }
 
   // PUT /api/computer/config
@@ -3629,7 +3703,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/remote/directives
   if (req.method === 'GET' && path === '/api/remote/directives') {
-    return json([]);
+    return json(getPendingDirectives());
   }
 
   // POST /api/remote/deploy
@@ -3721,7 +3795,27 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (body.dryRun) {
       return json({ preview: { sessions: 0, configs: 0, memories: 0 }, dryRun: true });
     }
-    return json({ ok: true, imported: { sessions: 0, configs: 0, memories: 0 } });
+    const imported = { sessions: 0, configs: 0, memories: 0 };
+    const record = {
+      id: `imp_${Date.now().toString(36)}`,
+      source: body.file ?? 'unknown',
+      type: body.type ?? 'unknown',
+      imported,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      await Deno.mkdir(PATHS.dataDir, { recursive: true });
+      const existing = await Deno.readTextFile(join(PATHS.dataDir, 'import-history.json')).catch(() => '[]');
+      const history = JSON.parse(existing) as Array<Record<string, unknown>>;
+      history.unshift(record);
+      await Deno.writeTextFile(
+        join(PATHS.dataDir, 'import-history.json'),
+        JSON.stringify(history.slice(0, 100), null, 2),
+      );
+    } catch {
+      // non-fatal
+    }
+    return json({ ok: true, imported });
   }
 
   // POST /api/export
@@ -3748,7 +3842,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/import/history
   if (req.method === 'GET' && path === '/api/import/history') {
-    return json([]);
+    try {
+      const raw = await Deno.readTextFile(join(PATHS.dataDir, 'import-history.json'));
+      return json(JSON.parse(raw));
+    } catch {
+      return json([]);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

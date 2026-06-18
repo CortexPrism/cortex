@@ -154,6 +154,10 @@ export async function predictModel(
 
   // Return prediction if not defer
   if (decision.mode !== 'defer' && decision.predictedProvider && decision.predictedModel) {
+    const estimatedQuality = Math.max(
+      decision.confidence,
+      decision.signals.find((s) => s.name === 'quality')?.contributed ?? 0,
+    );
     return {
       provider: decision.predictedProvider,
       model: decision.predictedModel,
@@ -161,7 +165,7 @@ export async function predictModel(
       mode: decision.mode,
       signals: decision.signals,
       estimatedCost: decision.estimatedCost,
-      estimatedQuality: 0, // TODO: compute from signals
+      estimatedQuality,
     };
   }
 

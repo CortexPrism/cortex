@@ -68,7 +68,11 @@ export interface ToolContext {
   workingDir: string;
   agentId: string;
   workspaceDir: string;
-  approvalGate?: (tool: string, command: string) => Promise<boolean>;
+  approvalGate?: (
+    tool: string,
+    command: string,
+    sampleData?: string,
+  ) => Promise<boolean>;
   /** Stream real-time tool execution progress events to the client */
   onProgress?: (event: ToolProgressEvent) => void;
 }

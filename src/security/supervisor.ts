@@ -98,7 +98,42 @@ function cacheDecision(
 async function selectSupervisorModel(): Promise<{ provider: ProviderKind; model: string }> {
   const config = await loadConfig();
 
-  // TODO: Integrate with MQM when available
+  if (config.modelSelection?.enabled) {
+    try {
+      const { buildRequestContext, getCandidateModels, ModelArbiter } = await import(
+        '../model-quartermaster/mod.ts'
+      );
+      const candidates = getCandidateModels(config.providers);
+      if (candidates.length > 0) {
+        const arbiter = new ModelArbiter({
+          mode: config.modelSelection.mode,
+          costBudgetUsd: config.modelSelection.costBudget,
+          qualityThreshold: config.modelSelection.qualityThreshold,
+          allowedProviders: config.modelSelection.allowedProviders,
+          enforceConfidence: config.modelSelection.enforceConfidence,
+          suggestConfidence: config.modelSelection.suggestConfidence,
+        });
+        const prediction = await arbiter.decide(
+          buildRequestContext('Security supervisor model selection', undefined, [], 0, [
+            'memory_search',
+            'db_query',
+          ]),
+          candidates,
+          'supervisor',
+          'supervisor',
+        );
+        if (prediction.predictedProvider && prediction.predictedModel) {
+          return {
+            provider: prediction.predictedProvider,
+            model: prediction.predictedModel,
+          };
+        }
+      }
+    } catch {
+      // Fall back to deterministic selection below.
+    }
+  }
+
   // For now, use config default or hardcoded fallback to fast/cheap models
   // Priority order: gemini-2.0-flash > gpt-4o-mini > claude-3.5-haiku
 
