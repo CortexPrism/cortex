@@ -944,19 +944,7 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Agents
     </button>
     <button class="nav-item" onclick="showPage('services');closeMobileSidebar()" id="nav-services">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><path d="M6 6h.01M6 18h.01"/></svg></span> Services
-    </button>
-    <button class="nav-item" onclick="showPage('nodes');closeMobileSidebar()" id="nav-nodes">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Nodes
-    </button>
-    <button class="nav-item" onclick="showPage('jobs');closeMobileSidebar()" id="nav-jobs">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Jobs
-    </button>
-    <button class="nav-item" onclick="showPage('workflow');closeMobileSidebar()" id="nav-workflow">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Workflows
-    </button>
-    <button class="nav-item" onclick="showPage('eval');closeMobileSidebar()" id="nav-eval">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> Eval
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><path d="M6 6h.01M6 18h.01"/></svg></span> Infrastructure
     </button>
     <button class="nav-item" onclick="showPage('automation');closeMobileSidebar()" id="nav-automation">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Automation
@@ -968,31 +956,19 @@ const HTML = `<!DOCTYPE html>
     <!-- System & Config -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System &amp; Config <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('tools');closeMobileSidebar()" id="nav-tools">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools &amp; MCP
     </button>
-    <button class="nav-item" onclick="showPage('mcp');closeMobileSidebar()" id="nav-mcp">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> MCP
-    </button>
-    <button class="nav-item" onclick="showPage('vault');closeMobileSidebar()" id="nav-vault">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Vault
-    </button>
-    <button class="nav-item" onclick="showPage('computer');closeMobileSidebar()" id="nav-computer">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> Computer
+    <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Security
     </button>
     <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote
-    </button>
-    <button class="nav-item" onclick="showPage('daemons');closeMobileSidebar()" id="nav-daemons">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6" rx="1" ry="1"/><path d="M15 14v1a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1"/><path d="M12 6v3"/></svg></span> Daemons
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote Access
     </button>
     <button class="nav-item" onclick="showPage('extensions');closeMobileSidebar()" id="nav-extensions">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Extensions
     </button>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
-    </button>
-    <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Policies
     </button>
     <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
@@ -3662,7 +3638,7 @@ function showPage(name) {
 
   const loaders = {
     lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
-    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); }, analytics: loadAnalytics,
+    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('policies', 'Policies', [['policies','Policies'],['vault','Vault']]); }, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
@@ -3670,22 +3646,46 @@ function showPage(name) {
     quartermaster: () => { loadQuartermaster(); extendQuartermaster(); },
     dashboard: loadDashboard,
     projects: loadProjects,
-    automation: () => { loadHooksPage(); extendAutomationPage(); },
+    automation: () => { loadHooksPage(); extendAutomationPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']]); },
     channels: loadChannels,
     vcs: () => { gitRefresh(); extendVCSPage(); },
-    agents: () => { loadAgents(); extendSubAgentProcesses(); }, services: loadServices,
+    agents: () => { loadAgents(); extendSubAgentProcesses(); }, services: () => { loadServices(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']]); },
     codegraph: loadCodegraphPage,
     workflow: loadWorkflowsPage,
     eval: loadEvalPage,
     mcp: loadMCPPage,
     vault: loadVaultPage,
     computer: loadComputerPage,
-    remote: loadRemotePage,
+    remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']]); },
     daemons: loadDaemonPage,
-    tools: loadTools,
+    tools: () => { loadTools(); injectSubNav('tools', 'Tools', [['tools','Tools'],['mcp','MCP']]); },
     metacognition: loadMetacognition,
   };
   if (loaders[name]) loaders[name]();
+}
+
+// ── Sub-navigation tab injection ──────────────────────────
+function injectSubNav(pageId, defaultLabel, tabs) {
+  if (document.getElementById('subnav-' + pageId)) return;
+  var page = document.getElementById('page-' + pageId);
+  if (!page) return;
+  var bar = document.createElement('div');
+  bar.id = 'subnav-' + pageId;
+  bar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:0;background:var(--bg2);flex-shrink:0;';
+  bar.innerHTML = tabs.map(function(t, i) {
+    return '<button class="btn btn-ghost' + (i === 0 ? ' active' : '') + '" onclick="switchSubTab(event,\\'' + pageId + '\\',\\'' + t[0] + '\\')" id="subtab-' + pageId + '-' + t[0] + '" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (i === 0 ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
+  }).join('');
+  var header = page.querySelector('div:first-of-type');
+  if (header) header.after(bar);
+}
+function switchSubTab(event, pageId, targetPage) {
+  var bar = document.getElementById('subnav-' + pageId);
+  if (bar) {
+    bar.querySelectorAll('button').forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.classList.remove('active'); });
+    event.target.style.borderBottomColor = 'var(--accent)';
+    event.target.classList.add('active');
+  }
+  showPage(targetPage);
 }
 
 // ── Skeleton loading utilities ──────────────
