@@ -7,6 +7,38 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.37.0] — 2026-06-18
+
+### Added — Major
+
+- **Code intelligence system** — New `src/codegraph/` module with tree-sitter WASM parser for 14+ languages.
+  AST extraction, call resolution, complexity estimation, and code graph storage in `memory.db`.
+
+- **Code graph schema** — 14 node labels (CodeProject, CodeFile, CodeFunction, CodeClass, CodeInterface, etc.),
+  18 edge types (CALLS, IMPORTS, DEFINES, IMPLEMENTS, INHERITS, HTTP_CALLS, ASYNC_CALLS, DECORATES, etc.).
+  Full-text search via FTS5 on code_nodes. Supports all tree-sitter languages with lazy-loading from CDN.
+
+- **6 code intelligence tools** — Auto-exposed via MCP server and WebSocket handler:
+  - `code_index`: Full repository indexing with incremental sync, file change detection, and chunked bulk insert
+  - `code_search_symbol`: FTS5-backed symbol search across projects
+  - `code_trace_path`: Bidirectional call graph traversal (inbound/outbound) with depth limits and hotspot analysis
+  - `code_get_architecture`: System architecture diagram extraction (layers, modules, dependencies)
+  - `code_analyze_impact`: Blast radius analysis (callers, callees, dead code detection, complexity)
+  - `code_list_projects`: Project registry with language stats and node/edge counts
+
+- **Codegraph resolver** — 6-strategy call target resolution: exact symbol match, method on class, wildcard import,
+  relative import path, type inference, fallback search. Supports JS/TS/Python/Go/Rust/Java/Kotlin import syntax.
+
+- **Batch-aware codegraph sync** — Incremental indexing pipeline with file hashing, bounded directory walk (200K file limit, 100 depth),
+  and BFS-batched query execution (2 queries/level instead of N+1). WASM integrity validation for tree-sitter.
+
+### Fixed
+
+- **Migration SQL parsing** — Collapsed multi-line SQL statements to single lines to avoid parser failures during
+  migration application. Removed FTS5 triggers to simplify initial deployment.
+
+---
+
 ## [0.36.0] — 2026-06-18
 
 ### Added — Major

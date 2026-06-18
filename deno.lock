@@ -27,7 +27,8 @@
     "npm:@google/generative-ai@0.21": "0.21.0",
     "npm:@libsql/client@~0.15.5": "0.15.15",
     "npm:openai@^4.98.0": "4.104.0",
-    "npm:pdf-parse@*": "2.4.5"
+    "npm:pdf-parse@*": "2.4.5",
+    "npm:web-tree-sitter@0.24": "0.24.7"
   },
   "jsr": {
     "@cliffy/ansi@1.2.1": {
@@ -932,6 +933,9 @@
     "web-streams-polyfill@4.0.0-beta.3": {
       "integrity": "sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug=="
     },
+    "web-tree-sitter@0.24.7": {
+      "integrity": "sha512-CdC/TqVFbXqR+C51v38hv6wOPatKEUGxa39scAeFSm98wIhZxAYonhRQPSMmfZ2w7JDI0zQDdzdmgtNk06/krQ=="
+    },
     "webidl-conversions@3.0.1": {
       "integrity": "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="
     },
@@ -963,7 +967,8 @@
       "npm:@aws-sdk/client-bedrock-runtime@^3.750.0",
       "npm:@google/generative-ai@0.21",
       "npm:@libsql/client@~0.15.5",
-      "npm:openai@^4.98.0"
+      "npm:openai@^4.98.0",
+      "npm:web-tree-sitter@0.24"
     ]
   }
 }

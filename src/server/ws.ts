@@ -313,6 +313,15 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         firecrawl: firecrawlTool,
         computer: computerTool,
         mcp_agent: mcpAgentTool,
+        code_index: (await import('../tools/builtin/codegraph/code_index.ts')).default,
+        code_search_symbol:
+          (await import('../tools/builtin/codegraph/code_search_symbol.ts')).default,
+        code_trace_path: (await import('../tools/builtin/codegraph/code_trace_path.ts')).default,
+        code_get_architecture:
+          (await import('../tools/builtin/codegraph/code_architecture.ts')).default,
+        code_analyze_impact: (await import('../tools/builtin/codegraph/code_impact.ts')).default,
+        code_list_projects:
+          (await import('../tools/builtin/codegraph/code_list_projects.ts')).default,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {
