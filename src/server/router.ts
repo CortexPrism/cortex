@@ -131,12 +131,14 @@ async function getComputerScreenshotDir(): Promise<string> {
   return join(PATHS.dataDir, 'screenshots');
 }
 
-async function listComputerScreenshots(): Promise<Array<{
-  name: string;
-  data: string;
-  timestamp: string;
-  path: string;
-}>> {
+async function listComputerScreenshots(): Promise<
+  Array<{
+    name: string;
+    data: string;
+    timestamp: string;
+    path: string;
+  }>
+> {
   const dir = await getComputerScreenshotDir();
   const shots: Array<{ name: string; data: string; timestamp: string; path: string }> = [];
 
@@ -153,7 +155,8 @@ async function listComputerScreenshots(): Promise<Array<{
       shots.push({
         name: basename(path),
         data: encodeBase64(data),
-        timestamp: stat.mtime?.toISOString() ?? stat.birthtime?.toISOString() ?? new Date().toISOString(),
+        timestamp: stat.mtime?.toISOString() ?? stat.birthtime?.toISOString() ??
+          new Date().toISOString(),
         path,
       });
     } catch {
@@ -164,14 +167,16 @@ async function listComputerScreenshots(): Promise<Array<{
   return shots.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 24);
 }
 
-async function listComputerActions(): Promise<Array<{
-  started_at: string;
-  action: string;
-  summary: string | null;
-  error: string | null;
-  duration_ms: number | null;
-  session_id: string | null;
-}>> {
+async function listComputerActions(): Promise<
+  Array<{
+    started_at: string;
+    action: string;
+    summary: string | null;
+    error: string | null;
+    duration_ms: number | null;
+    session_id: string | null;
+  }>
+> {
   const db = await getLensDb();
   return await db.all<{
     started_at: string;
@@ -3805,7 +3810,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     };
     try {
       await Deno.mkdir(PATHS.dataDir, { recursive: true });
-      const existing = await Deno.readTextFile(join(PATHS.dataDir, 'import-history.json')).catch(() => '[]');
+      const existing = await Deno.readTextFile(join(PATHS.dataDir, 'import-history.json')).catch(
+        () => '[]',
+      );
       const history = JSON.parse(existing) as Array<Record<string, unknown>>;
       history.unshift(record);
       await Deno.writeTextFile(
