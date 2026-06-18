@@ -210,6 +210,17 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Git Diff Viewer — VCS Diff button opens agent-specific git diff in popup
   - Cross-page extension triggers for Skills, Editor, Quartermaster, Voice, Automation, VCS
 
+- **Web UI coverage — Phase 5** — Final 4 partial coverage gaps completed:
+  - **Observability** — Settings System tab: OTLP/Langfuse connection test buttons with status
+    feedback, Langfuse trace deep-link to cloud console, Grafana embed placeholder
+  - **Prometheus Metrics** — Settings Metrics tab: fetches `/metrics` endpoint, parses and displays
+    all Prometheus metrics in a monospace table with auto-refresh every 15 seconds
+  - **CPL Policy Editor** — Policies Classification tab: YAML textarea with syntax validation (checks
+    for policies/name/kind structure), import button to create policies from CPL definitions
+  - **Sub-Agent Process Management** — Agents Sub-Agent Types tab: active process list, global
+    timeout (default 120s) and max retries (default 3) configuration inputs with save button
+  - ShowPage patching for automatic Phase 5 UI injection on Settings, Policies, and Agents navigation
+
 ### Security
 
 - All sensitive data access now requires LLM supervisor review or human approval
