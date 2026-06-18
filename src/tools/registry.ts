@@ -23,6 +23,8 @@ import { jsonQueryTool } from './builtin/json_query.ts';
 import { regexUtilsTool } from './builtin/regex_utils.ts';
 import { envManagerTool } from './builtin/env_manager.ts';
 import { codeSnippetTool } from './builtin/code_snippet.ts';
+import { imageAnalyzeTool } from './builtin/image_analyze.ts';
+import { scheduleTool } from './builtin/schedule.ts';
 import { speakTool } from './builtin/speak.ts';
 import { listenTool } from './builtin/listen.ts';
 import { shellTool } from './builtin/shell.ts';
@@ -169,6 +171,8 @@ export async function registerAllBuiltins(
     skill_write: skillWriteTool,
     skill_read: skillReadTool,
     mcp_agent: mcpAgentTool,
+    image_analyze: imageAnalyzeTool,
+    structured_extract: structuredExtractTool,
   };
 
   // ═════════════════════════════════════════════════════════
@@ -190,12 +194,18 @@ export async function registerAllBuiltins(
   };
 
   // ═════════════════════════════════════════════════════════
+  // Scheduling & Automation
+  // ═════════════════════════════════════════════════════════
+  const schedulingTools = {
+    schedule: scheduleTool,
+  };
+
+  // ═════════════════════════════════════════════════════════
   // Memory & Voice
   // ═════════════════════════════════════════════════════════
   const utilityTools = {
     memory_note: memoryNoteTool,
     memory_search: memorySearchTool,
-    structured_extract: structuredExtractTool,
     json_query: jsonQueryTool,
     regex_utils: regexUtilsTool,
     env_manager: envManagerTool,
@@ -232,6 +242,7 @@ export async function registerAllBuiltins(
     ...agentTools,
     ...githubTools,
     ...databaseTools,
+    ...schedulingTools,
     ...utilityTools,
     ...codegraphTools,
   };
