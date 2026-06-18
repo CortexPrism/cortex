@@ -221,6 +221,16 @@ export interface LoggingConfig {
   };
 }
 
+export type EmbeddingProviderKind = 'stub' | 'openai' | 'ollama';
+
+export interface EmbeddingConfig {
+  provider: EmbeddingProviderKind;
+  model?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  dimensions?: number;
+}
+
 export type MemoryVectorStoreKind = 'sqlite' | 'qdrant' | 'chromadb' | 'pinecone';
 
 export interface MemoryVectorStoreConfig {
@@ -297,6 +307,8 @@ export interface CortexConfig {
   voice?: import('../voice/types.ts').VoiceConfig;
   /** Logging and observability configuration */
   logging?: LoggingConfig;
+  /** Memory embedding provider configuration */
+  embeddings?: EmbeddingConfig;
   /** Memory backend configuration */
   memory?: MemoryConfig;
   /** Computer use (GUI automation) configuration */

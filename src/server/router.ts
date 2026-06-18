@@ -4067,10 +4067,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/memory/heuristics
   if (req.method === 'GET' && path === '/api/memory/heuristics') {
-    const { autoCategorize } = await import('../memory/heuristics.ts');
-    const test = autoCategorize('');
+    const { getHeuristicCatalog } = await import('../memory/heuristics.ts');
+    const catalog = getHeuristicCatalog();
     return json({
-      categories: Object.keys(test),
+      categories: catalog.map((entry) => entry.category),
+      catalog,
+      ruleCount: catalog.reduce((sum, entry) => sum + entry.patterns, 0),
       rules: '12 rule-based auto-categorization patterns',
     });
   }
@@ -4088,19 +4090,100 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const config = await loadConfig();
     const { buildEmbedder } = await import('../memory/embeddings.ts');
     const embedder = buildEmbedder(config);
-    return json({ provider: embedder.name, dimensions: embedder.dims });
+    return json({
+      provider: embedder.name,
+      dimensions: embedder.dims,
+      current: config.embeddings ?? null,
+      options: [
+        { provider: 'stub', label: 'Stub / Local fallback' },
+        { provider: 'ollama', label: 'Ollama' },
+        { provider: 'openai', label: 'OpenAI' },
+      ],
+    });
+  }
+
+  // GET /api/memory/vector-store
+  if (req.method === 'GET' && path === '/api/memory/vector-store') {
+    const { loadConfig } = await import('../config/config.ts');
+    const config = await loadConfig();
+    const { getMemoryVectorStore } = await import('../memory/vector_backends.ts');
+    const store = await getMemoryVectorStore().catch(() => null);
+    const current = config.memory?.vectorStore ?? null;
+    const health = store ? await store.health().catch((e) => ({ ok: false, detail: (e as Error).message })) : null;
+    return json({
+      current,
+      health,
+      options: [
+        { kind: 'sqlite', label: 'SQLite', description: 'Local file-backed fallback' },
+        { kind: 'qdrant', label: 'Qdrant', description: 'Vector DB with payload filters' },
+        { kind: 'chromadb', label: 'ChromaDB', description: 'Collection-based vector store' },
+        { kind: 'pinecone', label: 'Pinecone', description: 'Managed hosted vector index' },
+      ],
+    });
+  }
+
+  // PUT /api/memory/vector-store
+  if (req.method === 'PUT' && path === '/api/memory/vector-store') {
+    const body = await req.json() as {
+      kind?: 'sqlite' | 'qdrant' | 'chromadb' | 'pinecone';
+      url?: string;
+      apiKey?: string;
+      collection?: string;
+      namespace?: string;
+      tenant?: string;
+      database?: string;
+      dimensions?: number;
+    };
+    const config = await loadConfig();
+    const kind = body.kind ?? config.memory?.vectorStore?.kind ?? 'sqlite';
+    const current = config.memory?.vectorStore;
+    let vectorStore;
+    if (kind === 'qdrant') {
+      vectorStore = {
+        kind,
+        url: body.url ?? current?.url,
+        collection: body.collection ?? current?.collection,
+      };
+    } else if (kind === 'chromadb') {
+      vectorStore = {
+        kind,
+        url: body.url ?? current?.url,
+        collection: body.collection ?? current?.collection,
+      };
+    } else if (kind === 'pinecone') {
+      vectorStore = {
+        kind,
+        url: body.url ?? current?.url,
+        apiKey: body.apiKey ?? current?.apiKey,
+      };
+    } else {
+      vectorStore = { kind: 'sqlite' as const };
+    }
+    config.memory = {
+      ...(config.memory ?? {}),
+      vectorStore,
+    };
+    await saveConfig(config);
+    return json({ ok: true });
   }
 
   // PUT /api/memory/embeddings
   if (req.method === 'PUT' && path === '/api/memory/embeddings') {
-    const body = await req.json() as { provider?: string; model?: string; dimensions?: number };
+    const body = await req.json() as {
+      provider?: 'stub' | 'openai' | 'ollama';
+      model?: string;
+      baseUrl?: string;
+      apiKey?: string;
+      dimensions?: number;
+    };
     const config = await loadConfig();
-    const cfg = config as unknown as Record<string, unknown>;
-    if (!cfg.embeddings) cfg.embeddings = {};
-    const emb = cfg.embeddings as Record<string, unknown>;
-    if (body.provider) emb.provider = body.provider;
-    if (body.model) emb.model = body.model;
-    if (body.dimensions !== undefined) emb.dimensions = body.dimensions;
+    config.embeddings = {
+      provider: body.provider ?? config.embeddings?.provider ?? 'stub',
+      model: body.model ?? config.embeddings?.model,
+      baseUrl: body.baseUrl ?? config.embeddings?.baseUrl,
+      apiKey: body.apiKey ?? config.embeddings?.apiKey,
+      dimensions: body.dimensions ?? config.embeddings?.dimensions,
+    };
     await saveConfig(config);
     return json({ ok: true });
   }
