@@ -8311,7 +8311,7 @@ function toggleSidebarSection(event) {
   section.setAttribute('aria-expanded', String(expanded));
   // Hide/show all following nav-items until next section
   let next = section.nextElementSibling;
-  while (next && !next.classList.contains('nav-section') && !next.id) {
+  while (next && !next.classList.contains('nav-section')) {
     if (next.classList.contains('nav-item')) {
       next.style.display = expanded ? '' : 'none';
     }
