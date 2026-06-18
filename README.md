@@ -19,7 +19,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.39.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.41.3-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 
 **CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
@@ -302,6 +302,7 @@ Commands:
   update            Check for and apply updates
   git               Git workspace operations
   github            GitHub integration (PRs, issues, repos)
+  remote            Manage remote Cortex agents
   mqm               Model Quartermaster stats and configuration
   qm                Quartermaster tool orchestration stats
   models            List and configure LLM models
@@ -412,19 +413,27 @@ GitHub integration — requires `GITHUB_TOKEN` env var, `githubToken` in config,
 
 ```bash
 cortex github pr list <repo> [--state open] [--limit 10]
+cortex github pr get <repo> <number>
 cortex github pr create <repo> <title> <head> <base> [--body "..."] [--draft]
 cortex github pr merge <repo> <number> [--method merge|squash|rebase]
-cortex github issue list <repo> [--state open]
+cortex github pr close <repo> <number>
+cortex github issue list <repo> [--state open] [--limit 10] [--labels a,b]
 cortex github issue create <repo> <title> [--body "..."] [--labels a,b]
-cortex github repo list [--type all|owner|public|private]
+cortex github issue close <repo> <number>
+cortex github repo list [--type all|owner|public|private] [--limit 20]
+cortex github repo get <repo>
+cortex github repo branches <repo> [--limit 30]
+cortex github token
 ```
 
 ### `cortex memory`
 
 ```bash
 cortex memory search "sqlite"           # Keyword + vector hybrid search
-cortex memory search "sqlite" --semantic # Vector only
+cortex memory search "sqlite" --type semantic # Vector only
 cortex memory add "CortexPrism uses SQLite WAL mode"
+cortex memory health                     # Memory health stats
+cortex memory heuristics                 # Trigger heuristic learning
 ```
 
 ### `cortex vault`
@@ -464,7 +473,7 @@ Default deny rules (seeded on first migrate):
 ```bash
 cortex update              # Check for updates and apply
 cortex update --check      # Dry-run — show available versions without applying
-cortex update --channel pre # Include pre-release versions
+cortex update --channel pre-release # Include pre-release versions
 cortex update --rollback   # Revert to previous version
 cortex update --status     # Show current and latest version
 cortex update --force      # Bypass dirty working tree check (source mode)

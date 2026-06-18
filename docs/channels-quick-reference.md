@@ -83,25 +83,11 @@ cortex channels stop my-discord
 # Channel disconnects gracefully
 ```
 
-### 4. Test Connection
-
-```bash
-cortex channels test my-discord
-# Validates credentials without starting
-```
-
-### 5. List All Channels
+### 4. List All Channels
 
 ```bash
 cortex channels
 # Shows all configured channels with status
-```
-
-### 6. Remove a Channel
-
-```bash
-cortex channels remove my-discord
-# Prompts for confirmation before deletion
 ```
 
 ## Platform Setup Guides
