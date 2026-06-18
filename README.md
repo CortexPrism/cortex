@@ -570,7 +570,10 @@ Start with `cortex serve` and open `http://127.0.0.1:3000`.
 | **Import/Export** | Data migration with type selector, dry-run, and JSON download        |
 | **Update**        | Version check, install, rollback with changelog viewer               |
 | **Reflection**    | Consolidation schedule, meta-patterns browser & manual trigger       |
-| **Settings**      | Provider configuration, voice settings                               |
+| **Tools**         | Tool registry browser with parameter docs, capabilities & toggles    |
+| **Metacognition** | Task assessment tester, decision distribution & history log          |
+| **Voice**         | TTS/STT provider config, VAD threshold, audio format preferences     |
+| **Settings**      | Provider config + model selection + router + supervisor + voice      |
 | **Soul**          | Edit the agent's identity / system prompt                            |
 | **Plugins**       | Manage installed plugins                                             |
 
@@ -688,6 +691,40 @@ PUT    /api/reflection/schedule
 POST   /api/reflection/consolidate
 GET    /api/reflection/history
 GET    /api/reflection/meta-patterns
+GET    /api/providers/comparison
+GET    /api/router/history
+GET    /api/router/decisions
+GET    /api/tools/registry
+POST   /api/tools/:name/toggle
+GET    /api/tools/:name/stats
+GET    /api/memory/privacy
+PUT    /api/memory/privacy
+GET    /api/memory/heuristics
+PUT    /api/memory/heuristics
+GET    /api/memory/embeddings
+PUT    /api/memory/embeddings
+GET    /api/metacognition/history
+GET    /api/metacognition/decisions
+GET    /api/agents/sub-types
+PUT    /api/agents/sub-types/:name
+GET    /api/voice/tts
+PUT    /api/voice/tts
+GET    /api/voice/stt
+PUT    /api/voice/stt
+PUT    /api/voice/vad
+GET    /api/sandbox/config
+PUT    /api/sandbox/config
+GET    /api/sandbox/images
+POST   /api/sandbox/images/pull
+DELETE /api/sandbox/images/:id
+GET    /api/security/supervisor
+PUT    /api/security/supervisor
+GET    /api/security/supervisor/cache
+DELETE /api/security/supervisor/cache
+GET    /api/security/supervisor/history
+GET    /api/security/classification
+PUT    /api/security/classification
+POST   /api/security/classification/test
 GET    /api/soul/templates
 GET    /api/workspace/files
 GET    /api/workspace/git/status
