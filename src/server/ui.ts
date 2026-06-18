@@ -338,19 +338,19 @@ function renderCustom(body, wid, w){
 }
 function sanitizeHtml(html){
   return String(html||"")
-    .replace(/<script[\s\S]*?<\/script>/gi,"")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi,"")
-    .replace(/<object[\s\S]*?<\/object>/gi,"")
-    .replace(/<embed[\s\S]*?>/gi,"")
-    .replace(/<style[\s\S]*?<\/style>/gi,"")
-    .replace(/<link[\s\S]*?>/gi,"")
-    .replace(/<meta[\s\S]*?>/gi,"")
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi,"data-blocked=\"\"")
-    .replace(/javascript\s*:/gi,"blocked:")
-    .replace(/expression\s*\(/gi,"blocked(")
-    .replace(/<svg[\s\S]*?<\/svg>/gi,"")
-    .replace(/<a\s[^>]*href\s*=\s*["']javascript:/gi,"<a href=\"#blocked\"")
-    .replace(/<form[\s\S]*?<\/form>/gi,"")
+    .replace(/<script[\\s\\S]*?<\\/script>/gi,"")
+    .replace(/<iframe[\\s\\S]*?<\\/iframe>/gi,"")
+    .replace(/<object[\\s\\S]*?<\\/object>/gi,"")
+    .replace(/<embed[\\s\\S]*?>/gi,"")
+    .replace(/<style[\\s\\S]*?<\\/style>/gi,"")
+    .replace(/<link[\\s\\S]*?>/gi,"")
+    .replace(/<meta[\\s\\S]*?>/gi,"")
+    .replace(/\\bon\\w+\\s*=\\s*["'][^"']*["']/gi,"data-blocked=\\"\\"")
+    .replace(/javascript\\s*:/gi,"blocked:")
+    .replace(/expression\\s*\\(/gi,"blocked(")
+    .replace(/<svg[\\s\\S]*?<\\/svg>/gi,"")
+    .replace(/<a\\s[^>]*href\\s*=\\s*["']javascript:/gi,"<a href=\\"#blocked\\"")
+    .replace(/<form[\\s\\S]*?<\\/form>/gi,"")
 }
 
 function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(1)+"m";return"$"+v.toFixed(4)}
