@@ -3637,43 +3637,52 @@ function showPage(name) {
   if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
 
   const loaders = {
-    lens: loadLens, memory: loadMemoryStats, jobs: loadJobs,
-    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('policies', 'Policies', [['policies','Policies'],['vault','Vault']]); }, analytics: loadAnalytics,
+    lens: loadLens, memory: loadMemoryStats, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
+    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('policies', 'Policies', [['policies','Policies'],['vault','Vault']], 'policies'); }, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
-    nodes: loadNodes,
+    nodes: () => { loadNodes(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'nodes'); },
     quartermaster: () => { loadQuartermaster(); extendQuartermaster(); },
     dashboard: loadDashboard,
     projects: loadProjects,
-    automation: () => { loadHooksPage(); extendAutomationPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']]); },
+    automation: () => { loadHooksPage(); extendAutomationPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'automation'); },
     channels: loadChannels,
     vcs: () => { gitRefresh(); extendVCSPage(); },
-    agents: () => { loadAgents(); extendSubAgentProcesses(); }, services: () => { loadServices(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']]); },
+    agents: () => { loadAgents(); extendSubAgentProcesses(); }, services: () => { loadServices(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'services'); },
     codegraph: loadCodegraphPage,
-    workflow: loadWorkflowsPage,
-    eval: loadEvalPage,
-    mcp: loadMCPPage,
-    vault: loadVaultPage,
-    computer: loadComputerPage,
-    remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']]); },
-    daemons: loadDaemonPage,
-    tools: () => { loadTools(); injectSubNav('tools', 'Tools', [['tools','Tools'],['mcp','MCP']]); },
+    workflow: () => { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
+    eval: () => { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
+    mcp: () => { loadMCPPage(); injectSubNav('tools', 'Tools', [['tools','Tools'],['mcp','MCP']], 'mcp'); },
+    vault: () => { loadVaultPage(); injectSubNav('policies', 'Policies', [['policies','Policies'],['vault','Vault']], 'vault'); },
+    computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
+    remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
+    daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
+    tools: () => { loadTools(); injectSubNav('tools', 'Tools', [['tools','Tools'],['mcp','MCP']], 'tools'); },
     metacognition: loadMetacognition,
   };
   if (loaders[name]) loaders[name]();
 }
 
 // ── Sub-navigation tab injection ──────────────────────────
-function injectSubNav(pageId, defaultLabel, tabs) {
-  if (document.getElementById('subnav-' + pageId)) return;
+function injectSubNav(pageId, defaultLabel, tabs, activePageId) {
+  var existing = document.getElementById('subnav-' + pageId);
+  if (existing) {
+    // Update active state
+    var act = activePageId || pageId;
+    existing.querySelectorAll('button').forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.classList.remove('active'); });
+    var activeBtn = document.getElementById('subtab-' + pageId + '-' + act);
+    if (activeBtn) { activeBtn.style.borderBottomColor = 'var(--accent)'; activeBtn.classList.add('active'); }
+    return;
+  }
   var page = document.getElementById('page-' + pageId);
   if (!page) return;
   var bar = document.createElement('div');
   bar.id = 'subnav-' + pageId;
   bar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:0;background:var(--bg2);flex-shrink:0;';
+  var act = activePageId || pageId;
   bar.innerHTML = tabs.map(function(t, i) {
-    return '<button class="btn btn-ghost' + (i === 0 ? ' active' : '') + '" onclick="switchSubTab(event,\\'' + pageId + '\\',\\'' + t[0] + '\\')" id="subtab-' + pageId + '-' + t[0] + '" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (i === 0 ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
+    return '<button class="btn btn-ghost' + (t[0] === act ? ' active' : '') + '" onclick="switchSubTab(event,\\'' + pageId + '\\',\\'' + t[0] + '\\')" id="subtab-' + pageId + '-' + t[0] + '" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (t[0] === act ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
   }).join('');
   var header = page.querySelector('div:first-of-type');
   if (header) header.after(bar);
