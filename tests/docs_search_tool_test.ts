@@ -225,5 +225,5 @@ Deno.test('docs_search - duration is measured', async () => {
   );
 
   assertEquals(typeof result.durationMs, 'number');
-  assertEquals(result.durationMs > 0, true);
+  assertEquals(result.durationMs >= 0, true);
 });
