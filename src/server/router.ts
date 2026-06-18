@@ -80,7 +80,7 @@ import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
-import { basename, dirname, join } from '@std/path';
+import { basename, dirname, join, normalize } from '@std/path';
 import { encodeBase64 } from '@std/encoding/base64';
 import { findDenoProcesses, resolveHomeDir } from '../utils/platform.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
@@ -628,9 +628,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!body.filename?.trim() || !body.data) return err('Missing filename or data', 400);
     if (typeof body.data !== 'string') return err('Data must be a base64 string', 400);
     const sanitized = body.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const uploadDir = join(PATHS.dataDir, 'uploads');
+    const uploadDir = normalize(join(PATHS.dataDir, 'uploads'));
     await Deno.mkdir(uploadDir, { recursive: true });
-    const filePath = join(uploadDir, `${Date.now()}_${sanitized}`);
+    const filePath = normalize(join(uploadDir, `${Date.now()}_${sanitized}`));
+    if (!filePath.startsWith(uploadDir + '/') && filePath !== uploadDir) {
+      return err('Invalid file path', 400);
+    }
     const binary = Uint8Array.from(atob(body.data), (c) => c.charCodeAt(0));
     await Deno.writeFile(filePath, binary);
     return json({
@@ -2206,8 +2209,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     query += ` ORDER BY created_at DESC LIMIT 1`;
     const row = await db.get<{ before_text: string; file_path: string }>(query, params);
     if (!row) return err('No edits to undo', 404);
-    await Deno.writeTextFile(row.file_path, row.before_text);
-    return json({ ok: true, path: row.file_path });
+    const safePath = normalize(row.file_path);
+    await Deno.writeTextFile(safePath, row.before_text);
+    return json({ ok: true, path: safePath });
   }
 
   async function applyRedo(agentId?: string): Promise<Response> {
@@ -2221,8 +2225,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     query += ` ORDER BY created_at DESC LIMIT 1`;
     const row = await db.get<{ after_text: string; file_path: string }>(query, params);
     if (!row) return err('No edits to redo', 404);
-    await Deno.writeTextFile(row.file_path, row.after_text);
-    return json({ ok: true, path: row.file_path });
+    const safePath = normalize(row.file_path);
+    await Deno.writeTextFile(safePath, row.after_text);
+    return json({ ok: true, path: safePath });
   }
 
   // POST /api/workspace/undo — global workspace undo

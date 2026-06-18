@@ -7,6 +7,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Security
+
+- **Path traversal hardening — tar slip prevention** (`src/plugins/install.ts`) — extracted file paths from tar archives are now validated via `normalize()` to stay within the destination directory, blocking malicious archives with `../` traversal entries (Zip Slip mitigation).
+
+- **Path traversal hardening — plugin name validation** (`src/plugins/install.ts`, `src/plugins/update.ts`) — `pluginDir` construction from remote marketplace or URL manifest names now validates the resolved path stays within the base plugins directory, preventing directory traversal via crafted plugin names.
+
+- **Path traversal hardening — upload and undo/redo** (`src/server/router.ts`) — file upload endpoint now validates the resolved upload path against the upload directory. Undo/redo operations normalize DB-sourced file paths before writing.
+
+- **DoS prevention — unbounded string hashing** (`src/security/supervisor.ts`) — `hashString()` now caps input to 10,000 characters to prevent exponential CPU exhaustion from attacker-controlled query strings.
+
+- **postMessage origin validation** (`src/plugins/extensions/ui.ts`) — both the TypeScript `onEvent` handler and the generated panel JavaScript now validate `MessageEvent.origin` against the window's origin, blocking cross-origin messages from untrusted sites.
+
 ## [0.41.3] — 2026-06-18
 
 ### Changed

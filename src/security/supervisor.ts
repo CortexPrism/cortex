@@ -45,9 +45,11 @@ const decisionCache = new Map<string, CachedDecision>();
  * Simple hash function for cache keys
  */
 function hashString(str: string): string {
+  const MAX_INPUT_LENGTH = 10000;
+  const input = str.length > MAX_INPUT_LENGTH ? str.slice(0, MAX_INPUT_LENGTH) : str;
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (Math.imul(31, hash) + input.charCodeAt(i)) | 0;
   }
   return Math.abs(hash).toString(36);
 }
