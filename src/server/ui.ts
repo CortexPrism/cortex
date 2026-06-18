@@ -338,8 +338,19 @@ function renderCustom(body, wid, w){
 }
 function sanitizeHtml(html){
   return String(html||"")
-    .replace(new RegExp("<script[\\\\s\\\\S]*?<\\\\/script>","gi"),"")
-    .replace(new RegExp("\\\\bon\\\\w+\\\\s*=","gi"),"data-blocked-");
+    .replace(/<script[\s\S]*?<\/script>/gi,"")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi,"")
+    .replace(/<object[\s\S]*?<\/object>/gi,"")
+    .replace(/<embed[\s\S]*?>/gi,"")
+    .replace(/<style[\s\S]*?<\/style>/gi,"")
+    .replace(/<link[\s\S]*?>/gi,"")
+    .replace(/<meta[\s\S]*?>/gi,"")
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi,"data-blocked=\"\"")
+    .replace(/javascript\s*:/gi,"blocked:")
+    .replace(/expression\s*\(/gi,"blocked(")
+    .replace(/<svg[\s\S]*?<\/svg>/gi,"")
+    .replace(/<a\s[^>]*href\s*=\s*["']javascript:/gi,"<a href=\"#blocked\"")
+    .replace(/<form[\s\S]*?<\/form>/gi,"")
 }
 
 function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(1)+"m";return"$"+v.toFixed(4)}
@@ -7932,10 +7943,11 @@ async function fetchModelsForModal() {
   if (status) status.textContent = '';
 
   try {
-    const params = new URLSearchParams();
-    if (apiKey) params.set('apiKey', apiKey);
-    if (baseUrl) params.set('baseUrl', baseUrl);
-    const res = await fetch(BASE + '/api/providers/' + kind + '/models?' + params.toString());
+    const res = await fetch(BASE + '/api/providers/' + kind + '/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: apiKey || undefined, baseUrl: baseUrl || undefined }),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(err.error || 'Failed to fetch models');

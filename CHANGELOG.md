@@ -19,6 +19,44 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **postMessage origin validation** (`src/plugins/extensions/ui.ts`) — both the TypeScript `onEvent` handler and the generated panel JavaScript now validate `MessageEvent.origin` against the window's origin, blocking cross-origin messages from untrusted sites.
 
+- **Dependency upgrade — AWS Bedrock SDK** (`deno.json`) — `@aws-sdk/client-bedrock-runtime` upgraded from 3.750.0 to 3.1072.0, resolving 6 known vulnerabilities (4 HIGH, 2 MEDIUM) in transitive dependency `fast-xml-parser` and `uuid`.
+
+- **Vault salt hardening** (`src/security/vault.ts`, `src/config/paths.ts`) — replaced static PBKDF2 salt with a per-installation random salt persisted to `vault_salt`, with legacy v1-to-v2 auto-migration on first decrypt. PBKDF2 iterations increased from 100,000 to 200,000.
+
+- **Config encryption** (`src/config/config.ts`) — provider API keys, GitHub tokens, Grafana auth tokens, and Langfuse secret keys are now encrypted with AES-256-GCM before writing to `cortex.json`, preventing plaintext credential exposure on disk.
+
+- **CORS hardening** (`src/server/router.ts`, `src/config/config.ts`) — replaced `Access-Control-Allow-Origin: *` wildcard with configurable origin (defaults to `same-origin`). Added `Vary: Origin` and `Access-Control-Max-Age` headers.
+
+- **Security headers** (`src/server/security-headers.ts`, `src/server/server.ts`, `src/server/router.ts`) — added `Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, and `Permissions-Policy` headers to all HTTP responses.
+
+- **Rate limiting for auth endpoints** (`src/server/router.ts`) — login and password-setup endpoints now enforce per-IP rate limiting (10 requests per 60s window), returning 429 on excess.
+
+- **Request body size limit** (`src/server/server.ts`) — configurable `maxBodyBytes` (default 10 MB) enforced via `Content-Length` header check, returning 413 on oversized requests.
+
+- **HTTPS/TLS support** (`src/server/server.ts`, `src/config/config.ts`) — server now accepts optional `certFile`/`keyFile` in `server.https` config section to serve over TLS.
+
+- **Session cookie `Secure` flag** (`src/server/auth.ts`) — session cookies now include the `Secure` attribute to prevent transmission over cleartext HTTP.
+
+- **XSS sanitizer rewrite** (`src/server/ui.ts`) — `sanitizeHtml()` regex patterns fixed (were double-escaped and non-functional) and extended to strip `<iframe>`, `<object>`, `<embed>`, `<style>`, `<link>`, `<meta>`, `<svg>`, `<form>`, `javascript:` URIs, and `expression()` calls in custom dashboard widgets.
+
+- **Vault key isolation** (`src/tools/builtin/env_manager.ts`) — `CORTEX_VAULT_KEY` removed from the env_manager allow-list. The `get` operation now enforces the same allow-list as `set`, preventing agents from reading arbitrary environment variables.
+
+- **SSRF protection** (`src/security/ssrf.ts`, `src/tools/builtin/web_fetch.ts`) — `web_fetch` tool now performs DNS resolution and blocks requests to private/internal IP ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, IPv6 link-local/unique-local), as well as known metadata hosts.
+
+- **Subprocess sandbox env filtering** (`src/sandbox/executor.ts`) — subprocess fallback mode no longer passes sensitive environment variables (containing PASSWORD, SECRET, TOKEN, KEY, VAULT) to executed code.
+
+- **Enhanced Docker sandbox** (`src/sandbox/executor.ts`, `src/sandbox/agent-sandbox.ts`) — TypeScript code execution in Docker mode now uses read-only root filesystem, `noexec`/`nosuid` tmpfs, and Deno permissions scoped to workspace (`--allow-read=/workspace`, `--allow-write=/workspace`).
+
+- **Approval gate for git_push** (`src/tools/builtin/github/git_push.ts`) — `git_push` tool now requires user approval before committing and pushing, showing the commit message summary.
+
+- **Sub-agent tool escalation lock** (`src/tools/builtin/sub_agent.ts`) — the `tools` parameter now intersected against the sub-agent type's built-in allow-list, preventing sub-agents from requesting tools beyond their intended scope.
+
+- **API key query string removal** (`src/server/router.ts`, `src/server/ui.ts`) — the `/api/providers/:kind/models` endpoint now accepts API keys via POST body instead of URL query parameters, preventing secret leakage through server logs and browser history.
+
+- **postMessage target hardening** (`src/plugins/extensions/ui.ts`) — `emit()` now sends messages to `globalThis.location.origin` instead of `'*'`, preventing cross-origin data leaks from extension panels.
+
+- **WebSocket broadcast scoping** (`src/server/ws.ts`) — `broadcast()` now filters recipients by session ID, preventing cross-session event leakage (file changes, voice state) between unrelated clients.
+
 ## [0.41.3] — 2026-06-18
 
 ### Changed

@@ -29,7 +29,7 @@
     "npm:@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@^0.39.0",
     "npm:openai": "npm:openai@^4.98.0",
     "npm:@google/generative-ai": "npm:@google/generative-ai@^0.21.0",
-    "npm:@aws-sdk/client-bedrock-runtime": "npm:@aws-sdk/client-bedrock-runtime@^3.750.0",
+    "npm:@aws-sdk/client-bedrock-runtime": "npm:@aws-sdk/client-bedrock-runtime@^3.896.0",
     "npm:@libsql/client": "npm:@libsql/client@^0.15.5",
     "npm:web-tree-sitter": "npm:web-tree-sitter@^0.24.0"
   },

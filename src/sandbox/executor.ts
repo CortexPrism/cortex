@@ -1,6 +1,8 @@
 const TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
+import { buildSandboxCommand as buildSecureSandbox } from './agent-sandbox.ts';
+
 export type SandboxRuntime = 'docker' | 'subprocess' | 'gvisor';
 
 export interface SandboxOptions {
@@ -121,6 +123,56 @@ export async function isGVisorAvailable(): Promise<boolean> {
   }
 }
 
+async function runDockerCommand(
+  args: string[],
+  timeout: number,
+  stdin: string | undefined,
+  start: number,
+): Promise<SandboxResult> {
+  const proc = new Deno.Command('docker', {
+    args: args.slice(1),
+    stdout: 'piped',
+    stderr: 'piped',
+    stdin: stdin ? 'piped' : 'null',
+  });
+
+  const child = proc.spawn();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    try {
+      if (isWindows()) {
+        child.kill();
+      } else {
+        child.kill('SIGTERM');
+        setTimeout(() => {
+          try { child.kill('SIGKILL'); } catch { /* gone */ }
+        }, 2000);
+      }
+    } catch { /* already exited */ }
+  }, timeout);
+
+  if (stdin) {
+    const writer = child.stdin.getWriter();
+    await writer.write(new TextEncoder().encode(stdin));
+    await writer.close();
+  }
+
+  const { code, stdout, stderr } = await child.output().catch(() => {
+    timedOut = true;
+    return { code: -1, stdout: new Uint8Array(), stderr: new Uint8Array() };
+  });
+  clearTimeout(timer);
+
+  return {
+    stdout: new TextDecoder().decode(stdout.slice(0, MAX_OUTPUT_BYTES)),
+    stderr: new TextDecoder().decode(stderr.slice(0, MAX_OUTPUT_BYTES)),
+    exitCode: code,
+    timedOut,
+    durationMs: Date.now() - start,
+    runtime: 'docker',
+  };
+}
+
 async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   const start = Date.now();
   const lang = opts.language.toLowerCase();
@@ -130,6 +182,20 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   const envArgs: string[] = [];
   for (const [k, v] of Object.entries(opts.env ?? {})) {
     envArgs.push('-e', `${k}=${v}`);
+  }
+
+  if (opts.workingDir && ['ts', 'typescript'].includes(lang)) {
+    const networkMode = 'none' as const;
+    const secureArgs = buildSecureSandbox({
+      image,
+      workspaceMount: opts.workingDir,
+      networkMode,
+      memoryLimitMb: 256,
+      cpuLimit: 0.5,
+      timeoutMs: timeout,
+      env: opts.env,
+    });
+    return await runDockerCommand(secureArgs, timeout, opts.stdin, start);
   }
 
   let entrypoint: string[];
@@ -229,7 +295,15 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
     };
   }
 
-  const envVars: Record<string, string> = { ...Deno.env.toObject(), ...(opts.env ?? {}) };
+  const envVars: Record<string, string> = {};
+  const rawEnv = Deno.env.toObject();
+  const SENSITIVE_KEY_PATTERNS = ['PASSWORD', 'SECRET', 'TOKEN', 'KEY', 'VAULT', 'API_KEY'];
+  for (const [k, v] of Object.entries(rawEnv)) {
+    const upper = k.toUpperCase();
+    if (SENSITIVE_KEY_PATTERNS.some((p) => upper.includes(p))) continue;
+    envVars[k] = v;
+  }
+  if (opts.env) Object.assign(envVars, opts.env);
 
   const proc = new Deno.Command(runner[0], {
     args: [...runner.slice(1), opts.code],

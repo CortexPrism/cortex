@@ -17,6 +17,23 @@ import { searchEntities, traverseGraph } from '../memory/graph.ts';
 import { listReflections } from '../agent/reflect.ts';
 import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
+import { mergeSecurityHeaders } from './security-headers.ts';
+
+const authRateLimit = new Map<string, { count: number; until: number }>();
+const AUTH_RATE_LIMIT_WINDOW = 60_000;
+const AUTH_RATE_LIMIT_MAX = 10;
+
+function checkAuthRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = authRateLimit.get(ip);
+  if (!entry || now > entry.until) {
+    authRateLimit.set(ip, { count: 1, until: now + AUTH_RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= AUTH_RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
 import { configureLogger } from '../utils/logger.ts';
 import type {
   AgentConfig,
@@ -105,15 +122,38 @@ import {
   updateService,
 } from '../services/manager.ts';
 
+async function getCorsOrigin(): Promise<string> {
+  const config = await loadConfig();
+  const origin = config.server?.corsOrigin ?? 'same-origin';
+  return origin;
+}
+
+let _corsOrigin: string | null = null;
+let _corsInit = false;
+
+async function ensureCorsOrigin(): Promise<void> {
+  if (!_corsInit) {
+    _corsOrigin = await getCorsOrigin();
+    _corsInit = true;
+  }
+}
+
 function json(data: unknown, status = 200, extraCookie?: string): Response {
+  if (!_corsInit) {
+    _corsOrigin = 'same-origin';
+    _corsInit = true;
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': _corsOrigin ?? 'same-origin',
+    'Access-Control-Expose-Headers': 'Content-Type',
+    'Vary': 'Origin',
   };
   if (extraCookie) {
     headers['Set-Cookie'] = extraCookie;
   }
-  return new Response(JSON.stringify(data), { status, headers });
+  const merged = mergeSecurityHeaders(headers);
+  return new Response(JSON.stringify(data), { status, headers: merged });
 }
 
 function notFound(msg = 'Not found'): Response {
@@ -200,12 +240,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const path = url.pathname;
 
   if (req.method === 'OPTIONS') {
+    await ensureCorsOrigin();
+    const origin = _corsOrigin ?? 'same-origin';
     return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
+      headers: mergeSecurityHeaders({
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400',
+      }),
     });
   }
 
@@ -226,6 +269,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'POST' && path === '/api/auth/setup-password') {
     const already = await hasPassword();
     if (already) return json({ error: 'Password already set' }, 400);
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    if (!checkAuthRateLimit(clientIp)) {
+      return json({ error: 'Too many attempts. Try again later.' }, 429);
+    }
     const { password } = await req.json() as { password: string };
     try {
       await setupPassword(password);
@@ -238,10 +285,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/auth/login
   if (req.method === 'POST' && path === '/api/auth/login') {
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    if (!checkAuthRateLimit(clientIp)) {
+      return json({ error: 'Too many login attempts. Try again later.' }, 429);
+    }
     const { password } = await req.json() as { password: string };
     const valid = await verifyPassword(password);
     if (!valid) return json({ error: 'Invalid password' }, 401);
-    const session = createSession();
+    const session = createSession(clientIp);
     return json({ success: true, sessionId: session.id }, 200, setSessionCookie(session.id));
   }
 
@@ -1090,12 +1141,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
     }
   }
 
-  // GET /api/providers/:kind/models?apiKey=...&baseUrl=... — fetch models from provider
+  // GET/POST /api/providers/:kind/models — fetch models from provider
   const modelsMatch = path.match(/^\/api\/providers\/(\w+)\/models$/);
-  if (req.method === 'GET' && modelsMatch) {
+  if ((req.method === 'GET' || req.method === 'POST') && modelsMatch) {
     const kind = modelsMatch[1] as ProviderKind;
-    const apiKey = url.searchParams.get('apiKey') || undefined;
-    const baseUrl = url.searchParams.get('baseUrl') || undefined;
+    let apiKey: string | undefined;
+    let baseUrl: string | undefined;
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({})) as { apiKey?: string; baseUrl?: string };
+      apiKey = body.apiKey;
+      baseUrl = body.baseUrl;
+    }
     const { fetchModels } = await import('./models.ts');
     try {
       let models;

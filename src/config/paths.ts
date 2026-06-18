@@ -42,6 +42,10 @@ export const PATHS = {
   get migrationsDir() {
     return join(this.configDir, 'migrations');
   },
+  get vaultSaltFile() {
+    return join(this.dataDir, 'vault_salt');
+  },
+
   get configFile() {
     return join(this.configDir, 'config.json');
   },
