@@ -33,6 +33,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Applied to ws.ts, cli/chat.ts, service-entry.ts, sub-agent-entry.ts
   - Agent-level tool filtering preserved
 
+- **memory_search tool** — Agent memory search with automatic security supervision:
+  - Search across episodic, semantic, reflection, and graph memory tiers
+  - Hybrid search: keyword matching + vector similarity (embedding-powered)
+  - Time-decay scoring (episodic 14-day, semantic 30-day half-lives)
+  - Tier filtering and optional session scoping
+  - Automatic sensitivity classification on results
+  - Security supervisor integration for SENSITIVE/SECRET hits
+  - Returns ranked results with confidence scores and timestamps
+
 - **Human approval flows**:
   - CLI: Color-coded prompts with y/n/details options
   - Web UI: Modal with request details, supervisor reasoning, sample data
