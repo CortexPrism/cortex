@@ -11913,7 +11913,7 @@ function showDaemonLogs(name) {
   document.getElementById('daemon-log-content').textContent = 'Loading…';
   fetch(BASE + '/api/daemons/' + encodeURIComponent(name) + '/logs?lines=100').then(function(r) { return r.json(); }).then(function(data) {
     var lines = data.lines || [];
-    document.getElementById('daemon-log-content').textContent = lines.length ? lines.join('\n') : '(empty)';
+    document.getElementById('daemon-log-content').textContent = lines.length ? lines.join('\\n') : '(empty)';
   }).catch(function() { document.getElementById('daemon-log-content').textContent = 'Failed to load'; });
 }
 async function restartDaemon(name) {
@@ -12597,9 +12597,9 @@ function skillsShowHealth(name) {
   fetch(BASE + '/api/skills/health?name=' + encodeURIComponent(name))
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      var info = 'Health for ' + name + ':\n' +
-        'Utility: ' + (data.utility_score ? (data.utility_score * 100).toFixed(0) + '%' : 'N/A') + '\n' +
-        'Freshness: ' + (data.freshness ? (data.freshness * 100).toFixed(0) + '%' : 'N/A') + '\n' +
+      var info = 'Health for ' + name + ':\\n' +
+        'Utility: ' + (data.utility_score ? (data.utility_score * 100).toFixed(0) + '%' : 'N/A') + '\\n' +
+        'Freshness: ' + (data.freshness ? (data.freshness * 100).toFixed(0) + '%' : 'N/A') + '\\n' +
         'Success Rate: ' + (data.success_rate ? (data.success_rate * 100).toFixed(0) + '%' : 'N/A');
       alert(info);
     }).catch(function() { toast('Failed', 'error'); });
@@ -12777,7 +12777,7 @@ async function loadMetrics() {
   el.innerHTML = '<div class="widget-loading">Fetching Prometheus metrics…</div>';
   try {
     var text = await fetch(BASE + '/metrics').then(function(r) { return r.text(); });
-    var lines = text.split('\n').filter(function(l) { return l && !l.startsWith('#'); });
+    var lines = text.split('\\n').filter(function(l) { return l && !l.startsWith('#'); });
     var metrics = {};
     lines.forEach(function(l) {
       var parts = l.split(' ');
@@ -12817,7 +12817,7 @@ function extendCPLEditor() {
   div.id = 'pol-cpl-section';
   div.style.cssText = 'margin-top:16px;padding:12px;background:var(--bg2);border-radius:8px;';
   div.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">CPL Policy Editor</h3>' +
-    '<textarea id="pol-cpl-editor" class="inp" rows="8" placeholder="policies:\n  - name: allow-read\n    kind: path\n    pattern: ^/tmp/.*\n    action: allow" style="font-size:11px;font-family:JetBrains Mono,monospace;width:100%;resize:vertical;"></textarea>' +
+    '<textarea id="pol-cpl-editor" class="inp" rows="8" placeholder="policies:\\n  - name: allow-read\\n    kind: path\\n    pattern: ^/tmp/.*\\n    action: allow" style="font-size:11px;font-family:JetBrains Mono,monospace;width:100%;resize:vertical;"></textarea>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
     '<button class="btn btn-primary" onclick="cplValidate()" style="font-size:10px;padding:3px 10px;">Validate</button>' +
     '<button class="btn btn-ghost" onclick="cplImport()" style="font-size:10px;padding:3px 10px;">Import</button></div>' +
