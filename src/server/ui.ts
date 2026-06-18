@@ -5791,6 +5791,18 @@ function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function escAttr(s) { return esc(s); }
+function renderBadge(label, color) {
+  const palette = {
+    green: ['rgba(34,197,94,0.15)', '#4ade80'],
+    red: ['rgba(239,68,68,0.15)', '#f87171'],
+    amber: ['rgba(245,158,11,0.15)', '#fbbf24'],
+    blue: ['rgba(59,130,246,0.15)', '#60a5fa'],
+    cyan: ['rgba(6,182,212,0.15)', '#22d3ee'],
+    gray: ['rgba(107,114,128,0.15)', '#d1d5db'],
+  };
+  const [bg, fg] = palette[color] || palette.gray;
+  return '<span class="badge" style="background:' + bg + ';color:' + fg + ';">' + esc(label) + '</span>';
+}
 
 // ── Status page ──────────────────────────────────────────────
 async function loadStatus() {
@@ -12239,7 +12251,7 @@ function showComputerScreenshot(idx) {
   modal.innerHTML = '<div style="max-width:min(96vw,1400px);max-height:92vh;background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45);">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);">' +
     '<div>' + esc(shot.name || 'Screenshot') + '</div>' +
-    '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="document.getElementById(\'computer-screenshot-modal\').remove()">Close</button></div>' +
+    '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="document.getElementById(\\'computer-screenshot-modal\\').remove()">Close</button></div>' +
     '<div style="max-height:calc(92vh - 48px);overflow:auto;background:#000;">' +
     '<img src="data:image/png;base64,' + shot.data + '" style="display:block;max-width:100%;height:auto;margin:0 auto;" />' +
     '</div></div>';
@@ -12366,7 +12378,7 @@ function showDaemonLogs(name) {
   }).catch(function() { document.getElementById('daemon-log-content').textContent = 'Failed to load'; });
 }
 async function restartDaemon(name) {
-  var ok = await confirmAction('Restart Daemon', 'Restart ' + esc(name) + '?');
+  var ok = await confirmAction('Restart Daemon', 'Restart ' + esc(name) + '?', 'Restart');
   if (!ok) { _confirmResolve = null; return; }
   try {
     await fetch(BASE + '/api/daemons/' + encodeURIComponent(name) + '/restart', { method: 'POST' });

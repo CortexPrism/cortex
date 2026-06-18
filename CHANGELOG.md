@@ -5,6 +5,12 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Changed
+
+- **Daemon health and restart handling** (`src/server/server.ts`, `src/server/router.ts`, `src/services/manager.ts`, `src/server/ui.ts`) — server startup now boots auto-start services, daemon health reports real supervisor and service-manager status, and the Daemons page restart dialog uses a restart-specific action label.
+
 ## [0.41.2] — 2026-06-18
 
 ### Changed

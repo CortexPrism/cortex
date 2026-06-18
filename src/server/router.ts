@@ -82,7 +82,7 @@ import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
 import { basename, dirname, join } from '@std/path';
 import { encodeBase64 } from '@std/encoding/base64';
-import { resolveHomeDir } from '../utils/platform.ts';
+import { findDenoProcesses, resolveHomeDir } from '../utils/platform.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
 import { getPendingDirectives } from '../hub/ws-node.ts';
 import {
@@ -95,6 +95,7 @@ import {
 } from '../agent/manager.ts';
 import {
   deleteService,
+  isServiceManagerActive,
   getRuntimeStatus,
   getService,
   listServices,
@@ -3738,18 +3739,19 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { pingProcess, VALIDATOR_SOCK, EXECUTOR_SOCK, SCHEDULER_SOCK } = await import(
       '../ipc/transport.ts'
     );
-    const [validatorUp, executorUp, schedulerUp] = await Promise.all([
+    const [validatorUp, executorUp, schedulerUp, supervisorPids] = await Promise.all([
       pingProcess(VALIDATOR_SOCK).catch(() => false),
       pingProcess(EXECUTOR_SOCK).catch(() => false),
       pingProcess(SCHEDULER_SOCK).catch(() => false),
+      findDenoProcesses('supervisor-process').catch(() => []),
     ]);
     return json({
       daemons: [
         { name: 'validator', status: validatorUp ? 'running' : 'stopped', sock: VALIDATOR_SOCK },
         { name: 'executor', status: executorUp ? 'running' : 'stopped', sock: EXECUTOR_SOCK },
         { name: 'scheduler', status: schedulerUp ? 'running' : 'stopped', sock: SCHEDULER_SOCK },
-        { name: 'supervisor', status: 'unknown' },
-        { name: 'service-manager', status: 'unknown' },
+        { name: 'supervisor', status: supervisorPids.length > 0 ? 'running' : 'stopped' },
+        { name: 'service-manager', status: isServiceManagerActive() ? 'running' : 'stopped' },
       ],
     });
   }
@@ -3776,7 +3778,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/daemons/:name/restart
   const daemonRestartMatch = path.match(/^\/api\/daemons\/([^/]+)\/restart$/);
   if (req.method === 'POST' && daemonRestartMatch) {
-    return json({ ok: true, name: daemonRestartMatch[1] });
+    const name = daemonRestartMatch[1];
+    if (name === 'service-manager') {
+      const { startAutoServices } = await import('../services/manager.ts');
+      await startAutoServices();
+      return json({ ok: true, name, restarted: true });
+    }
+
+    if (name === 'supervisor' || name === 'validator' || name === 'executor' || name === 'scheduler') {
+      const { startDaemonCore, stopDaemons } = await import('../cli/daemon.ts');
+      await stopDaemons();
+      await new Promise((r) => setTimeout(r, 1000));
+      await startDaemonCore(true);
+      return json({ ok: true, name, restarted: true });
+    }
+
+    return json({ ok: true, name });
   }
 
   // GET /api/daemons/sockets
