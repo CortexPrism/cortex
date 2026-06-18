@@ -54,7 +54,12 @@ async function runDueJobs(): Promise<void> {
         const err = new TextDecoder().decode(stderr);
         const elapsed = Date.now() - t0;
         if (code === 0) {
-          await markJobDone(job.id, runId, { stdout: out, stderr: err, durationMs: elapsed, exitCode: code });
+          await markJobDone(job.id, runId, {
+            stdout: out,
+            stderr: err,
+            durationMs: elapsed,
+            exitCode: code,
+          });
           if (job.kind === 'cron' && job.schedule) {
             await reschedule(job.id, job.schedule);
           }
