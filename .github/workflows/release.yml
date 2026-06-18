@@ -162,6 +162,7 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Build dashboard (placeholder)
+        shell: bash
         run: |
           mkdir -p desktop/dist
           echo "<!DOCTYPE html><html><head><title>Cortex Dashboard</title></head><body><h1>Cortex Dashboard v${{ github.ref_name }}</h1></body></html>" > desktop/dist/index.html

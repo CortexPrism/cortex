@@ -150,12 +150,16 @@ export class ModelArbiter {
 
     if (remainingBudget != null) {
       const relevant = candidateStats.filter((row) =>
-        filtered.some((c) => c.provider === row.candidate.provider && c.model === row.candidate.model)
+        filtered.some((c) =>
+          c.provider === row.candidate.provider && c.model === row.candidate.model
+        )
       );
       const budgetFiltered = relevant.filter((row) => row.avgCost <= remainingBudget);
       if (budgetFiltered.length > 0) {
         filtered = filtered.filter((c) =>
-          budgetFiltered.some((row) => row.candidate.provider === c.provider && row.candidate.model === c.model)
+          budgetFiltered.some((row) =>
+            row.candidate.provider === c.provider && row.candidate.model === c.model
+          )
         );
       } else if (relevant.length > 0) {
         const cheapest = relevant.reduce((best, row) => row.avgCost < best.avgCost ? row : best);
@@ -167,7 +171,9 @@ export class ModelArbiter {
 
     const healthyFiltered = candidateStats
       .filter((row) =>
-        filtered.some((c) => c.provider === row.candidate.provider && c.model === row.candidate.model)
+        filtered.some((c) =>
+          c.provider === row.candidate.provider && c.model === row.candidate.model
+        )
       )
       .filter((row) => row.totalCalls < 5 || (row.successRate >= 0.4 && row.avgQuality >= 0.3))
       .map((row) => row.candidate);
