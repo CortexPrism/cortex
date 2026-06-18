@@ -2526,117 +2526,6 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: Import/Export -->
-  <div id="page-importexport" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">Import / Export</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Migrate sessions, config, skills, and memory</p>
-      </div>
-    </div>
-    <div style="flex:1;display:flex;overflow:hidden;">
-      <div style="flex:1;overflow-y:auto;padding:16px;">
-        <div class="card" style="margin-bottom:16px;">
-          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Import</h3>
-          <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Import data from OpenClaw, Cortex JSON, or artifacts</p>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <select id="ie-import-type" class="inp" style="width:200px;font-size:12px;">
-              <option value="cortex">Cortex JSON</option>
-              <option value="openclaw">OpenClaw</option>
-              <option value="artifacts">Artifacts (SOUL.md/USER.md)</option>
-            </select>
-            <input type="file" id="ie-import-file" accept=".json" style="font-size:12px;">
-            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;">
-              <input type="checkbox" id="ie-dry-run" checked> Dry run (preview only)
-            </label>
-            <div><button class="btn btn-primary" onclick="runImport()" style="font-size:12px;">Import</button></div>
-          </div>
-        </div>
-        <div class="card">
-          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Export</h3>
-          <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Download Cortex data as JSON</p>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-sessions" checked> Sessions</label>
-            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-config"> Config</label>
-            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-skills"> Skills</label>
-            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-memory"> Memory</label>
-            <div><button class="btn btn-primary" onclick="runExport()" style="font-size:12px;">Export JSON</button></div>
-          </div>
-        </div>
-      </div>
-      <div style="width:380px;min-width:300px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
-        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Migration History</div>
-        <div style="flex:1;overflow-y:auto;padding:8px;" id="ie-history"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Page: Update -->
-  <div id="page-update" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">Update System</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Check for updates, install, and rollback</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="loadUpdateStatus()" style="font-size:12px;">↻ Refresh</button>
-      </div>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;">
-      <div class="card" style="margin-bottom:16px;">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Status</h3>
-        <div id="update-status-content"><div class="widget-loading">Loading…</div></div>
-      </div>
-      <div class="card" style="margin-bottom:16px;">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Actions</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="checkForUpdates()">Check for Updates</button>
-          <button class="btn" onclick="installUpdate()" style="background:var(--accent-green);color:#fff;">Install Update</button>
-          <button class="btn btn-danger" onclick="rollbackUpdate()">Rollback</button>
-        </div>
-        <div id="update-action-result" style="margin-top:8px;font-size:12px;"></div>
-      </div>
-      <div class="card">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Changelog</h3>
-        <div id="update-changelog-content" style="font-size:12px;color:var(--text2);max-height:300px;overflow-y:auto;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Page: Reflection -->
-  <div id="page-reflection" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">Reflection Consolidation</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">LLM-based reflection pattern analysis and meta-pattern generation</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="triggerConsolidation()" style="font-size:12px;padding:5px 14px;">⚡ Consolidate Now</button>
-        <button class="btn btn-ghost" onclick="loadReflectionData()" style="font-size:12px;">↻ Refresh</button>
-      </div>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;">
-      <div class="card" style="margin-bottom:16px;">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Consolidation Schedule</h3>
-        <div style="display:flex;gap:16px;align-items:center;">
-          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="refl-hourly" checked onchange="saveReflectionSchedule()"> Hourly</label>
-          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="refl-daily" checked onchange="saveReflectionSchedule()"> Daily</label>
-          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="refl-weekly" checked onchange="saveReflectionSchedule()"> Weekly</label>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div class="card">
-          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Meta-Patterns</h3>
-          <div id="refl-meta-patterns"><div class="widget-loading">Loading…</div></div>
-        </div>
-        <div class="card">
-          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Consolidation History</h3>
-          <div style="max-height:300px;overflow-y:auto;" id="refl-history"><div class="widget-loading">Loading…</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Page: Tools -->
   <div id="page-tools" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -2682,41 +2571,6 @@ const HTML = `<!DOCTYPE html>
           <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Decision History</h3>
           <div style="max-height:200px;overflow-y:auto;font-size:11px;" id="mc-history"><div class="empty">No assessment history</div></div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Page: Voice -->
-  <div id="page-voice" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">Voice Configuration</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">TTS / STT provider settings and voice preview</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="loadVoiceConfig()" style="font-size:12px;">↻ Refresh</button>
-      </div>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;">
-      <div class="card" style="margin-bottom:16px;">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Text-to-Speech (TTS)</h3>
-        <div class="stat-row"><span>Provider</span><select id="voice-tts-provider" class="inp" style="width:150px;font-size:11px;" onchange="loadVoiceTTSConfig()"><option>loading...</option></select></div>
-        <div class="stat-row"><span>Voice</span><select id="voice-tts-voice" class="inp" style="width:150px;font-size:11px;"></select></div>
-        <div style="margin-top:8px;"><button class="btn btn-ghost" onclick="saveVoiceTTS()" style="font-size:11px;">Save TTS</button></div>
-      </div>
-      <div class="card" style="margin-bottom:16px;">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Speech-to-Text (STT)</h3>
-        <div class="stat-row"><span>Provider</span><span id="voice-stt-provider">openai</span></div>
-        <div class="stat-row"><span>Model</span><span>whisper-1</span></div>
-      </div>
-      <div class="card" style="margin-bottom:16px;">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Voice Activity Detection (VAD)</h3>
-        <div class="stat-row"><span>Threshold</span><input id="voice-vad-threshold" type="range" min="0" max="100" value="50" style="width:150px;" onchange="document.getElementById('voice-vad-val').textContent=this.value+'%'"><span id="voice-vad-val" style="font-size:11px;color:var(--text2);">50%</span></div>
-        <div style="margin-top:8px;"><button class="btn btn-ghost" onclick="saveVoiceVAD()" style="font-size:11px;">Save VAD</button></div>
-      </div>
-      <div class="card">
-        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Audio Format</h3>
-        <div style="display:flex;gap:12px;" id="voice-format-options"></div>
       </div>
     </div>
   </div>
@@ -3828,12 +3682,8 @@ function showPage(name) {
     computer: loadComputerPage,
     remote: loadRemotePage,
     daemons: loadDaemonPage,
-    importexport: loadImportExportPage,
-    update: loadUpdatePage,
-    reflection: loadReflectionPage,
     tools: loadTools,
     metacognition: loadMetacognition,
-    voice: () => { loadVoiceConfig(); extendVoicePage(); },
   };
   if (loaders[name]) loaders[name]();
 }
@@ -11904,168 +11754,6 @@ function stopDaemonAutoRefresh() {
   if (daemonAutoRefresh) { clearInterval(daemonAutoRefresh); daemonAutoRefresh = null; }
 }
 
-// ── Import/Export Page ──
-function loadImportExportPage() { loadImportHistory(); }
-async function runImport() {
-  var fileInput = document.getElementById('ie-import-file');
-  var file = fileInput.files[0];
-  var type = document.getElementById('ie-import-type').value;
-  var dryRun = document.getElementById('ie-dry-run').checked;
-  var body = { type: type, dryRun: dryRun };
-  if (file) {
-    try { body.file = await file.text(); } catch(e) {}
-  }
-  try {
-    var res = await fetch(BASE + '/api/import', {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-    });
-    var data = await res.json();
-    if (!res.ok) { toast(data.error || 'Import failed', 'error'); return; }
-    if (dryRun) {
-      toast('Dry run: ' + JSON.stringify(data.preview || data), 'success');
-    } else {
-      toast('Import successful', 'success');
-      loadImportHistory();
-    }
-  } catch(e) { toast('Import failed', 'error'); }
-}
-async function runExport() {
-  var body = {
-    sessions: document.getElementById('ie-export-sessions').checked,
-    config: document.getElementById('ie-export-config').checked,
-    skills: document.getElementById('ie-export-skills').checked,
-    memory: document.getElementById('ie-export-memory').checked,
-  };
-  try {
-    var res = await fetch(BASE + '/api/export', {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-    });
-    var data = await res.json();
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a'); a.href = url; a.download = 'cortex-export.json'; a.click();
-    URL.revokeObjectURL(url);
-    toast('Export downloaded', 'success');
-  } catch(e) { toast('Export failed', 'error'); }
-}
-async function loadImportHistory() {
-  var el = document.getElementById('ie-history');
-  try {
-    var history = await fetch(BASE + '/api/import/history').then(r => r.json()).catch(function() { return []; });
-    if (!history || !history.length) { el.innerHTML = '<div class="empty" style="font-size:10px;">No import history</div>'; return; }
-    el.innerHTML = (Array.isArray(history) ? history : []).map(function(h) {
-      return '<div style="font-size:10px;padding:4px 0;border-bottom:1px solid var(--border);">' +
-        '<div style="color:var(--accent);">' + esc(h.source || h.id) + '</div>' +
-        '<div style="color:var(--text3);">' + timeAgo(h.date || h.timestamp) + '</div></div>';
-    }).join('');
-  } catch(e) { el.innerHTML = '<div class="empty" style="font-size:10px;">Failed to load</div>'; }
-}
-
-// ── Update Page ──
-function loadUpdatePage() { loadUpdateStatus(); loadUpdateChangelog(); }
-async function loadUpdateStatus() {
-  var el = document.getElementById('update-status-content');
-  try {
-    var data = await fetch(BASE + '/api/update/status').then(r => r.json());
-    el.innerHTML = '<div class="stat-row"><span>Current Version</span><span>' + esc(data.currentVersion || data.version || '—') + '</span></div>' +
-      '<div class="stat-row"><span>Latest Version</span><span>' + esc(data.latestVersion || data.latest || '—') + '</span></div>' +
-      '<div class="stat-row"><span>Channel</span><span>' + esc(data.channel || 'stable') + '</span></div>' +
-      '<div class="stat-row"><span>Status</span><span>' + renderBadge(data.upToDate ? 'Up to date' : 'Update available', data.upToDate ? 'green' : 'amber') + '</span></div>';
-  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
-}
-async function checkForUpdates() {
-  var el = document.getElementById('update-action-result');
-  el.innerHTML = '<span style="color:var(--text2);">Checking…</span>';
-  try {
-    var data = await fetch(BASE + '/api/update/check', { method: 'POST' }).then(r => r.json());
-    el.innerHTML = data.upToDate
-      ? '<span style="color:var(--accent-green);">✓ No updates available</span>'
-      : '<span style="color:var(--accent-amber);">↑ Update available: ' + esc(data.latest || '') + '</span>';
-    loadUpdateStatus();
-  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Check failed</span>'; }
-}
-async function installUpdate() {
-  var el = document.getElementById('update-action-result');
-  el.innerHTML = '<span style="color:var(--text2);">Installing…</span>';
-  try {
-    var data = await fetch(BASE + '/api/update/install', { method: 'POST' }).then(r => r.json());
-    el.innerHTML = '<span style="color:var(--accent-green);">' + esc(data.message || 'Update initiated') + '</span>';
-  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Install failed</span>'; }
-}
-async function rollbackUpdate() {
-  var ok = await confirmAction('Rollback Update', 'Revert to the previous version?');
-  if (!ok) { _confirmResolve = null; return; }
-  var el = document.getElementById('update-action-result');
-  el.innerHTML = '<span style="color:var(--text2);">Rolling back…</span>';
-  try {
-    var data = await fetch(BASE + '/api/update/rollback', { method: 'POST' }).then(r => r.json());
-    el.innerHTML = '<span style="color:var(--accent-green);">' + esc(data.message || 'Rollback initiated') + '</span>';
-  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Rollback failed</span>'; }
-}
-async function loadUpdateChangelog() {
-  var el = document.getElementById('update-changelog-content');
-  try {
-    var data = await fetch(BASE + '/api/update/changelog').then(r => r.json());
-    el.innerHTML = '<pre style="white-space:pre-wrap;font-size:11px;">' + esc(data.notes || 'No changelog available') + '</pre>';
-  } catch(e) { el.innerHTML = 'Failed to load';
-  }
-}
-
-// ── Reflection Page ──
-function loadReflectionPage() { loadReflectionData(); }
-async function loadReflectionData() {
-  loadReflectionMetaPatterns();
-  loadReflectionHistory();
-}
-async function loadReflectionMetaPatterns() {
-  var el = document.getElementById('refl-meta-patterns');
-  try {
-    var patterns = await fetch(BASE + '/api/reflection/meta-patterns').then(r => r.json()).catch(function() { return []; });
-    if (!patterns || !patterns.length) { el.innerHTML = '<div class="empty">No meta-patterns yet</div>'; return; }
-    el.innerHTML = (Array.isArray(patterns) ? patterns : []).map(function(p) {
-      var conf = (p.confidence || 0) * 100;
-      return '<div class="card-sm" style="margin-bottom:6px;">' +
-        '<div style="font-size:12px;font-weight:500;">' + esc(p.pattern || p.summary || '') + '</div>' +
-        '<div class="bar" style="margin-top:4px;"><div class="bar-fill" style="width:' + conf + '%;background:' + (conf > 70 ? 'var(--accent-green)' : 'var(--accent-amber)') + ';"></div></div>' +
-        '<div style="font-size:10px;color:var(--text3);">Confidence: ' + conf.toFixed(0) + '%</div></div>';
-    }).join('');
-  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
-}
-async function loadReflectionHistory() {
-  var el = document.getElementById('refl-history');
-  try {
-    var history = await fetch(BASE + '/api/reflection/history').then(r => r.json()).catch(function() { return []; });
-    if (!history || !history.length) { el.innerHTML = '<div class="empty">No consolidation history</div>'; return; }
-    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
-      '<tbody>' + (Array.isArray(history) ? history : []).slice(0, 30).map(function(h) {
-        return '<tr style="border-bottom:1px solid var(--border);">' +
-          '<td style="padding:4px 0;color:var(--text2);">' + timeAgo(h.created_at || h.timestamp) + '</td>' +
-          '<td style="padding:4px 0;">' + esc(h.category || h.type || '') + '</td>' +
-          '<td style="padding:4px 0;color:var(--text2);">' + esc((h.pattern || h.summary || '').substring(0, 60)) + '</td></tr>';
-      }).join('') + '</tbody></table>';
-  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
-}
-async function triggerConsolidation() {
-  toast('Consolidation started…', 'success');
-  try {
-    await fetch(BASE + '/api/reflection/consolidate', { method: 'POST' });
-    toast('Consolidation complete', 'success');
-    loadReflectionData();
-  } catch(e) { toast('Consolidation failed', 'error'); }
-}
-async function saveReflectionSchedule() {
-  var body = {
-    hourly: document.getElementById('refl-hourly').checked,
-    daily: document.getElementById('refl-daily').checked,
-    weekly: document.getElementById('refl-weekly').checked,
-  };
-  try {
-    await fetch(BASE + '/api/reflection/schedule', {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-    });
-  } catch(e) {}
-}
-
 // ── Phase 3 New Page Functions ────────────────────────────────────────────
 
 // ── Tools Page ──
@@ -12126,44 +11814,6 @@ async function loadMetacognitionHistory() {
         '<span style="color:var(--text3);">' + timeAgo(h.timestamp) + '</span></div>';
     }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
-}
-
-// ── Voice Page ──
-async function loadVoiceConfig() {
-  loadVoiceTTSConfig();
-  loadVoiceSTTConfig();
-  renderVoiceFormats();
-}
-async function loadVoiceTTSConfig() {
-  try {
-    var data = await fetch(BASE + '/api/voice/tts').then(r => r.json());
-    var provSel = document.getElementById('voice-tts-provider');
-    provSel.innerHTML = (data.providers || ['openai']).map(function(p) { return '<option>' + esc(p) + '</option>'; }).join('');
-    var voiceSel = document.getElementById('voice-tts-voice');
-    var voices = provSel.value === 'elevenlabs' ? (data.elevenLabsVoices || []) : (data.openaiVoices || []);
-    voiceSel.innerHTML = voices.map(function(v) { return '<option>' + esc(v) + '</option>'; }).join('');
-  } catch(e) {}
-}
-async function loadVoiceSTTConfig() {
-  try {
-    var data = await fetch(BASE + '/api/voice/stt').then(r => r.json());
-    document.getElementById('voice-stt-provider').textContent = (data.providers || ['openai']).join(', ');
-  } catch(e) {}
-}
-async function saveVoiceTTS() {
-  var body = { provider: document.getElementById('voice-tts-provider').value, voice: document.getElementById('voice-tts-voice').value };
-  await fetch(BASE + '/api/voice/tts', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).catch(function(){});
-  toast('TTS saved', 'success');
-}
-async function saveVoiceVAD() {
-  await fetch(BASE + '/api/voice/vad', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ threshold: parseInt(document.getElementById('voice-vad-threshold').value) }) }).catch(function(){});
-  toast('VAD saved', 'success');
-}
-function renderVoiceFormats() {
-  var formats = ['wav', 'ogg', 'mp3', 'webm'];
-  document.getElementById('voice-format-options').innerHTML = formats.map(function(f) {
-    return '<label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;"><input type="radio" name="voice-format" value="' + f + '" ' + (f === 'mp3' ? 'checked' : '') + '>' + f.toUpperCase() + '</label>';
-  }).join('');
 }
 
 // ── Settings Extensions ──
@@ -12622,19 +12272,6 @@ function qmShowConfig() {
   prompt('QM/MQM config is available via Settings → AI & Models. Quartermaster provider/model settings affect tool orchestration and model selection strategies.');
 }
 
-// ── Voice: Provider Browser ──
-function extendVoicePage() {
-  try {
-    fetch(BASE + '/api/voice/providers').then(function(r) { return r.json(); }).then(function(data) {
-      var el = document.getElementById('voice-providers-info');
-      if (!el) return;
-      el.innerHTML = '<div style="font-size:11px;color:var(--text2);margin-top:8px;">' +
-        'STT: ' + (data.sttProviders || []).join(', ') + ' | ' +
-        'TTS: ' + (data.ttsProviders || []).join(', ') + '</div>';
-    }).catch(function(){});
-  } catch(e) {}
-}
-
 // ── Automation: Webhook Test-Fire ──
 function extendAutomationPage() {
   var el = document.querySelector('#page-automation');
@@ -12873,7 +12510,6 @@ showPage = function(name) {
     if (currentPage === 'skills') extendSkillsPage();
     if (currentPage === 'editor') extendEditorPage();
     if (currentPage === 'quartermaster') extendQuartermaster();
-    if (currentPage === 'voice') extendVoicePage();
     if (currentPage === 'automation') extendAutomationPage();
     if (currentPage === 'vcs') extendVCSPage();
   }, 800);
