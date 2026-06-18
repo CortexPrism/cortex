@@ -4650,6 +4650,81 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ processes });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Chrome Bridge API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/chrome-bridge/status
+  if (req.method === 'GET' && path === '/api/chrome-bridge/status') {
+    try {
+      const { isChromeBridgeRunning } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      const { getConnection } = await import('../mcp/client.ts');
+      const { globalRegistry } = await import('../tools/registry.ts');
+      const running = isChromeBridgeRunning();
+      const conn = running ? getConnection('chrome-bridge') : undefined;
+      const tools = globalRegistry.toolNames().filter((n) => n.startsWith('chrome_'));
+      return json({
+        running,
+        connected: conn?.connected ?? false,
+        tools: tools.length,
+        toolNames: tools,
+        serverInfo: conn?.serverInfo ?? null,
+        calls: conn?.calls ?? 0,
+        errors: conn?.errors ?? 0,
+      });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/chrome-bridge/start
+  if (req.method === 'POST' && path === '/api/chrome-bridge/start') {
+    try {
+      const { loadConfig } = await import('../config/config.ts');
+      const { startChromeBridge, registerChromeBridgeTools } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      const { globalRegistry } = await import('../tools/registry.ts');
+      const config = await loadConfig();
+      if (!config.chromeBridge?.enabled) {
+        return err('chrome-bridge is not enabled in config', 400);
+      }
+      await startChromeBridge(config.chromeBridge);
+      if (config.chromeBridge.autoRegisterTools !== false) {
+        await registerChromeBridgeTools(globalRegistry, config.chromeBridge);
+      }
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/chrome-bridge/stop
+  if (req.method === 'POST' && path === '/api/chrome-bridge/stop') {
+    try {
+      const { stopChromeBridge } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      await stopChromeBridge();
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/chrome-bridge/tools
+  if (req.method === 'GET' && path === '/api/chrome-bridge/tools') {
+    try {
+      const { globalRegistry } = await import('../tools/registry.ts');
+      const tools = globalRegistry.toolNames().filter((n) => n.startsWith('chrome_'));
+      return json({ tools, count: tools.length });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
   return null;
 }
 

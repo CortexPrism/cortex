@@ -33,8 +33,9 @@ async function decryptValue(value: string | null | undefined): Promise<string | 
   const key = await getConfigKey();
   if (!key) return value;
   try {
-    const raw = Uint8Array.from(atob(value.slice(CONFIG_ENCRYPTION_PREFIX.length)), (c) =>
-      c.charCodeAt(0),
+    const raw = Uint8Array.from(
+      atob(value.slice(CONFIG_ENCRYPTION_PREFIX.length)),
+      (c) => c.charCodeAt(0),
     );
     const iv = raw.slice(0, 12);
     const cipher = raw.slice(12);
@@ -62,7 +63,9 @@ async function encryptValue(value: string | null | undefined): Promise<string | 
   return CONFIG_ENCRYPTION_PREFIX + btoa(String.fromCharCode(...combined));
 }
 
-async function encryptProvider(provider: ProviderConfig | undefined): Promise<ProviderConfig | undefined> {
+async function encryptProvider(
+  provider: ProviderConfig | undefined,
+): Promise<ProviderConfig | undefined> {
   if (!provider) return provider;
   return {
     ...provider,
@@ -71,7 +74,9 @@ async function encryptProvider(provider: ProviderConfig | undefined): Promise<Pr
   };
 }
 
-async function decryptProvider(provider: ProviderConfig | undefined): Promise<ProviderConfig | undefined> {
+async function decryptProvider(
+  provider: ProviderConfig | undefined,
+): Promise<ProviderConfig | undefined> {
   if (!provider) return provider;
   return {
     ...provider,
@@ -341,6 +346,18 @@ export interface WebAuth {
   sessionSecret?: string;
 }
 
+export interface ChromeBridgeConfig {
+  enabled: boolean;
+  nodePath?: string;
+  serverPath: string;
+  port?: number;
+  token?: string;
+  autoStart?: boolean;
+  autoRegisterTools?: boolean;
+  toolPrefix?: string;
+  env?: Record<string, string>;
+}
+
 export interface ComputerUseConfig {
   enabled: boolean;
   displayWidth: number;
@@ -402,6 +419,8 @@ export interface CortexConfig {
   memory?: MemoryConfig;
   /** Computer use (GUI automation) configuration */
   computerUse?: ComputerUseConfig;
+  /** Chrome Bridge MCP server integration configuration */
+  chromeBridge?: ChromeBridgeConfig;
   /** Server-level security configuration */
   server?: ServerConfig;
 }
@@ -512,14 +531,27 @@ export async function loadConfig(): Promise<CortexConfig> {
     if (disk.pluginUpdate?.githubToken) {
       pluginUpdate.githubToken = (await decryptValue(disk.pluginUpdate.githubToken)) ?? null;
     }
-    let logging: LoggingConfig = { ...DEFAULT_CONFIG.logging, ...(disk.logging ?? {}) } as LoggingConfig;
+    let logging: LoggingConfig = {
+      ...DEFAULT_CONFIG.logging,
+      ...(disk.logging ?? {}),
+    } as LoggingConfig;
     if (disk.logging?.grafana?.authToken) {
       const decrypted = await decryptValue(disk.logging.grafana.authToken);
-      logging = { ...logging, grafana: { otlpEndpoint: logging.grafana?.otlpEndpoint ?? '', authToken: decrypted ?? '' } };
+      logging = {
+        ...logging,
+        grafana: { otlpEndpoint: logging.grafana?.otlpEndpoint ?? '', authToken: decrypted ?? '' },
+      };
     }
     if (disk.logging?.langfuse?.secretKey) {
       const decrypted = await decryptValue(disk.logging.langfuse.secretKey);
-      logging = { ...logging, langfuse: { publicKey: logging.langfuse?.publicKey ?? '', secretKey: decrypted ?? '', baseUrl: logging.langfuse?.baseUrl } };
+      logging = {
+        ...logging,
+        langfuse: {
+          publicKey: logging.langfuse?.publicKey ?? '',
+          secretKey: decrypted ?? '',
+          baseUrl: logging.langfuse?.baseUrl,
+        },
+      };
     }
     _config = {
       ...DEFAULT_CONFIG,

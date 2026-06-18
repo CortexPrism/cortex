@@ -42,6 +42,7 @@ import { installCommand, uninstallCommand } from './cli/install.ts';
 import { restartCommand, startCommand } from './cli/start.ts';
 import { voiceCommand } from './cli/voice-cmd.ts';
 import { logCommand } from './cli/log-cmd.ts';
+import { chromeBridgeCommand } from './cli/chrome_bridge.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -125,6 +126,7 @@ const program = new Command()
   .command('start', startCommand)
   .command('restart', restartCommand)
   .command('voice', voiceCommand)
-  .command('log', logCommand);
+  .command('log', logCommand)
+  .command('chrome-bridge', chromeBridgeCommand);
 
 await program.parse(Deno.args);
