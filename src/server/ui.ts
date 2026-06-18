@@ -971,6 +971,24 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Vault
     </button>
 
+    <!-- Operations -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Operations <span class="nav-section-toggle">▼</span></div>
+    <button class="nav-item" onclick="showPage('computer');closeMobileSidebar()" id="nav-computer">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> Computer
+    </button>
+    <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote Agents
+    </button>
+    <button class="nav-item" onclick="showPage('daemons');closeMobileSidebar()" id="nav-daemons">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6" rx="1" ry="1"/><path d="M15 14v1a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1"/><path d="M12 6v3"/></svg></span> Daemons
+    </button>
+    <button class="nav-item" onclick="showPage('importexport');closeMobileSidebar()" id="nav-importexport">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Import/Export
+    </button>
+    <button class="nav-item" onclick="showPage('update');closeMobileSidebar()" id="nav-update">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span> Update
+    </button>
+
     <!-- System -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
@@ -2460,6 +2478,212 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Page: Computer Use -->
+  <div id="page-computer" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Computer Use</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Remote desktop viewer with screenshot gallery and action log</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadComputerUse()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);">
+          <button class="btn btn-ghost active" onclick="switchComputerTab('screenshots')" id="comp-tab-screenshots" style="font-size:11px;padding:4px 10px;">Screenshots</button>
+          <button class="btn btn-ghost" onclick="switchComputerTab('actions')" id="comp-tab-actions" style="font-size:11px;padding:4px 10px;">Action Log</button>
+          <button class="btn btn-ghost" onclick="switchComputerTab('config')" id="comp-tab-config" style="font-size:11px;padding:4px 10px;">Config</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px;" id="comp-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Remote Agents -->
+  <div id="page-remote" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Remote Agents</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Distributed agent deployment across nodes</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="showRemoteDeployModal()" style="font-size:12px;padding:5px 14px;">+ Deploy</button>
+        <button class="btn btn-ghost" onclick="loadRemoteAgents()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:16px;" id="remote-agents-list"></div>
+      <div style="width:360px;min-width:320px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Directive History</div>
+        <div style="flex:1;overflow-y:auto;padding:8px;" id="remote-directives"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Daemons -->
+  <div id="page-daemons" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Daemon Health</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Process health monitoring for all daemon processes</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadDaemonHealth()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;" id="daemon-cards"></div>
+      <div style="margin-top:16px;display:flex;gap:12px;" id="daemon-detail">
+        <div style="flex:1;display:none;" id="daemon-log-panel">
+          <div style="font-size:12px;font-weight:500;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+            <span id="daemon-log-title">Logs</span>
+            <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px;">
+              <span id="daemon-log-refresh-countdown" style="color:var(--text3);"></span> Auto-refresh
+            </label>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:JetBrains Mono,monospace;font-size:11px;max-height:300px;overflow-y:auto;color:var(--text2);white-space:pre-wrap;" id="daemon-log-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Import/Export -->
+  <div id="page-importexport" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Import / Export</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Migrate sessions, config, skills, and memory</p>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:16px;">
+        <div class="card" style="margin-bottom:16px;">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Import</h3>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Import data from OpenClaw, Cortex JSON, or artifacts</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <select id="ie-import-type" class="inp" style="width:200px;font-size:12px;">
+              <option value="cortex">Cortex JSON</option>
+              <option value="openclaw">OpenClaw</option>
+              <option value="artifacts">Artifacts (SOUL.md/USER.md)</option>
+            </select>
+            <input type="file" id="ie-import-file" accept=".json" style="font-size:12px;">
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="ie-dry-run" checked> Dry run (preview only)
+            </label>
+            <div><button class="btn btn-primary" onclick="runImport()" style="font-size:12px;">Import</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Export</h3>
+          <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Download Cortex data as JSON</p>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-sessions" checked> Sessions</label>
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-config"> Config</label>
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-skills"> Skills</label>
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="ie-export-memory"> Memory</label>
+            <div><button class="btn btn-primary" onclick="runExport()" style="font-size:12px;">Export JSON</button></div>
+          </div>
+        </div>
+      </div>
+      <div style="width:380px;min-width:300px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Migration History</div>
+        <div style="flex:1;overflow-y:auto;padding:8px;" id="ie-history"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Update -->
+  <div id="page-update" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Update System</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Check for updates, install, and rollback</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadUpdateStatus()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Status</h3>
+        <div id="update-status-content"><div class="widget-loading">Loading…</div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Actions</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="checkForUpdates()">Check for Updates</button>
+          <button class="btn" onclick="installUpdate()" style="background:var(--accent-green);color:#fff;">Install Update</button>
+          <button class="btn btn-danger" onclick="rollbackUpdate()">Rollback</button>
+        </div>
+        <div id="update-action-result" style="margin-top:8px;font-size:12px;"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Changelog</h3>
+        <div id="update-changelog-content" style="font-size:12px;color:var(--text2);max-height:300px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Reflection -->
+  <div id="page-reflection" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Reflection Consolidation</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">LLM-based reflection pattern analysis and meta-pattern generation</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="triggerConsolidation()" style="font-size:12px;padding:5px 14px;">⚡ Consolidate Now</button>
+        <button class="btn btn-ghost" onclick="loadReflectionData()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Consolidation Schedule</h3>
+        <div style="display:flex;gap:16px;align-items:center;">
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="refl-hourly" checked onchange="saveReflectionSchedule()"> Hourly</label>
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="refl-daily" checked onchange="saveReflectionSchedule()"> Daily</label>
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="refl-weekly" checked onchange="saveReflectionSchedule()"> Weekly</label>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Meta-Patterns</h3>
+          <div id="refl-meta-patterns"><div class="widget-loading">Loading…</div></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Consolidation History</h3>
+          <div style="max-height:300px;overflow-y:auto;" id="refl-history"><div class="widget-loading">Loading…</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remote deploy modal -->
+  <div id="remote-deploy-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:480px;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Deploy Remote Agent</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Agent ID</label>
+        <input id="remote-deploy-agent" class="inp" placeholder="agent-001" style="font-size:12px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Node ID</label>
+        <input id="remote-deploy-node" class="inp" placeholder="node-us-east-1" style="font-size:12px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Tier</label>
+        <select id="remote-deploy-tier" class="inp" style="font-size:12px;">
+          <option value="operator">Operator</option>
+          <option value="observer">Observer</option>
+          <option value="sudo">Sudo</option>
+          <option value="root">Root</option>
+        </select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="deployRemoteAgent()">Deploy</button>
+        <button class="btn btn-ghost" onclick="hideModal('remote-deploy-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
 </main>
 </div>
 
@@ -3482,7 +3706,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','automation','channels','sessions','codegraph','workflow','eval','mcp','vault','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','automation','channels','sessions','codegraph','workflow','eval','mcp','vault','computer','remote','daemons','importexport','update','reflection','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3537,6 +3761,12 @@ function showPage(name) {
     eval: loadEvalPage,
     mcp: loadMCPPage,
     vault: loadVaultPage,
+    computer: loadComputerPage,
+    remote: loadRemotePage,
+    daemons: loadDaemonPage,
+    importexport: loadImportExportPage,
+    update: loadUpdatePage,
+    reflection: loadReflectionPage,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -11444,6 +11674,329 @@ async function importVault() {
     document.getElementById('vault-import-modal').style.display = 'none';
     loadVaultCredentials();
   } catch(e) { toast('Import failed', 'error'); }
+}
+
+// ── Phase 2 New Page Functions ────────────────────────────────────────────
+
+// ── Computer Use Page ──
+var compCurrentTab = 'screenshots';
+function loadComputerPage() { switchComputerTab('screenshots'); loadComputerConfig(); }
+function switchComputerTab(tab) {
+  compCurrentTab = tab;
+  ['screenshots','actions','config'].forEach(function(t) {
+    var btn = document.getElementById('comp-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'screenshots') loadComputerScreenshots();
+  else if (tab === 'actions') loadComputerActions();
+  else renderComputerConfig();
+}
+async function loadComputerUse() { switchComputerTab(compCurrentTab); }
+async function loadComputerScreenshots() {
+  var el = document.getElementById('comp-content');
+  el.innerHTML = '<div class="widget-loading">Loading screenshots…</div>';
+  try {
+    var data = await fetch(BASE + '/api/computer/screenshots').then(r => r.json()).catch(function() { return {screenshots:[]}; });
+    var shots = data.screenshots || [];
+    if (!shots.length) { el.innerHTML = '<div class="empty">No screenshots captured</div>'; return; }
+    el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">' +
+      shots.map(function(s, i) {
+        return '<div class="card" style="cursor:pointer;" onclick="showComputerScreenshot(' + i + ')">' +
+          '<img src="data:image/png;base64,' + s.data + '" style="width:100%;height:180px;object-fit:cover;border-radius:4px;" onerror="this.src=\\'\\'">' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:4px;">' + timeAgo(s.timestamp) + '</div></div>';
+      }).join('') + '</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function showComputerScreenshot(idx) {
+  // modal with full-size
+}
+async function loadComputerActions() {
+  var el = document.getElementById('comp-content');
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+    '<thead><tr style="border-bottom:1px solid var(--border);">' +
+    '<th style="padding:4px 0;color:var(--text3);text-align:left;">Timestamp</th>' +
+    '<th style="padding:4px 0;color:var(--text3);text-align:left;">Action</th>' +
+    '<th style="padding:4px 0;color:var(--text3);text-align:left;">Result</th></tr></thead><tbody>' +
+    '<tr><td style="padding:8px 0;color:var(--text3);" colspan="3">No actions recorded</td></tr></tbody></table>';
+}
+async function loadComputerConfig() {
+  try {
+    var data = await fetch(BASE + '/api/computer/config').then(r => r.json());
+    window._compConfig = data;
+  } catch(e) {}
+}
+function renderComputerConfig() {
+  var el = document.getElementById('comp-content');
+  var c = window._compConfig || {};
+  el.innerHTML = '<div style="max-width:400px;">' +
+    '<div class="stat-row"><span>Available</span><span>' + renderBadge(c.available ? 'Yes' : 'No', c.available ? 'green' : 'red') + '</span></div>' +
+    '<div class="stat-row"><span>Resolution</span><span>' + esc(c.resolution || '1920x1080') + '</span></div>' +
+    '<div class="stat-row"><span>DPI</span><span>' + (c.dpi || 96) + '</span></div>' +
+    '</div>';
+}
+
+// ── Remote Agents Page ──
+function loadRemotePage() { loadRemoteAgents(); }
+async function loadRemoteAgents() {
+  var el = document.getElementById('remote-agents-list');
+  showSkeleton(el, 5, 'card');
+  try {
+    var agents = await fetch(BASE + '/api/remote/agents').then(r => r.json()).catch(function() { return []; });
+    if (!agents || !agents.length) {
+      el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);"><p>No remote agents</p><p style="font-size:11px;">Deploy agents to remote nodes</p></div>';
+      return;
+    }
+    el.innerHTML = agents.map(function(a) {
+      return '<div class="card" style="margin-bottom:8px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:start;">' +
+        '<div><div style="font-weight:500;font-size:13px;">' + esc(a.name || a.id) + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);">Node: ' + esc(a.node || a.nodeId || '—') + ' · Tier: ' + esc(a.tier || '—') + '</div></div>' +
+        '<span>' + renderBadge(a.status || 'unknown', a.status === 'connected' ? 'green' : 'red') + '</span></div>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Last seen: ' + (a.lastHeartbeat ? timeAgo(a.lastHeartbeat) : 'never') + '</div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+  loadRemoteDirectives();
+}
+async function loadRemoteDirectives() {
+  var el = document.getElementById('remote-directives');
+  try {
+    var directives = await fetch(BASE + '/api/remote/directives').then(r => r.json()).catch(function() { return []; });
+    if (!directives || !directives.length) { el.innerHTML = '<div class="empty" style="font-size:10px;">No directives</div>'; return; }
+    el.innerHTML = directives.map(function(d) {
+      return '<div style="font-size:10px;padding:4px 0;border-bottom:1px solid var(--border);">' +
+        '<span style="color:var(--accent);">' + esc(d.id) + '</span> ' +
+        '<span style="color:var(--text2);">' + esc(d.agent || '') + ' → ' + esc(d.node || '') + '</span>' +
+        '<span style="color:var(--text3);"> ' + timeAgo(d.sent) + '</span></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty" style="font-size:10px;">Failed to load</div>'; }
+}
+function showRemoteDeployModal() {
+  document.getElementById('remote-deploy-agent').value = '';
+  document.getElementById('remote-deploy-node').value = '';
+  document.getElementById('remote-deploy-modal').style.display = 'flex';
+}
+async function deployRemoteAgent() {
+  var agentId = document.getElementById('remote-deploy-agent').value.trim();
+  var nodeId = document.getElementById('remote-deploy-node').value.trim();
+  if (!agentId || !nodeId) { toast('Agent and node IDs are required', 'error'); return; }
+  try {
+    var res = await fetch(BASE + '/api/remote/deploy', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ agentId: agentId, nodeId: nodeId, tier: document.getElementById('remote-deploy-tier').value })
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Failed', 'error'); return; }
+    toast('Agent deployed', 'success');
+    document.getElementById('remote-deploy-modal').style.display = 'none';
+    loadRemoteAgents();
+  } catch(e) { toast('Deploy failed', 'error'); }
+}
+
+// ── Daemon Health Page ──
+var daemonAutoRefresh = null;
+function loadDaemonPage() { loadDaemonHealth(); startDaemonAutoRefresh(); }
+async function loadDaemonHealth() {
+  var el = document.getElementById('daemon-cards');
+  try {
+    var data = await fetch(BASE + '/api/daemons/health').then(r => r.json());
+    var daemons = data.daemons || [];
+    el.innerHTML = daemons.map(function(d) {
+      var running = d.status === 'running';
+      return '<div class="card" style="cursor:pointer;" onclick="showDaemonLogs(\\'' + escAttr(d.name) + '\\')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="font-weight:500;font-size:13px;text-transform:capitalize;">' + esc(d.name) + '</div>' +
+        '<span>' + renderBadge(running ? 'Running' : 'Stopped', running ? 'green' : 'red') + '</span></div>' +
+        (d.sock ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;">' + esc(d.sock) + '</div>' : '') +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-top:8px;" onclick="event.stopPropagation();restartDaemon(\\'' + escAttr(d.name) + '\\')">Restart</button></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function showDaemonLogs(name) {
+  var panel = document.getElementById('daemon-log-panel');
+  panel.style.display = 'block';
+  document.getElementById('daemon-log-title').textContent = name + ' Logs';
+  document.getElementById('daemon-log-content').textContent = 'Loading…';
+  fetch(BASE + '/api/daemons/' + encodeURIComponent(name) + '/logs?lines=100').then(function(r) { return r.json(); }).then(function(data) {
+    var lines = data.lines || [];
+    document.getElementById('daemon-log-content').textContent = lines.length ? lines.join('\n') : '(empty)';
+  }).catch(function() { document.getElementById('daemon-log-content').textContent = 'Failed to load'; });
+}
+async function restartDaemon(name) {
+  var ok = await confirmAction('Restart Daemon', 'Restart ' + esc(name) + '?');
+  if (!ok) { _confirmResolve = null; return; }
+  try {
+    await fetch(BASE + '/api/daemons/' + encodeURIComponent(name) + '/restart', { method: 'POST' });
+    toast(name + ' restart initiated', 'success');
+    setTimeout(loadDaemonHealth, 2000);
+  } catch(e) { toast('Restart failed', 'error'); }
+}
+function startDaemonAutoRefresh() {
+  stopDaemonAutoRefresh();
+  daemonAutoRefresh = setInterval(loadDaemonHealth, 10000);
+}
+function stopDaemonAutoRefresh() {
+  if (daemonAutoRefresh) { clearInterval(daemonAutoRefresh); daemonAutoRefresh = null; }
+}
+
+// ── Import/Export Page ──
+function loadImportExportPage() { loadImportHistory(); }
+async function runImport() {
+  var fileInput = document.getElementById('ie-import-file');
+  var file = fileInput.files[0];
+  var type = document.getElementById('ie-import-type').value;
+  var dryRun = document.getElementById('ie-dry-run').checked;
+  var body = { type: type, dryRun: dryRun };
+  if (file) {
+    try { body.file = await file.text(); } catch(e) {}
+  }
+  try {
+    var res = await fetch(BASE + '/api/import', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (!res.ok) { toast(data.error || 'Import failed', 'error'); return; }
+    if (dryRun) {
+      toast('Dry run: ' + JSON.stringify(data.preview || data), 'success');
+    } else {
+      toast('Import successful', 'success');
+      loadImportHistory();
+    }
+  } catch(e) { toast('Import failed', 'error'); }
+}
+async function runExport() {
+  var body = {
+    sessions: document.getElementById('ie-export-sessions').checked,
+    config: document.getElementById('ie-export-config').checked,
+    skills: document.getElementById('ie-export-skills').checked,
+    memory: document.getElementById('ie-export-memory').checked,
+  };
+  try {
+    var res = await fetch(BASE + '/api/export', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'cortex-export.json'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Export downloaded', 'success');
+  } catch(e) { toast('Export failed', 'error'); }
+}
+async function loadImportHistory() {
+  var el = document.getElementById('ie-history');
+  try {
+    var history = await fetch(BASE + '/api/import/history').then(r => r.json()).catch(function() { return []; });
+    if (!history || !history.length) { el.innerHTML = '<div class="empty" style="font-size:10px;">No import history</div>'; return; }
+    el.innerHTML = (Array.isArray(history) ? history : []).map(function(h) {
+      return '<div style="font-size:10px;padding:4px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="color:var(--accent);">' + esc(h.source || h.id) + '</div>' +
+        '<div style="color:var(--text3);">' + timeAgo(h.date || h.timestamp) + '</div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty" style="font-size:10px;">Failed to load</div>'; }
+}
+
+// ── Update Page ──
+function loadUpdatePage() { loadUpdateStatus(); loadUpdateChangelog(); }
+async function loadUpdateStatus() {
+  var el = document.getElementById('update-status-content');
+  try {
+    var data = await fetch(BASE + '/api/update/status').then(r => r.json());
+    el.innerHTML = '<div class="stat-row"><span>Current Version</span><span>' + esc(data.currentVersion || data.version || '—') + '</span></div>' +
+      '<div class="stat-row"><span>Latest Version</span><span>' + esc(data.latestVersion || data.latest || '—') + '</span></div>' +
+      '<div class="stat-row"><span>Channel</span><span>' + esc(data.channel || 'stable') + '</span></div>' +
+      '<div class="stat-row"><span>Status</span><span>' + renderBadge(data.upToDate ? 'Up to date' : 'Update available', data.upToDate ? 'green' : 'amber') + '</span></div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function checkForUpdates() {
+  var el = document.getElementById('update-action-result');
+  el.innerHTML = '<span style="color:var(--text2);">Checking…</span>';
+  try {
+    var data = await fetch(BASE + '/api/update/check', { method: 'POST' }).then(r => r.json());
+    el.innerHTML = data.upToDate
+      ? '<span style="color:var(--accent-green);">✓ No updates available</span>'
+      : '<span style="color:var(--accent-amber);">↑ Update available: ' + esc(data.latest || '') + '</span>';
+    loadUpdateStatus();
+  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Check failed</span>'; }
+}
+async function installUpdate() {
+  var el = document.getElementById('update-action-result');
+  el.innerHTML = '<span style="color:var(--text2);">Installing…</span>';
+  try {
+    var data = await fetch(BASE + '/api/update/install', { method: 'POST' }).then(r => r.json());
+    el.innerHTML = '<span style="color:var(--accent-green);">' + esc(data.message || 'Update initiated') + '</span>';
+  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Install failed</span>'; }
+}
+async function rollbackUpdate() {
+  var ok = await confirmAction('Rollback Update', 'Revert to the previous version?');
+  if (!ok) { _confirmResolve = null; return; }
+  var el = document.getElementById('update-action-result');
+  el.innerHTML = '<span style="color:var(--text2);">Rolling back…</span>';
+  try {
+    var data = await fetch(BASE + '/api/update/rollback', { method: 'POST' }).then(r => r.json());
+    el.innerHTML = '<span style="color:var(--accent-green);">' + esc(data.message || 'Rollback initiated') + '</span>';
+  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Rollback failed</span>'; }
+}
+async function loadUpdateChangelog() {
+  var el = document.getElementById('update-changelog-content');
+  try {
+    var data = await fetch(BASE + '/api/update/changelog').then(r => r.json());
+    el.innerHTML = '<pre style="white-space:pre-wrap;font-size:11px;">' + esc(data.notes || 'No changelog available') + '</pre>';
+  } catch(e) { el.innerHTML = 'Failed to load';
+  }
+}
+
+// ── Reflection Page ──
+function loadReflectionPage() { loadReflectionData(); }
+async function loadReflectionData() {
+  loadReflectionMetaPatterns();
+  loadReflectionHistory();
+}
+async function loadReflectionMetaPatterns() {
+  var el = document.getElementById('refl-meta-patterns');
+  try {
+    var patterns = await fetch(BASE + '/api/reflection/meta-patterns').then(r => r.json()).catch(function() { return []; });
+    if (!patterns || !patterns.length) { el.innerHTML = '<div class="empty">No meta-patterns yet</div>'; return; }
+    el.innerHTML = (Array.isArray(patterns) ? patterns : []).map(function(p) {
+      var conf = (p.confidence || 0) * 100;
+      return '<div class="card-sm" style="margin-bottom:6px;">' +
+        '<div style="font-size:12px;font-weight:500;">' + esc(p.pattern || p.summary || '') + '</div>' +
+        '<div class="bar" style="margin-top:4px;"><div class="bar-fill" style="width:' + conf + '%;background:' + (conf > 70 ? 'var(--accent-green)' : 'var(--accent-amber)') + ';"></div></div>' +
+        '<div style="font-size:10px;color:var(--text3);">Confidence: ' + conf.toFixed(0) + '%</div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadReflectionHistory() {
+  var el = document.getElementById('refl-history');
+  try {
+    var history = await fetch(BASE + '/api/reflection/history').then(r => r.json()).catch(function() { return []; });
+    if (!history || !history.length) { el.innerHTML = '<div class="empty">No consolidation history</div>'; return; }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<tbody>' + (Array.isArray(history) ? history : []).slice(0, 30).map(function(h) {
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:4px 0;color:var(--text2);">' + timeAgo(h.created_at || h.timestamp) + '</td>' +
+          '<td style="padding:4px 0;">' + esc(h.category || h.type || '') + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + esc((h.pattern || h.summary || '').substring(0, 60)) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function triggerConsolidation() {
+  toast('Consolidation started…', 'success');
+  try {
+    await fetch(BASE + '/api/reflection/consolidate', { method: 'POST' });
+    toast('Consolidation complete', 'success');
+    loadReflectionData();
+  } catch(e) { toast('Consolidation failed', 'error'); }
+}
+async function saveReflectionSchedule() {
+  var body = {
+    hourly: document.getElementById('refl-hourly').checked,
+    daily: document.getElementById('refl-daily').checked,
+    weekly: document.getElementById('refl-weekly').checked,
+  };
+  try {
+    await fetch(BASE + '/api/reflection/schedule', {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+  } catch(e) {}
 }
 
 // Handle browser back/forward

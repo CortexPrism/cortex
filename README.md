@@ -546,27 +546,33 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 Start with `cortex serve` and open `http://127.0.0.1:3000`.
 
-| Tab             | Description                                                          |
-| --------------- | -------------------------------------------------------------------- |
-| **Chat**        | WebSocket streaming chat with file upload (PDF, images, documents)   |
-| **Editor**      | Full file editor powered by CodeMirror                               |
-| **Git**         | Visual git workspace — status, stage, commit, push, pull             |
-| **GitHub**      | PR management, issue tracking, repository browser                    |
-| **Code Runner** | Sandboxed code execution with language selection and live output     |
-| **Activity**    | Full activity audit timeline with cost tracking and auto-refresh     |
-| **Memory**      | Search episodic and semantic memory                                  |
-| **Jobs**        | View and manage scheduled jobs                                       |
-| **Sessions**    | Browse and resume past chat sessions                                 |
-| **Agents**      | View active and completed sub-agent sessions                         |
-| **Services**    | Monitor running micro-services                                       |
-| **Codegraph**   | Interactive D3.js dependency graph with symbol search & path tracer  |
-| **Workflows**   | Visual workflow engine designer with run history & approval queue    |
-| **Eval**        | Agent evaluation suite runner with pass/fail dashboard & regressions |
-| **MCP**         | Model Context Protocol connection management & tool browser          |
-| **Vault**       | AES-256-GCM encrypted credential store with audit log & export       |
-| **Settings**    | Provider configuration, voice settings                               |
-| **Soul**        | Edit the agent's identity / system prompt                            |
-| **Plugins**     | Manage installed plugins                                             |
+| Tab               | Description                                                          |
+| ----------------- | -------------------------------------------------------------------- |
+| **Chat**          | WebSocket streaming chat with file upload (PDF, images, documents)   |
+| **Editor**        | Full file editor powered by CodeMirror                               |
+| **Git**           | Visual git workspace — status, stage, commit, push, pull             |
+| **GitHub**        | PR management, issue tracking, repository browser                    |
+| **Code Runner**   | Sandboxed code execution with language selection and live output     |
+| **Activity**      | Full activity audit timeline with cost tracking and auto-refresh     |
+| **Memory**        | Search episodic and semantic memory                                  |
+| **Jobs**          | View and manage scheduled jobs                                       |
+| **Sessions**      | Browse and resume past chat sessions                                 |
+| **Agents**        | View active and completed sub-agent sessions                         |
+| **Services**      | Monitor running micro-services                                       |
+| **Codegraph**     | Interactive D3.js dependency graph with symbol search & path tracer  |
+| **Workflows**     | Visual workflow engine designer with run history & approval queue    |
+| **Eval**          | Agent evaluation suite runner with pass/fail dashboard & regressions |
+| **MCP**           | Model Context Protocol connection management & tool browser          |
+| **Vault**         | AES-256-GCM encrypted credential store with audit log & export       |
+| **Computer**      | Remote desktop viewer with screenshot gallery & action log           |
+| **Remote**        | Distributed agent deployment across nodes with directive history     |
+| **Daemons**       | Process health dashboard with live pings, log tails & restart        |
+| **Import/Export** | Data migration with type selector, dry-run, and JSON download        |
+| **Update**        | Version check, install, rollback with changelog viewer               |
+| **Reflection**    | Consolidation schedule, meta-patterns browser & manual trigger       |
+| **Settings**      | Provider configuration, voice settings                               |
+| **Soul**          | Edit the agent's identity / system prompt                            |
+| **Plugins**       | Manage installed plugins                                             |
 
 ### REST API
 
@@ -658,6 +664,30 @@ DELETE /api/vault/delete/:key
 GET    /api/vault/audit
 POST   /api/vault/export
 POST   /api/vault/import
+GET    /api/computer/screenshots
+GET    /api/computer/actions
+GET    /api/computer/config
+PUT    /api/computer/config
+GET    /api/remote/agents
+GET    /api/remote/directives
+POST   /api/remote/deploy
+GET    /api/daemons/health
+GET    /api/daemons/:name/logs
+POST   /api/daemons/:name/restart
+GET    /api/daemons/sockets
+POST   /api/import
+POST   /api/export
+GET    /api/import/history
+GET    /api/update/status
+POST   /api/update/check
+POST   /api/update/install
+POST   /api/update/rollback
+GET    /api/update/changelog
+GET    /api/reflection/schedule
+PUT    /api/reflection/schedule
+POST   /api/reflection/consolidate
+GET    /api/reflection/history
+GET    /api/reflection/meta-patterns
 GET    /api/soul/templates
 GET    /api/workspace/files
 GET    /api/workspace/git/status
