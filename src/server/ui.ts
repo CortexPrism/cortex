@@ -955,12 +955,6 @@ const HTML = `<!DOCTYPE html>
 
     <!-- System & Config -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System &amp; Config <span class="nav-section-toggle">▼</span></div>
-    <button class="nav-item" onclick="showPage('tools');closeMobileSidebar()" id="nav-tools">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools &amp; MCP
-    </button>
-    <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Security
-    </button>
     <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote Access
     </button>
@@ -3641,8 +3635,8 @@ function showPage(name) {
 
   const loaders = {
     lens: loadLens, memory: loadMemoryStats, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
-    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('policies', 'Policies', [['policies','Policies'],['vault','Vault']], 'policies'); }, analytics: loadAnalytics,
-    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); },
+    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'policies'); }, analytics: loadAnalytics,
+    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'settings'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: () => { loadNodes(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'nodes'); },
@@ -3656,12 +3650,12 @@ function showPage(name) {
     codegraph: loadCodegraphPage,
     workflow: () => { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
     eval: () => { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
-    mcp: () => { loadMCPPage(); injectSubNav('tools', 'Tools', [['tools','Tools'],['mcp','MCP']], 'mcp'); },
-    vault: () => { loadVaultPage(); injectSubNav('policies', 'Policies', [['policies','Policies'],['vault','Vault']], 'vault'); },
+    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'mcp'); },
+    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'vault'); },
     computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
     remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
-    tools: () => { loadTools(); injectSubNav('tools', 'Tools', [['tools','Tools'],['mcp','MCP']], 'tools'); },
+    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'tools'); },
     metacognition: loadMetacognition,
   };
   if (loaders[name]) loaders[name]();
