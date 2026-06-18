@@ -5,7 +5,7 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
-## [Unreleased]
+## [0.41.4] — 2026-06-18
 
 ### Security
 
@@ -56,6 +56,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **postMessage target hardening** (`src/plugins/extensions/ui.ts`) — `emit()` now sends messages to `globalThis.location.origin` instead of `'*'`, preventing cross-origin data leaks from extension panels.
 
 - **WebSocket broadcast scoping** (`src/server/ws.ts`) — `broadcast()` now filters recipients by session ID, preventing cross-session event leakage (file changes, voice state) between unrelated clients.
+
+- **CSP and regex escape fix** (`src/server/security-headers.ts`, `src/server/ui.ts`) — relaxed Content-Security-Policy to allow `https://d3js.org` (D3.js), `ws:`/`wss:` (WebSocket), and `blob:` (image data). Fixed regex patterns in `sanitizeHtml()` where backslash escapes were stripped by template literal processing.
 
 ## [0.41.3] — 2026-06-18
 

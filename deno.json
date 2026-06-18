@@ -1,5 +1,5 @@
 {
-  "version": "0.41.3",
+  "version": "0.41.4",
   "nodeModulesDir": "auto",
   "tasks": {
     "dev": "deno run --allow-all src/main.ts",
