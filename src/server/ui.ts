@@ -342,6 +342,8 @@ function sanitizeHtml(html){
     .replace(new RegExp("\\\\bon\\\\w+\\\\s*=","gi"),"data-blocked-");
 }
 
+function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
 function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(1)+"m";return"$"+v.toFixed(4)}
 function fmtBytes(b){if(!b)return"0 B";var u=["B","KB","MB","GB","TB"],i=0;while(b>=1024&&i<4){b/=1024;i++}return b.toFixed(1)+" "+u[i]}
 
@@ -1564,14 +1566,17 @@ const HTML = `<!DOCTYPE html>
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div>
         <h1 style="font-size:15px;font-weight:600;">Channels</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Communication channel adapters — registered via plugins</p>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">9 built-in adapters — Discord, Slack, Telegram, Teams, Mattermost, RocketChat, WhatsApp, Google Chat, Lark</p>
       </div>
-      <button class="btn btn-ghost" onclick="loadChannels()">↻ Refresh</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-primary" style="font-size:12px;" onclick="showAddChannelModal()">+ Add Channel</button>
+        <button class="btn btn-ghost" onclick="loadChannels()">↻ Refresh</button>
+      </div>
     </div>
     <!-- Info banner -->
-    <div style="padding:8px 24px;background:rgba(251,191,36,0.08);border-bottom:1px solid rgba(251,191,36,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#fbbf24;">
+    <div style="padding:8px 24px;background:rgba(34,197,94,0.08);border-bottom:1px solid rgba(34,197,94,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#22c55e;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Channels are registered via plugins. Install a channel plugin to add new channels. The list below reflects what is currently registered in memory.
+      9 channel types available. Add a channel, configure credentials, then start it to connect.
     </div>
     <!-- Summary cards -->
     <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-bottom:1px solid var(--border);">
@@ -2856,6 +2861,8 @@ function toast(message, type = 'info', duration = 3000) {
     setTimeout(() => el.remove(), 250);
   }, duration);
 }
+
+var showToast = toast;
 
 // ── Confirm dialog ──────────────────────────
 let _confirmResolve = null;
@@ -4375,7 +4382,10 @@ function renderChannels(channels) {
   const el = document.getElementById('channels-list');
   if (!channels.length) {
     el.innerHTML = \`<div style="text-align:center;color:var(--text3);padding:60px 20px;font-size:13px;">
-      No channels registered. Install a channel plugin (e.g. Discord) to get started.
+      <div style="font-size:40px;margin-bottom:12px;">📡</div>
+      <div style="font-weight:600;color:var(--text2);margin-bottom:4px;">No channels configured</div>
+      <div>Click <strong style="color:#22c55e;">+ Add Channel</strong> to connect a platform.</div>
+      <div style="margin-top:8px;font-size:11px;">Discord · Slack · Telegram · Teams · Mattermost · RocketChat · WhatsApp · Google Chat · Lark</div>
     </div>\`;
     return;
   }
@@ -4388,7 +4398,7 @@ function renderChannels(channels) {
     d.innerHTML = \`
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:600;font-size:13px;">\${escHtml(c.id)}</span>
+          <span style="font-weight:600;font-size:13px;">\${escHtml(c.name || c.id)}</span>
           <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${escHtml(c.protocol)}</span>
           <span style="font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.04);color:\${statusColor};">⬤ \${statusLabel}</span>
         </div>
@@ -4398,6 +4408,7 @@ function renderChannels(channels) {
         \${c.enabled
           ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="stopChannel(\${escHtml(JSON.stringify(c.id))})">Stop</button>\`
           : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="startChannel(\${escHtml(JSON.stringify(c.id))})">Start</button>\`}
+        <button class="btn btn-ghost" style="font-size:11px;color:var(--text3);" onclick="deleteChannel(\${escHtml(JSON.stringify(c.id))})" title="Remove">✕</button>
       </div>
     \`;
     el.appendChild(d);
@@ -4413,6 +4424,145 @@ async function startChannel(id) {
 async function stopChannel(id) {
   const res = await fetch(BASE + '/api/channels/' + encodeURIComponent(id) + '/stop', { method: 'POST' });
   if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to stop channel', 'error'); return; }
+  loadChannels();
+}
+
+async function deleteChannel(id) {
+  if (!confirm('Remove channel "' + id + '"? This cannot be undone.')) return;
+  const res = await fetch(BASE + '/api/channels/' + encodeURIComponent(id), { method: 'DELETE' });
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to delete channel', 'error'); return; }
+  showToast('Channel removed.', 'success');
+  loadChannels();
+}
+
+// ── Add Channel Modal ─────────────────────────────────────
+let channelTypes = [];
+
+async function showAddChannelModal() {
+  if (!channelTypes.length) {
+    channelTypes = await fetch(BASE + '/api/channels/types').then(r => r.json()).catch(() => []);
+  }
+
+  const typeOptions = channelTypes.map(t => \`<option value="\${escHtml(t.id)}">\${escHtml(t.name)}</option>\`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'add-channel-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;';
+  modal.innerHTML = \`
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;width:480px;max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <h2 style="font-size:15px;font-weight:600;">Add Channel</h2>
+        <button class="btn btn-ghost" style="font-size:18px;padding:0 6px;" onclick="closeAddChannelModal()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Channel ID</label>
+          <input id="add-ch-id" class="input" style="width:100%;box-sizing:border-box;" placeholder="my-channel" />
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Display Name</label>
+          <input id="add-ch-name" class="input" style="width:100%;box-sizing:border-box;" placeholder="My Channel" />
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Platform</label>
+          <select id="add-ch-type" class="input" style="width:100%;box-sizing:border-box;" onchange="updateAddChannelAuth()">\${typeOptions}</select>
+        </div>
+        <div id="add-ch-auth-fields" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Agent ID</label>
+          <input id="add-ch-agent" class="input" style="width:100%;box-sizing:border-box;" value="default" />
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:6px;" onclick="submitAddChannel()">Add Channel</button>
+      </div>
+    </div>
+  \`;
+  document.body.appendChild(modal);
+  modal.onclick = (e) => { if (e.target === modal) closeAddChannelModal(); };
+  updateAddChannelAuth();
+}
+
+function closeAddChannelModal() {
+  const m = document.getElementById('add-channel-modal');
+  if (m) m.remove();
+}
+
+function updateAddChannelAuth() {
+  const type = document.getElementById('add-ch-type').value;
+  const cfg = channelTypes.find(t => t.id === type);
+  const el = document.getElementById('add-ch-auth-fields');
+  if (!cfg) { el.innerHTML = ''; return; }
+
+  let html = '<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:2px;">Credentials</div>';
+  for (const f of (cfg.auth || [])) {
+    const inputType = f.type === 'password' ? 'password' : 'text';
+    html += \`<div>
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
+      <input id="add-ch-auth-\${escHtml(f.key)}" type="\${inputType}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${escHtml(f.label)}" />
+    </div>\`;
+  }
+  for (const f of (cfg.extra || [])) {
+    if (f.ifMode) {
+      html += \`<div id="add-ch-extra-\${escHtml(f.key)}-wrap" style="display:none;">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
+        <input id="add-ch-extra-\${escHtml(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${escHtml(f.label)}" />
+      </div>\`;
+      continue;
+    }
+    if (f.type === 'select' && f.options) {
+      const opts = f.options.map(o => \`<option value="\${escHtml(o)}"\${o === f.default ? ' selected' : ''}>\${escHtml(o)}</option>\`).join('');
+      html += \`<div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
+        <select id="add-ch-extra-\${escHtml(f.key)}" class="input" style="width:100%;box-sizing:border-box;" onchange="updateAddChannelAuth()">\${opts}</select>
+      </div>\`;
+    } else {
+      html += \`<div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
+        <input id="add-ch-extra-\${escHtml(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" value="\${escHtml(f.default || '')}" placeholder="\${escHtml(f.label)}" />
+      </div>\`;
+    }
+  }
+  el.innerHTML = html;
+
+  // Handle conditional fields (e.g. webhook URL for telegram)
+  const modeEl = document.getElementById('add-ch-extra-mode');
+  const webhookWrap = document.getElementById('add-ch-extra-webhookUrl-wrap');
+  if (modeEl && webhookWrap) {
+    webhookWrap.style.display = modeEl.value === 'webhook' ? 'block' : 'none';
+  }
+}
+
+async function submitAddChannel() {
+  const id = document.getElementById('add-ch-id').value.trim();
+  const name = document.getElementById('add-ch-name').value.trim() || id;
+  const type = document.getElementById('add-ch-type').value;
+  const agentId = document.getElementById('add-ch-agent').value.trim() || 'default';
+
+  if (!id) { showToast('Channel ID is required.', 'error'); return; }
+
+  const cfg = channelTypes.find(t => t.id === type);
+  const credentials = {};
+  const settings = {};
+
+  for (const f of (cfg.auth || [])) {
+    const val = document.getElementById('add-ch-auth-' + f.key).value;
+    if (val) credentials[f.key] = val;
+  }
+
+  for (const f of (cfg.extra || [])) {
+    const el = document.getElementById('add-ch-extra-' + f.key);
+    if (el) settings[f.key] = el.value;
+  }
+
+  const res = await fetch(BASE + '/api/channels', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, type, name, credentials, settings, agentId }),
+  });
+
+  if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to add channel', 'error'); return; }
+
+  closeAddChannelModal();
+  showToast('Channel added! Click Start to activate.', 'success');
   loadChannels();
 }
 
