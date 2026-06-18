@@ -488,6 +488,20 @@ const HTML = `<!DOCTYPE html>
   .card-mp { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
   .card-mp:hover { border-color:rgba(6,182,212,0.25); box-shadow:0 2px 12px rgba(0,0,0,0.15); transform:translateY(-1px); }
 
+  /* Extension card grid */
+  .ext-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:12px; }
+  .ext-card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+  .ext-card:hover { border-color:rgba(6,182,212,0.3); box-shadow:0 4px 20px rgba(0,0,0,0.2); transform:translateY(-2px); }
+  .ext-card-header { padding:16px 18px 12px 18px; display:flex; align-items:flex-start; gap:12px; border-bottom:1px solid var(--border); }
+  .ext-card-icon { flex-shrink:0; width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; text-transform:uppercase; }
+  .ext-card-body { padding:12px 18px; flex:1 0 auto; }
+  .ext-card-desc { font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:6px; }
+  .ext-card-readme { font-size:11px; color:var(--text3); line-height:1.5; margin-top:6px; padding:10px; background:var(--bg3); border-radius:8px; display:none; max-height:200px; overflow-y:auto; font-family:'JetBrains Mono',monospace; white-space:pre-wrap; word-break:break-word; }
+  .ext-card-readme.show { display:block; }
+  .ext-card-meta { font-size:11px; color:var(--text3); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .ext-card-footer { padding:10px 18px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .ext-card-footer .btn { font-size:11px; padding:5px 12px; }
+
   /* Memory tabs */
   .mem-tab { padding:8px 16px; border:none; background:transparent; color:var(--text3); font-size:12px; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; }
   .mem-tab:hover { color:var(--text2); }
@@ -1857,7 +1871,7 @@ const HTML = `<!DOCTYPE html>
     </div>
     <!-- Tab: Installed -->
     <div id="ext-pane-installed" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
-      <div id="plugins-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="plugins-list" class="ext-grid" style="flex:1;overflow-y:auto;padding:16px 24px;align-content:start;"></div>
     </div>
     <!-- Tab: Discover -->
     <div id="ext-pane-discover" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
@@ -1877,7 +1891,7 @@ const HTML = `<!DOCTYPE html>
         <button id="mp-tab-plugins" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:rgba(99,102,241,0.1);color:var(--accent2);border-bottom:2px solid var(--accent);" onclick="switchMarketplaceTab('plugins')">Plugins</button>
         <button id="mp-tab-agents" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;" onclick="switchMarketplaceTab('agents')">Agents</button>
       </div>
-      <div id="mp-content" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;"></div>
+      <div id="mp-content" class="ext-grid" style="flex:1;overflow-y:auto;padding:16px 24px;align-content:start;"></div>
     </div>
     <!-- Install modal -->
     <div id="plugin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
@@ -6849,24 +6863,40 @@ async function loadPlugins() {
   if (!plugins.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg><p style="color:var(--text3);font-size:13px;">No plugins installed.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Click "+ Install Plugin" to add an ESM, MCP, or WASM plugin.</p></div>'; return; }
   el.innerHTML = plugins.map(p => {
     const caps = JSON.parse(p.declared_permissions || '[]');
-    return \`<div class="card" style="display:flex;align-items:flex-start;gap:14px;">
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
-          <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">\${esc(p.type)}</span>
-          <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">v\${esc(p.version)}</span>
-          <span class="badge" style="background:\${p.enabled?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${p.enabled?'#4ade80':'var(--text3)'};">\${p.enabled?'enabled':'disabled'}</span>
+    const hue = [...p.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
+    let manifest = null;
+    try { manifest = JSON.parse(p.manifest_json || '{}'); } catch {}
+    const longDesc = manifest?.description || p.description;
+    const readme = manifest?.readme || manifest?.readmeHtml || '';
+    const readmeId = 'readme-' + p.name.replace(/[^a-zA-Z0-9]/g, '_');
+    return \`<div class="ext-card">
+      <div class="ext-card-header">
+        <div class="ext-card-icon" style="background:hsl(\${hue},55%,18%);color:hsl(\${hue},60%,72%);">\${esc(p.name[0] || '?')}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
+            <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">\${esc(p.type)}</span>
+            <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">v\${esc(p.version)}</span>
+            <span class="badge" style="background:\${p.enabled?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${p.enabled?'#4ade80':'var(--text3)'};">\${p.enabled?'enabled':'disabled'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry)}</div>
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">\${esc(p.description ?? '')}</div>
-        <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry)}</div>
-        \${caps.length ? \`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">\${caps.map(c => \`<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);">\${esc(c)}</span>\`).join('')}</div>\` : ''}
-        \${p.author ? \`<div style="font-size:11px;color:var(--text3);margin-top:4px;">by \${esc(p.author)}\${p.source?' · <a href="'+esc(p.source)+'" target="_blank" style="color:var(--accent2);">homepage</a>':''}</div>\` : ''}
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        \${p.enabled
-          ? \`<button class="btn btn-ghost" style="font-size:12px;" onclick="togglePlugin('\${p.name}', false)">Disable</button>\`
-          : \`<button class="btn btn-ghost" style="font-size:12px;" onclick="togglePlugin('\${p.name}', true)">Enable</button>\`}
-        <button class="btn" style="font-size:12px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePlugin('\${p.name}')">Remove</button>
+      <div class="ext-card-body">
+        <div class="ext-card-desc" id="\${readmeId}-desc">\${esc(longDesc || 'No description')}</div>
+        \${readme ? \`<div class="ext-card-readme" id="\${readmeId}">\${readme.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;align-self:flex-start;margin-top:4px;" onclick="togglePluginReadme('\${readmeId}')">Show readme</button>\` : ''}
+        \${caps.length ? \`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">\${caps.map(c => \`<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);">\${esc(c)}</span>\`).join('')}</div>\` : ''}
+        \${p.author ? \`<div style="font-size:11px;color:var(--text3);margin-top:2px;">by \${esc(p.author)}\${p.source?' · <a href="'+esc(p.source)+'" target="_blank" style="color:var(--accent2);">homepage</a>':''}</div>\` : ''}
+      </div>
+      <div class="ext-card-footer">
+        <span style="font-size:11px;color:var(--text3);">\${esc(p.runtime || '')} · \${esc(p.status || '')}</span>
+        <div style="display:flex;gap:6px;">
+          \${p.enabled
+            ? \`<button class="btn btn-ghost" onclick="togglePlugin('\${p.name}', false)">Disable</button>\`
+            : \`<button class="btn btn-ghost" onclick="togglePlugin('\${p.name}', true)">Enable</button>\`}
+          <button class="btn" style="background:rgba(239,68,68,0.1);color:#f87171;" onclick="deletePlugin('\${p.name}')">Remove</button>
+        </div>
       </div>
     </div>\`;
   }).join('');
@@ -7053,30 +7083,42 @@ async function loadMarketplace() {
       const isInstalled = installedPluginNames.has(p.name);
       const local = installedPluginMap.get(p.name);
       const hue = [...p.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
-      return \`<div class="card card-mp" style="display:flex;align-items:flex-start;gap:14px;cursor:default;">
-        <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:hsl(\${hue},55%,18%);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:hsl(\${hue},60%,72%);text-transform:uppercase;">\${esc(p.name[0] || '?')}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-            <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
-            <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${esc(p.kind)}</span>
-            <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(p.version)}</span>
-            \${p.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
-            \${isInstalled ? '<span class="badge" style="background:' + (local?.enabled ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)') + ';color:' + (local?.enabled ? '#4ade80' : 'var(--text3)') + ';">' + (local?.enabled ? 'installed' : 'disabled') + '</span>' : ''}
+      const desc = p.readme || p.longDescription || p.description || '';
+      const hasReadme = !!(p.readme || p.longDescription);
+      const readmeId = 'mp-readme-' + p.slug.replace(/[^a-zA-Z0-9]/g, '_');
+      return \`<div class="ext-card">
+        <div class="ext-card-header">
+          <div class="ext-card-icon" style="background:hsl(\${hue},55%,18%);color:hsl(\${hue},60%,72%);">\${esc(p.name[0] || '?')}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
+              <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${esc(p.kind)}</span>
+              <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(p.version)}</span>
+              \${p.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
+              \${isInstalled ? '<span class="badge" style="background:' + (local?.enabled ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)') + ';color:' + (local?.enabled ? '#4ade80' : 'var(--text3)') + ';">' + (local?.enabled ? 'installed' : 'disabled') + '</span>' : ''}
+            </div>
           </div>
-          <p style="font-size:12px;color:var(--text2);margin-bottom:4px;line-height:1.5;">\${esc(p.description || '')}</p>
-          <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        </div>
+        <div class="ext-card-body">
+          \${hasReadme
+            ? \`<div class="ext-card-desc">\${esc(p.description || '')}</div>
+            <div class="ext-card-readme" id="\${readmeId}">\${desc.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+            <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;align-self:flex-start;margin-top:2px;" onclick="togglePluginReadme('\${readmeId}')">Show readme</button>\`
+            : \`<div class="ext-card-desc">\${esc(desc || 'No description')}</div>\`}
+          <div class="ext-card-meta">
             <span style="font-family:'JetBrains Mono',monospace;">\${esc(p.slug)}</span>
             <span>·</span>
-            <span>\${p.downloads} \${p.downloads === 1 ? 'download' : 'downloads'}</span>
+            <span>\${p.downloads != null ? p.downloads.toLocaleString() + ' downloads' : ''}</span>
             \${p.author ? '<span>· by ' + esc(p.author) + '</span>' : ''}
             \${p.category ? '<span>· ' + esc(p.category) + '</span>' : ''}
             \${p.license ? '<span>· ' + esc(p.license) + '</span>' : ''}
           </div>
         </div>
-        <div style="flex-shrink:0;">
+        <div class="ext-card-footer">
+          <span></span>
           \${isInstalled
-            ? '<span class="btn btn-ghost" style="font-size:12px;padding:5px 14px;opacity:0.6;cursor:default;">Installed</span>'
-            : '<button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="installMarketplacePlugin(\\'' + esc(p.slug) + '\\', \\'' + esc(p.kind) + '\\')">Install</button>'}
+            ? '<span class="btn btn-ghost" style="font-size:11px;padding:5px 12px;opacity:0.6;cursor:default;">Installed</span>'
+            : '<button class="btn btn-primary" style="font-size:11px;padding:5px 12px;white-space:nowrap;" onclick="installMarketplacePlugin(\\'' + esc(p.slug) + '\\', \\'' + esc(p.kind) + '\\')">Install</button>'}
         </div>
       </div>\`;
     }
@@ -7084,30 +7126,42 @@ async function loadMarketplace() {
     function agentCard(a) {
       const isInstalled = installedAgentNames.has(a.name);
       const hue = [...a.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
-      return \`<div class="card card-mp" style="display:flex;align-items:flex-start;gap:14px;cursor:default;">
-        <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:hsl(\${hue},55%,18%);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:hsl(\${hue},60%,72%);text-transform:uppercase;">\${esc(a.name[0] || '?')}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-            <span style="font-size:13px;font-weight:600;">\${esc(a.name)}</span>
-            \${a.provider ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(a.provider) + '</span>' : ''}
-            <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(a.version)}</span>
-            \${a.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(a.rating)) + '</span>' : ''}
-            \${isInstalled ? '<span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">installed</span>' : ''}
+      const desc = a.readme || a.longDescription || a.description || '';
+      const hasReadme = !!(a.readme || a.longDescription);
+      const readmeId = 'mp-ag-readme-' + a.slug.replace(/[^a-zA-Z0-9]/g, '_');
+      return \`<div class="ext-card">
+        <div class="ext-card-header">
+          <div class="ext-card-icon" style="background:hsl(\${hue},55%,18%);color:hsl(\${hue},60%,72%);">\${esc(a.name[0] || '?')}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;">\${esc(a.name)}</span>
+              \${a.provider ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(a.provider) + '</span>' : ''}
+              <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(a.version)}</span>
+              \${a.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(a.rating)) + '</span>' : ''}
+              \${isInstalled ? '<span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">installed</span>' : ''}
+            </div>
           </div>
-          <p style="font-size:12px;color:var(--text2);margin-bottom:4px;line-height:1.5;">\${esc(a.description || '')}</p>
-          <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        </div>
+        <div class="ext-card-body">
+          \${hasReadme
+            ? \`<div class="ext-card-desc">\${esc(a.description || '')}</div>
+            <div class="ext-card-readme" id="\${readmeId}">\${desc.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+            <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;align-self:flex-start;margin-top:2px;" onclick="togglePluginReadme('\${readmeId}')">Show readme</button>\`
+            : \`<div class="ext-card-desc">\${esc(desc || 'No description')}</div>\`}
+          <div class="ext-card-meta">
             <span style="font-family:'JetBrains Mono',monospace;">\${esc(a.slug)}</span>
             <span>·</span>
-            <span>\${a.downloads} \${a.downloads === 1 ? 'download' : 'downloads'}</span>
+            <span>\${a.downloads != null ? a.downloads.toLocaleString() + ' downloads' : ''}</span>
             \${a.model ? '<span>· ' + esc(a.model) + '</span>' : ''}
             \${a.author ? '<span>· by ' + esc(a.author) + '</span>' : ''}
             \${a.tags?.length ? '<span>· [' + a.tags.map(t => esc(t)).join(', ') + ']</span>' : ''}
           </div>
         </div>
-        <div style="flex-shrink:0;">
+        <div class="ext-card-footer">
+          <span></span>
           \${isInstalled
-            ? '<span class="btn btn-ghost" style="font-size:12px;padding:5px 14px;opacity:0.6;cursor:default;">Installed</span>'
-            : '<button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap;" onclick="importMarketplaceAgent(\\'' + esc(a.slug) + '\\')">Import</button>'}
+            ? '<span class="btn btn-ghost" style="font-size:11px;padding:5px 12px;opacity:0.6;cursor:default;">Installed</span>'
+            : '<button class="btn btn-primary" style="font-size:11px;padding:5px 12px;white-space:nowrap;" onclick="importMarketplaceAgent(\\'' + esc(a.slug) + '\\')">Import</button>'}
         </div>
       </div>\`;
     }
@@ -7140,6 +7194,21 @@ async function loadMarketplace() {
     }
   } catch (e) {
     el.innerHTML = '<div style="text-align:center;padding:40px 20px;"><p style="color:#f87171;font-size:13px;">Failed to load marketplace: ' + esc(e.message) + '</p><p style="font-size:12px;color:var(--text3);margin-top:6px;">Make sure the Cortex server can reach https://cortexprism.io</p></div>';
+  }
+}
+
+function togglePluginReadme(readmeId) {
+  const readmeEl = document.getElementById(readmeId);
+  if (!readmeEl) return;
+  const isShowing = readmeEl.classList.contains('show');
+  const card = readmeEl.closest('.ext-card');
+  const btn = card ? card.querySelector('button[onclick*="' + readmeId + '"]') : null;
+  if (isShowing) {
+    readmeEl.classList.remove('show');
+    if (btn) btn.textContent = 'Show readme';
+  } else {
+    readmeEl.classList.add('show');
+    if (btn) btn.textContent = 'Hide readme';
   }
 }
 
