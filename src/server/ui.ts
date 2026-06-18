@@ -12374,12 +12374,28 @@ function extendObservability() {
 function testOtlpConnection() {
   var el = document.getElementById('obs-test-result');
   if (el) el.innerHTML = '<span style="color:var(--accent-amber);">Testing OTLP endpoint…</span>';
-  setTimeout(function() { if (el) el.innerHTML = '<span style="color:var(--accent-green);">OTLP: endpoint configured</span>'; }, 1000);
+  fetch(BASE + '/api/observability/test-otlp', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (el) el.innerHTML = data.ok
+        ? '<span style="color:var(--accent-green);">' + esc(data.message) + '</span>'
+        : '<span style="color:var(--accent-red);">OTLP: ' + esc(data.error || data.message) + '</span>';
+    }).catch(function(e) {
+      if (el) el.innerHTML = '<span style="color:var(--accent-red);">OTLP: ' + esc(e.message) + '</span>';
+    });
 }
 function testLangfuseConnection() {
   var el = document.getElementById('obs-test-result');
   if (el) el.innerHTML = '<span style="color:var(--accent-amber);">Testing Langfuse…</span>';
-  setTimeout(function() { if (el) el.innerHTML = '<span style="color:var(--accent-green);">Langfuse: keys configured</span>'; }, 1000);
+  fetch(BASE + '/api/observability/test-langfuse', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (el) el.innerHTML = data.ok
+        ? '<span style="color:var(--accent-green);">' + esc(data.message) + '</span>'
+        : '<span style="color:var(--accent-red);">Langfuse: ' + esc(data.error || data.message) + '</span>';
+    }).catch(function(e) {
+      if (el) el.innerHTML = '<span style="color:var(--accent-red);">Langfuse: ' + esc(e.message) + '</span>';
+    });
 }
 function openLangfuseTrace() {
   window.open('https://cloud.langfuse.com', '_blank');
@@ -12419,33 +12435,61 @@ async function loadMetrics() {
   try {
     var text = await fetch(BASE + '/metrics').then(function(r) { return r.text(); });
     var lines = text.split('\\n').filter(function(l) { return l && !l.startsWith('#'); });
-    var metrics = {};
+    var gauges = {};
+    var counters = {};
     lines.forEach(function(l) {
-      var parts = l.split(' ');
-      if (parts.length >= 2) {
-        var name = parts[0];
-        var val = parseFloat(parts[1]);
-        if (name && !isNaN(val)) {
-          if (!metrics[name]) metrics[name] = [];
-          metrics[name].push(val);
-        }
+      var labelEnd = l.lastIndexOf('}');
+      var metaPart = '';
+      var valPart = '';
+      if (labelEnd > -1) {
+        metaPart = l.slice(0, labelEnd + 1);
+        valPart = l.slice(labelEnd + 1).trim();
+      } else {
+        var spaceIdx = l.indexOf(' ');
+        metaPart = l.slice(0, spaceIdx);
+        valPart = l.slice(spaceIdx).trim();
+      }
+      var parts = valPart.split(/\s+/);
+      var val = parseFloat(parts[0]);
+      if (!metaPart || isNaN(val)) return;
+      // Determine type by suffix
+      var baseName = metaPart.split('{')[0];
+      if (baseName.endsWith('_total') || baseName.endsWith('_count') || baseName.endsWith('_sum')) {
+        if (!counters[baseName]) counters[baseName] = 0;
+        counters[baseName] += val;
+      } else {
+        gauges[metaPart] = val;
       }
     });
-    var keys = Object.keys(metrics);
-    if (!keys.length) { el.innerHTML = '<div class="empty">No metrics available</div>'; return; }
-    el.innerHTML = '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Prometheus Metrics</h3>' +
-      '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+    var gKeys = Object.keys(gauges);
+    var cKeys = Object.keys(counters);
+    if (!gKeys.length && !cKeys.length) { el.innerHTML = '<div class="empty">No metrics available</div>'; return; }
+    var html = '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">Gauges</h3>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">' +
       '<thead><tr style="border-bottom:1px solid var(--border);">' +
       '<th style="padding:4px 0;color:var(--text3);text-align:left;">Metric</th>' +
       '<th style="padding:4px 0;color:var(--text3);text-align:right;">Value</th></tr></thead><tbody>' +
-      keys.sort().slice(0, 50).map(function(k) {
-        var vals = metrics[k];
-        var display = vals.length > 1 ? vals[vals.length - 1] + ' (n=' + vals.length + ')' : vals[0];
+      gKeys.sort().slice(0, 50).map(function(k) {
+        var shortName = k.split('{')[0];
+        var labels = k.indexOf('{') > -1 ? ' <span style="color:var(--text3);font-size:9px;">' + esc(k.slice(k.indexOf('{'))) + '</span>' : '';
         return '<tr style="border-bottom:1px solid var(--border);">' +
-          '<td style="padding:4px 0;font-family:JetBrains Mono,monospace;font-size:10px;">' + esc(k) + '</td>' +
-          '<td style="padding:4px 0;text-align:right;font-family:JetBrains Mono,monospace;color:var(--accent2);">' + display + '</td></tr>';
-      }).join('') + '</tbody></table>' +
-      '<div style="margin-top:8px;font-size:10px;color:var(--text3);">Auto-refresh every 15s</div>';
+          '<td style="padding:4px 0;font-family:JetBrains Mono,monospace;font-size:10px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(shortName) + labels + '</td>' +
+          '<td style="padding:4px 0;text-align:right;font-family:JetBrains Mono,monospace;color:var(--accent2);">' + gauges[k] + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    if (cKeys.length) {
+      html += '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">Counters</h3>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+        '<thead><tr style="border-bottom:1px solid var(--border);">' +
+        '<th style="padding:4px 0;color:var(--text3);text-align:left;">Metric</th>' +
+        '<th style="padding:4px 0;color:var(--text3);text-align:right;">Total</th></tr></thead><tbody>' +
+        cKeys.sort().slice(0, 50).map(function(k) {
+          return '<tr style="border-bottom:1px solid var(--border);">' +
+            '<td style="padding:4px 0;font-family:JetBrains Mono,monospace;font-size:10px;">' + esc(k) + '</td>' +
+            '<td style="padding:4px 0;text-align:right;font-family:JetBrains Mono,monospace;color:var(--accent2);">' + counters[k] + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    html += '<div style="margin-top:8px;font-size:10px;color:var(--text3);">Auto-refresh every 15s</div>';
+    el.innerHTML = html;
     setTimeout(function() { if (document.getElementById('metrics-content')) loadMetrics(); }, 15000);
   } catch(e) { el.innerHTML = '<div class="empty">Failed to fetch metrics</div>'; }
 }
@@ -12481,10 +12525,28 @@ function cplValidate() {
 function cplImport() {
   var yaml = document.getElementById('pol-cpl-editor').value;
   if (!yaml.trim()) { toast('Enter YAML first', 'error'); return; }
+  var name = 'cpl-imported';
+  var kind = 'shell';
+  var pattern = '.*';
+  var effect = 'allow';
+  // Parse basic YAML key-value pairs
+  var lines = yaml.split('\\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    var nm = line.match(/^\\s*-?\\s*name:\\s*(.+)/i);
+    if (nm) name = nm[1].replace(/['"]/g, '').trim();
+    var km = line.match(/^\\s*kind:\\s*(.+)/i);
+    if (km) kind = km[1].replace(/['"]/g, '').trim();
+    var pm = line.match(/^\\s*pattern:\\s*(.+)/i);
+    if (pm) pattern = pm[1].replace(/['"]/g, '').trim();
+    var em = line.match(/^\\s*effect:\\s*(.+)/i);
+    if (em) effect = em[1].replace(/['"]/g, '').trim();
+  }
   fetch(BASE + '/api/policies', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ kind: 'shell', name: 'cpl-imported', pattern: '.*', action: 'allow' })
-  }).then(function() { toast('CPL policy imported', 'success'); loadPolicies(); }).catch(function() { toast('Import failed', 'error'); });
+    body: JSON.stringify({ kind: kind, effect: effect, pattern: pattern, reason: name })
+  }).then(function() { toast('CPL policy imported: ' + name, 'success'); loadPolicies(); })
+    .catch(function() { toast('Import failed', 'error'); });
 }
 
 // ── Sub-Agent Process Management ──
@@ -12508,13 +12570,30 @@ function extendSubAgentProcesses() {
 function refreshSubAgentProcesses() {
   var el = document.getElementById('agents-proc-list');
   if (!el) return;
-  // Sub-agent processes are child Deno processes, not easily listable via API
-  el.innerHTML = '<div style="font-size:10px;color:var(--text3);">Sub-agent processes spawn on demand. No active processes.</div>';
+  fetch(BASE + '/api/processes/sub-agents')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.processes || !data.processes.length) {
+        el.innerHTML = '<div style="font-size:10px;color:var(--text3);">No active sub-agent processes</div>';
+        return;
+      }
+      el.innerHTML = data.processes.map(function(p) {
+        return '<div style="padding:4px 0;font-size:10px;font-family:JetBrains Mono,monospace;display:flex;gap:8px;">' +
+          '<span style="color:var(--accent2);">PID ' + p.pid + '</span>' +
+          '<span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.cmd) + '</span></div>';
+      }).join('');
+    }).catch(function() {
+      el.innerHTML = '<div style="font-size:10px;color:var(--text3);">Unable to query sub-agent processes</div>';
+    });
 }
 function saveSubAgentProcConfig() {
   var timeout = document.getElementById('agents-proc-timeout').value;
   var retries = document.getElementById('agents-proc-retries').value;
-  toast('Config saved: timeout=' + timeout + 's, retries=' + retries, 'success');
+  fetch(BASE + '/api/config', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ subAgentTimeout: parseInt(timeout), subAgentRetries: parseInt(retries) })
+  }).then(function() { toast('Sub-agent config saved', 'success'); })
+    .catch(function() { toast('Save failed', 'error'); });
 }
 
 // Extend shutdown to trigger Phase 5 extensions on relevant pages

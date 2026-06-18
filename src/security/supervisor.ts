@@ -239,6 +239,28 @@ export function requiresSupervisorApproval(level: SensitivityLevel): boolean {
 }
 
 /**
+ * Get decision cache entries (for UI inspection)
+ */
+export function getDecisionCacheEntries(): Array<{
+  key: string;
+  allowed: boolean;
+  confidence: number;
+  expiresAt: string;
+}> {
+  const entries: Array<{ key: string; allowed: boolean; confidence: number; expiresAt: string }> =
+    [];
+  for (const [key, cached] of decisionCache) {
+    entries.push({
+      key,
+      allowed: cached.decision.allowed,
+      confidence: cached.decision.confidence,
+      expiresAt: new Date(cached.expiresAt).toISOString(),
+    });
+  }
+  return entries;
+}
+
+/**
  * Clear decision cache (for testing or manual reset)
  */
 export function clearDecisionCache(): void {
