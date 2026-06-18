@@ -1,4 +1,5 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
+import { resolveAndCheck } from '../../security/ssrf.ts';
 
 const TIMEOUT_MS = 30_000;
 const MAX_CONTENT_LENGTH = 100_000;
@@ -36,6 +37,17 @@ export const webFetchTool: Tool = {
         success: false,
         output: '',
         error: 'URL must start with http:// or https://',
+        durationMs: Date.now() - start,
+      };
+    }
+
+    const ssrfCheck = await resolveAndCheck(url);
+    if (!ssrfCheck.valid) {
+      return {
+        toolName: 'web_fetch',
+        success: false,
+        output: '',
+        error: ssrfCheck.error,
         durationMs: Date.now() - start,
       };
     }

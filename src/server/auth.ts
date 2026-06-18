@@ -188,13 +188,13 @@ export function parseCookies(cookieHeader: string): Record<string, string> {
 }
 
 export function setSessionCookie(sessionId: string): string {
-  return `cortex_session=${sessionId}; HttpOnly; Path=/; Max-Age=${
+  return `cortex_session=${sessionId}; HttpOnly; Secure; Path=/; Max-Age=${
     Math.floor(SESSION_DURATION_MS / 1000)
   }; SameSite=Strict`;
 }
 
 export function clearSessionCookie(): string {
-  return 'cortex_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict';
+  return 'cortex_session=; HttpOnly; Secure; Path=/; Max-Age=0; SameSite=Strict';
 }
 
 export async function requireAuth(

@@ -26,7 +26,7 @@ export function createUiApi(pluginName: string): CortexUiApi {
     },
     emit(event: string, data: unknown) {
       (window as unknown as { parent: { postMessage: (m: unknown, o: string) => void } }).parent
-        .postMessage({ type: 'cortex-event', event, data }, '*');
+        .postMessage({ type: 'cortex-event', event, data }, globalThis.location.origin);
     },
     async getConfig(key: string): Promise<unknown> {
       const res = await fetch(BASE + '/config');

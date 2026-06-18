@@ -48,12 +48,13 @@ function send(ws: WebSocket, data: unknown): void {
  */
 const pendingApprovals = new Map<string, (approved: boolean) => void>();
 
-const wsClients = new Set<WebSocket>();
+const wsClients = new Map<WebSocket, { sessionId: string | null }>();
 
-function broadcast(msg: unknown): void {
+function broadcast(msg: unknown, targetSessionId?: string): void {
   const data = JSON.stringify(msg);
-  for (const ws of wsClients) {
+  for (const [ws, info] of wsClients) {
     if (ws.readyState === WebSocket.OPEN) {
+      if (targetSessionId && info.sessionId && info.sessionId !== targetSessionId) continue;
       try {
         ws.send(data);
       } catch { /* client may have disconnected */ }
@@ -137,13 +138,13 @@ export async function handleWebSocket(req: Request): Promise<Response> {
   }
 
   const { socket: ws, response } = Deno.upgradeWebSocket(req);
-  wsClients.add(ws);
+  wsClients.set(ws, { sessionId: null });
 
   let sessionId: string | null = null;
   let sessionDbRef: Awaited<ReturnType<typeof initSessionDb>> | null = null;
 
   const unsubscribe = onFileChange((event) => {
-    broadcast({ type: 'file_change', ...event });
+    broadcast({ type: 'file_change', ...event }, sessionId ?? undefined);
   });
 
   ws.onopen = () => send(ws, { type: 'connected' });
@@ -254,6 +255,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           const existing = await getSession(resumeSessionId);
           if (existing && existing.status !== 'archived') {
             sessionId = resumeSessionId;
+            wsClients.set(ws, { sessionId });
             sessionDbRef = await initSessionDb(sessionId);
             await resumeSession(sessionId);
             send(ws, { type: 'session', sessionId, agentId: agent.id, agentName: agent.name });
@@ -262,6 +264,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
         if (!sessionId) {
           sessionId = `sess_${Date.now().toString(36)}_ws`;
+          wsClients.set(ws, { sessionId });
           sessionDbRef = await initSessionDb(sessionId);
           await createSession(sessionId, 'web', undefined, activeAgent?.id);
           await logEvent({
@@ -701,6 +704,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         sessionDbRef.close();
       }
       sessionId = null;
+      wsClients.set(ws, { sessionId: null });
       sessionDbRef = null;
       send(ws, { type: 'session_ended' });
       return;
@@ -816,8 +820,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       try {
         const { setSpeaking } = await import('../voice/manager.ts');
         setSpeaking(sessionId ?? '', msg.speaking);
-        // Broadcast voice state to other clients
-        broadcast({ type: 'voice_state', sessionId, speaking: msg.speaking });
+        broadcast({ type: 'voice_state', sessionId, speaking: msg.speaking }, sessionId ?? undefined);
       } catch (e) {
         _log.error(`voice_state error`, { error: (e as Error).message });
       }

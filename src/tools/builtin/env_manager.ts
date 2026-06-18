@@ -19,7 +19,7 @@ const ALLOWED_ENV_VARS = new Set([
   'DENO_DIR',
   'CORTEX_DATA_DIR',
   'CORTEX_CONFIG_DIR',
-  'CORTEX_VAULT_KEY',
+
 ]);
 
 export const envManagerTool: Tool = {
@@ -106,6 +106,15 @@ export const envManagerTool: Tool = {
       }
 
       if (operation === 'get') {
+        if (!ALLOWED_ENV_VARS.has(key)) {
+          return {
+            toolName: 'env_manager',
+            success: false,
+            output: '',
+            error: `${key} is not in readable variables list`,
+            durationMs: Date.now() - start,
+          };
+        }
         const value = Deno.env.get(key);
         return {
           toolName: 'env_manager',

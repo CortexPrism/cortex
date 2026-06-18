@@ -11,6 +11,7 @@ import { configureLogger } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
 import { hasPassword, parseCookies, requireAuth } from './auth.ts';
 import { startAutoServices } from '../services/manager.ts';
+import { SECURITY_HEADERS } from './security-headers.ts';
 
 const _log = logger('server');
 
@@ -88,8 +89,23 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   _log.info(`WebSocket: ws://${host}:${port}/ws`);
   _log.info(`Node WS:   ws://${host}:${port}/ws/node`);
 
+  const serverConfig = _serverConfig.server ?? { corsOrigin: 'same-origin', maxBodyBytes: 10_485_760 };
+  const maxBodyBytes = serverConfig.maxBodyBytes;
+  const corsOrigin = serverConfig.corsOrigin;
+
+  const serveOpts: Record<string, unknown> = {
+    port,
+    hostname: host,
+  };
+
+  if (serverConfig.https?.enabled && serverConfig.https.certFile && serverConfig.https.keyFile) {
+    serveOpts.certFile = serverConfig.https.certFile;
+    serveOpts.keyFile = serverConfig.https.keyFile;
+    _log.info(`HTTPS enabled`);
+  }
+
   const httpServer = Deno.serve(
-    { port, hostname: host },
+    serveOpts as Deno.ServeOptions,
     async (req: Request): Promise<Response> => {
       const url = new URL(req.url);
 
@@ -110,10 +126,17 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       }
 
       if (url.pathname.startsWith('/api/')) {
+        const contentLength = Number(req.headers.get('content-length') ?? 0);
+        if (contentLength > maxBodyBytes) {
+          return new Response(JSON.stringify({ error: 'Request body too large' }), {
+            status: 413,
+            headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+          });
+        }
         const res = await handleApi(req);
         return res ?? new Response(JSON.stringify({ error: 'Not found' }), {
           status: 404,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
         });
       }
 
@@ -137,13 +160,18 @@ export async function startServer(opts: ServeOptions): Promise<void> {
           if (!auth.authenticated) {
             return new Response(null, {
               status: 302,
-              headers: { Location: '/login' },
+              headers: { Location: '/login', ...SECURITY_HEADERS },
             });
           }
         }
       }
 
-      return serveUi();
+      const ui = serveUi();
+      const headers = new Headers(ui.headers);
+      for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+        if (!headers.has(key)) headers.set(key, value);
+      }
+      return new Response(ui.body, { status: ui.status, headers });
     },
   );
 

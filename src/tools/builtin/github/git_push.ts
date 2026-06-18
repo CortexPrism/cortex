@@ -27,6 +27,23 @@ export const gitPushTool: Tool = {
 
   async execute(args: Record<string, unknown>, context: ToolContext): Promise<ToolCallResult> {
     const start = Date.now();
+
+    if (context.approvalGate) {
+      const approved = await context.approvalGate(
+        'git_push',
+        `Commit "${String(args.message).slice(0, 80)}" and push to ${String(args.remote || 'origin')}/${String(args.branch || 'current')}`,
+      );
+      if (!approved) {
+        return {
+          toolName: 'git_push',
+          success: false,
+          output: '',
+          error: 'Push not approved by user',
+          durationMs: Date.now() - start,
+        };
+      }
+    }
+
     const dir = context.workspaceDir || await ensureAgentWorkspace(context.agentId);
 
     try {

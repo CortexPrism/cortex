@@ -1,6 +1,85 @@
 import { exists } from '@std/fs';
 import { PATHS } from './paths.ts';
 
+const CONFIG_ENCRYPTION_PREFIX = 'enc:';
+
+async function getConfigKey(): Promise<CryptoKey | null> {
+  const vaultKey = Deno.env.get('CORTEX_VAULT_KEY');
+  if (!vaultKey) return null;
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(vaultKey),
+    'PBKDF2',
+    false,
+    ['deriveKey'],
+  );
+  return await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode('cortex-config-v1'),
+      iterations: 100_000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+async function decryptValue(value: string | null | undefined): Promise<string | null | undefined> {
+  if (!value || !value.startsWith(CONFIG_ENCRYPTION_PREFIX)) return value;
+  const key = await getConfigKey();
+  if (!key) return value;
+  try {
+    const raw = Uint8Array.from(atob(value.slice(CONFIG_ENCRYPTION_PREFIX.length)), (c) =>
+      c.charCodeAt(0),
+    );
+    const iv = raw.slice(0, 12);
+    const cipher = raw.slice(12);
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+    return new TextDecoder().decode(dec);
+  } catch {
+    return value;
+  }
+}
+
+async function encryptValue(value: string | null | undefined): Promise<string | null | undefined> {
+  if (!value) return value;
+  const key = await getConfigKey();
+  if (!key) return value;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const cipher = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    enc.encode(value),
+  );
+  const combined = new Uint8Array(iv.byteLength + cipher.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(cipher), iv.byteLength);
+  return CONFIG_ENCRYPTION_PREFIX + btoa(String.fromCharCode(...combined));
+}
+
+async function encryptProvider(provider: ProviderConfig | undefined): Promise<ProviderConfig | undefined> {
+  if (!provider) return provider;
+  return {
+    ...provider,
+    apiKey: (await encryptValue(provider.apiKey)) ?? undefined,
+    secretKey: (await encryptValue(provider.secretKey)) ?? undefined,
+  };
+}
+
+async function decryptProvider(provider: ProviderConfig | undefined): Promise<ProviderConfig | undefined> {
+  if (!provider) return provider;
+  return {
+    ...provider,
+    apiKey: (await decryptValue(provider.apiKey)) ?? undefined,
+    secretKey: (await decryptValue(provider.secretKey)) ?? undefined,
+  };
+}
+
 export type ProviderKind =
   | 'anthropic'
   | 'openai'
@@ -274,6 +353,16 @@ export interface ComputerUseConfig {
   requireApproval: boolean;
 }
 
+export interface ServerConfig {
+  corsOrigin: string;
+  maxBodyBytes: number;
+  https?: {
+    enabled: boolean;
+    certFile: string;
+    keyFile: string;
+  };
+}
+
 export interface CortexConfig {
   version: number;
   defaultProvider: ProviderKind;
@@ -313,6 +402,8 @@ export interface CortexConfig {
   memory?: MemoryConfig;
   /** Computer use (GUI automation) configuration */
   computerUse?: ComputerUseConfig;
+  /** Server-level security configuration */
+  server?: ServerConfig;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -393,6 +484,10 @@ const DEFAULT_CONFIG: CortexConfig = {
     fileMaxBytes: 10_485_760,
     fileMaxFiles: 5,
   },
+  server: {
+    corsOrigin: 'same-origin',
+    maxBodyBytes: 10_485_760,
+  },
 };
 
 let _config: CortexConfig | null = null;
@@ -403,12 +498,36 @@ export async function loadConfig(): Promise<CortexConfig> {
   if (await exists(PATHS.configFile)) {
     const raw = await Deno.readTextFile(PATHS.configFile);
     const disk = JSON.parse(raw) as Partial<CortexConfig>;
+    const providers = { ...DEFAULT_CONFIG.providers };
+    if (disk.providers) {
+      for (const [kind, provider] of Object.entries(disk.providers)) {
+        providers[kind as ProviderKind] = await decryptProvider(provider);
+      }
+    }
+    const update = { ...DEFAULT_CONFIG.update, ...(disk.update ?? {}) };
+    if (disk.update?.githubToken) {
+      update.githubToken = (await decryptValue(disk.update.githubToken)) ?? null;
+    }
+    const pluginUpdate = { ...DEFAULT_CONFIG.pluginUpdate, ...(disk.pluginUpdate ?? {}) };
+    if (disk.pluginUpdate?.githubToken) {
+      pluginUpdate.githubToken = (await decryptValue(disk.pluginUpdate.githubToken)) ?? null;
+    }
+    let logging: LoggingConfig = { ...DEFAULT_CONFIG.logging, ...(disk.logging ?? {}) } as LoggingConfig;
+    if (disk.logging?.grafana?.authToken) {
+      const decrypted = await decryptValue(disk.logging.grafana.authToken);
+      logging = { ...logging, grafana: { otlpEndpoint: logging.grafana?.otlpEndpoint ?? '', authToken: decrypted ?? '' } };
+    }
+    if (disk.logging?.langfuse?.secretKey) {
+      const decrypted = await decryptValue(disk.logging.langfuse.secretKey);
+      logging = { ...logging, langfuse: { publicKey: logging.langfuse?.publicKey ?? '', secretKey: decrypted ?? '', baseUrl: logging.langfuse?.baseUrl } };
+    }
     _config = {
       ...DEFAULT_CONFIG,
       ...disk,
-      update: { ...DEFAULT_CONFIG.update, ...(disk.update ?? {}) },
-      pluginUpdate: { ...DEFAULT_CONFIG.pluginUpdate, ...(disk.pluginUpdate ?? {}) },
-      logging: { ...DEFAULT_CONFIG.logging, ...(disk.logging ?? {}) } as LoggingConfig,
+      providers,
+      update,
+      pluginUpdate,
+      logging,
     } as CortexConfig;
   } else {
     _config = { ...DEFAULT_CONFIG };
@@ -420,7 +539,6 @@ export async function loadConfig(): Promise<CortexConfig> {
 export async function saveConfig(config: CortexConfig): Promise<void> {
   if (!config.agents) config.agents = {};
   if (!config.defaultAgent) config.defaultAgent = 'default';
-  // Ensure default agent always exists in saved config
   if (!config.agents['default']) {
     config.agents['default'] = {
       id: 'default',
@@ -432,8 +550,28 @@ export async function saveConfig(config: CortexConfig): Promise<void> {
       updatedAt: new Date().toISOString(),
     };
   }
+  const toSave = { ...config };
+  const encryptedProviders: Record<string, ProviderConfig | undefined> = {};
+  for (const [kind, provider] of Object.entries(config.providers)) {
+    encryptedProviders[kind] = await encryptProvider(provider);
+  }
+  toSave.providers = encryptedProviders as CortexConfig['providers'];
+  if (toSave.update?.githubToken) {
+    toSave.update.githubToken = (await encryptValue(toSave.update.githubToken)) ?? null;
+  }
+  if (toSave.pluginUpdate?.githubToken) {
+    toSave.pluginUpdate.githubToken = (await encryptValue(toSave.pluginUpdate.githubToken)) ?? null;
+  }
+  if (toSave.logging?.grafana?.authToken) {
+    const encrypted = await encryptValue(toSave.logging.grafana.authToken);
+    toSave.logging.grafana = { ...toSave.logging.grafana, authToken: encrypted ?? '' };
+  }
+  if (toSave.logging?.langfuse?.secretKey) {
+    const encrypted = await encryptValue(toSave.logging.langfuse.secretKey);
+    toSave.logging.langfuse = { ...toSave.logging.langfuse, secretKey: encrypted ?? '' };
+  }
   await Deno.mkdir(PATHS.configDir, { recursive: true });
-  await Deno.writeTextFile(PATHS.configFile, JSON.stringify(config, null, 2));
+  await Deno.writeTextFile(PATHS.configFile, JSON.stringify(toSave, null, 2));
   _config = config;
 }
 

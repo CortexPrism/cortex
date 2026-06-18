@@ -125,7 +125,12 @@ When you need to do multiple independent things at once, make multiple \`sub_age
           provider: args.provider as ProviderKind | undefined,
           systemPrompt: args.system_prompt as string | undefined,
           tools: args.tools
-            ? String(args.tools).split(',').map((s) => s.trim()).filter(Boolean)
+            ? (() => {
+                const requested = String(args.tools).split(',').map((s) => s.trim()).filter(Boolean);
+                const allowed = typeDef?.tools;
+                if (!allowed || allowed.length === 0) return requested;
+                return requested.filter((t) => allowed.includes(t));
+              })()
             : typeDef?.tools ?? undefined,
           maxTurns: typeDef?.maxTurns,
         },

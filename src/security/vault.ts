@@ -1,15 +1,29 @@
 import { getVaultDb } from '../db/client.ts';
+import { PATHS } from '../config/paths.ts';
+import { exists } from '@std/fs/exists';
 import type { InValue } from 'npm:@libsql/client';
 
 const KEY_ENV = 'CORTEX_VAULT_KEY';
 const ALGO = { name: 'AES-GCM', length: 256 } as const;
 const IV_LENGTH = 12;
+const LEGACY_SALT = 'cortex-vault-salt-v1';
 
 function vaultId(): string {
   return `vlt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-async function deriveKey(passphrase: string): Promise<CryptoKey> {
+async function getOrCreateSalt(): Promise<Uint8Array> {
+  if (await exists(PATHS.vaultSaltFile)) {
+    const data = await Deno.readFile(PATHS.vaultSaltFile);
+    if (data.length >= 16) return data;
+  }
+  const salt = crypto.getRandomValues(new Uint8Array(32));
+  await Deno.mkdir(PATHS.dataDir, { recursive: true });
+  await Deno.writeFile(PATHS.vaultSaltFile, salt);
+  return salt;
+}
+
+async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -21,8 +35,8 @@ async function deriveKey(passphrase: string): Promise<CryptoKey> {
   return await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: enc.encode('cortex-vault-salt-v1'),
-      iterations: 100_000,
+      salt: new Uint8Array(salt).buffer,
+      iterations: 200_000,
       hash: 'SHA-256',
     },
     keyMaterial,
@@ -51,7 +65,8 @@ export async function vaultStore(opts: {
 }): Promise<string> {
   const db = await getVaultDb();
   const id = vaultId();
-  const key = await deriveKey(getPassphrase());
+  const salt = await getOrCreateSalt();
+  const key = await deriveKey(getPassphrase(), salt);
 
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const enc = new TextEncoder();
@@ -69,9 +84,10 @@ export async function vaultStore(opts: {
   await db.run(
     `INSERT INTO vault_entries
        (id, name, service, encrypted_data, encryption_key_id, credential_type, allowed_agents, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'v1-aes256gcm', ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(name) DO UPDATE SET
        encrypted_data = excluded.encrypted_data,
+       encryption_key_id = excluded.encryption_key_id,
        service = excluded.service,
        credential_type = excluded.credential_type,
        updated_at = excluded.updated_at`,
@@ -80,6 +96,7 @@ export async function vaultStore(opts: {
       opts.name,
       opts.service,
       combined,
+      'v2-aes256gcm',
       opts.credentialType ?? 'api_key',
       JSON.stringify(opts.allowedAgents ?? ['*']),
       now,
@@ -95,12 +112,13 @@ export async function vaultGet(name: string, requestor = 'system'): Promise<stri
   const row = await db.get<{
     id: string;
     encrypted_data: Uint8Array;
+    encryption_key_id: string;
     usage_limit: number;
     usage_count: number;
     expires_at: string | null;
     allowed_agents: string;
   }>(
-    `SELECT id, encrypted_data, usage_limit, usage_count, expires_at, allowed_agents
+    `SELECT id, encrypted_data, encryption_key_id, usage_limit, usage_count, expires_at, allowed_agents
      FROM vault_entries WHERE name = ? LIMIT 1`,
     [name],
   );
@@ -132,16 +150,32 @@ export async function vaultGet(name: string, requestor = 'system'): Promise<stri
     ? row.encrypted_data
     : new Uint8Array(row.encrypted_data as unknown as ArrayBuffer);
 
-  const key = await deriveKey(getPassphrase());
-  const iv = buf.slice(0, IV_LENGTH);
-  const cipher = buf.slice(IV_LENGTH);
+  const isLegacy = row.encryption_key_id === 'v1-aes256gcm';
+  const passphrase = getPassphrase();
 
   let plaintext: string;
   try {
+    const salt = await getOrCreateSalt();
+    const key = await deriveKey(passphrase, salt);
+    const iv = buf.slice(0, IV_LENGTH);
+    const cipher = buf.slice(IV_LENGTH);
     const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
     plaintext = new TextDecoder().decode(dec);
   } catch {
-    throw new Error(`Vault decryption failed for: ${name} (wrong key?)`);
+    if (!isLegacy) throw new Error(`Vault decryption failed for: ${name} (wrong key?)`);
+    const enc = new TextEncoder();
+    const key = await deriveKey(passphrase, enc.encode(LEGACY_SALT));
+    const iv = buf.slice(0, IV_LENGTH);
+    const cipher = buf.slice(IV_LENGTH);
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+    plaintext = new TextDecoder().decode(dec);
+    vaultStore({
+      name,
+      service: '',
+      value: plaintext,
+      credentialType: 'api_key',
+      allowedAgents: allowed,
+    }).catch(() => {});
   }
 
   await db.run(
