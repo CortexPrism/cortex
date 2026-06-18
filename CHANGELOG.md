@@ -5,6 +5,14 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Fixed
+
+- **CSP relaxation** (`src/server/security-headers.ts`) — `connect-src` now includes `http:` and `https:` schemes to allow API connections from the browser. `script-src` includes `https://d3js.org` for D3.js charts. `img-src` includes `blob:` for blob URLs.
+
+- **JetBrains Mono font quoting** (`src/server/ui.ts`) — all `font-family:"JetBrains Mono"` and unquoted `font-family:JetBrains Mono` instances changed to single-quoted `font-family:'JetBrains Mono'` for valid CSS. In single-quoted JavaScript strings embedded in template literals, single quotes are now double-escaped (`\\'` → `\'` in output) to prevent premature JS string termination.
+
 ## [0.41.4] — 2026-06-18
 
 ### Security
