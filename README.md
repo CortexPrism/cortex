@@ -110,21 +110,22 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 ### Built-in Tools
 
-| Category       | Tools                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo        |
-| Shell          | execute shell commands (sandboxed through policy validator)                                |
-| Web            | web_search, web_fetch, web_crawl, docs_search (context7), firecrawl (web scraping)         |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                        |
-| Browser        | navigate, click, type, screenshot, snapshot, evaluate (Playwright automation)              |
-| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                               |
-| Git workspace  | status, commit, push, pull, branch, clone                                                  |
-| Voice          | speak, listen (STT/TTS agent tools)                                                        |
-| Memory & Data  | memory_note, memory_search, db_query, structured_extract (LLM-powered extraction)         |
-| Sub-agents     | spawn typed child agents for parallel and delegated tasks                                  |
-| Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)         |
-| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                    |
-| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                                 |
+| Category       | Tools                                                                               |
+| -------------- | ----------------------------------------------------------------------------------- |
+| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo |
+| Shell          | execute shell commands (sandboxed through policy validator)                         |
+| Web            | web_search, web_fetch, web_crawl, docs_search (context7), firecrawl (web scraping)  |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                 |
+| Browser        | navigate, click, type, screenshot, snapshot, evaluate (Playwright automation)       |
+| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                        |
+| Git workspace  | status, commit, push, pull, branch, clone                                           |
+| Voice          | speak, listen (STT/TTS agent tools)                                                 |
+| Data & Util    | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils        |
+| Environment    | env_manager (get/set variables), code_snippet (extract/format code blocks)               |
+| Sub-agents     | spawn typed child agents for parallel and delegated tasks                           |
+| Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)  |
+| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                             |
+| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                          |
 
 ### Web UI & REST API
 
