@@ -107,7 +107,7 @@ channelsCommand
           });
           break;
 
-        case 'telegram':
+        case 'telegram': {
           credentials.token = await Input.prompt({
             message: 'Telegram bot token:',
             validate: (value) => value.length > 0 || 'Token is required',
@@ -127,6 +127,7 @@ channelsCommand
             });
           }
           break;
+        }
 
         case 'teams':
           credentials.tenantId = await Input.prompt({

@@ -1,5 +1,5 @@
 {
-  "version": "0.40.0",
+  "version": "0.41.0",
   "nodeModulesDir": "auto",
   "tasks": {
     "dev": "deno run --allow-all src/main.ts",
@@ -59,6 +59,7 @@
   "exclude": [
     "docs/",
     ".git/",
-    "node_modules/"
+    "node_modules/",
+    "CHANGELOG.md"
   ]
 }

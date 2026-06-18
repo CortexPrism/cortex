@@ -1,4 +1,4 @@
-import { getMemoryDb, type Db } from '../db/client.ts';
+import { type Db, getMemoryDb } from '../db/client.ts';
 import type { InValue } from '../db/client.ts';
 import type { LLMProvider } from '../llm/types.ts';
 import type { EmbeddingProvider, EmbeddingVector } from './embeddings.ts';
@@ -203,7 +203,9 @@ export async function deleteSkill(name: string): Promise<boolean> {
   return true;
 }
 
-export async function deleteSkills(names: string[]): Promise<{ deleted: number; errors: { name: string; error: string }[] }> {
+export async function deleteSkills(
+  names: string[],
+): Promise<{ deleted: number; errors: { name: string; error: string }[] }> {
   if (names.length === 0) return { deleted: 0, errors: [] };
   const db = await getMemoryDb();
   const nameSet = new Set(names);
@@ -215,7 +217,7 @@ export async function deleteSkills(names: string[]): Promise<{ deleted: number; 
     `SELECT name FROM procedural_memory WHERE name IN (${ph})`,
     names as unknown as InValue[],
   );
-  const existingSet = new Set(existing.map(s => s.name));
+  const existingSet = new Set(existing.map((s) => s.name));
 
   for (const name of names) {
     if (!existingSet.has(name)) {

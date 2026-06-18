@@ -189,12 +189,20 @@ export const skillWriteTool: Tool = {
         };
       }
       const result = await deleteSkills(names);
-      const summary = `Deleted ${result.deleted} skill(s)${result.errors.length > 0 ? ', ' + result.errors.length + ' error(s): ' + result.errors.map(e => e.name + ': ' + e.error).join('; ') : ''}.`;
+      const summary = `Deleted ${result.deleted} skill(s)${
+        result.errors.length > 0
+          ? ', ' + result.errors.length + ' error(s): ' + result.errors.map((e) =>
+            e.name + ': ' + e.error
+          ).join('; ')
+          : ''
+      }.`;
       return {
         toolName: 'skill_write',
         success: result.errors.length === 0,
         output: summary,
-        error: result.errors.length > 0 ? result.errors.map(e => `${e.name}: ${e.error}`).join('\n') : undefined,
+        error: result.errors.length > 0
+          ? result.errors.map((e) => `${e.name}: ${e.error}`).join('\n')
+          : undefined,
         durationMs: 0,
       };
     }
