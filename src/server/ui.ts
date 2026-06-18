@@ -12053,9 +12053,9 @@ function extendAgentsPage() {
   container.appendChild(typesPanel);
 }
 function switchAgentsSubTab(btn, tab) {
-  var list = document.querySelector('#page-agents [style*="overflow-y:auto"]');
+  var list = document.getElementById('agents-content');
   var types = document.getElementById('agents-types-panel');
-  if (tab === 'agents') { if (list) list.style.display = 'block'; types.style.display = 'none'; }
+  if (tab === 'agents') { if (list) list.style.display = 'flex'; types.style.display = 'none'; }
   else { if (list) list.style.display = 'none'; types.style.display = 'block'; loadSubAgentTypes(); }
 }
 async function loadSubAgentTypes() {
@@ -12087,23 +12087,24 @@ function extendCoderunnerPage() {
   if (document.getElementById('cr-tab-config')) return;
   var header = document.querySelector('#page-coderunner > div:first-of-type');
   if (!header) { setTimeout(extendCoderunnerPage, 500); return; }
+  var container = document.getElementById('page-coderunner');
+  // Save reference to original content area (second child after header)
+  window._crOriginalContent = container.children[1];
   var tabBar = document.createElement('div');
   tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
   tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchCoderunnerTab(this,\\'exec\\')" style="font-size:11px;padding:4px 10px;">Execute</button>' +
     '<button class="btn btn-ghost" onclick="switchCoderunnerTab(this,\\'config\\')" id="cr-tab-config" style="font-size:11px;padding:4px 10px;">Config</button>';
-  var container = document.getElementById('page-coderunner');
-  var firstChild = container.children[1];
-  container.insertBefore(tabBar, firstChild);
+  container.insertBefore(tabBar, window._crOriginalContent);
   var configPanel = document.createElement('div');
   configPanel.id = 'cr-config-panel';
   configPanel.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:16px;';
   container.appendChild(configPanel);
 }
 function switchCoderunnerTab(btn, tab) {
-  var mainContent = document.querySelector('#page-coderunner > div:last-of-type');
   var configPanel = document.getElementById('cr-config-panel');
-  if (tab === 'exec') { if (mainContent) mainContent.style.display = 'block'; configPanel.style.display = 'none'; }
-  else { if (mainContent) mainContent.style.display = 'none'; configPanel.style.display = 'block'; loadSandboxConfig(); }
+  // Use the original content container stored during injection
+  if (tab === 'exec') { if (window._crOriginalContent) window._crOriginalContent.style.display = 'flex'; if (configPanel) configPanel.style.display = 'none'; }
+  else { if (window._crOriginalContent) window._crOriginalContent.style.display = 'none'; if (configPanel) configPanel.style.display = 'block'; loadSandboxConfig(); }
 }
 async function loadSandboxConfig() {
   var el = document.getElementById('cr-config-panel');
@@ -12136,22 +12137,22 @@ function extendPoliciesPage() {
   if (document.getElementById('pol-tab-classification')) return;
   var header = document.querySelector('#page-policies > div:first-of-type');
   if (!header) return;
+  var container = document.getElementById('page-policies');
+  window._polOriginalContent = container.children[1];
   var tabBar = document.createElement('div');
   tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
   tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchPoliciesTab(this,\\'rules\\')" style="font-size:11px;padding:4px 10px;">Rules</button>' +
     '<button class="btn btn-ghost" onclick="switchPoliciesTab(this,\\'classification\\')" id="pol-tab-classification" style="font-size:11px;padding:4px 10px;">Classification</button>';
-  var container = document.getElementById('page-policies');
-  container.insertBefore(tabBar, container.children[1]);
+  container.insertBefore(tabBar, window._polOriginalContent);
   var classPanel = document.createElement('div');
   classPanel.id = 'pol-classification-panel';
   classPanel.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:16px;';
   container.appendChild(classPanel);
 }
 function switchPoliciesTab(btn, tab) {
-  var mainContent = document.querySelector('#page-policies > div:last-of-type');
   var classPanel = document.getElementById('pol-classification-panel');
-  if (tab === 'rules') { if (mainContent) mainContent.style.display = 'block'; classPanel.style.display = 'none'; }
-  else { if (mainContent) mainContent.style.display = 'none'; classPanel.style.display = 'block'; loadClassificationConfig(); }
+  if (tab === 'rules') { if (window._polOriginalContent) window._polOriginalContent.style.display = 'flex'; if (classPanel) classPanel.style.display = 'none'; }
+  else { if (window._polOriginalContent) window._polOriginalContent.style.display = 'none'; if (classPanel) classPanel.style.display = 'block'; loadClassificationConfig(); }
 }
 async function loadClassificationConfig() {
   var el = document.getElementById('pol-classification-panel');
