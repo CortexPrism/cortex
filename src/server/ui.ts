@@ -3095,9 +3095,24 @@ async function restoreSession() {
       currentAgentId = aid;
       document.getElementById('chat-session-id').textContent = sid.slice(-12);
       // Reopen the session server-side
-      await fetch(BASE + '/api/sessions/' + encodeURIComponent(sid) + '/resume', { method: 'POST' });
+      const resumeRes = await fetch(BASE + '/api/sessions/' + encodeURIComponent(sid) + '/resume', { method: 'POST' });
+      if (!resumeRes.ok) {
+        sessionId = null;
+        currentAgentId = null;
+        try { localStorage.removeItem('cortex_session_id'); } catch {}
+        try { localStorage.removeItem('cortex_agent_id'); } catch {}
+        document.getElementById('chat-session-id').textContent = '';
+        return;
+      }
       const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(sid) + '/messages');
-      if (!res.ok) return;
+      if (!res.ok) {
+        sessionId = null;
+        currentAgentId = null;
+        try { localStorage.removeItem('cortex_session_id'); } catch {}
+        try { localStorage.removeItem('cortex_agent_id'); } catch {}
+        document.getElementById('chat-session-id').textContent = '';
+        return;
+      }
       const msgs = await res.json();
       let lastRole = '';
       for (const m of msgs) {
@@ -3788,8 +3803,8 @@ function showPage(name) {
 
   const loaders = {
     lens: loadLens, memory: loadMemoryOverview, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
-    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'policies'); }, analytics: loadAnalytics,
-    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'settings'); },
+    skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); }, analytics: loadAnalytics,
+    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'settings'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: () => { loadNodes(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'nodes'); },
@@ -3803,12 +3818,12 @@ function showPage(name) {
     codegraph: loadCodegraphPage,
     workflow: () => { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
     eval: () => { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
-    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'mcp'); },
-    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'vault'); },
+    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'mcp'); },
+    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'vault'); },
     computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
     remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
-    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'tools'); },
+    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'tools'); },
     metacognition: loadMetacognition,
   };
   if (loaders[name]) loaders[name]();
@@ -3998,39 +4013,43 @@ async function loadMemoryStats() {
 
 async function loadMemoryOverview() {
   try {
-    const [s, h, refs, memory] = await Promise.all([
-      fetch(BASE + '/api/memory/stats').then(r => r.json()).catch(() => null),
-      fetch(BASE + '/api/memory/health').then(r => r.json()).catch(() => null),
-      fetch(BASE + '/api/memory/reflections').then(r => r.json()).catch(() => []),
-      fetch(BASE + '/api/soul/memory').then(r => r.json()).catch(() => ({ content: '' })),
+    var responses = await Promise.all([
+      fetch(BASE + '/api/memory/stats').then(function(r) { return r.json(); }).catch(function() { return null; }),
+      fetch(BASE + '/api/memory/health').then(function(r) { return r.json(); }).catch(function() { return null; }),
+      fetch(BASE + '/api/memory/reflections').then(function(r) { return r.json(); }).catch(function() { return []; }),
+      fetch(BASE + '/api/soul/memory').then(function(r) { return r.json(); }).catch(function() { return { content: '' }; }),
     ]);
+    var s = responses[0];
+    var h = responses[1];
+    var refs = responses[2];
+    var memory = responses[3];
 
-    const el = document.getElementById('mem-overview');
+    var el = document.getElementById('mem-overview');
     if (!el) return;
 
-    const stats = [
-      { label:'Episodic', val: s?.episodic ?? '—', color:'#fbbf24', desc:'Session traces' },
-      { label:'Semantic', val: s?.semantic ?? '—', color:'#818cf8', desc:'Facts & knowledge' },
-      { label:'Reflection', val: s?.reflection ?? '—', color:'#34d399', desc:'Meta-patterns' },
-      { label:'Procedural', val: s?.procedural ?? '—', color:'#fb923c', desc:'Learned skills' },
+    var stats = [
+      { label:'Episodic', val: s && typeof s.episodic !== 'undefined' ? s.episodic : '—', color:'#fbbf24', desc:'Session traces' },
+      { label:'Semantic', val: s && typeof s.semantic !== 'undefined' ? s.semantic : '—', color:'#818cf8', desc:'Facts & knowledge' },
+      { label:'Reflection', val: s && typeof s.reflection !== 'undefined' ? s.reflection : '—', color:'#34d399', desc:'Meta-patterns' },
+      { label:'Procedural', val: s && typeof s.procedural !== 'undefined' ? s.procedural : '—', color:'#fb923c', desc:'Learned skills' },
     ];
 
-    const statsHtml = stats.map(item => '<button class="card-sm" style="text-align:left;cursor:pointer;" onclick="switchMemoryTab(\'search\');document.getElementById(\'mem-query\').focus();">' +
+    var statsHtml = stats.map(function(item) { return '<button class="card-sm" style="text-align:left;cursor:pointer;" onclick="switchMemoryTab(\\'search\\');document.getElementById(\\'mem-query\\').focus();">' +
       '<div class="stat-num" style="color:' + item.color + ';margin-bottom:4px;">' + item.val + '</div>' +
       '<div class="stat-label">' + item.label + '</div>' +
       '<div style="font-size:9px;color:var(--text3);margin-top:4px;">' + item.desc + '</div>' +
-    '</button>').join('');
+    '</button>'; }).join('');
 
-    const healthHtml = h ? '<div class="card-sm">' +
+    var healthHtml = h ? '<div class="card-sm">' +
       '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#fbbf24;">Memory Health</div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px;">' +
-        '<div><div style="color:var(--text3);">Episodic</div><div>' + (h.episodic?.total ?? '—') + '</div></div>' +
-        '<div><div style="color:var(--text3);">Semantic</div><div>' + (h.semantic?.total ?? '—') + '</div></div>' +
-        '<div><div style="color:var(--text3);">Graph</div><div>' + (h.graph?.entities ?? '—') + '</div></div>' +
+        '<div><div style="color:var(--text3);">Episodic</div><div>' + (h.episodic && typeof h.episodic.total !== 'undefined' ? h.episodic.total : '—') + '</div></div>' +
+        '<div><div style="color:var(--text3);">Semantic</div><div>' + (h.semantic && typeof h.semantic.total !== 'undefined' ? h.semantic.total : '—') + '</div></div>' +
+        '<div><div style="color:var(--text3);">Graph</div><div>' + (h.graph && typeof h.graph.entities !== 'undefined' ? h.graph.entities : '—') + '</div></div>' +
       '</div>' +
     '</div>' : '';
 
-    const refHtml = Array.isArray(refs) && refs.length ? refs.slice(0, 5).map(r => '<div class="card-sm">' +
+    var refHtml = Array.isArray(refs) && refs.length ? refs.slice(0, 5).map(function(r) { return '<div class="card-sm">' +
       '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
         '<span class="badge" style="background:rgba(255,255,255,0.06);color:#34d399;">' + esc(r.category || 'general') + '</span>' +
         '<span style="font-size:10px;color:var(--text3);">' + timeAgo(r.created_at) + '</span>' +
@@ -4039,7 +4058,7 @@ async function loadMemoryOverview() {
       '<div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">' +
         '<div style="width:' + Math.round((r.confidence || 0) * 100) + '%;height:100%;background:#34d399;"></div>' +
       '</div>' +
-    '</div>').join('') : '<div style="font-size:11px;color:var(--text3);">No reflections yet.</div>';
+    '</div>'; }).join('') : '<div style="font-size:11px;color:var(--text3);">No reflections yet.</div>';
 
     el.innerHTML = '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
       '<div>' +
@@ -4047,8 +4066,8 @@ async function loadMemoryOverview() {
         '<div style="font-size:10px;color:var(--text3);">Search, graph, health, reflections, and persistent notes in one place.</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button class="btn btn-primary" onclick="switchMemoryTab(\'search\')" style="font-size:11px;">Search</button>' +
-        '<button class="btn btn-ghost" onclick="switchMemoryTab(\'graph\')" style="font-size:11px;">Graph</button>' +
+        '<button class="btn btn-primary" onclick="switchMemoryTab(\\'search\\')" style="font-size:11px;">Search</button>' +
+        '<button class="btn btn-ghost" onclick="switchMemoryTab(\\'graph\\')" style="font-size:11px;">Graph</button>' +
         '<button class="btn btn-ghost" onclick="loadMemoryOverview()" style="font-size:11px;">Refresh</button>' +
       '</div>' +
     '</div>' +
@@ -4066,7 +4085,7 @@ async function loadMemoryOverview() {
           '<div style="font-size:12px;font-weight:600;">Persistent Memory</div>' +
           '<div style="font-size:10px;color:var(--text3);">Injected into the agent prompt and editable inline.</div>' +
         '</div>' +
-        '<button class="btn btn-ghost" onclick="document.getElementById(\'memory-note\').focus()" style="font-size:11px;">Add Note</button>' +
+        '<button class="btn btn-ghost" onclick="document.getElementById(\\'memory-note\\').focus()" style="font-size:11px;">Add Note</button>' +
       '</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
         '<input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />' +
@@ -4079,8 +4098,8 @@ async function loadMemoryOverview() {
       '</div>' +
     '</div>';
 
-    const mdEl = document.getElementById('soul-raw-memory-text');
-    if (mdEl) mdEl.value = memory?.content || '';
+    var mdEl = document.getElementById('soul-raw-memory-text');
+    if (mdEl) mdEl.value = memory && memory.content ? memory.content : '';
   } catch { /* ignore */ }
 }
 
@@ -10096,14 +10115,22 @@ async function switchToSession(id) {
   sessionId = id;
   saveSession();
   document.getElementById('chat-session-id').textContent = id.slice(-12);
-  await loadSessionMessages(id);
+  const ok = await loadSessionMessages(id);
+  if (!ok) {
+    sessionId = null;
+    try { localStorage.removeItem('cortex_session_id'); } catch {}
+    document.getElementById('chat-session-id').textContent = '';
+    toast('Session no longer exists', 'warning');
+    loadAgentPanel();
+    return;
+  }
   document.getElementById('agent-panel-toggle')?.classList.remove('active');
   loadAgentPanel();
 }
 
 async function loadSessionMessages(id) {
   const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(id) + '/messages');
-  if (!res.ok) return;
+  if (!res.ok) return false;
   const msgs = await res.json();
   chatLog.innerHTML = '';
   for (const m of msgs) {
@@ -10116,6 +10143,7 @@ async function loadSessionMessages(id) {
     }
   }
   scrollChat();
+  return true;
 }
 
 async function deleteMessage(messageId) {

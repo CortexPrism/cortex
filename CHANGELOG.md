@@ -21,6 +21,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Memory page consolidation** (`src/server/ui.ts`) — combined health, reflections, and persistent notes into a single Overview tab, leaving Search and Graph as the primary exploration views.
 
+- **Session restore hardening** (`src/server/ui.ts`) — stale saved session ids now fail soft instead of spamming `/resume` and `/messages` 404s, and invalid session state is cleared from local storage.
+
+- **Settings subnav cleanup** (`src/server/ui.ts`) — removed the duplicate Policies entry from the shared settings/tools/MCP/vault sub-navigation so Policies now appears only in the main page navigation.
+
 ## [0.41.2] — 2026-06-18
 
 ### Changed
