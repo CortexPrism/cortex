@@ -98,7 +98,11 @@ class OpenAIEmbedder implements EmbeddingProvider {
 
 class StubEmbedder implements EmbeddingProvider {
   name = 'stub';
-  dims = 64;
+  dims: number;
+
+  constructor(dims = 64) {
+    this.dims = dims;
+  }
 
   async embed(text: string): Promise<EmbeddingVector> {
     const v = new Float32Array(this.dims);
@@ -115,6 +119,21 @@ class StubEmbedder implements EmbeddingProvider {
 }
 
 export function buildEmbedder(config: CortexConfig): EmbeddingProvider {
+  const emb = config.embeddings;
+  if (emb) {
+    if (emb.provider === 'ollama') {
+      const baseUrl = emb.baseUrl ?? 'http://localhost:11434';
+      const model = emb.model ?? 'nomic-embed-text';
+      return new OllamaEmbedder(baseUrl, model);
+    }
+
+    if (emb.provider === 'openai' && emb.apiKey) {
+      return new OpenAIEmbedder(emb.apiKey, emb.model ?? 'text-embedding-3-small');
+    }
+
+    return new StubEmbedder(emb.dimensions ?? 64);
+  }
+
   const provider = config.providers[config.defaultProvider];
   if (!provider) return new StubEmbedder();
 

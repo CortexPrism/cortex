@@ -1273,22 +1273,25 @@ const HTML = `<!DOCTYPE html>
   <div id="page-memory" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:12px 24px 0;border-bottom:1px solid var(--border);display:flex;gap:0;">
       <div style="display:flex;gap:2px;">
-        <button class="mem-tab active" onclick="switchMemoryTab('search')" id="memtab-search">Search</button>
+        <button class="mem-tab active" onclick="switchMemoryTab('overview')" id="memtab-overview">Overview</button>
+        <button class="mem-tab" onclick="switchMemoryTab('search')" id="memtab-search">Search</button>
         <button class="mem-tab" onclick="switchMemoryTab('graph')" id="memtab-graph">Graph</button>
-        <button class="mem-tab" onclick="switchMemoryTab('reflections')" id="memtab-reflections">Reflections</button>
-        <button class="mem-tab" onclick="switchMemoryTab('health')" id="memtab-health">Health</button>
-        <button class="mem-tab" onclick="switchMemoryTab('persistent')" id="memtab-persistent">Persistent</button>
       </div>
     </div>
 
+    <!-- Overview Tab -->
+    <div id="mem-pane-overview" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
+      <div id="mem-overview" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+
     <!-- Search Tab -->
-    <div id="mem-pane-search" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
+    <div id="mem-pane-search" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
       <div style="padding:14px 24px;border-bottom:1px solid var(--border);">
-        <div id="mem-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;"></div>
         <div style="display:flex;gap:8px;">
           <input id="mem-query" class="inp" placeholder="Search memory… (keyword + vector)" style="flex:1;" />
           <button class="btn btn-primary" onclick="searchMemory()">Search</button>
         </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:8px;">Use this for retrieval across episodic and semantic memory.</div>
       </div>
       <div id="mem-results" style="flex:1;overflow-y:auto;padding:12px 24px;display:flex;flex-direction:column;gap:8px;"></div>
     </div>
@@ -1305,37 +1308,6 @@ const HTML = `<!DOCTYPE html>
       <div id="graph-results" style="flex:1;overflow-y:auto;padding:0 24px 16px;display:flex;flex-direction:column;gap:6px;"></div>
     </div>
 
-    <!-- Reflections Tab -->
-    <div id="mem-pane-reflections" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--border);">
-        <p style="font-size:12px;color:var(--text3);">Meta-patterns observed across sessions. Higher confidence = more reliable.</p>
-      </div>
-      <div id="reflections-list" style="flex:1;overflow-y:auto;padding:12px 24px;display:flex;flex-direction:column;gap:6px;"></div>
-    </div>
-
-    <!-- Health Tab -->
-    <div id="mem-pane-health" style="display:none;flex:1;overflow:auto;padding:16px 24px;">
-      <div id="health-content"></div>
-    </div>
-
-    <!-- Persistent Memory Tab (MEMORY.md) -->
-    <div id="mem-pane-persistent" style="display:none;flex:1;overflow-y:auto;padding:20px 24px;">
-      <div style="max-width:700px;display:flex;flex-direction:column;gap:14px;">
-        <div style="display:flex;gap:8px;">
-          <input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />
-          <button class="btn btn-ghost" onclick="appendMemoryNote()">+ Add Note</button>
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">MEMORY.md</label>
-          <textarea id="soul-raw-memory-text" style="width:100%;min-height:460px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveMemoryMd()">Save MEMORY.md</button>
-          <span id="mem-persist-status" style="font-size:11px;color:var(--text3);align-self:center;"></span>
-        </div>
-        <p style="font-size:11px;color:var(--text3);">Injected into every session prompt. The agent writes here automatically via the <code style="background:var(--bg3);padding:1px 4px;border-radius:3px;">memory_note</code> tool.</p>
-      </div>
-    </div>
   </div>
 
   <!-- Page: Nodes -->
@@ -3815,7 +3787,7 @@ function showPage(name) {
   if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
 
   const loaders = {
-    lens: loadLens, memory: loadMemoryStats, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
+    lens: loadLens, memory: loadMemoryOverview, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
     skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'policies'); }, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['policies','Policies'],['vault','Vault']], 'settings'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
@@ -3990,7 +3962,7 @@ function decayColor(score) {
 function switchMemoryTab(name) {
   document.querySelectorAll('.mem-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('memtab-'+name).classList.add('active');
-  ['search','graph','reflections','health','persistent'].forEach(p => {
+  ['overview','search','graph'].forEach(p => {
     const el = document.getElementById('mem-pane-'+p);
     if (el) el.style.display = p === name ? 'flex' : 'none';
   });
@@ -4003,9 +3975,7 @@ function switchMemoryTab(name) {
     if (b) b.classList.remove('active');
   });
   if (name === 'graph') searchGraphEntities();
-  if (name === 'reflections') loadReflections();
-  if (name === 'health') loadMemoryHealth();
-  if (name === 'persistent') loadMemoryMd();
+  if (name === 'overview') loadMemoryOverview();
 }
 
 async function loadMemoryStats() {
@@ -4023,6 +3993,94 @@ async function loadMemoryStats() {
       <div class="stat-label">\${s.label}</div>
       <div style="font-size:9px;color:var(--text3);">\${s.desc}</div>
     </div>\`).join('');
+  } catch { /* ignore */ }
+}
+
+async function loadMemoryOverview() {
+  try {
+    const [s, h, refs, memory] = await Promise.all([
+      fetch(BASE + '/api/memory/stats').then(r => r.json()).catch(() => null),
+      fetch(BASE + '/api/memory/health').then(r => r.json()).catch(() => null),
+      fetch(BASE + '/api/memory/reflections').then(r => r.json()).catch(() => []),
+      fetch(BASE + '/api/soul/memory').then(r => r.json()).catch(() => ({ content: '' })),
+    ]);
+
+    const el = document.getElementById('mem-overview');
+    if (!el) return;
+
+    const stats = [
+      { label:'Episodic', val: s?.episodic ?? '—', color:'#fbbf24', desc:'Session traces' },
+      { label:'Semantic', val: s?.semantic ?? '—', color:'#818cf8', desc:'Facts & knowledge' },
+      { label:'Reflection', val: s?.reflection ?? '—', color:'#34d399', desc:'Meta-patterns' },
+      { label:'Procedural', val: s?.procedural ?? '—', color:'#fb923c', desc:'Learned skills' },
+    ];
+
+    const statsHtml = stats.map(item => '<button class="card-sm" style="text-align:left;cursor:pointer;" onclick="switchMemoryTab(\'search\');document.getElementById(\'mem-query\').focus();">' +
+      '<div class="stat-num" style="color:' + item.color + ';margin-bottom:4px;">' + item.val + '</div>' +
+      '<div class="stat-label">' + item.label + '</div>' +
+      '<div style="font-size:9px;color:var(--text3);margin-top:4px;">' + item.desc + '</div>' +
+    '</button>').join('');
+
+    const healthHtml = h ? '<div class="card-sm">' +
+      '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#fbbf24;">Memory Health</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px;">' +
+        '<div><div style="color:var(--text3);">Episodic</div><div>' + (h.episodic?.total ?? '—') + '</div></div>' +
+        '<div><div style="color:var(--text3);">Semantic</div><div>' + (h.semantic?.total ?? '—') + '</div></div>' +
+        '<div><div style="color:var(--text3);">Graph</div><div>' + (h.graph?.entities ?? '—') + '</div></div>' +
+      '</div>' +
+    '</div>' : '';
+
+    const refHtml = Array.isArray(refs) && refs.length ? refs.slice(0, 5).map(r => '<div class="card-sm">' +
+      '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+        '<span class="badge" style="background:rgba(255,255,255,0.06);color:#34d399;">' + esc(r.category || 'general') + '</span>' +
+        '<span style="font-size:10px;color:var(--text3);">' + timeAgo(r.created_at) + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--text);line-height:1.4;">' + esc(r.pattern || '') + '</div>' +
+      '<div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">' +
+        '<div style="width:' + Math.round((r.confidence || 0) * 100) + '%;height:100%;background:#34d399;"></div>' +
+      '</div>' +
+    '</div>').join('') : '<div style="font-size:11px;color:var(--text3);">No reflections yet.</div>';
+
+    el.innerHTML = '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
+      '<div>' +
+        '<h3 style="font-size:13px;font-weight:600;margin:0 0 4px 0;">Memory Overview</h3>' +
+        '<div style="font-size:10px;color:var(--text3);">Search, graph, health, reflections, and persistent notes in one place.</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn btn-primary" onclick="switchMemoryTab(\'search\')" style="font-size:11px;">Search</button>' +
+        '<button class="btn btn-ghost" onclick="switchMemoryTab(\'graph\')" style="font-size:11px;">Graph</button>' +
+        '<button class="btn btn-ghost" onclick="loadMemoryOverview()" style="font-size:11px;">Refresh</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">' + statsHtml + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">' +
+      healthHtml +
+      '<div class="card-sm">' +
+        '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#818cf8;">Recent Reflections</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;">' + refHtml + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card-sm">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<div style="font-size:12px;font-weight:600;">Persistent Memory</div>' +
+          '<div style="font-size:10px;color:var(--text3);">Injected into the agent prompt and editable inline.</div>' +
+        '</div>' +
+        '<button class="btn btn-ghost" onclick="document.getElementById(\'memory-note\').focus()" style="font-size:11px;">Add Note</button>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+        '<input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />' +
+        '<button class="btn btn-ghost" onclick="appendMemoryNote()">+ Add Note</button>' +
+      '</div>' +
+      '<textarea id="soul-raw-memory-text" style="width:100%;min-height:320px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:\"JetBrains Mono\",monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;">' +
+        '<button class="btn btn-primary" onclick="saveMemoryMd()">Save MEMORY.md</button>' +
+        '<span id="mem-persist-status" style="font-size:11px;color:var(--text3);align-self:center;"></span>' +
+      '</div>' +
+    '</div>';
+
+    const mdEl = document.getElementById('soul-raw-memory-text');
+    if (mdEl) mdEl.value = memory?.content || '';
   } catch { /* ignore */ }
 }
 
@@ -12565,13 +12623,18 @@ function extendMemoryPage() {
   if (!existingTab) { setTimeout(extendMemoryPage, 300); return; }
   var tabBar = existingTab.parentElement;
   if (!tabBar) return;
-  ['Privacy','Heuristics','Embeddings'].forEach(function(label) {
-    var id = 'mem-tab-' + label.toLowerCase();
+  [
+    { id: 'privacy', label: 'Privacy' },
+    { id: 'heuristics', label: 'Heuristics' },
+    { id: 'embeddings', label: 'Embeddings' },
+    { id: 'vector-store', label: 'Vector Store' },
+  ].forEach(function(tab) {
+    var id = 'mem-tab-' + tab.id;
     var btn = document.createElement('button');
     btn.className = 'mem-tab';
     btn.id = id;
-    btn.textContent = label;
-    btn.onclick = function() { switchMemExtTab(label.toLowerCase()); };
+    btn.textContent = tab.label;
+    btn.onclick = function() { switchMemExtTab(tab.id); };
     tabBar.appendChild(btn);
   });
   var container = document.getElementById('page-memory');
@@ -12580,25 +12643,25 @@ function extendMemoryPage() {
   extDiv.style.cssText = 'flex:1;overflow-y:auto;padding:16px;display:none;';
   container.appendChild(extDiv);
 }
-var origLoadMemoryStats;
+var origLoadMemoryOverview;
 function patchMemoryLoader() {
-  if (origLoadMemoryStats) return;
-  origLoadMemoryStats = loadMemoryStats;
-  loadMemoryStats = function() {
-    origLoadMemoryStats();
+  if (origLoadMemoryOverview) return;
+  origLoadMemoryOverview = loadMemoryOverview;
+  loadMemoryOverview = function() {
+    origLoadMemoryOverview();
     setTimeout(extendMemoryPage, 500);
   };
 }
 function switchMemExtTab(tab) {
   var el = document.getElementById('mem-ext-content');
   if (!el) return;
-  // Update tab button active states
-  ['privacy','heuristics','embeddings'].forEach(function(t) {
+  // Deactivate main memory tabs
+  document.querySelectorAll('.mem-tab').forEach(function(b) { b.classList.remove('active'); });
+  // Update extension tab active states after clearing the main row
+  ['privacy','heuristics','embeddings','vector-store'].forEach(function(t) {
     var b = document.getElementById('mem-tab-' + t);
     if (b) b.classList.toggle('active', t === tab);
   });
-  // Deactivate main memory tabs
-  document.querySelectorAll('.mem-tab').forEach(function(b) { b.classList.remove('active'); });
   // Hide all main memory panes
   ['search','graph','reflections','health','persistent'].forEach(function(p) {
     var pane = document.getElementById('mem-pane-' + p);
@@ -12609,6 +12672,7 @@ function switchMemExtTab(tab) {
   // Load content
   if (tab === 'privacy') loadMemPrivacy();
   else if (tab === 'heuristics') loadMemHeuristics();
+  else if (tab === 'vector-store') loadMemVectorStore();
   else loadMemEmbeddings();
 }
 async function loadMemPrivacy() {
@@ -12633,21 +12697,169 @@ async function loadMemHeuristics() {
   var el = document.getElementById('mem-ext-content');
   try {
     var data = await fetch(BASE + '/api/memory/heuristics').then(r => r.json()).catch(function() { return {}; });
-    var cats = data.categories || ['api','database','devops','frontend','debugging','testing','security','performance','vcs','containers','ai-ml','programming'];
-    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Auto-Categorization Rules (12 patterns)</h3>' +
-      cats.map(function(c) {
-        return '<div class="list-item"><span class="dot" style="background:var(--accent);"></span><div style="font-size:11px;text-transform:capitalize;">' + esc(c) + '</div></div>';
-      }).join('');
+    var catalog = Array.isArray(data.catalog) ? data.catalog : [];
+    var rules = data.ruleCount || catalog.reduce(function(sum, entry) { return sum + (entry.patterns || 0); }, 0) || 12;
+    var labels = ['api','database','devops','frontend','debugging','testing','security','performance','vcs','containers','ai-ml','programming'];
+    var items = catalog.length ? catalog : labels.map(function(c) { return { category: c, tags: [], patterns: 1 }; });
+    el.innerHTML =
+      '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<h3 style="font-size:13px;font-weight:600;margin:0 0 4px 0;">Heuristic Categories</h3>' +
+          '<div style="font-size:10px;color:var(--text3);">' + rules + ' patterns across ' + items.length + ' categories</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="btn btn-primary" onclick="runHeuristicCycle()" style="font-size:11px;">Run Cycle</button>' +
+          '<button class="btn btn-ghost" onclick="loadMemHeuristics()" style="font-size:11px;">Refresh</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:12px;">' +
+        items.map(function(entry) {
+          var chips = (entry.tags || []).slice(0, 4).map(function(tag) {
+            return '<span style="display:inline-block;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,0.06);color:var(--text2);font-size:10px;">' + esc(tag) + '</span>';
+          }).join('');
+          return '<div class="card-sm" style="min-height:88px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
+              '<div style="font-size:12px;font-weight:600;text-transform:capitalize;">' + esc(entry.category) + '</div>' +
+              '<div style="font-size:10px;color:var(--text3);">' + (entry.patterns || 0) + ' rules</div>' +
+            '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:4px;">' + (chips || '<span style="font-size:10px;color:var(--text3);">No tag hints</span>') + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="card-sm" id="heuristic-cycle-result" style="display:none;"></div>';
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function runHeuristicCycle() {
+  var resultBox = document.getElementById('heuristic-cycle-result');
+  if (resultBox) {
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = '<div style="font-size:11px;color:var(--text3);">Running heuristic cycle…</div>';
+  }
+  try {
+    var result = await fetch(BASE + '/api/memory/heuristics', { method: 'PUT' }).then(r => r.json());
+    var parts = Object.entries(result.affected || {}).map(function(pair) {
+      return '<div class="stat-row"><span>' + esc(pair[0]) + '</span><span>' + esc(String(pair[1])) + '</span></div>';
+    }).join('');
+    if (resultBox) {
+      resultBox.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Cycle Complete</div>' + parts;
+    }
+    toast('Heuristic cycle complete', 'success');
+  } catch (e) {
+    if (resultBox) {
+      resultBox.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">Cycle failed</div>' +
+        '<div style="font-size:11px;color:var(--text3);">' + esc(e && e.message ? e.message : 'Unknown error') + '</div>';
+    }
+    toast('Heuristic cycle failed', 'error');
+  }
+}
+async function loadMemVectorStore() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/vector-store').then(r => r.json()).catch(function() { return {}; });
+    var current = data.current || {};
+    var options = Array.isArray(data.options) ? data.options : [
+      { kind: 'sqlite', label: 'SQLite', description: 'Local file-backed fallback' },
+      { kind: 'qdrant', label: 'Qdrant', description: 'Vector DB with payload filters' },
+      { kind: 'chromadb', label: 'ChromaDB', description: 'Collection-based vector store' },
+      { kind: 'pinecone', label: 'Pinecone', description: 'Managed hosted vector index' },
+    ];
+    var health = data.health || {};
+    var healthLabel = health.ok === false ? 'Unavailable' : current.kind ? 'Configured' : 'Not configured';
+    var healthColor = health.ok === false ? '#f87171' : '#4ade80';
+    window._memVectorStoreCurrent = current;
+    el.innerHTML =
+      '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<h3 style="font-size:13px;font-weight:600;margin:0 0 4px 0;">Vector Store</h3>' +
+          '<div style="font-size:10px;color:var(--text3);">Configure a remote vector index for mirrored memory search.</div>' +
+        '</div>' +
+        '<div style="font-size:10px;color:' + healthColor + ';">' + esc(healthLabel) + (health.detail ? ' · ' + esc(health.detail) : '') + '</div>' +
+      '</div>' +
+      '<div class="card-sm" style="margin-bottom:12px;">' +
+        '<div class="stat-row"><span>Backend</span><select id="mem-vector-kind" class="inp" style="width:180px;font-size:11px;" onchange="renderMemVectorStoreFields(this.value)">' +
+          options.map(function(o) {
+            return '<option value="' + escAttr(o.kind) + '"' + (o.kind === (current.kind || 'sqlite') ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+          }).join('') +
+        '</select></div>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:6px;">' + esc((options.find(function(o) { return o.kind === (current.kind || 'sqlite'); }) || {}).description || 'Local file-backed fallback') + '</div>' +
+      '</div>' +
+      '<div id="mem-vector-form"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px;align-items:center;">' +
+        '<button class="btn btn-primary" onclick="saveMemVectorStore()" style="font-size:11px;">Save Vector Store</button>' +
+        '<span style="font-size:10px;color:var(--text3);">SQLite leaves this mirrored index disabled.</span>' +
+      '</div>';
+    renderMemVectorStoreFields(current.kind || 'sqlite');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function renderMemVectorStoreFields(kind) {
+  var el = document.getElementById('mem-vector-form');
+  if (!el) return;
+  var current = window._memVectorStoreCurrent || {};
+  if (kind === 'sqlite') {
+    el.innerHTML = '<div class="card-sm"><div style="font-size:11px;color:var(--text2);">SQLite uses the local memory database only. No remote settings are required.</div></div>';
+    return;
+  }
+
+  if (kind === 'pinecone') {
+    el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">' +
+      '<div class="card-sm"><div class="stat-row"><span>Index Host</span><input id="mem-vector-url" class="inp" value="' + escAttr(current.url || '') + '" placeholder="https://index-host.svc.<region>.pinecone.io" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for Pinecone queries and writes.</div></div>' +
+      '<div class="card-sm"><div class="stat-row"><span>API Key</span><input id="mem-vector-apikey" class="inp" value="' + escAttr(current.apiKey || '') + '" placeholder="Pinecone API key" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for Pinecone authentication.</div></div>' +
+    '</div>';
+    return;
+  }
+
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">' +
+    '<div class="card-sm"><div class="stat-row"><span>URL</span><input id="mem-vector-url" class="inp" value="' + escAttr(current.url || '') + '" placeholder="http://localhost:6333" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for ' + (kind === 'qdrant' ? 'Qdrant' : 'ChromaDB') + '.</div></div>' +
+    '<div class="card-sm"><div class="stat-row"><span>Collection</span><input id="mem-vector-collection" class="inp" value="' + escAttr(current.collection || '') + '" placeholder="cortex_memory" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for ' + (kind === 'qdrant' ? 'Qdrant' : 'ChromaDB') + '.</div></div>' +
+  '</div>';
+}
+async function saveMemVectorStore() {
+  var kind = document.getElementById('mem-vector-kind').value;
+  var body = { kind: kind };
+  if (kind === 'pinecone') {
+    body.url = document.getElementById('mem-vector-url').value.trim() || undefined;
+    body.apiKey = document.getElementById('mem-vector-apikey').value.trim() || undefined;
+  } else if (kind === 'qdrant' || kind === 'chromadb') {
+    body.url = document.getElementById('mem-vector-url').value.trim() || undefined;
+    body.collection = document.getElementById('mem-vector-collection').value.trim() || undefined;
+  }
+  await fetch(BASE + '/api/memory/vector-store', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Vector store updated', 'success');
 }
 async function loadMemEmbeddings() {
   var el = document.getElementById('mem-ext-content');
   try {
     var data = await fetch(BASE + '/api/memory/embeddings').then(r => r.json()).catch(function() { return {}; });
+    var current = data.current || {};
+    var options = Array.isArray(data.options) ? data.options : [
+      { provider: 'stub', label: 'Stub / Local fallback' },
+      { provider: 'ollama', label: 'Ollama' },
+      { provider: 'openai', label: 'OpenAI' },
+    ];
     el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Embedding Provider</h3>' +
-      '<div class="stat-row"><span>Provider</span><span>' + esc(data.provider || 'stub') + '</span></div>' +
-      '<div class="stat-row"><span>Dimensions</span><span>' + (data.dimensions || 64) + '</span></div>';
+      '<div class="stat-row"><span>Provider</span><select id="mem-embed-provider" class="inp" style="width:180px;font-size:11px;">' +
+        options.map(function(o) {
+          return '<option value="' + escAttr(o.provider) + '"' + (o.provider === (current.provider || data.provider || 'stub') ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+        }).join('') +
+      '</select></div>' +
+      '<div class="stat-row"><span>Model</span><input id="mem-embed-model" class="inp" value="' + escAttr(current.model || '') + '" placeholder="text-embedding-3-small / nomic-embed-text" style="width:180px;font-size:11px;"></div>' +
+      '<div class="stat-row"><span>Base URL</span><input id="mem-embed-baseurl" class="inp" value="' + escAttr(current.baseUrl || '') + '" placeholder="http://localhost:11434" style="width:180px;font-size:11px;"></div>' +
+      '<div class="stat-row"><span>API Key</span><input id="mem-embed-apikey" class="inp" value="' + escAttr(current.apiKey || '') + '" placeholder="optional" style="width:180px;font-size:11px;"></div>' +
+      '<div class="stat-row"><span>Dimensions</span><input id="mem-embed-dims" class="inp" type="number" value="' + (current.dimensions || data.dimensions || 64) + '" style="width:100px;font-size:11px;"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-primary" onclick="saveMemEmbeddings()" style="font-size:11px;">Save Embeddings</button></div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:8px;">Changes affect future memory writes and vector searches.</div>';
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function saveMemEmbeddings() {
+  var body = {
+    provider: document.getElementById('mem-embed-provider').value,
+    model: document.getElementById('mem-embed-model').value.trim() || undefined,
+    baseUrl: document.getElementById('mem-embed-baseurl').value.trim() || undefined,
+    apiKey: document.getElementById('mem-embed-apikey').value.trim() || undefined,
+    dimensions: parseInt(document.getElementById('mem-embed-dims').value) || undefined,
+  };
+  await fetch(BASE + '/api/memory/embeddings', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Embedding settings updated', 'success');
 }
 
 // ── Agents Extension: Sub-Agent Types ──

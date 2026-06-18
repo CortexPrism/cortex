@@ -64,6 +64,39 @@ const CATEGORY_RULES: Array<{ pattern: RegExp; category: string; tags: string[] 
   },
 ];
 
+export interface HeuristicCategorySummary {
+  category: string;
+  tags: string[];
+  patterns: number;
+}
+
+export function getHeuristicCatalog(): HeuristicCategorySummary[] {
+  const catalog = new Map<string, HeuristicCategorySummary>();
+
+  for (const rule of CATEGORY_RULES) {
+    const existing = catalog.get(rule.category);
+    if (existing) {
+      existing.patterns += 1;
+      for (const tag of rule.tags) {
+        if (!existing.tags.includes(tag)) existing.tags.push(tag);
+      }
+      continue;
+    }
+
+    catalog.set(rule.category, {
+      category: rule.category,
+      tags: [...rule.tags],
+      patterns: 1,
+    });
+  }
+
+  return [...catalog.values()].sort((a, b) => a.category.localeCompare(b.category));
+}
+
+export function getHeuristicCategoryNames(): string[] {
+  return getHeuristicCatalog().map((entry) => entry.category);
+}
+
 export function autoCategorize(text: string): { category: string; tags: string[] } {
   let bestCategory = 'general';
   let bestScore = 0;

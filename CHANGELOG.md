@@ -15,6 +15,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Memory hardening pass** (`src/server/router.ts`, `src/services/manager.ts`, `src/memory/privacy.ts`, `src/memory/consolidate.ts`) — daemon restart now requires auth, auto-start reconciles runtime state on boot, vector-store mirroring is non-blocking, and retention/pruning now removes remote vector records too.
 
+- **Heuristics page refresh** (`src/server/ui.ts`, `src/server/router.ts`, `src/memory/heuristics.ts`) — the memory heuristics panel now shows real category cards, rule counts, and a one-click heuristic cycle runner instead of a static category list.
+
+- **Vector store settings** (`src/server/ui.ts`, `src/server/router.ts`, `src/config/config.ts`) — the memory page now includes a dedicated vector-store tab for Qdrant, ChromaDB, Pinecone, and SQLite fallback configuration.
+
+- **Memory page consolidation** (`src/server/ui.ts`) — combined health, reflections, and persistent notes into a single Overview tab, leaving Search and Graph as the primary exploration views.
+
 ## [0.41.2] — 2026-06-18
 
 ### Changed
