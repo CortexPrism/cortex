@@ -174,6 +174,105 @@ export async function validateToolCall(
     }
   }
 
+  // Chrome Bridge security validation
+  if (toolName.startsWith('chrome_')) {
+    // chrome_execute_js: high-risk arbitrary JS execution — require explicit tool policy allow
+    if (toolName === 'chrome_execute_js') {
+      const script = String(args.script ?? '');
+      if (script) {
+        const executeJsDecision = await checkPolicy('tool', 'chrome_execute_js');
+        if (!executeJsDecision.allowed) {
+          await logEvent({
+            event_type: 'policy_check',
+            session_id: sessionId,
+            actor: 'validator',
+            action: 'chrome_bridge:execute_js',
+            summary: `chrome_execute_js denied by policy: ${script.slice(0, 100)}`,
+            started_at: new Date().toISOString(),
+            payload: {
+              tool: toolName,
+              script: script.slice(0, 200),
+              rule: executeJsDecision.rule?.id,
+            },
+          });
+          return { allowed: false, reason: executeJsDecision.reason };
+        }
+      }
+      logEvent({
+        event_type: 'policy_check',
+        session_id: sessionId,
+        actor: 'validator',
+        action: 'chrome_bridge:execute_js',
+        summary: `chrome_execute_js: ${script.slice(0, 100)}`,
+        started_at: new Date().toISOString(),
+        payload: { script: script.slice(0, 200) },
+      }).catch(() => {});
+    }
+
+    // chrome_upload_file: path-based policy with traversal check
+    if (toolName === 'chrome_upload_file') {
+      const paths = args.paths;
+      if (Array.isArray(paths)) {
+        for (const rawPath of paths) {
+          if (typeof rawPath === 'string') {
+            const normalized = rawPath.replace(/\/\.{2,}\//g, '/').replace(/^\.{2,}\//, '');
+            if (normalized !== rawPath.replace(/\/\//g, '/') && normalized === '') {
+              return { allowed: false, reason: `Path traversal blocked: ${rawPath}` };
+            }
+            const pathDecision = await checkPolicy('path', normalized);
+            if (!pathDecision.allowed) {
+              await logEvent({
+                event_type: 'policy_check',
+                session_id: sessionId,
+                actor: 'validator',
+                action: 'chrome_bridge:upload_file',
+                summary: `Path denied by policy: ${normalized}`,
+                started_at: new Date().toISOString(),
+                payload: { tool: toolName, path: normalized, rule: pathDecision.rule?.id },
+              });
+              return { allowed: false, reason: pathDecision.reason };
+            }
+          }
+        }
+      }
+    }
+
+    // chrome_network_rules: only allow list/clear, modifications require capability policy check
+    if (toolName === 'chrome_network_rules') {
+      const action = String(args.action ?? 'list');
+      if (action !== 'list' && action !== 'clear') {
+        const networkRulesDecision = await checkPolicy('capability', 'network_rules_modify');
+        if (!networkRulesDecision.allowed) {
+          await logEvent({
+            event_type: 'policy_check',
+            session_id: sessionId,
+            actor: 'validator',
+            action: 'chrome_bridge:network_rules',
+            summary: `Network rule modification denied by policy: ${action}`,
+            started_at: new Date().toISOString(),
+            payload: { tool: toolName, action, rule: networkRulesDecision.rule?.id },
+          });
+          return { allowed: false, reason: networkRulesDecision.reason };
+        }
+      }
+    }
+
+    // chrome_save_page / chrome_manage_downloads: path-based policy with traversal check
+    if (toolName === 'chrome_save_page' || toolName === 'chrome_manage_downloads') {
+      const filePath = String(args.path ?? '');
+      if (filePath) {
+        const normalized = filePath.replace(/\/\.{2,}\//g, '/').replace(/^\.{2,}\//, '');
+        if (normalized !== filePath.replace(/\/\//g, '/') && normalized === '') {
+          return { allowed: false, reason: `Path traversal blocked: ${filePath}` };
+        }
+        const pathDecision = await checkPolicy('path', normalized);
+        if (!pathDecision.allowed) {
+          return { allowed: false, reason: pathDecision.reason };
+        }
+      }
+    }
+  }
+
   return { allowed: true, reason: 'Passed all policy checks' };
 }
 

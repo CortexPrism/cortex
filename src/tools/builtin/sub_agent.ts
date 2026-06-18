@@ -126,11 +126,11 @@ When you need to do multiple independent things at once, make multiple \`sub_age
           systemPrompt: args.system_prompt as string | undefined,
           tools: args.tools
             ? (() => {
-                const requested = String(args.tools).split(',').map((s) => s.trim()).filter(Boolean);
-                const allowed = typeDef?.tools;
-                if (!allowed || allowed.length === 0) return requested;
-                return requested.filter((t) => allowed.includes(t));
-              })()
+              const requested = String(args.tools).split(',').map((s) => s.trim()).filter(Boolean);
+              const allowed = typeDef?.tools;
+              if (!allowed || allowed.length === 0) return requested;
+              return requested.filter((t) => allowed.includes(t));
+            })()
             : typeDef?.tools ?? undefined,
           maxTurns: typeDef?.maxTurns,
         },

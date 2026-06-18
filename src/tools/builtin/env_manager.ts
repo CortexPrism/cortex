@@ -19,7 +19,6 @@ const ALLOWED_ENV_VARS = new Set([
   'DENO_DIR',
   'CORTEX_DATA_DIR',
   'CORTEX_CONFIG_DIR',
-
 ]);
 
 export const envManagerTool: Tool = {

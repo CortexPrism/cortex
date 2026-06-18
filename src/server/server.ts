@@ -83,13 +83,34 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   startAutoServices().catch(() => {});
   schedulePluginUpdateChecks();
 
+  // Auto-start chrome-bridge if configured (non-blocking)
+  const _chromeCfg = _serverConfig.chromeBridge;
+  if (_chromeCfg?.enabled && _chromeCfg?.autoStart) {
+    (async () => {
+      const { startChromeBridge, registerChromeBridgeTools } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      try {
+        await startChromeBridge(_chromeCfg);
+        if (_chromeCfg.autoRegisterTools !== false) {
+          const { globalRegistry } = await import('../tools/registry.ts');
+          const count = await registerChromeBridgeTools(globalRegistry, _chromeCfg);
+          _log.info(`Registered ${count} chrome-bridge tools`);
+        }
+      } catch (err) {
+        _log.warn(`Failed to start chrome-bridge: ${(err as Error).message}`);
+      }
+    })().catch(() => {});
+  }
+
   const { port, host } = opts;
 
   _log.info(`Cortex server starting on http://${host}:${port}`, { host, port });
   _log.info(`WebSocket: ws://${host}:${port}/ws`);
   _log.info(`Node WS:   ws://${host}:${port}/ws/node`);
 
-  const serverConfig = _serverConfig.server ?? { corsOrigin: 'same-origin', maxBodyBytes: 10_485_760 };
+  const serverConfig = _serverConfig.server ??
+    { corsOrigin: 'same-origin', maxBodyBytes: 10_485_760 };
   const maxBodyBytes = serverConfig.maxBodyBytes;
   const corsOrigin = serverConfig.corsOrigin;
 
@@ -175,7 +196,12 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     },
   );
 
-  httpServer.finished.catch((err) => {
+  httpServer.finished.then(async () => {
+    const { stopChromeBridge } = await import(
+      '../tools/builtin/chrome_bridge_manager.ts'
+    );
+    await stopChromeBridge().catch(() => {});
+  }).catch((err) => {
     _log.error(`Server error`, { error: (err as Error).message });
   });
 }

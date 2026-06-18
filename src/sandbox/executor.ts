@@ -145,7 +145,9 @@ async function runDockerCommand(
       } else {
         child.kill('SIGTERM');
         setTimeout(() => {
-          try { child.kill('SIGKILL'); } catch { /* gone */ }
+          try {
+            child.kill('SIGKILL');
+          } catch { /* gone */ }
         }, 2000);
       }
     } catch { /* already exited */ }

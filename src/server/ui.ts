@@ -2475,6 +2475,7 @@ const HTML = `<!DOCTYPE html>
         <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Connections</div>
         <div style="flex:1;overflow-y:auto;" id="mcp-connections-list"></div>
         <div style="padding:10px 12px;border-top:1px solid var(--border);" id="mcp-server-status"></div>
+        <div style="padding:10px 12px;border-top:1px solid var(--border);" id="chrome-bridge-status"></div>
       </div>
       <div style="flex:1;overflow-y:auto;padding:16px;" id="mcp-tools-panel">
         <div style="text-align:center;color:var(--text3);padding:60px 20px;">
@@ -2482,6 +2483,25 @@ const HTML = `<!DOCTYPE html>
           <p style="font-size:13px;">Select a connection to browse tools</p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Page: Chrome Bridge -->
+  <div id="page-chrome-bridge" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Chrome Bridge</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Real-browser automation via chrome-bridge MCP server</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="cb-start-btn" onclick="startChromeBridge()" style="font-size:12px;padding:5px 14px;">▶ Start</button>
+        <button class="btn btn-ghost" id="cb-stop-btn" onclick="stopChromeBridge()" style="font-size:12px;display:none;">⏹ Stop</button>
+        <button class="btn btn-ghost" id="cb-restart-btn" onclick="restartChromeBridge()" style="font-size:12px;display:none;">↻ Restart</button>
+        <button class="btn btn-ghost" onclick="loadChromeBridgePage()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="chrome-bridge-content">
+      <div class="widget-loading">Loading Chrome Bridge status…</div>
     </div>
   </div>
 
@@ -3809,7 +3829,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','mcp','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','pluginpanels'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','pluginpanels'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3848,7 +3868,7 @@ function showPage(name) {
   const loaders = {
     lens: loadLens, memory: loadMemoryOverview, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
     skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); }, analytics: loadAnalytics,
-    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'settings'); },
+    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'settings'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     nodes: () => { loadNodes(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'nodes'); },
@@ -3862,17 +3882,18 @@ function showPage(name) {
     codegraph: loadCodegraphPage,
     workflow: () => { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
     eval: () => { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
-    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'mcp'); },
-    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'vault'); },
+    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'mcp'); },
+    'chrome-bridge': () => { loadChromeBridgePage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'chrome-bridge'); },
+    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'vault'); },
     computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
     remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
-    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['mcp','MCP'],['vault','Vault']], 'tools'); },
+    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'tools'); },
     metacognition: loadMetacognition,
   };
   if (loaders[name]) loaders[name]();
   // Hide global subnav for non-tabbed pages
-  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,mcp:1,policies:1,vault:1,remote:1,computer:1};
+  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,'chrome-bridge':1,mcp:1,policies:1,vault:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
 }
 
@@ -12256,7 +12277,7 @@ async function runEvalRegression() {
 
 // ── MCP Page ──
 var mcpConnections = [], mcpCurrentConnection = null;
-function loadMCPPage() { loadMCPConnections(); }
+function loadMCPPage() { loadMCPConnections(); loadChromeBridgeStatus(); }
 async function loadMCPConnections() {
   var el = document.getElementById('mcp-connections-list');
   showSkeleton(el, 5, 'card');
@@ -12301,6 +12322,10 @@ async function selectMCPConnection(name) {
           '</div>';
       }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load tools</div>'; }
+}
+function hideModal(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = 'none';
 }
 function showMCPAddModal() {
   document.getElementById('mcp-add-name').value = '';
@@ -12381,6 +12406,132 @@ async function startMCPServer() {
 }
 async function stopMCPServer() {
   try { await fetch(BASE + '/api/mcp/server/stop', { method: 'POST' }); toast('Server stopped', 'success'); loadMCPServerStatus(); } catch(e) { toast('Stop failed', 'error'); }
+}
+
+// ── Chrome Bridge ──
+async function loadChromeBridgePage() {
+  var contentEl = document.getElementById('chrome-bridge-content');
+  if (!contentEl) return;
+  contentEl.innerHTML = '<div class="widget-loading">Loading Chrome Bridge status…</div>';
+  try {
+    var status = await fetch(BASE + '/api/chrome-bridge/status').then(r => r.json()).catch(function() { return null; });
+    if (!status) { contentEl.innerHTML = '<div class="empty">Chrome Bridge status unavailable</div>'; updateChromeBridgeHeaderButtons(false); return; }
+    var running = status.running;
+    var connected = status.connected;
+    updateChromeBridgeHeaderButtons(running);
+
+    var html = '';
+    // Status cards row
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px;">';
+    html += statusCard('Status', renderBadge(running ? (connected ? 'Connected' : 'Starting') : 'Stopped', running ? 'green' : 'red'), 'Current connection state');
+    html += statusCard('Server', status.serverInfo ? esc(status.serverInfo.name || '') + ' v' + esc(status.serverInfo.version || '') : '—', 'chrome-bridge MCP server');
+    html += statusCard('Tools Registered', String(status.tools || 0), 'chrome_* prefixed tools');
+    html += statusCard('Total Calls', String(status.calls || 0), 'Tool invocations');
+    html += statusCard('Errors', String(status.errors || 0), 'Failed tool calls');
+    html += '</div>';
+
+    // Tool list section
+    if (status.toolNames && status.toolNames.length > 0) {
+      html += '<h3 style="font-size:14px;font-weight:600;margin-bottom:8px;margin-top:16px;">Registered Tools (' + status.toolNames.length + ')</h3>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-bottom:16px;">';
+      status.toolNames.forEach(function(t) {
+        html += '<div class="card-sm" style="font-size:12px;font-family:\\'JetBrains Mono\\',monospace;padding:8px 12px;">' + esc(t) + '</div>';
+      });
+      html += '</div>';
+    } else if (running && connected) {
+      html += '<div class="empty">No chrome-bridge tools registered. Try restarting the connection.</div>';
+    }
+
+    // Quick-connect section (shown when not running)
+    if (!running) {
+      html += '<div style="margin-top:16px;padding:16px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">';
+      html += '<h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Quick Setup</h3>';
+      html += '<p style="font-size:12px;color:var(--text3);margin-bottom:12px;">chrome-bridge requires a running MCP server and a Chrome extension. Configure the connection below.</p>';
+      html += '<button class="btn btn-primary" onclick="quickConnectChromeBridge()" style="font-size:12px;padding:6px 16px;">⚡ Quick Connect chrome-bridge</button>';
+      html += '<span style="font-size:11px;color:var(--text3);margin-left:8px;">Pre-fills the MCP connection form</span>';
+      html += '</div>';
+    }
+
+    contentEl.innerHTML = html;
+    // Also refresh the sidebar status
+    loadChromeBridgeStatus();
+  } catch(e) { contentEl.innerHTML = '<div class="empty">Failed to load Chrome Bridge status</div>'; }
+}
+
+function statusCard(label, value, tooltip) {
+  return '<div class="card" style="padding:12px;text-align:center;" title="' + esc(tooltip) + '">' +
+    '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">' + esc(label) + '</div>' +
+    '<div style="font-size:18px;font-weight:600;">' + value + '</div>' +
+    '</div>';
+}
+
+function updateChromeBridgeHeaderButtons(running) {
+  var startBtn = document.getElementById('cb-start-btn');
+  var stopBtn = document.getElementById('cb-stop-btn');
+  var restartBtn = document.getElementById('cb-restart-btn');
+  if (startBtn) startBtn.style.display = running ? 'none' : '';
+  if (stopBtn) stopBtn.style.display = running ? '' : 'none';
+  if (restartBtn) restartBtn.style.display = running ? '' : 'none';
+}
+
+function quickConnectChromeBridge() {
+  // Pre-fill the MCP add-connection modal for chrome-bridge
+  showMCPAddModal();
+  document.getElementById('mcp-add-name').value = 'chrome-bridge';
+  document.getElementById('mcp-add-command').value = 'node /path/to/chrome-bridge/server/index.js';
+  document.getElementById('mcp-add-transport').value = 'stdio';
+  toggleMCPTransportFields();
+  document.getElementById('mcp-add-autoconnect').checked = true;
+  toast('MCP form pre-filled for chrome-bridge. Update the server path and click Add.', 'success');
+}
+
+async function loadChromeBridgeStatus() {
+  var el = document.getElementById('chrome-bridge-status');
+  if (!el) return;
+  try {
+    var status = await fetch(BASE + '/api/chrome-bridge/status').then(r => r.json()).catch(function() { return null; });
+    if (!status) { el.innerHTML = '<div style="font-size:10px;color:var(--accent-red);">Chrome Bridge: Unavailable</div>'; return; }
+    var running = status.running;
+    el.innerHTML = '<div style="margin-bottom:8px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<div><div style="font-size:11px;font-weight:500;">Chrome Bridge</div>' +
+      '<div style="font-size:10px;color:var(--text3);">' + renderBadge(running ? 'Running' : 'Stopped', running ? 'green' : 'red') + '</div></div>' +
+      '<div style="display:flex;gap:4px;">' +
+      (running
+        ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="stopChromeBridge()">Stop</button>' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="restartChromeBridge()">Restart</button>'
+        : '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="startChromeBridge()">Start</button>') +
+      '</div></div>' +
+      (status.connected ? '<div style="font-size:10px;color:var(--text2);margin-top:4px;">' +
+        (status.serverInfo ? 'Server: ' + esc(status.serverInfo.name || '') + ' | ' : '') +
+        'Tools: ' + (status.tools || 0) + ' | ' +
+        'Calls: ' + (status.calls || 0) + ' | ' +
+        'Errors: ' + (status.errors || 0) +
+        '</div>' : '') +
+      '</div>';
+  } catch(e) { el.innerHTML = '<div style="font-size:10px;color:var(--accent-red);">Chrome Bridge: Error</div>'; }
+}
+async function startChromeBridge() {
+  try {
+    var res = await fetch(BASE + '/api/chrome-bridge/start', { method: 'POST' });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Start failed', 'error'); return; }
+    toast('Chrome Bridge started', 'success');
+    loadChromeBridgeStatus();
+    loadChromeBridgePage();
+  } catch(e) { toast('Start failed', 'error'); }
+}
+async function stopChromeBridge() {
+  try {
+    var res = await fetch(BASE + '/api/chrome-bridge/stop', { method: 'POST' });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Stop failed', 'error'); return; }
+    toast('Chrome Bridge stopped', 'success');
+    loadChromeBridgeStatus();
+    loadChromeBridgePage();
+  } catch(e) { toast('Stop failed', 'error'); }
+}
+async function restartChromeBridge() {
+  await stopChromeBridge();
+  setTimeout(function() { startChromeBridge(); }, 500);
 }
 
 // ── Vault Page ──

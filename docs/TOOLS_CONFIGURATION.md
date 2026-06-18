@@ -200,6 +200,152 @@ export CORTEX_VAULT_KEY="your-secure-passphrase-here"
 - If a key is in both locations, the vault key is used
 - Remove the environment variable if you want to use only the vault
 
+## Chrome Bridge
+
+Chrome Bridge provides 60 real-browser automation tools accessible to the LLM as `chrome_*` prefixed tools (e.g., `chrome_navigate`, `chrome_screenshot_diff`, `chrome_accessibility_audit`). It connects to a Chrome browser via the chrome-bridge MCP server and CDP (Chrome DevTools Protocol).
+
+### Prerequisites
+
+- **Node.js 18+** — required to run the chrome-bridge MCP server
+- **Chrome 111+** — browser with DevTools Protocol support
+- **chrome-bridge** — server + Chrome extension
+
+### Installation
+
+```bash
+# Clone and install chrome-bridge
+mkdir -p ~/.cortex/chrome-bridge
+cd ~/.cortex/chrome-bridge
+git clone https://github.com/frsorrentino/chrome-bridge.git
+cd chrome-bridge
+npm install
+```
+
+### Extension Setup
+
+1. Open `chrome://extensions` in Chrome
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select `~/.cortex/chrome-bridge/chrome-bridge/extension`
+
+### Configuration
+
+Add to `~/.cortex/config.json`:
+
+```json
+{
+  "chromeBridge": {
+    "enabled": true,
+    "autoStart": true,
+    "autoRegisterTools": true,
+    "toolPrefix": "chrome_",
+    "serverPath": "/home/user/.cortex/chrome-bridge/chrome-bridge/server/index.js",
+    "nodePath": "/usr/bin/node"
+  }
+}
+```
+
+**Settings:**
+
+| Field | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Enable chrome-bridge integration |
+| `autoStart` | `false` | Start on Cortex server boot |
+| `autoRegisterTools` | `true` | Auto-register tools on connect |
+| `toolPrefix` | `"chrome_"` | Prefix for registered tool names |
+| `serverPath` | (required) | Path to `chrome-bridge/server/index.js` |
+| `nodePath` | `"node"` | Path to Node.js binary |
+| `port` | `8765` | WebSocket port |
+| `token` | — | Optional shared secret |
+| `env` | — | Environment variables for the subprocess |
+
+### Available Tools (60)
+
+| Category | Count | Example Tools |
+|---|---|---|
+| Core & Navigation | 8 | `navigate`, `create_tab`, `screenshot`, `get_status` |
+| Interaction | 12 | `click`, `type_text`, `fill_form`, `hover`, `press_key`, `drag_and_drop` |
+| DOM & Inspection | 10 | `read_page`, `query_dom`, `find_text`, `inject_css`, `watch_dom` |
+| Waiting & Discovery | 3 | `wait_for_element`, `wait_for_function`, `wait_for_network_idle` |
+| Debugging & Network | 8 | `execute_js`, `monitor_network`, `read_console`, `network_rules` |
+| Visual & Responsive | 7 | `element_screenshot`, `full_page_screenshot`, `screenshot_diff`, `viewport_resize` |
+| Audits | 6 | `accessibility_audit`, `seo_audit`, `security_headers`, `check_links` |
+| State & Storage | 4 | `get_storage`, `set_storage`, `session_fixture` |
+| Capture & Files | 2 | `save_page`, `manage_downloads` |
+
+### Example Prompts
+
+**Open a page, take a screenshot, run an accessibility audit:**
+```
+Navigate to example.com, take a screenshot, then run an accessibility audit
+and report any issues found.
+```
+
+**Fill a form and extract data:**
+```
+Navigate to the login page, fill the form with test credentials,
+wait for navigation to complete, then extract the main data table.
+```
+
+**Visual regression testing:**
+```
+Compare the homepage screenshot with the baseline. Report any visual
+regressions including pixel differences and affected elements.
+```
+
+**Network monitoring:**
+```
+Monitor network requests while I interact with the page, log all XHR/fetch
+calls, and export the results when complete.
+```
+
+**Mobile responsive testing:**
+```
+Set the viewport to iPhone 14 size (390×844), navigate to the product page,
+take a full-page screenshot, and identify any layout issues.
+```
+
+### Security
+
+Chrome Bridge tools pass through CortexPrism's multi-layer security:
+
+- **`chrome_execute_js`** — arbitrary JavaScript execution in the real browser requires explicit policy allow. Add a policy rule to block or require supervisor approval.
+- **`chrome_upload_file`** — file paths are checked for `../` traversal and validated against path policy before the browser reads them.
+- **`chrome_save_page` / `chrome_manage_downloads`** — output paths are stripped of traversal sequences and validated against path policy.
+- **`chrome_network_rules`** — modifying network rules (intercept/block/redirect) requires capability policy approval; `list` and `clear` are always allowed.
+
+Example policy to block execute_js entirely:
+```sql
+INSERT INTO policy_rules (kind, pattern, action, priority)
+VALUES ('tool', 'chrome_execute_js', 'deny', 100);
+```
+
+### CLI Management
+
+```bash
+cortex chrome-bridge start    # Start the MCP server
+cortex chrome-bridge stop     # Stop the MCP server
+cortex chrome-bridge status   # Check connection state
+cortex chrome-bridge tools    # List registered chrome_* tools
+```
+
+### Web UI
+
+Navigate to **Settings → Chrome Bridge** in the web UI for:
+- Status cards (connection state, server info, tools registered, calls, errors)
+- Registered tools grid with all `chrome_*` prefixed tools
+- Start/Stop/Restart buttons
+- Quick Setup button that pre-fills the MCP connection form
+
+### Troubleshooting
+
+**"chrome-bridge not configured"** — Add a `chromeBridge` section to `~/.cortex/config.json`.
+
+**"Failed to start chrome-bridge"** — Verify Node.js is installed (`node --version`), the server path is correct, and the Chrome extension is loaded.
+
+**Tools not appearing** — Run `cortex chrome-bridge tools` to check registration. Ensure `autoRegisterTools` is not set to `false`.
+
+**Connection lost repeatedly** — Check that Chrome is running with the chrome-bridge extension enabled. The connection manager will auto-reconnect up to 5 times with exponential backoff.
+
 ## Security Supervision
 
 CortexPrism includes a built-in security supervisor system that automatically gates access to sensitive tools. This is configured automatically and requires no setup, but here's what you should know:

@@ -1,4 +1,6 @@
-import type { Tool, ToolDefinition } from './types.ts';
+import type { Tool, ToolCapability, ToolDefinition } from './types.ts';
+import { createMcpToolWrapper, inferCapabilitiesFromMcpTool } from './mcp-adapter.ts';
+import { getConnection } from '../mcp/client.ts';
 
 // Builtin tool imports (consolidated from all entry points)
 import { fileReadTool } from './builtin/file_read.ts';
@@ -61,6 +63,7 @@ import {
 
 export class ToolRegistry {
   private tools = new Map<string, Tool>();
+  private mcpTools = new Set<string>();
 
   register(tool: Tool): void {
     this.tools.set(tool.definition.name, tool);
@@ -97,6 +100,47 @@ export class ToolRegistry {
       throw new Error(`Module ${specifier} does not export a valid Tool`);
     }
     this.register(tool);
+  }
+
+  async registerMcpConnection(
+    connectionName: string,
+    prefix: string,
+    capabilityOverrides?: Record<string, ToolCapability[]>,
+  ): Promise<number> {
+    const conn = getConnection(connectionName);
+    if (!conn) {
+      throw new Error(`MCP connection "${connectionName}" not found`);
+    }
+    if (!conn.connected) {
+      throw new Error(`MCP connection "${connectionName}" is not connected`);
+    }
+
+    let registered = 0;
+    for (const toolDef of conn.tools) {
+      const toolName = `${prefix}${toolDef.name}`;
+      if (this.tools.has(toolName)) {
+        continue;
+      }
+
+      const capabilities = capabilityOverrides?.[toolDef.name] ??
+        inferCapabilitiesFromMcpTool(toolDef);
+
+      const tool = createMcpToolWrapper(connectionName, toolDef, capabilities);
+      this.tools.set(toolName, tool);
+      this.mcpTools.add(toolName);
+      registered++;
+    }
+
+    return registered;
+  }
+
+  unregisterByPrefix(prefix: string): void {
+    for (const name of this.tools.keys()) {
+      if (name.startsWith(prefix)) {
+        this.tools.delete(name);
+        this.mcpTools.delete(name);
+      }
+    }
   }
 }
 

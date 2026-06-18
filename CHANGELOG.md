@@ -7,11 +7,47 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.42.0] — 2026-06-18
+
 ### Fixed
 
 - **CSP relaxation** (`src/server/security-headers.ts`) — `connect-src` now includes `http:` and `https:` schemes to allow API connections from the browser. `script-src` includes `https://d3js.org` for D3.js charts. `img-src` includes `blob:` for blob URLs.
 
 - **JetBrains Mono font quoting** (`src/server/ui.ts`) — all `font-family:"JetBrains Mono"` and unquoted `font-family:JetBrains Mono` instances changed to single-quoted `font-family:'JetBrains Mono'` for valid CSS. In single-quoted JavaScript strings embedded in template literals, single quotes are now double-escaped (`\\'` → `\'` in output) to prevent premature JS string termination.
+
+- **Missing `hideModal()` function** (`src/server/ui.ts`) — added the `hideModal(id)` function which was referenced in 7 modal Cancel button `onclick` handlers (MCP add, vault credential, vault import, remote deploy, workflow create, workflow run, eval run) but was never defined, causing `ReferenceError` on every Cancel click.
+
+### Added
+
+- **Chrome Bridge — dynamic MCP tool registration** (`src/tools/mcp-adapter.ts`, `src/tools/registry.ts`) — MCP-connected server tools can now be dynamically registered as first-class CortexPrism tools with automatic JSON Schema→`ToolParam` conversion and capability inference. `ToolRegistry` gains `registerMcpConnection()`, `unregisterByPrefix()` methods for lifecycle management.
+
+- **Chrome Bridge — connection manager** (`src/tools/builtin/chrome_bridge_manager.ts`) — manages the chrome-bridge MCP server subprocess lifecycle with auto-start on demand, graceful shutdown, 30-second health checks via `get_status`, and exponential backoff reconnection (100ms–1600ms, max 5 retries). Module-level state tracks running status, retry count, and timer handles.
+
+- **Chrome Bridge — capability mapping** (`src/tools/builtin/chrome_bridge_capabilities.ts`) — curated capability assignments for all 60 chrome-bridge real-browser automation tools, mapping screenshot/interaction/network/Audit tools to CortexPrism's `ToolCapability` system (`computer:screenshot`, `network:fetch`, `computer:keyboard`, etc.).
+
+- **Chrome Bridge — CLI command** (`src/cli/chrome_bridge.ts`, `src/main.ts`) — `cortex chrome-bridge [start|stop|status|tools]` subcommands for managing the chrome-bridge MCP server from the command line, with colored output and config validation.
+
+- **Chrome Bridge — API endpoints** (`src/server/router.ts`) — `GET /api/chrome-bridge/status` (connection state, tool count, server info), `POST /api/chrome-bridge/start`, `POST /api/chrome-bridge/stop`, and `GET /api/chrome-bridge/tools` REST endpoints follow the established MCP API pattern.
+
+- **Chrome Bridge — Web UI** (`src/server/ui.ts`) — dedicated "Chrome Bridge" page added as a Settings sub-tab with status cards (connection state, server info, tools registered, total calls, errors), a registered tools grid, and Quick Setup section. Added to the settings sub-navigation bar alongside Tools, MCP, and Vault. Start/Stop/Restart header buttons toggle visibility based on running state.
+
+- **Chrome Bridge — quick-connect** (`src/server/ui.ts`) — `quickConnectChromeBridge()` pre-fills the MCP Add Connection modal with chrome-bridge settings (name, transport, command, auto-connect) for one-click setup from the Chrome Bridge page.
+
+- **Chrome Bridge — config schema** (`src/config/config.ts`) — `ChromeBridgeConfig` interface with fields for `enabled`, `autoStart`, `autoRegisterTools`, `toolPrefix`, `serverPath`, `nodePath`, `port`, `token`, and `env`. Added as optional `chromeBridge?` field on `CortexConfig` for backward compatibility.
+
+### Security
+
+- **Chrome Bridge — `execute_js` policy gate** (`src/security/validator.ts`) — `chrome_execute_js` calls require explicit `checkPolicy('tool', 'chrome_execute_js')` allow before executing arbitrary JavaScript in the real browser, with denial logged to the lens events table.
+
+- **Chrome Bridge — upload file path validation** (`src/security/validator.ts`) — `chrome_upload_file` paths are checked for `../` traversal and validated against path policy rules before being passed to the browser's file upload dialog.
+
+- **Chrome Bridge — save/download path validation** (`src/security/validator.ts`) — `chrome_save_page` and `chrome_manage_downloads` paths are stripped of `../` sequences and validated against path policy rules.
+
+- **Chrome Bridge — network rules modification gate** (`src/security/validator.ts`) — `chrome_network_rules` actions other than `list`/`clear` require `checkPolicy('capability', 'network_rules_modify')` approval.
+
+- **Chrome Bridge — log event offloading** (`src/security/validator.ts`) — `chrome_execute_js` success-path event logging is fire-and-forget (`.catch(() => {})`) to avoid adding DB write latency to the critical tool execution path.
+
+- **Chrome Bridge — non-blocking server startup** (`src/server/server.ts`) — auto-start wrapped in `(async () => {...})().catch(() => {})` so chrome-bridge initialization failures never block the HTTP server from accepting connections.
 
 ## [0.41.4] — 2026-06-18
 

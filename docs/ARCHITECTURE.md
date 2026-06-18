@@ -902,6 +902,111 @@ Prometheus-compatible metrics at `GET /metrics` with 29 metric families. OpenTel
 
 ---
 
+## Chrome Bridge Integration (`src/tools/builtin/chrome_bridge_manager.ts`, `src/tools/mcp-adapter.ts`, `src/tools/registry.ts`)
+
+Chrome Bridge provides real-browser automation by connecting to the [chrome-bridge](https://github.com/frsorrentino/chrome-bridge) MCP server, which controls a Chrome browser via CDP (Chrome DevTools Protocol). All 60 chrome-bridge browser automation tools are registered as first-class `chrome_*` prefixed tools accessible directly by the LLM.
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        CortexPrism                               │
+│                                                                  │
+│   ToolRegistry.registerMcpConnection("chrome-bridge", "chrome_") │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌──────────────────────────────────────────┐                  │
+│   │        mcp-adapter.ts                    │                  │
+│   │   MCP toolDef → Tool wrapper             │                  │
+│   │   JSON Schema → ToolParam[] conversion   │                  │
+│   │   Capability inference (regex heuristic) │                  │
+│   └──────────────────┬───────────────────────┘                  │
+│                      │                                          │
+│                      ▼                                          │
+│   ┌──────────────────────────────────────────┐                  │
+│   │     chrome_bridge_manager.ts             │                  │
+│   │   Subprocess lifecycle (Deno.Command)     │                  │
+│   │   Health checks (30s via get_status)      │                  │
+│   │   Auto-reconnect (exponential backoff)    │                  │
+│   │   Module state: _running, _retryCount     │                  │
+│   └──────────────────┬───────────────────────┘                  │
+│                      │                                          │
+│                      ▼                                          │
+│   ┌──────────────────────────────────────────┐                  │
+│   │     mcp/client.ts                        │                  │
+│   │   connectStdio / callStdioTool            │                  │
+│   │   JSON-RPC 2.0 over stdin/stdout          │                  │
+│   └──────────────────┬───────────────────────┘                  │
+│                      │                                          │
+└──────────────────────┼──────────────────────────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────────────────────────┐
+│              chrome-bridge (external Node.js process)             │
+│                                                                  │
+│   chrome-bridge/server/index.js                                  │
+│          │                                                       │
+│          ▼                                                       │
+│   Chrome DevTools Protocol (CDP)                                 │
+│          │                                                       │
+│          ▼                                                       │
+│   Chrome Browser (with chrome-bridge extension)                  │
+│                                                                  │
+│   60 tools across 7 categories:                                  │
+│   • Core & Navigation (8)  • Interaction (12)                   │
+│   • DOM & Inspection (10)  • Waiting & Discovery (3)            │
+│   • Debugging & Network (8) • Visual & Responsive (7)           │
+│   • Audits (6)             • State & Storage (4)                │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Dynamic MCP Tool Registration Pattern
+
+The Chrome Bridge pattern is reusable for any MCP server. To register MCP server tools as first-class tools:
+
+1. **Connect** via `connectStdio()` or `connectHttp()` from `src/mcp/client.ts`
+2. **Register** via `registry.registerMcpConnection(connectionName, prefix, capabilityOverrides?)` — wraps each `McpToolDef` into a `Tool` instance via `createMcpToolWrapper()`
+3. **Execute** — wrapped tools proxy calls to `callStdioTool()`/`callHttpTool()` and return `ToolCallResult`
+4. **Unregister** via `registry.unregisterByPrefix(prefix)` on disconnect
+
+### Security
+
+Chrome Bridge tools pass through the same multi-layer validation as all other tools:
+- **`chrome_execute_js`** — requires explicit `checkPolicy('tool', 'chrome_execute_js')` allow
+- **`chrome_upload_file`** — paths checked for `../` traversal + path policy rules
+- **`chrome_save_page` / `chrome_manage_downloads`** — paths stripped of `../` + path policy rules
+- **`chrome_network_rules`** — modifications require `checkPolicy('capability', 'network_rules_modify')` approval
+
+### Configuration
+
+```json
+{
+  "chromeBridge": {
+    "enabled": true,
+    "autoStart": true,
+    "autoRegisterTools": true,
+    "toolPrefix": "chrome_",
+    "serverPath": "/home/user/chrome-bridge/server/index.js",
+    "nodePath": "/usr/bin/node"
+  }
+}
+```
+
+### CLI
+
+```bash
+cortex chrome-bridge start    # Start chrome-bridge MCP server
+cortex chrome-bridge stop     # Stop chrome-bridge MCP server
+cortex chrome-bridge status   # Check connection state
+cortex chrome-bridge tools    # List registered chrome_* tools
+```
+
+### Web UI
+
+Settings → Chrome Bridge page provides status cards, registered tools grid, and a Quick Setup button that pre-fills the MCP connection form. Start/Stop/Restart buttons in the page header toggle based on running state.
+
+---
+
 ## MCP Server (`src/mcp/server.ts`)
 
 Cortex operates as a Model Context Protocol server. JSON-RPC 2.0 protocol (`initialize`, `tools/list`, `tools/call`). Dual transport: stdio (Claude Desktop/VS Code) and HTTP (`GET/POST /mcp`).

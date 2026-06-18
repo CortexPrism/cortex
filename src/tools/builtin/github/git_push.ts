@@ -31,7 +31,9 @@ export const gitPushTool: Tool = {
     if (context.approvalGate) {
       const approved = await context.approvalGate(
         'git_push',
-        `Commit "${String(args.message).slice(0, 80)}" and push to ${String(args.remote || 'origin')}/${String(args.branch || 'current')}`,
+        `Commit "${String(args.message).slice(0, 80)}" and push to ${
+          String(args.remote || 'origin')
+        }/${String(args.branch || 'current')}`,
       );
       if (!approved) {
         return {

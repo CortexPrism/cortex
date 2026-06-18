@@ -820,7 +820,10 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       try {
         const { setSpeaking } = await import('../voice/manager.ts');
         setSpeaking(sessionId ?? '', msg.speaking);
-        broadcast({ type: 'voice_state', sessionId, speaking: msg.speaking }, sessionId ?? undefined);
+        broadcast(
+          { type: 'voice_state', sessionId, speaking: msg.speaking },
+          sessionId ?? undefined,
+        );
       } catch (e) {
         _log.error(`voice_state error`, { error: (e as Error).message });
       }
