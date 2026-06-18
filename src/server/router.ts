@@ -2382,8 +2382,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/workspace/git/status — current git status
   if (req.method === 'GET' && path === '/api/workspace/git/status') {
     const agentId = url.searchParams.get('agentId') ?? undefined;
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : getGlobalWorkspaceDir();
     const { gitStatus } = await import('../workspace/git.ts');
     const status = await gitStatus(dir);
     return json(status);
@@ -2392,8 +2392,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/workspace/git/commit — commit all staged
   if (req.method === 'POST' && path === '/api/workspace/git/commit') {
     const body = await req.json().catch(() => ({})) as { message?: string; agentId?: string };
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : getGlobalWorkspaceDir();
     const { gitAdd, gitCommit } = await import('../workspace/git.ts');
     await gitAdd(dir, ['-A']);
     const ok = await gitCommit(dir, body.message ?? 'web commit');
@@ -2407,8 +2407,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
       remote?: string;
       branch?: string;
     };
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : getGlobalWorkspaceDir();
     const { gitPush } = await import('../workspace/git.ts');
     const result = await gitPush(dir, body.remote ?? 'origin', body.branch);
     return json({ ok: result.success, output: result.output });
@@ -2421,8 +2421,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
       remote?: string;
       branch?: string;
     };
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : getGlobalWorkspaceDir();
     const { gitPull } = await import('../workspace/git.ts');
     const result = await gitPull(dir, body.remote ?? 'origin', body.branch);
     return json({ ok: result.success, output: result.output });
@@ -2431,8 +2431,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/workspace/git/log — commit log
   if (req.method === 'GET' && path === '/api/workspace/git/log') {
     const agentId = url.searchParams.get('agentId') ?? undefined;
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : getGlobalWorkspaceDir();
     const { gitLog } = await import('../workspace/git.ts');
     const log = await gitLog(dir);
     return json(log);
@@ -2441,8 +2441,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/workspace/git/branches — list branches
   if (req.method === 'GET' && path === '/api/workspace/git/branches') {
     const agentId = url.searchParams.get('agentId') ?? undefined;
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = agentId ? getAgentWorkspaceDir(agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = agentId ? getAgentWorkspaceDir(agentId) : getGlobalWorkspaceDir();
     const { gitListBranches } = await import('../workspace/git.ts');
     const branches = await gitListBranches(dir);
     return json(branches);
@@ -2451,8 +2451,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/workspace/git/branch — create/switch branch
   if (req.method === 'POST' && path === '/api/workspace/git/branch') {
     const body = await req.json() as { agentId?: string; name: string; create?: boolean };
-    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
-    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : Deno.cwd();
+    const { getAgentWorkspaceDir, getGlobalWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = body.agentId ? getAgentWorkspaceDir(body.agentId) : getGlobalWorkspaceDir();
     const { gitCreateBranch, gitCheckout } = await import('../workspace/git.ts');
     const ok = body.create
       ? await gitCreateBranch(dir, body.name)
