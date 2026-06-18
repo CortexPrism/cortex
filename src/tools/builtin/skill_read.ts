@@ -1,5 +1,10 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import { formatSkillDetail, getSkillByName, listSkills } from '../../memory/skills.ts';
+import {
+  formatSkillDetail,
+  getSkillByName,
+  listSkills,
+  type SkillLifecycle,
+} from '../../memory/skills.ts';
 
 export const skillReadTool: Tool = {
   definition: {
@@ -21,6 +26,13 @@ export const skillReadTool: Tool = {
           'Filter by origin: "human" or "llm". Only used when listing (no name provided).',
         required: false,
         enum: ['human', 'llm'],
+      },
+      {
+        name: 'lifecycle',
+        type: 'string',
+        description: 'Filter by lifecycle state. Only used when listing.',
+        required: false,
+        enum: ['candidate', 'verified', 'released', 'degraded', 'deprecated', 'archived'],
       },
       {
         name: 'limit',
@@ -61,10 +73,10 @@ export const skillReadTool: Tool = {
         };
       }
 
-      // List mode
       const origin = args.origin as 'human' | 'llm' | undefined;
+      const lifecycle = args.lifecycle as SkillLifecycle | undefined;
       const limit = typeof args.limit === 'number' ? Math.max(1, Math.min(args.limit, 50)) : 20;
-      const skills = await listSkills(limit, origin);
+      const skills = await listSkills(limit, origin, lifecycle);
 
       if (skills.length === 0) {
         return {
@@ -78,7 +90,9 @@ export const skillReadTool: Tool = {
       const listing = skills.map((s) => {
         const rate = Math.round(s.success_rate * 100);
         const originLabel = s.origin === 'human' ? 'human-authored' : 'learned';
-        return `- **${s.name}** (${originLabel}, ${rate}% success): ${
+        const lifecycleBadge = s.lifecycle !== 'released' ? ` [${s.lifecycle}]` : '';
+        const trustStars = s.trust_tier >= 4 ? ' ★' : s.trust_tier >= 3 ? ' ☆' : '';
+        return `- **${s.name}**${trustStars} (${originLabel}, ${rate}% success, ${s.lifecycle}${lifecycleBadge}): ${
           s.description ?? '(no description)'
         } [trigger: ${s.trigger_pattern ?? 'any'}]`;
       }).join('\n');

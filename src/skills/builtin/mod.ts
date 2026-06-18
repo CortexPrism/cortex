@@ -13,6 +13,9 @@ export interface BuiltinSkill {
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
   examples?: string[];
   prerequisites?: string[];
+  parentSkillId?: string | null;
+  dependsOn?: string[];
+  conflictsWith?: string[];
 }
 
 import { cortexDevSkill } from './cortex-dev.ts';

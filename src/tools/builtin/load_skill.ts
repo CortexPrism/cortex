@@ -1,11 +1,16 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import { formatSkillDetail, getSkillByName } from '../../memory/skills.ts';
+import {
+  formatSkillDetail,
+  getSkillByName,
+  type SkillLifecycle,
+  type SkillStep,
+} from '../../memory/skills.ts';
 
 export const loadSkillTool: Tool = {
   definition: {
     name: 'load_skill',
     description:
-      'Load the full instructions for a specific skill. Use this before executing a skill listed in Available Skills. Call with the skill name to get detailed steps.',
+      'Load the full instructions for a specific skill. Use this before executing a skill listed in Available Skills. Call with the skill name to get detailed steps, lifecycle, trust tier, and quality scores.',
     capabilities: ['db:read'],
     params: [
       {
@@ -31,6 +36,7 @@ export const loadSkillTool: Tool = {
     }
 
     try {
+      const { touchSkill } = await import('../../memory/skills.ts');
       const skill = await getSkillByName(name);
       if (!skill) {
         return {
@@ -47,6 +53,8 @@ export const loadSkillTool: Tool = {
           durationMs: 0,
         };
       }
+
+      touchSkill(name).catch(() => {});
 
       return {
         toolName: 'load_skill',

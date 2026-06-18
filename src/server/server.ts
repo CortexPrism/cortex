@@ -60,7 +60,10 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   // Register built-in skills and load filesystem skills
   try {
     const { registerBuiltinSkills: registerSkills } = await import('../memory/skills.ts');
-    const loaded = await registerSkills();
+    const { buildEmbedder } = await import('../memory/embeddings.ts');
+    const config = await loadConfig();
+    const embedder = buildEmbedder(config);
+    const loaded = await registerSkills(undefined, embedder);
     _log.info(`Skills: registered/loaded ${loaded} skill(s)`);
   } catch (e) {
     _log.error(`Skills: Failed to register builtin skills`, { error: (e as Error).message });

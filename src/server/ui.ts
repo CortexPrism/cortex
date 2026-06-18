@@ -1582,6 +1582,7 @@ const HTML = `<!DOCTYPE html>
           <p style="font-size:12px;color:var(--text3);margin-top:2px;">Skills are codified expertise — reusable patterns that bridge reasoning and action. Human-authored skills provide domain knowledge; learned skills capture emerging patterns from agent experience.</p>
         </div>
         <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" onclick="runHealthMaintenance()" style="font-size:11px;" title="Check skill library health">🩺 Health</button>
           <button class="btn btn-ghost" onclick="loadHumanSkills()" style="font-size:11px;">📥 Load .cortex/skills</button>
           <button class="btn btn-ghost" onclick="openSkillDesigner()" style="font-size:11px;">+ New Skill</button>
         </div>
@@ -1606,6 +1607,8 @@ const HTML = `<!DOCTYPE html>
             <button class="skill-tab active" onclick="setSkillFilter('all')" data-filter="all">All</button>
             <button class="skill-tab" onclick="setSkillFilter('human')" data-filter="human">✍️ Human</button>
             <button class="skill-tab" onclick="setSkillFilter('llm')" data-filter="llm">🧠 Learned</button>
+            <button class="skill-tab" onclick="setSkillFilter('released')" data-filter="released">✅ Released</button>
+            <button class="skill-tab" onclick="setSkillFilter('deprecated')" data-filter="deprecated">🗑️ Deprecated</button>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
@@ -2620,7 +2623,7 @@ function renderReasoningPanel(panel) {
   if (!panel) return;
   let content = currentReasoningData || '';
   // Extract content from <thinking> or <think> XML tags if present
-  const tagMatch = content.match(/<(?:thinking|think)>([\s\S]*?)<\/(?:thinking|think)>/i);
+  const tagMatch = content.match(/<(?:thinking|think)>([\\s\\S]*?)<[/](?:thinking|think)>/i);
   if (tagMatch) content = tagMatch[1].trim();
   // Fall back to stripping any remaining tags
   if (!content) content = currentReasoningData.replace(/<[^>]+>/g, '').trim();
@@ -2704,7 +2707,7 @@ function connect() {
          // If the accumulated text contains a <think> block, extract it into the
          // reasoning panel and show only the post-thinking response in the bubble.
          {
-           const thinkMatch = agentRaw.match(/^([\s\S]*?)<(?:think|thinking)>([\s\S]*?)<\/(?:think|thinking)>([\s\S]*)$/i);
+           const thinkMatch = agentRaw.match(/^([\\s\\S]*?)<(?:think|thinking)>([\\s\\S]*?)<[/](?:think|thinking)>([\\s\\S]*)$/i);
            if (thinkMatch) {
              const thinkContent = thinkMatch[2].trim();
              const afterThink = (thinkMatch[1] + thinkMatch[3]).trim();
@@ -2720,7 +2723,7 @@ function connect() {
              }
            } else if (agentBubble) {
              // No complete <think> block yet — render as-is but strip any partial opening tag
-             const display = agentRaw.replace(/^\s*<(?:think|thinking)>\s*/i, '');
+             const display = agentRaw.replace(/^\\s*<(?:think|thinking)>\\s*/i, '');
              agentBubble.innerHTML = md(display || agentRaw);
              requestAnimationFrame(() => scrollChat());
            }
@@ -2804,7 +2807,11 @@ function appendBubble(role, content, messageId) {
   }
 
   const bubble = document.createElement('div');
-  if (role === 'user') { bubble.className = 'bubble-user'; bubble.style.fontSize = '14px'; bubble.textContent = content; }
+  if (role === 'user') { 
+    bubble.className = 'bubble-user md'; 
+    bubble.style.fontSize = '14px'; 
+    bubble.innerHTML = md(content);
+  }
   else if (role === 'agent') {
     bubble.className = 'bubble-agent md';
     bubble.style.fontSize = '14px';
@@ -4117,6 +4124,23 @@ function renderSkillCard(s) {
   const isHuman = s.origin === 'human';
   const isEditing = editingSkills.has(s.name);
   const isSelected = selectedSkills.has(s.name);
+  const lifecycle = s.lifecycle || 'candidate';
+  const lifecycleColors = {
+    candidate: 'rgba(251,191,36,0.15)', verified: 'rgba(59,130,246,0.15)',
+    released: 'rgba(16,185,129,0.15)', degraded: 'rgba(249,115,22,0.15)',
+    deprecated: 'rgba(239,68,68,0.15)', archived: 'rgba(107,114,128,0.15)',
+  };
+  const lifecycleTextColors = {
+    candidate: '#fbbf24', verified: '#3b82f6', released: '#10b981',
+    degraded: '#f97316', deprecated: '#ef4444', archived: '#6b7280',
+  };
+  const lifecycleBadge = lifecycle !== 'released'
+    ? '<span style="font-size:9px;background:' + (lifecycleColors[lifecycle] || lifecycleColors.candidate) + ';color:' + (lifecycleTextColors[lifecycle] || lifecycleTextColors.candidate) + ';padding:1px 6px;border-radius:3px;">' + lifecycle + '</span>'
+    : '';
+  const trustTier = s.trust_tier ?? 1;
+  const trustStars = trustTier >= 4 ? '★★★★' : trustTier >= 3 ? '★★★☆' : trustTier >= 2 ? '★★☆☆' : '★☆☆☆';
+  const trustBadge = '<span style="font-size:9px;background:rgba(6,182,212,0.1);color:#06b6d4;padding:1px 6px;border-radius:3px;" title="Trust tier ' + trustTier + '/4">' + trustStars + '</span>';
+
   const originBadge = isHuman
     ? '<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:3px;">✍️ human</span>'
     : '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 6px;border-radius:3px;">🧠 learned</span>';
@@ -4193,6 +4217,8 @@ function renderSkillCard(s) {
         '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
           '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
           originBadge +
+          lifecycleBadge +
+          trustBadge +
           (difficulty ? '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#a855f7;">' + esc(difficulty) + '</span>' : '') +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:10px;" onclick="event.stopPropagation();">' +
@@ -4203,6 +4229,7 @@ function renderSkillCard(s) {
           (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Duplicate" onclick="duplicateSkill(\\'' + esc(s.name) + '\\')">⧉</button>' : '') +
           (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Quick edit" onclick="enterInlineEdit(\\'' + esc(s.name) + '\\')">✏️</button>' : '') +
           (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Open designer" onclick="openSkillDesigner(\\'' + esc(s.name) + '\\')">⚙️</button>' : '') +
+          '<button class="btn btn-ghost" style="font-size:11px;padding:4px 5px;" title="' + (lifecycle === 'deprecated' ? 'Restore skill' : 'Deprecate skill') + '" onclick="event.stopPropagation();promoteOrDeprecateSkill(\\'' + esc(s.name) + '\\', \\'' + lifecycle + '\\')">' + (lifecycle === 'deprecated' ? '🔄' : '⏸') + '</button>' +
           '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;margin-left:2px;" onclick="deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
         '</div>' +
       '</div>' +
@@ -4232,6 +4259,8 @@ function renderSkillCard(s) {
       '</div>' : '') +
       // Expandable detail section
       (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
+        '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Lifecycle: <span style="color:' + (lifecycleTextColors[lifecycle] || lifecycleTextColors.candidate) + ';">' + lifecycle + '</span> | Trust: <span style="color:#06b6d4;">Tier ' + trustTier + '/4</span></div>' +
+        (s.utility_score !== undefined ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Utility: ' + (s.utility_score ?? 0).toFixed(2) + ' | Freshness: ' + Math.round((s.freshness ?? 0) * 100) + '%</div>' : '') +
         (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:JetBrains Mono,monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
         (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
@@ -4257,7 +4286,15 @@ function renderSkillListItem(s) {
   const rateColor = rate >= 80 ? '#4ade80' : rate >= 50 ? '#fbbf24' : '#f87171';
   const isHuman = s.origin === 'human';
   const isSelected = selectedSkills.has(s.name);
-  const isEditing = editingSkills.has(s.name);
+  const lifecycle = s.lifecycle || 'candidate';
+  const lifecycleColors = {
+    candidate: '#fbbf24', verified: '#3b82f6', released: '#10b981',
+    degraded: '#f97316', deprecated: '#ef4444', archived: '#6b7280',
+  };
+  const lifecycleLabel = lifecycle !== 'released'
+    ? '<span style="font-size:8px;color:' + (lifecycleColors[lifecycle] || lifecycleColors.candidate) + ';padding:0 3px;border:1px solid ' + (lifecycleColors[lifecycle] || lifecycleColors.candidate) + ';border-radius:2px;">' + lifecycle + '</span>'
+    : '';
+  const trustTier = s.trust_tier ?? 1;
   const originBadge = isHuman
     ? '<span style="font-size:9px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 4px;border-radius:2px;">✍️</span>'
     : '<span style="font-size:9px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 4px;border-radius:2px;">🧠</span>';
@@ -4274,6 +4311,7 @@ function renderSkillListItem(s) {
       '<div style="display:flex;align-items:center;gap:6px;">' +
         '<span style="font-size:13px;font-weight:600;font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
         originBadge +
+        lifecycleLabel +
         '<span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((s.description || '').slice(0, 60)) + '</span>' +
       '</div>' +
       (tags.length > 0 ? '<div style="display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;">' + tags.slice(0, 3).map(t => '<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(t) + '</span>').join('') + '</div>' : '') +
@@ -4290,12 +4328,23 @@ function renderSkillListItem(s) {
 }
 
 async function loadSkills() {
-  const url = skillFilter === 'all' ? (BASE + '/api/skills') : (BASE + '/api/skills?origin=' + skillFilter);
+  let fetchUrl = BASE + '/api/skills';
+  const isLifecycle = skillFilter === 'released' || skillFilter === 'deprecated';
+  if (!isLifecycle && skillFilter !== 'all') {
+    fetchUrl += '?origin=' + skillFilter;
+  } else if (isLifecycle) {
+    fetchUrl += '?lifecycle=' + skillFilter;
+  }
   const [skills, stats] = await Promise.all([
-    fetch(url).then(r => r.json()).catch(() => []),
+    fetch(fetchUrl).then(r => r.json()).catch(() => []),
     fetch(BASE + '/api/skills/stats').then(r => r.json()).catch(() => ({ total: 0, human: 0, llm: 0, avgSuccessRate: 0 })),
   ]);
   allSkills = skills;
+
+  // If we fetched all, also locally filter for lifecycle tabs
+  if (isLifecycle) {
+    allSkills = allSkills.filter(s => (s.lifecycle || 'candidate') === skillFilter);
+  }
 
   // Stats bar
   const statsEl = document.getElementById('skills-stats');
@@ -4303,7 +4352,11 @@ async function loadSkills() {
   statsEl.innerHTML = '<span>Total: <b>' + stats.total + '</b></span>' +
     '<span>✍️ Human: <b>' + stats.human + '</b></span>' +
     '<span>🧠 Learned: <b>' + stats.llm + '</b></span>' +
-    (stats.total > 0 ? '<span>Avg success: <b>' + avgPct + '%</b></span>' : '');
+    (stats.activeSkills !== undefined ? '<span>✅ Active: <b>' + stats.activeSkills + '</b></span>' : '') +
+    (stats.deprecatedSkills !== undefined ? '<span>🗑️ Deprecated: <b>' + stats.deprecatedSkills + '</b></span>' : '') +
+    (stats.total > 0 ? '<span>Avg success: <b>' + avgPct + '%</b></span>' : '') +
+    (stats.avgUtilityScore !== undefined ? '<span>Avg utility: <b>' + (stats.avgUtilityScore ?? 0).toFixed(2) + '</b></span>' : '') +
+    (stats.avgFreshness !== undefined ? '<span>Avg freshness: <b>' + Math.round((stats.avgFreshness ?? 0) * 100) + '%</b></span>' : '');
 
   // Collect all unique tags for filter
   const allTags = new Set();
@@ -4440,6 +4493,36 @@ async function deleteSkill(name) {
   if (!ok) return;
   fetch(BASE + '/api/skills?name=' + encodeURIComponent(name), { method: 'DELETE' })
     .then(r => r.json()).then(() => loadSkills()).catch(e => alert('Failed: ' + e.message));
+}
+
+async function promoteOrDeprecateSkill(name, currentLifecycle) {
+  if (currentLifecycle === 'deprecated' || currentLifecycle === 'degraded') {
+    const r = await fetch(BASE + '/api/skills/promote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    }).then(r => r.json());
+    if (r.ok) { loadSkills(); toast('Skill "' + name + '" promoted', 'success'); }
+    else { alert('Failed to promote'); }
+  } else {
+    const reason = prompt('Why are you deprecating this skill?');
+    if (!reason) return;
+    const r = await fetch(BASE + '/api/skills/deprecate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, reason }),
+    }).then(r => r.json());
+    if (r.ok) { loadSkills(); toast('Skill "' + name + '" deprecated', 'success'); }
+    else { alert('Failed to deprecate'); }
+  }
+}
+
+async function runHealthMaintenance() {
+  const r = await fetch(BASE + '/api/skills/health', { method: 'GET' }).then(r => r.json());
+  if (r.deprecated !== undefined) {
+    toast('Health check: ' + r.deprecated + ' deprecated, ' + r.degraded + ' degraded', 'info');
+    loadSkills();
+  } else {
+    alert('Health data: ' + JSON.stringify(r, null, 2));
+  }
 }
 
 function toggleSkillDetail(card) {
