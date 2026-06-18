@@ -1359,12 +1359,18 @@ const HTML = `<!DOCTYPE html>
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div>
         <h1 style="font-size:15px;font-weight:600;">Scheduled Jobs</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Cron, interval, and one-shot jobs</p>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Cron, interval, and one-shot jobs with execution history</p>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="showCronModal()">+ New Job</button>
         <button class="btn btn-ghost" onclick="loadJobs()">↻ Refresh</button>
       </div>
+    </div>
+    <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);">
+      <div class="stat"><div class="stat-num" id="jobs-total">—</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num" style="color:#fbbf24;" id="jobs-pending">—</div><div class="stat-label">Pending</div></div>
+      <div class="stat"><div class="stat-num" style="color:#38bdf8;" id="jobs-running">—</div><div class="stat-label">Running</div></div>
+      <div class="stat"><div class="stat-num" style="color:#f87171;" id="jobs-failed">—</div><div class="stat-label">Failed</div></div>
     </div>
     <div id="jobs-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
   </div>
@@ -2238,6 +2244,33 @@ const HTML = `<!DOCTYPE html>
         <button class="btn btn-primary" onclick="submitCronJob()">Create</button>
         <button class="btn btn-ghost" onclick="hideCronModal()">Cancel</button>
         <span id="cj-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job details modal -->
+  <div id="job-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);">
+    <div class="card" style="width:min(960px,calc(100vw - 32px));max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:600;" id="job-modal-title">Job Details</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="job-modal-subtitle">Inspect schedule, status, and execution logs</div>
+        </div>
+        <button class="btn btn-ghost" onclick="hideJobModal()">Close</button>
+      </div>
+      <div id="job-modal-body" style="overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:2px;">
+        <div id="job-modal-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;"></div>
+        <div class="card" style="padding:14px;background:var(--bg2);border-color:var(--border);">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Command</div>
+          <pre id="job-modal-command" style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);"></pre>
+        </div>
+        <div class="card" style="padding:14px;background:var(--bg2);border-color:var(--border);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;">Execution Logs</div>
+            <span style="font-size:11px;color:var(--text3);" id="job-modal-log-count">—</span>
+          </div>
+          <div id="job-modal-runs" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -4331,7 +4364,177 @@ async function loadMemoryHealth() {
 
 // ── Jobs ────────────────────────────────────────────────────
 const JOB_COLORS = { pending:'#fbbf24', running:'#38bdf8', completed:'#4ade80', failed:'#f87171', cancelled:'#6b7280' };
+const JOB_STATUS_LABELS = { pending:'Pending', running:'Running', completed:'Completed', failed:'Failed', cancelled:'Cancelled' };
+
+function normalizeJobs(jobs) {
+  const map = new Map();
+  for (const job of jobs) {
+    if (!job || !job.id || map.has(job.id)) continue;
+    map.set(job.id, job);
+  }
+  return [...map.values()].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+}
+
+function fmtJobTime(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+}
+
+function truncateText(text, max = 160) {
+  if (!text) return '—';
+  const t = String(text).trim();
+  return t.length > max ? t.slice(0, max - 1) + '…' : t;
+}
+
+function renderJobStat(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(value);
+}
+
+function renderJobsStats(jobs) {
+  renderJobStat('jobs-total', jobs.length);
+  renderJobStat('jobs-pending', jobs.filter((j) => j.status === 'pending').length);
+  renderJobStat('jobs-running', jobs.filter((j) => j.status === 'running').length);
+  renderJobStat('jobs-failed', jobs.filter((j) => j.status === 'failed').length);
+}
+
+function renderJobCard(job) {
+  const c = JOB_COLORS[job.status] ?? '#6b7280';
+  const attempts = String(job.attempts ?? 0) + '/' + String(job.max_attempts ?? 0);
+  const statusLabel = JOB_STATUS_LABELS[job.status] ?? job.status;
+  const schedule = job.schedule ? job.schedule : (job.kind && job.kind !== 'once' ? 'No schedule configured' : 'Immediate job');
+  const lastRun = fmtJobTime(job.last_run_at);
+  const nextRun = fmtJobTime(job.next_run_at);
+  const created = fmtJobTime(job.created_at);
+  const detail = job.last_error || job.result || job.description || job.action_config || '';
+  return [
+    '<div class="card-sm" style="display:flex;flex-direction:column;gap:12px;">',
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">',
+    '<div style="min-width:0;flex:1;">',
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">',
+    '<span style="font-size:13px;font-weight:600;color:var(--text);">' + esc(job.name) + '</span>',
+    '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(statusLabel) + '</span>',
+    '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">' + esc(job.kind ?? 'once') + '</span>',
+    '</div>',
+    '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+      esc(job.command || 'No command configured') +
+    '</div>',
+    '</div>',
+    '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">',
+    '<span style="font-size:11px;color:var(--text3);">' + esc(attempts) + ' attempts</span>',
+    '</div>',
+    '</div>',
+    '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:11px;color:var(--text3);">',
+    '<div><span style="color:var(--text2);">Schedule:</span> ' + esc(schedule) + '</div>',
+    '<div><span style="color:var(--text2);">Next:</span> ' + esc(nextRun) + '</div>',
+    '<div><span style="color:var(--text2);">Last:</span> ' + esc(lastRun) + '</div>',
+    '<div><span style="color:var(--text2);">Created:</span> ' + esc(created) + '</div>',
+    '</div>',
+    detail ? '<div style="font-size:11px;color:' + (job.last_error ? '#f87171' : 'var(--text3)') + ';background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:8px 10px;border-radius:6px;">' + esc(truncateText(detail, 220)) + '</div>' : '',
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">',
+    '<button class="btn btn-ghost" style="font-size:11px;" onclick="triggerJob(' + JSON.stringify(job.id) + ')">Trigger</button>',
+    '<button class="btn btn-ghost" style="font-size:11px;" onclick="openJobDetails(' + JSON.stringify(job.id) + ')">Logs</button>',
+    '<button class="btn btn-ghost" style="font-size:11px;" onclick="cancelJobUI(' + JSON.stringify(job.id) + ')">Cancel</button>',
+    '<button class="btn" style="font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteJobUI(' + JSON.stringify(job.id) + ')">Delete</button>',
+    '</div>',
+    '</div>',
+  ].join('');
+}
+
+function renderJobSummary(job) {
+  const fields = [
+    ['Status', JOB_STATUS_LABELS[job.status] ?? job.status],
+    ['Kind', job.kind ?? 'once'],
+    ['Attempts', String(job.attempts ?? 0) + '/' + String(job.max_attempts ?? 0)],
+    ['Duration', job.duration_ms != null ? String(job.duration_ms) + ' ms' : '—'],
+    ['Schedule', job.schedule || '—'],
+    ['Next run', fmtJobTime(job.next_run_at)],
+    ['Last run', fmtJobTime(job.last_run_at)],
+    ['Created', fmtJobTime(job.created_at)],
+  ];
+  return fields.map(([label, value]) => {
+    return '<div class="card" style="padding:12px 14px;background:var(--bg2);border-color:var(--border);">' +
+      '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">' + label + '</div>' +
+      '<div style="font-size:12px;font-weight:600;color:var(--text);">' + esc(String(value)) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderJobRuns(runs) {
+  const el = document.getElementById('job-modal-runs');
+  const countEl = document.getElementById('job-modal-log-count');
+  if (countEl) countEl.textContent = String(runs.length) + ' run' + (runs.length === 1 ? '' : 's');
+  if (!runs.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);">No execution logs yet.</div>';
+    return;
+  }
+
+  el.innerHTML = runs.map((run) => {
+    const c = JOB_COLORS[run.status] ?? '#6b7280';
+    const stdout = run.stdout ? '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">stdout</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text2);">' + esc(run.stdout) + '</pre></div>' : '';
+    const stderr = run.stderr ? '<div><div style="font-size:10px;color:#f87171;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">stderr</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#fca5a5;">' + esc(run.stderr) + '</pre></div>' : '';
+    return '<div class="card" style="padding:12px 14px;background:rgba(255,255,255,0.03);border-color:var(--border);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+          '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(run.status) + '</span>' +
+          '<span style="font-size:11px;color:var(--text3);">' + esc(fmtJobTime(run.started_at)) + '</span>' +
+          '<span style="font-size:11px;color:var(--text3);">' + esc(run.duration_ms != null ? String(run.duration_ms) + ' ms' : '—') + '</span>' +
+        '</div>' +
+        '<span style="font-size:11px;color:var(--text3);font-family:\'JetBrains Mono\',monospace;">' + esc(run.runner || 'scheduler') + '</span>' +
+      '</div>' +
+      (run.message ? '<div style="font-size:11px;color:#f87171;margin-bottom:8px;">' + esc(run.message) + '</div>' : '') +
+      stdout +
+      stderr +
+    '</div>';
+  }).join('');
+}
+
+function showJobModal() {
+  document.getElementById('job-modal').style.display = 'flex';
+}
+
+function hideJobModal() {
+  document.getElementById('job-modal').style.display = 'none';
+}
+
+async function openJobDetails(id) {
+  showJobModal();
+  const titleEl = document.getElementById('job-modal-title');
+  const subtitleEl = document.getElementById('job-modal-subtitle');
+  const summaryEl = document.getElementById('job-modal-summary');
+  const commandEl = document.getElementById('job-modal-command');
+  const runsEl = document.getElementById('job-modal-runs');
+  const countEl = document.getElementById('job-modal-log-count');
+  if (titleEl) titleEl.textContent = 'Loading job…';
+  if (subtitleEl) subtitleEl.textContent = id;
+  if (summaryEl) summaryEl.innerHTML = '<div style="color:var(--text3);font-size:12px;">Loading…</div>';
+  if (commandEl) commandEl.textContent = '';
+  if (runsEl) runsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;">Loading logs…</div>';
+  if (countEl) countEl.textContent = 'Loading…';
+
+  const [job, runs] = await Promise.all([
+    fetch(BASE + '/api/jobs/' + encodeURIComponent(id)).then((r) => r.json()),
+    fetch(BASE + '/api/jobs/' + encodeURIComponent(id) + '/runs?limit=20').then((r) => r.json()).catch(() => []),
+  ]);
+
+  if (titleEl) titleEl.textContent = job.name || 'Job Details';
+  if (subtitleEl) subtitleEl.textContent = String(job.id) + ' · ' + String(job.kind ?? 'once') + ' · ' + String(JOB_STATUS_LABELS[job.status] ?? job.status);
+  if (summaryEl) summaryEl.innerHTML = renderJobSummary(job);
+  if (commandEl) commandEl.textContent = job.command || 'No command configured';
+  renderJobRuns(runs);
+}
+
 async function loadJobs() {
+  const el = document.getElementById('jobs-list');
+  showSkeleton(el, 3, 'card');
+  const jobs = normalizeJobs(await fetch(BASE + '/api/jobs').then((r) => r.json()).catch(() => []));
+  renderJobsStats(jobs);
+  if (!jobs.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p style="color:var(--text3);font-size:13px;">No jobs scheduled.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Create a job from the Cron page or via the CLI.</p></div>'; return; }
+
+  el.innerHTML = jobs.map((job) => renderJobCard(job)).join('');
+}
+async function loadJobsLegacy() {
   const el = document.getElementById('jobs-list');
   showSkeleton(el, 3, 'card');
   const jobs = await fetch(BASE + '/api/jobs').then(r => r.json()).catch(() => []);

@@ -25,7 +25,7 @@ async function runDueJobs(): Promise<void> {
   console.log(`[scheduler] Running ${due.length} due job(s)...`);
 
   for (const job of due) {
-    await markJobRunning(job.id);
+    const runId = await markJobRunning(job.id, 'scheduler');
     const t0 = Date.now();
 
     try {
@@ -36,7 +36,8 @@ async function runDueJobs(): Promise<void> {
           | 'weekly';
         console.log(`[scheduler] Consolidation: ${kind}`);
         await runConsolidation(kind);
-        await markJobDone(job.id);
+        const elapsed = Date.now() - t0;
+        await markJobDone(job.id, runId, { durationMs: elapsed });
 
         if (job.kind === 'cron' && job.schedule) {
           await reschedule(job.id, job.schedule);
@@ -48,19 +49,27 @@ async function runDueJobs(): Promise<void> {
           stdout: 'piped',
           stderr: 'piped',
         });
-        const { code, stderr } = await proc.output();
+        const { code, stdout, stderr } = await proc.output();
+        const out = new TextDecoder().decode(stdout);
+        const err = new TextDecoder().decode(stderr);
+        const elapsed = Date.now() - t0;
         if (code === 0) {
-          await markJobDone(job.id);
+          await markJobDone(job.id, runId, { stdout: out, stderr: err, durationMs: elapsed, exitCode: code });
           if (job.kind === 'cron' && job.schedule) {
             await reschedule(job.id, job.schedule);
           }
         } else {
-          const err = new TextDecoder().decode(stderr);
-          await markJobFailed(job.id, err.trim() || `exit ${code}`);
+          await markJobFailed(job.id, runId, err.trim() || `exit ${code}`, {
+            stdout: out,
+            stderr: err,
+            durationMs: elapsed,
+            exitCode: code,
+          });
         }
       }
     } catch (err) {
-      await markJobFailed(job.id, (err as Error).message);
+      const elapsed = Date.now() - t0;
+      await markJobFailed(job.id, runId, (err as Error).message, { durationMs: elapsed });
     }
 
     const elapsed = Date.now() - t0;

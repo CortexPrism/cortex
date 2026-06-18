@@ -117,7 +117,8 @@ export const jobsCommand = new Command()
 
         for (const job of due) {
           console.log(`  Running: ${bold(job.name)} — ${dim(job.command)}`);
-          await markJobRunning(job.id);
+          const runId = await markJobRunning(job.id, 'cli');
+          const t0 = Date.now();
 
           try {
             if (job.command.startsWith('cortex:consolidate:')) {
@@ -126,7 +127,7 @@ export const jobsCommand = new Command()
                 | 'daily'
                 | 'weekly';
               await runConsolidation(kind);
-              await markJobDone(job.id);
+              await markJobDone(job.id, runId, { durationMs: Date.now() - t0 });
 
               if (job.kind === 'cron' && job.schedule) {
                 const { nextCronDate } = await import('../scheduler/cron.ts');
@@ -150,20 +151,26 @@ export const jobsCommand = new Command()
               const { code, stdout, stderr } = await proc.output();
               const out = new TextDecoder().decode(stdout);
               const err = new TextDecoder().decode(stderr);
+              const elapsed = Date.now() - t0;
 
               if (code === 0) {
-                await markJobDone(job.id);
+                await markJobDone(job.id, runId, { stdout: out, stderr: err, durationMs: elapsed, exitCode: code });
                 if (out.trim()) console.log(dim(out));
                 console.log(green(`  ✓ Done: ${job.name}`));
               } else {
-                await markJobFailed(job.id, err.trim() || `exit ${code}`);
+                await markJobFailed(job.id, runId, err.trim() || `exit ${code}`, {
+                  stdout: out,
+                  stderr: err,
+                  durationMs: elapsed,
+                  exitCode: code,
+                });
                 console.log(red(`  ✗ Failed (exit ${code}): ${job.name}`));
                 if (err.trim()) console.log(red(`    ${err.trim()}`));
               }
             }
           } catch (err) {
             const msg = (err as Error).message;
-            await markJobFailed(job.id, msg);
+            await markJobFailed(job.id, runId, msg, { durationMs: Date.now() - t0 });
             console.log(red(`  ✗ Error: ${msg}`));
           }
         }
