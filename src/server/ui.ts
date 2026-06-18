@@ -890,8 +890,8 @@ const HTML = `<!DOCTYPE html>
       <div id="recent-pages-list"></div>
     </div>
 
-    <!-- Core -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Core <span class="nav-section-toggle">▼</span></div>
+    <!-- Chat & Sessions -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Chat &amp; Sessions <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item active" onclick="showPage('dashboard');closeMobileSidebar()" id="nav-dashboard">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Dashboard
     </button>
@@ -902,29 +902,8 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Sessions
     </button>
 
-    <!-- Intelligence -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Intelligence <span class="nav-section-toggle">▼</span></div>
-    <button class="nav-item" onclick="showPage('memory');closeMobileSidebar()" id="nav-memory">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Memory
-    </button>
-    <button class="nav-item" onclick="showPage('skills');closeMobileSidebar()" id="nav-skills">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Skills
-    </button>
-    <button class="nav-item" onclick="showPage('soul');closeMobileSidebar()" id="nav-soul">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span> Soul
-    </button>
-    <button class="nav-item" onclick="showPage('lens');closeMobileSidebar()" id="nav-lens">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></span> Activity
-    </button>
-    <button class="nav-item" onclick="showPage('tools');closeMobileSidebar()" id="nav-tools">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools
-    </button>
-    <button class="nav-item" onclick="showPage('metacognition');closeMobileSidebar()" id="nav-metacognition">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10h-5.39a3 3 0 0 0-4.61 0H7a2 2 0 0 0 0 4h12a2 2 0 0 0 0-4h-3"/></svg></span> Metacognition
-    </button>
-
-    <!-- Development -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Development <span class="nav-section-toggle">▼</span></div>
+    <!-- Code & Development -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Code &amp; Development <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('editor');closeMobileSidebar()" id="nav-editor">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Editor
     </button>
@@ -936,6 +915,27 @@ const HTML = `<!DOCTYPE html>
     </button>
     <button class="nav-item" onclick="showPage('projects');closeMobileSidebar()" id="nav-projects">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects
+    </button>
+    <button class="nav-item" onclick="showPage('codegraph');closeMobileSidebar()" id="nav-codegraph">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Codegraph
+    </button>
+
+    <!-- Knowledge & Memory -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Knowledge &amp; Memory <span class="nav-section-toggle">▼</span></div>
+    <button class="nav-item" onclick="showPage('memory');closeMobileSidebar()" id="nav-memory">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Memory
+    </button>
+    <button class="nav-item" onclick="showPage('skills');closeMobileSidebar()" id="nav-skills">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Skills
+    </button>
+    <button class="nav-item" onclick="showPage('metacognition');closeMobileSidebar()" id="nav-metacognition">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10h-5.39a3 3 0 0 0-4.61 0H7a2 2 0 0 0 0 4h12a2 2 0 0 0 0-4h-3"/></svg></span> Metacognition
+    </button>
+    <button class="nav-item" onclick="showPage('soul');closeMobileSidebar()" id="nav-soul">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span> Soul
+    </button>
+    <button class="nav-item" onclick="showPage('lens');closeMobileSidebar()" id="nav-lens">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></span> Activity
     </button>
 
     <!-- Infrastructure -->
@@ -952,6 +952,12 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('jobs');closeMobileSidebar()" id="nav-jobs">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Jobs
     </button>
+    <button class="nav-item" onclick="showPage('workflow');closeMobileSidebar()" id="nav-workflow">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Workflows
+    </button>
+    <button class="nav-item" onclick="showPage('eval');closeMobileSidebar()" id="nav-eval">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> Eval
+    </button>
     <button class="nav-item" onclick="showPage('automation');closeMobileSidebar()" id="nav-automation">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> Automation
     </button>
@@ -959,16 +965,10 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M4 14h9M4 18h6"/><path d="M18 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><path d="M18 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><line x1="20" y1="10" x2="20" y2="14"/></svg></span> Channels
     </button>
 
-    <!-- Tools & Engines -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Tools & Engines <span class="nav-section-toggle">▼</span></div>
-    <button class="nav-item" onclick="showPage('codegraph');closeMobileSidebar()" id="nav-codegraph">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Codegraph
-    </button>
-    <button class="nav-item" onclick="showPage('workflow');closeMobileSidebar()" id="nav-workflow">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Workflows
-    </button>
-    <button class="nav-item" onclick="showPage('eval');closeMobileSidebar()" id="nav-eval">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> Eval
+    <!-- System & Config -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System &amp; Config <span class="nav-section-toggle">▼</span></div>
+    <button class="nav-item" onclick="showPage('tools');closeMobileSidebar()" id="nav-tools">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools
     </button>
     <button class="nav-item" onclick="showPage('mcp');closeMobileSidebar()" id="nav-mcp">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> MCP
@@ -976,38 +976,23 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('vault');closeMobileSidebar()" id="nav-vault">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Vault
     </button>
-
-    <!-- Operations -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Operations <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item" onclick="showPage('computer');closeMobileSidebar()" id="nav-computer">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> Computer
     </button>
     <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote Agents
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote
     </button>
     <button class="nav-item" onclick="showPage('daemons');closeMobileSidebar()" id="nav-daemons">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6" rx="1" ry="1"/><path d="M15 14v1a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1"/><path d="M12 6v3"/></svg></span> Daemons
     </button>
-    <button class="nav-item" onclick="showPage('importexport');closeMobileSidebar()" id="nav-importexport">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Import/Export
-    </button>
-    <button class="nav-item" onclick="showPage('update');closeMobileSidebar()" id="nav-update">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span> Update
-    </button>
-
-    <!-- System -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System <span class="nav-section-toggle">▼</span></div>
-    <button class="nav-item" onclick="showPage('voice');closeMobileSidebar()" id="nav-voice">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span> Voice
+    <button class="nav-item" onclick="showPage('extensions');closeMobileSidebar()" id="nav-extensions">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Extensions
     </button>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
     </button>
     <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Policies
-    </button>
-    <button class="nav-item" onclick="showPage('extensions');closeMobileSidebar()" id="nav-extensions">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Extensions
     </button>
     <button class="nav-item" onclick="showPage('analytics');closeMobileSidebar()" id="nav-analytics">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Analytics
@@ -1686,23 +1671,6 @@ const HTML = `<!DOCTYPE html>
   </div>
 
   <!-- Page: Status -->
-  <div id="page-status" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="width:32px;height:32px;background:linear-gradient(135deg,#06b6d4,#0891b2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;">⬡</div>
-        <div>
-          <h1 style="font-size:14px;font-weight:600;letter-spacing:-0.2px;">CORTEX OPERATOR CONSOLE</h1>
-           <p id="status-version" style="font-size:11px;color:var(--text3);margin-top:1px;font-family:"JetBrains Mono",monospace;">loading…</p>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span id="status-timestamp" style="font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;"></span>
-        <button class="btn btn-ghost" onclick="loadStatus()" style="padding:4px 10px;font-size:11px;">↻ REFRESH</button>
-      </div>
-    </div>
-    <div id="status-content" style="flex:1;overflow-y:auto;padding:20px 24px;background:var(--bg);"><p style="color:var(--text3);font-size:13px;">Loading…</p></div>
-  </div>
-
   <!-- Page: Analytics -->
   <div id="page-analytics" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -3793,13 +3761,16 @@ function renderRecentPages() {
       services:'Services', nodes:'Nodes', jobs:'Jobs', sessions:'Sessions', settings:'Settings',
       soul:'Soul', policies:'Policies', extensions:'Extensions',
       automation:'Automation', channels:'Channels', projects:'Projects',
-      dashboard:'Dashboard', analytics:'Analytics', quartermaster:'Quartermaster' };
+      dashboard:'Dashboard', analytics:'Analytics', quartermaster:'Quartermaster',
+      codegraph:'Codegraph', workflow:'Workflows', eval:'Eval', mcp:'MCP', vault:'Vault',
+      computer:'Computer', remote:'Remote', daemons:'Daemons', tools:'Tools',
+      metacognition:'Metacognition' };
     list.innerHTML = recent.map(p => \`<button class="nav-item compact" onclick="showPage('\${p}');closeMobileSidebar()">\${titles[p] || p}</button>\`).join('');
   } catch {}
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','tools','metacognition','agents','services','nodes','jobs','projects','automation','channels','sessions','codegraph','workflow','eval','mcp','vault','computer','remote','daemons','importexport','update','reflection','voice','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','mcp','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','pluginpanels'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
