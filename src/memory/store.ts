@@ -5,6 +5,7 @@ import type { InValue } from 'npm:@libsql/client';
 import { searchEntities, traverseGraph } from './graph.ts';
 import { recordBatchAccess } from './heuristics.ts';
 import { classifyContent, classifyMultiple } from '../security/classification.ts';
+import { getMemoryVectorStore, type VectorMemoryRecord, type VectorMemoryHit } from './vector_backends.ts';
 
 function memId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -17,6 +18,12 @@ function safeJsonParse(raw: string | null): string[] | undefined {
   } catch {
     return undefined;
   }
+}
+
+async function mirrorVectorWrite(record: VectorMemoryRecord): Promise<void> {
+  const vectorStore = await getMemoryVectorStore().catch(() => null);
+  if (!vectorStore) return;
+  await vectorStore.upsert(record).catch(() => {});
 }
 
 export interface EpisodicEntry {
@@ -98,6 +105,22 @@ export async function writeEpisodic(opts: {
     [id],
   );
 
+  if (embedding) {
+    await mirrorVectorWrite({
+      id,
+      type: 'episodic',
+      text: opts.summary,
+      embedding: blobToVector(embedding) ?? new Float32Array(embedding.length / 4),
+      sessionId: opts.sessionId,
+      topics: opts.topics ?? [],
+      entities: opts.entities ?? [],
+      importance,
+      createdAt: now,
+      updatedAt: now,
+      decayScore: 1,
+    });
+  }
+
   return id;
 }
 
@@ -112,7 +135,8 @@ export async function writeSemantic(opts: {
   const db = await getMemoryDb();
   const id = memId('sem');
   const now = new Date().toISOString();
-  const tags = JSON.stringify(opts.tags ?? []);
+  const tagList = opts.tags ?? [];
+  const tags = JSON.stringify(tagList);
   const category = opts.category ?? 'general';
   const importance = opts.importance ?? 0.5;
 
@@ -156,6 +180,21 @@ export async function writeSemantic(opts: {
      SELECT rowid, content, COALESCE(summary, '') FROM semantic_memory WHERE id = ?`,
     [id],
   );
+
+  if (embedding) {
+    await mirrorVectorWrite({
+      id,
+      type: 'semantic',
+      text: opts.summary ?? opts.content,
+      embedding: blobToVector(embedding) ?? new Float32Array(embedding.length / 4),
+      tags: tagList,
+      category,
+      importance,
+      createdAt: now,
+      updatedAt: now,
+      decayScore: 1,
+    });
+  }
 
   return id;
 }
@@ -264,6 +303,29 @@ export async function searchByVector(
   limit = 5,
   sessionId?: string,
 ): Promise<MemoryHit[]> {
+  const vectorStore = await getMemoryVectorStore().catch(() => null);
+  const remoteHits = vectorStore
+    ? await vectorStore.search({ type, vector: queryVec, limit, sessionId }).catch(() => [])
+    : [];
+
+  const toMemoryHit = (hit: VectorMemoryHit): MemoryHit => ({
+    id: hit.id,
+    type: hit.type,
+    text: hit.text,
+    score: hit.score,
+    created_at: hit.created_at,
+    sessionId: hit.sessionId,
+    entities: hit.entities,
+    topics: hit.topics,
+    tags: hit.tags,
+    category: hit.category,
+    decayScore: hit.decayScore,
+    accessCount: hit.accessCount,
+  });
+
+  const remoteMap = new Map(remoteHits.map((hit) => [hit.id, hit]));
+  const merged: MemoryHit[] = remoteHits.map(toMemoryHit);
+
   const db = await getMemoryDb();
   const table = type === 'episodic' ? 'episodic_memory' : 'semantic_memory';
   const textCol = type === 'episodic' ? 'summary' : 'content';
@@ -300,6 +362,7 @@ export async function searchByVector(
 
   const scored = rows
     .map((r) => {
+      if (remoteMap.has(r.id)) return null;
       const vec = blobToVector(r.embedding);
       if (!vec) return null;
       const sim = cosineSim(queryVec, vec);
@@ -307,22 +370,26 @@ export async function searchByVector(
     })
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .slice(0, Math.max(0, limit - merged.length));
 
-  return scored.map((r) => ({
-    id: r.id,
-    type,
-    text: r.text,
-    score: r.score,
-    created_at: r.created_at,
-    sessionId: type === 'episodic' ? r.session_id : undefined,
-    entities: type === 'episodic' ? safeJsonParse(r.entities as string | null) : undefined,
-    topics: type === 'episodic' ? safeJsonParse(r.topics as string | null) : undefined,
-    tags: type === 'semantic' ? safeJsonParse(r.tags as string | null) : undefined,
-    category: type === 'semantic' ? (r.category ?? undefined) : undefined,
-    decayScore: r.decay_score,
-    accessCount: r.access_count ?? undefined,
-  }));
+  for (const r of scored) {
+    merged.push({
+      id: r.id,
+      type,
+      text: r.text,
+      score: r.score,
+      created_at: r.created_at,
+      sessionId: type === 'episodic' ? r.session_id : undefined,
+      entities: type === 'episodic' ? safeJsonParse(r.entities as string | null) : undefined,
+      topics: type === 'episodic' ? safeJsonParse(r.topics as string | null) : undefined,
+      tags: type === 'semantic' ? safeJsonParse(r.tags as string | null) : undefined,
+      category: type === 'semantic' ? (r.category ?? undefined) : undefined,
+      decayScore: r.decay_score,
+      accessCount: r.access_count ?? undefined,
+    });
+  }
+
+  return merged.slice(0, limit);
 }
 
 function cosineSim(a: EmbeddingVector, b: EmbeddingVector): number {

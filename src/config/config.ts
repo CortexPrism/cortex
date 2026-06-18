@@ -221,6 +221,30 @@ export interface LoggingConfig {
   };
 }
 
+export type MemoryVectorStoreKind = 'sqlite' | 'qdrant' | 'chromadb' | 'pinecone';
+
+export interface MemoryVectorStoreConfig {
+  kind: MemoryVectorStoreKind;
+  /** Base URL for the vector store service. For Pinecone this should be the index host. */
+  url?: string;
+  /** API key or bearer token used by hosted vector stores. */
+  apiKey?: string;
+  /** Collection name for Qdrant / Chroma. */
+  collection?: string;
+  /** Namespace for Pinecone. */
+  namespace?: string;
+  /** Chroma tenant identifier. */
+  tenant?: string;
+  /** Chroma database name. */
+  database?: string;
+  /** Optional index dimension hint used when creating a Qdrant collection. */
+  dimensions?: number;
+}
+
+export interface MemoryConfig {
+  vectorStore?: MemoryVectorStoreConfig;
+}
+
 export interface WebAuth {
   passwordHash?: string;
   passwordSalt?: string;
@@ -273,6 +297,8 @@ export interface CortexConfig {
   voice?: import('../voice/types.ts').VoiceConfig;
   /** Logging and observability configuration */
   logging?: LoggingConfig;
+  /** Memory backend configuration */
+  memory?: MemoryConfig;
   /** Computer use (GUI automation) configuration */
   computerUse?: ComputerUseConfig;
 }

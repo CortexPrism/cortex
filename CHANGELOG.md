@@ -11,6 +11,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Daemon health and restart handling** (`src/server/server.ts`, `src/server/router.ts`, `src/services/manager.ts`, `src/server/ui.ts`) — server startup now boots auto-start services, daemon health reports real supervisor and service-manager status, and the Daemons page restart dialog uses a restart-specific action label.
 
+- **Pluggable memory vector stores** (`src/config/config.ts`, `src/memory/store.ts`, `src/memory/vector_backends.ts`) — memory writes now mirror embeddings into built-in Qdrant, ChromaDB, and Pinecone adapters when configured, with SQLite remaining the authoritative fallback.
+
 ## [0.41.2] — 2026-06-18
 
 ### Changed
