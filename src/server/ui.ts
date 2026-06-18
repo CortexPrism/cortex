@@ -432,7 +432,7 @@ const HTML = `<!DOCTYPE html>
   .md p { margin-bottom:8px; line-height:1.65; }
   .md ul,.md ol { margin: 6px 0 6px 18px; }
   .md li { margin-bottom:3px; line-height:1.5; }
-  .md code { font-family:"JetBrains Mono",monospace; font-size:0.82em; background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; }
+  .md code { font-family:'JetBrains Mono',monospace; font-size:0.82em; background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; }
   .md pre { background:#0d0d14; border:1px solid var(--border); border-radius:8px; padding:14px; overflow-x:auto; margin:10px 0; }
   .md pre code { background:none; padding:0; font-size:0.83em; line-height:1.6; }
   .md blockquote { border-left:3px solid var(--accent); padding-left:12px; color:var(--text2); margin:8px 0; }
@@ -447,7 +447,7 @@ const HTML = `<!DOCTYPE html>
   .bubble-user { background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.25); border-radius:12px 12px 4px 12px; padding:12px 16px; max-width:80%; align-self:flex-end; }
   .bubble-agent { background: var(--bg3); border: 1px solid var(--border); border-radius:12px 12px 12px 4px; padding:12px 16px; max-width:88%; align-self:flex-start; }
   .bubble-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius:8px; padding:10px 14px; align-self:flex-start; font-size:13px; color:#fca5a5; }
-  .bubble-tool { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.2); border-radius:8px; padding:8px 12px; align-self:flex-start; font-size:12px; color:#fde68a; font-family:"JetBrains Mono",monospace; max-width:88%; }
+  .bubble-tool { background: rgba(234,179,8,0.07); border: 1px solid rgba(234,179,8,0.2); border-radius:8px; padding:8px 12px; align-self:flex-start; font-size:12px; color:#fde68a; font-family:'JetBrains Mono',monospace; max-width:88%; }
   
   /* Delete message button */
   .delete-msg-btn {
@@ -508,7 +508,7 @@ const HTML = `<!DOCTYPE html>
   .ext-card-icon { flex-shrink:0; width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; text-transform:uppercase; }
   .ext-card-body { padding:12px 18px; flex:1 0 auto; }
   .ext-card-desc { font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:6px; }
-  .ext-card-readme { font-size:11px; color:var(--text3); line-height:1.5; margin-top:6px; padding:10px; background:var(--bg3); border-radius:8px; display:none; max-height:200px; overflow-y:auto; font-family:"JetBrains Mono",monospace; white-space:pre-wrap; word-break:break-word; }
+  .ext-card-readme { font-size:11px; color:var(--text3); line-height:1.5; margin-top:6px; padding:10px; background:var(--bg3); border-radius:8px; display:none; max-height:200px; overflow-y:auto; font-family:'JetBrains Mono',monospace; white-space:pre-wrap; word-break:break-word; }
   .ext-card-readme.show { display:block; }
   .ext-card-meta { font-size:11px; color:var(--text3); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .ext-card-footer { padding:10px 18px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -558,7 +558,7 @@ const HTML = `<!DOCTYPE html>
   /* Inline edit mode */
   .skill-inline-input { background:var(--bg); border:1px solid var(--accent); border-radius:4px; padding:3px 6px; font-size:12px; color:var(--text); font-family:'Inter',sans-serif; outline:none; width:100%; }
   .skill-inline-input.small { font-size:10px; }
-  .skill-inline-textarea { background:var(--bg); border:1px solid var(--accent); border-radius:4px; padding:6px 8px; font-size:11px; color:var(--text); font-family:"JetBrains Mono",monospace; outline:none; width:100%; min-height:60px; resize:vertical; }
+  .skill-inline-textarea { background:var(--bg); border:1px solid var(--accent); border-radius:4px; padding:6px 8px; font-size:11px; color:var(--text); font-family:'JetBrains Mono',monospace; outline:none; width:100%; min-height:60px; resize:vertical; }
   .skill-check { display:none; }
   .skill-check:checked + .skill-check-label::before { content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--bg); font-weight:700; background:var(--accent); border-radius:2px; }
   .skill-check-label { width:14px; height:14px; border:1px solid var(--text3); border-radius:2px; cursor:pointer; position:relative; flex-shrink:0; }
@@ -590,7 +590,7 @@ const HTML = `<!DOCTYPE html>
   .sd-preview p { margin:6px 0; }
   .sd-preview ul, .sd-preview ol { padding-left:20px; margin:6px 0; }
   .sd-preview li { margin:2px 0; }
-  .sd-preview code { background:var(--bg2); padding:1px 4px; border-radius:3px; font-size:12px; font-family:"JetBrains Mono",monospace; }
+  .sd-preview code { background:var(--bg2); padding:1px 4px; border-radius:3px; font-size:12px; font-family:'JetBrains Mono',monospace; }
   .sd-preview pre { background:var(--bg2); padding:12px; border-radius:6px; overflow-x:auto; font-size:12px; line-height:1.5; margin:8px 0; }
   .sd-preview pre code { background:none; padding:0; }
   .sd-preview strong { font-weight:600; color:var(--text); }
@@ -610,7 +610,7 @@ const HTML = `<!DOCTYPE html>
 
   /* Stat card */
   .stat { text-align:center; padding:14px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; }
-  .stat-num { font-size:1.8em; font-weight:600; color:var(--accent2); font-family:"JetBrains Mono",monospace; }
+  .stat-num { font-size:1.8em; font-weight:600; color:var(--accent2); font-family:'JetBrains Mono',monospace; }
   .stat-label { font-size:11px; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:0.05em; }
 
   /* Textarea auto-resize */
@@ -663,7 +663,7 @@ const HTML = `<!DOCTYPE html>
   [data-tip] { position:relative; }
   [data-tip]:hover::after { content:attr(data-tip); position:absolute; top:calc(100% + 4px); left:50%; transform:translateX(-50%); background:#1a1a24; color:var(--text); font-size:11px; padding:4px 10px; border-radius:6px; white-space:nowrap; border:1px solid var(--border); pointer-events:none; z-index:100; }
   /* Multi-line tooltip for context bar */
-  #context-bar-container[data-tip]:hover::after { white-space:pre-line; text-align:left; font-family:"JetBrains Mono",monospace; font-size:10px; padding:8px 12px; line-height:1.5; min-width:180px; }
+  #context-bar-container[data-tip]:hover::after { white-space:pre-line; text-align:left; font-family:'JetBrains Mono',monospace; font-size:10px; padding:8px 12px; line-height:1.5; min-width:180px; }
 
   /* ── Code block enhancements ──────────────────── */
   .md pre { position:relative; }
@@ -692,7 +692,7 @@ const HTML = `<!DOCTYPE html>
   .editor-tab:hover .editor-tab-close { display:flex; }
   .editor-tab .editor-tab-close:hover { background:rgba(239,68,68,0.2); color:var(--accent-red); }
   #editor-container { position:relative; }
-  .CodeMirror { position:absolute; top:0; left:0; right:0; bottom:0; height:auto !important; font-size:13px; font-family:"JetBrains Mono",monospace; background:var(--bg3) !important; color:var(--text) !important; }
+  .CodeMirror { position:absolute; top:0; left:0; right:0; bottom:0; height:auto !important; font-size:13px; font-family:'JetBrains Mono',monospace; background:var(--bg3) !important; color:var(--text) !important; }
   .CodeMirror-gutters { background:var(--bg2) !important; border-right:1px solid var(--border) !important; }
   .CodeMirror-linenumber { color:var(--text3) !important; }
   .CodeMirror-cursor { border-left:2px solid var(--accent2) !important; }
@@ -855,7 +855,7 @@ const HTML = `<!DOCTYPE html>
   .widget-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--text3); text-align:center; }
   .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:8px; }
   .kpi { text-align:center; padding:8px; background:var(--bg2); border-radius:8px; }
-  .kpi-num { font-size:1.3em; font-weight:600; color:var(--accent2); font-family:"JetBrains Mono",monospace; }
+  .kpi-num { font-size:1.3em; font-weight:600; color:var(--accent2); font-family:'JetBrains Mono',monospace; }
   .kpi-label { font-size:10px; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em; }
   .stat-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid var(--border); font-size:12px; }
   .stat-row:last-child { border-bottom:none; }
@@ -1016,7 +1016,7 @@ const HTML = `<!DOCTYPE html>
       </button>
       <span id="chat-agent-name" style="font-size:13px;font-weight:500;color:var(--accent2);"></span>
       <span id="chat-session-name" style="font-size:13px;font-weight:500;color:var(--text2);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-      <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;"></span>
+      <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
         <select id="chat-agent-select" class="inp" style="width:140px;font-size:12px;padding:5px 8px;" onchange="switchChatAgent(this.value)">
           <option value="">Loading agents…</option>
@@ -1162,7 +1162,7 @@ const HTML = `<!DOCTYPE html>
     <!-- Tab: Local (Git) -->
     <div id="vcs-pane-local" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
       <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-shrink:0;">
-        <span id="git-branch" style="font-size:13px;font-weight:500;color:var(--accent2);font-family:"JetBrains Mono",monospace;">—</span>
+        <span id="git-branch" style="font-size:13px;font-weight:500;color:var(--accent2);font-family:'JetBrains Mono',monospace;">—</span>
         <span id="git-status-text" style="font-size:12px;color:var(--text3);">loading…</span>
         <span id="git-ahead-behind" style="font-size:11px;color:var(--text3);"></span>
         <div style="margin-left:auto;display:flex;gap:6px;">
@@ -1233,10 +1233,10 @@ const HTML = `<!DOCTYPE html>
     <!-- Code input -->
     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
-        <textarea id="coderunner-input" class="inp" placeholder="Write your code here…" style="flex:1;border-radius:0;border:none;font-family:"JetBrains Mono",monospace;font-size:13px;padding:16px 20px;resize:none;background:var(--bg3);" spellcheck="false"></textarea>
+        <textarea id="coderunner-input" class="inp" placeholder="Write your code here…" style="flex:1;border-radius:0;border:none;font-family:'JetBrains Mono',monospace;font-size:13px;padding:16px 20px;resize:none;background:var(--bg3);" spellcheck="false"></textarea>
       </div>
       <!-- Output area -->
-      <div style="height:200px;min-height:120px;border-top:1px solid var(--border);background:var(--bg2);overflow-y:auto;padding:12px 20px;font-family:"JetBrains Mono",monospace;font-size:12px;">
+      <div style="height:200px;min-height:120px;border-top:1px solid var(--border);background:var(--bg2);overflow-y:auto;padding:12px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;">
         <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Output</div>
         <pre id="coderunner-output" style="margin:0;white-space:pre-wrap;word-break:break-all;color:var(--text);"></pre>
       </div>
@@ -1739,9 +1739,9 @@ const HTML = `<!DOCTYPE html>
         <nav id="session-breadcrumb" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px;" aria-label="Breadcrumb">
           <span style="color:var(--text2);">Sessions</span>
           <span>/</span>
-          <span id="session-breadcrumb-id" style="color:var(--accent2);font-family:"JetBrains Mono",monospace;"></span>
+          <span id="session-breadcrumb-id" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;"></span>
         </nav>
-        <span id="session-detail-title" style="font-size:12px;font-family:"JetBrains Mono",monospace;color:var(--accent2);"></span>
+        <span id="session-detail-title" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);"></span>
         <span id="session-detail-meta" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;"></span>
         <span id="session-detail-children" style="font-size:11px;display:flex;align-items:center;gap:6px;"></span>
         <button class="btn" style="margin-left:auto;font-size:12px;background:rgba(99,102,241,0.15);color:var(--accent2);" onclick="continueSession(document.getElementById('session-detail-title').textContent)">▶ Continue</button>
@@ -2056,7 +2056,7 @@ const HTML = `<!DOCTYPE html>
         <!-- Raw fallback for profile -->
         <div id="soul-raw-profile" style="display:none;">
           <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">RAW USER.md</label>
-          <textarea id="soul-raw-profile-text" style="width:100%;min-height:300px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+          <textarea id="soul-raw-profile-text" style="width:100%;min-height:300px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
         </div>
       </div>
     </div>
@@ -2294,7 +2294,7 @@ const HTML = `<!DOCTYPE html>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name * <span style="color:var(--text3);">(snake_case, unique)</span></label><input class="inp" id="sk-name" placeholder="my-skill" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="sk-desc" placeholder="What this skill does" /></div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Trigger Pattern</label><input class="inp" id="sk-trigger" placeholder="Phrase that triggers this skill (optional)" /></div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Content / Instructions <span style="color:var(--text3);">(Markdown)</span></label><textarea class="inp" id="sk-content" placeholder="Write the skill body in Markdown..." style="resize:vertical;min-height:200px;font-family:"JetBrains Mono",monospace;font-size:12px;"></textarea></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Content / Instructions <span style="color:var(--text3);">(Markdown)</span></label><textarea class="inp" id="sk-content" placeholder="Write the skill body in Markdown..." style="resize:vertical;min-height:200px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button class="btn btn-primary" onclick="submitSkillForm()" id="skill-submit-btn">Create Skill</button>
@@ -2328,7 +2328,7 @@ const HTML = `<!DOCTYPE html>
         <div style="color:var(--text3);margin-bottom:6px;font-weight:600;">AI Supervisor Reasoning:</div>
         <div id="approval-reasoning" style="color:var(--text2);"><!-- Reasoning populated by JavaScript --></div>
       </div>
-      <div id="approval-sample" style="display:none;background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:16px;border:1px solid var(--border);font-size:11px;font-family:"JetBrains Mono",monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-word;">
+      <div id="approval-sample" style="display:none;background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:16px;border:1px solid var(--border);font-size:11px;font-family:'JetBrains Mono',monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-word;">
         <!-- Sample data populated by JavaScript -->
       </div>
       <div id="approval-loading" style="display:none;text-align:center;padding:20px;">
@@ -2717,7 +2717,7 @@ const HTML = `<!DOCTYPE html>
             <span>Markdown instructions</span>
             <span>Ctrl+S to save</span>
           </div>
-          <textarea id="sd-editor" class="inp" style="flex:1;resize:none;border:none;border-radius:0;font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.6;padding:12px;background:var(--bg);color:var(--text);" placeholder="Write skill instructions in Markdown..."></textarea>
+          <textarea id="sd-editor" class="inp" style="flex:1;resize:none;border:none;border-radius:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;padding:12px;background:var(--bg);color:var(--text);" placeholder="Write skill instructions in Markdown..."></textarea>
         </div>
         <!-- Tab: Metadata -->
         <div id="sd-tab-meta" style="flex:1;overflow-y:auto;padding:16px;display:none;">
@@ -3993,7 +3993,7 @@ async function loadLens() {
     const cost = ev.cost_usd > 0 ? \`<span style="color:#4ade80;">$\${Number(ev.cost_usd).toFixed(5)}</span>\` : '';
     const err = ev.error ? \` <span style="color:#f87171;font-size:11px;">⚠ \${esc(ev.error.slice(0, 80))}</span>\` : '';
     return \`<div class="lens-row" title="\${new Date(ev.started_at).toLocaleString()}">
-      <span style="color:var(--text3);font-family:"JetBrains Mono",monospace;min-width:72px;" title="\${ts}">\${rel}</span>
+      <span style="color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:72px;" title="\${ts}">\${rel}</span>
       <span style="color:\${color};min-width:150px;font-size:11px;font-weight:500;">\${ev.event_type}</span>
       <span style="color:var(--text2);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(ev.actor)}</span>
       <span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(ev.summary ?? ev.action ?? '')}\${err}</span>
@@ -4135,7 +4135,7 @@ async function loadMemoryOverview() {
         '<input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />' +
         '<button class="btn btn-ghost" onclick="appendMemoryNote()">+ Add Note</button>' +
       '</div>' +
-      '<textarea id="soul-raw-memory-text" style="width:100%;min-height:320px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:\"JetBrains Mono\",monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>' +
+      '<textarea id="soul-raw-memory-text" style="width:100%;min-height:320px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>' +
       '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;">' +
         '<button class="btn btn-primary" onclick="saveMemoryMd()">Save MEMORY.md</button>' +
         '<span id="mem-persist-status" style="font-size:11px;color:var(--text3);align-self:center;"></span>' +
@@ -4562,7 +4562,7 @@ async function loadJobsLegacy() {
     d.innerHTML = \`
       <div>
         <span style="font-size:13px;font-weight:500;color:var(--text);">\${esc(j.name)}</span>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:"JetBrains Mono",monospace;">\${esc(j.schedule ?? j.kind ?? '')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace;">\${esc(j.schedule ?? j.kind ?? '')}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:11px;color:var(--text3);">\${j.attempts}/\${j.max_attempts} attempts</span>
@@ -5286,7 +5286,7 @@ function renderSkillCard(s) {
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
         // Name (read-only for inline edits - use designer for rename)
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span style="font-size:13px;font-weight:600;font-family:"JetBrains Mono",monospace;">' + esc(s.name) + '</span>' +
+          '<span style="font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;">' + esc(s.name) + '</span>' +
           originBadge +
           '<span style="font-size:10px;color:var(--accent2);margin-left:auto;">Editing...</span>' +
         '</div>' +
@@ -5340,7 +5340,7 @@ function renderSkillCard(s) {
       // Header row
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:4px;">' +
         '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
-          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:"JetBrains Mono",monospace;">' + esc(s.name) + '</span>' +
+          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:'JetBrains Mono',monospace;">' + esc(s.name) + '</span>' +
           originBadge +
           lifecycleBadge +
           trustBadge +
@@ -5361,7 +5361,7 @@ function renderSkillCard(s) {
       // Description + content preview
       '<p style="font-size:12px;color:var(--text2);margin:0 0 6px 0;line-height:1.4;">' + esc(descTrunc) + ((s.description ?? '').length > 80 ? '…' : '') + '</p>' +
       // Content snippet
-      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:"JetBrains Mono",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
+      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
       // Tags
       (tags.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
         tags.slice(0, 5).map(tag => '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(tag) + '</span>').join('') +
@@ -5376,7 +5376,7 @@ function renderSkillCard(s) {
             (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
           '</div>'
         : '') +
-      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:"JetBrains Mono",monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
+      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:'JetBrains Mono',monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
       // Expandable indicator
       (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
         '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
@@ -5386,7 +5386,7 @@ function renderSkillCard(s) {
       (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Lifecycle: <span style="color:' + (lifecycleTextColors[lifecycle] || lifecycleTextColors.candidate) + ';">' + lifecycle + '</span> | Trust: <span style="color:#06b6d4;">Tier ' + trustTier + '/4</span></div>' +
         (s.utility_score !== undefined ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Utility: ' + (s.utility_score ?? 0).toFixed(2) + ' | Freshness: ' + Math.round((s.freshness ?? 0) * 100) + '%</div>' : '') +
-        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:"JetBrains Mono",monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
+        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:'JetBrains Mono',monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
         (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
         (Array.isArray(metadata.examples) && metadata.examples.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
@@ -5434,7 +5434,7 @@ function renderSkillListItem(s) {
     '</label>' +
     '<div style="flex:1;min-width:0;">' +
       '<div style="display:flex;align-items:center;gap:6px;">' +
-        '<span style="font-size:13px;font-weight:600;font-family:"JetBrains Mono",monospace;">' + esc(s.name) + '</span>' +
+        '<span style="font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;">' + esc(s.name) + '</span>' +
         originBadge +
         lifecycleLabel +
         '<span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((s.description || '').slice(0, 60)) + '</span>' +
@@ -5612,7 +5612,7 @@ function hideSkillModal() {
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Agent:</div>' +
       '<div style="margin-bottom:12px;">' + (request.agentId || '') + '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Tool:</div>' +
-      '<div style="margin-bottom:12px;font-family:"JetBrains Mono",monospace;font-size:11px;">' + (request.tool || '') + '</div>' +
+      '<div style="margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:11px;">' + (request.tool || '') + '</div>' +
       '</div>' +
       '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:' + getClassificationColor(request.dataClassification) + ';border:1px solid ' + getClassificationBorder(request.dataClassification) + ';">' +
       '<span>' + icon + '</span>' +
@@ -5620,7 +5620,7 @@ function hideSkillModal() {
       '</div>' +
       '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Query/Search:</div>' +
-      '<div style="margin-bottom:12px;font-family:"JetBrains Mono",monospace;font-size:11px;overflow-x:auto;">' + (request.query || '') + '</div>' +
+      '<div style="margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow-x:auto;">' + (request.query || '') + '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Justification:</div>' +
       '<div style="margin-bottom:12px;">' + (request.requestReason || '(none provided)') + '</div>' +
       '</div>';
@@ -5941,8 +5941,8 @@ async function loadPolicies() {
       <span class="badge" style="min-width:52px;justify-content:center;background:\${isAllow ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};color:\${isAllow ? '#4ade80' : '#f87171'};">\${p.effect}</span>
       <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);min-width:80px;justify-content:center;">\${p.kind}</span>
        \${editingPolicyId === p.id
-           ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:"JetBrains Mono",monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
-           : '<code style="font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
+           ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
+           : '<code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
       \${editingPolicyId === p.id
         ? '<input id="edit-policy-reason" class="inp" style="max-width:200px;font-size:11px;padding:4px 8px;" value="' + escAttr(p.reason ?? '') + '" placeholder="reason" />'
         : '<span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.reason ?? '') + '</span>'}
@@ -6047,7 +6047,7 @@ function showNewPolicyForm() {
       <option value="deny">deny</option>
       <option value="allow">allow</option>
     </select>
-    <input id="new-policy-pattern" class="inp" style="flex:1;min-width:150px;font-family:"JetBrains Mono",monospace;font-size:12px;padding:4px 8px;" placeholder="regex pattern" />
+    <input id="new-policy-pattern" class="inp" style="flex:1;min-width:150px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 8px;" placeholder="regex pattern" />
     <input id="new-policy-reason" class="inp" style="width:160px;font-size:11px;padding:4px 8px;" placeholder="reason (optional)" />
     <input id="new-policy-priority" class="inp" type="number" style="width:60px;font-size:11px;padding:4px 8px;" value="100" />
     <button class="btn btn-primary" style="font-size:11px;padding:4px 12px;" onclick="submitNewPolicy()">Add</button>
@@ -6152,10 +6152,10 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⚡</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ACTIVE SESSIONS</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:32px;font-weight:700;color:var(--accent2);font-family:"JetBrains Mono",monospace;line-height:1;">\${st.activeSessions}</div>
+            <div style="font-size:32px;font-weight:700;color:var(--accent2);font-family:'JetBrains Mono',monospace;line-height:1;">\${st.activeSessions}</div>
             <div style="font-size:11px;color:#10b981;">+12% vs yesterday</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;">across all agents</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">across all agents</div>
         </div>
         
         <!-- Uptime -->
@@ -6163,9 +6163,9 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⏱</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">SERVER UPTIME</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:32px;font-weight:700;color:#22d3ee;font-family:"JetBrains Mono",monospace;line-height:1;">\${upH}h \${upM}m</div>
+            <div style="font-size:32px;font-weight:700;color:#22d3ee;font-family:'JetBrains Mono',monospace;line-height:1;">\${upH}h \${upM}m</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;">99.8% reliability</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">99.8% reliability</div>
         </div>
 
         <!-- LLM Status -->
@@ -6173,10 +6173,10 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">🧠</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">LLM PROVIDER</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:16px;font-weight:700;color:#fbbf24;font-family:"JetBrains Mono",monospace;line-height:1;">\${st.provider}</div>
+            <div style="font-size:16px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace;line-height:1;">\${st.provider}</div>
             <div style="font-size:11px;color:#10b981;">● ONLINE</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;">\${st.model}</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${st.model}</div>
         </div>
 
         <!-- Version -->
@@ -6184,9 +6184,9 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⬡</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">CORTEX BUILD</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:28px;font-weight:700;color:#4ade80;font-family:"JetBrains Mono",monospace;line-height:1;">v\${st.version}</div>
+            <div style="font-size:28px;font-weight:700;color:#4ade80;font-family:'JetBrains Mono',monospace;line-height:1;">v\${st.version}</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;">latest stable</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">latest stable</div>
         </div>
       </div>
 
@@ -6195,7 +6195,7 @@ async function loadStatus() {
         <div class="card" style="padding:18px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">Process Daemons</div>
-            <div style="font-size:10px;color:var(--text3);font-family:"JetBrains Mono",monospace;">\${daemons.filter(d => st.daemons[d.key]).length}/\${daemons.length} ONLINE</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${daemons.filter(d => st.daemons[d.key]).length}/\${daemons.length} ONLINE</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px;">
           \${daemons.map(d => {
@@ -6203,7 +6203,7 @@ async function loadStatus() {
             return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
               <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:8px;height:8px;border-radius:50%;background:\${up?'#10b981':'#ef4444'};box-shadow:0 0 8px \${up?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)'}"></div>
-                <span style="font-size:12px;font-weight:500;font-family:"JetBrains Mono",monospace;color:var(--text);">\${d.label.toUpperCase()}</span>
+                <span style="font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace;color:var(--text);">\${d.label.toUpperCase()}</span>
               </div>
               <span style="font-size:10px;font-weight:600;letter-spacing:0.05em;color:\${up?'#10b981':'#ef4444'};">
                 \${up ? 'ONLINE' : 'OFFLINE'}
@@ -6212,8 +6212,8 @@ async function loadStatus() {
           }).join('')}
           </div>
           \${daemons.some(d => !st.daemons[d.key])
-            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:"JetBrains Mono",monospace;">⚠ WARNING: Some daemons offline</div>'
-            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:"JetBrains Mono",monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
+            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace;">⚠ WARNING: Some daemons offline</div>'
+            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:'JetBrains Mono',monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
         </div>
 
         <!-- Resources -->
@@ -6224,8 +6224,8 @@ async function loadStatus() {
           \${mem.total > 0 ? \`
           <div style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:"JetBrains Mono",monospace;">MEMORY</span>
-              <span style="font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;">\${fmt(mem.used)} / \${fmt(mem.total)} (\${memPct}%)</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'JetBrains Mono',monospace;">MEMORY</span>
+              <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${fmt(mem.used)} / \${fmt(mem.total)} (\${memPct}%)</span>
             </div>
             <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
               <div style="height:100%;width:\${memPct}%;background:\${memPct>85?'#ef4444':memPct>60?'#f59e0b':'#06b6d4'};transition:width 0.5s;box-shadow:0 0 8px \${memPct>85?'rgba(239,68,68,0.3)':memPct>60?'rgba(245,158,11,0.3)':'rgba(6,182,212,0.3)'};"></div>
@@ -6233,8 +6233,8 @@ async function loadStatus() {
           </div>
           <div style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:"JetBrains Mono",monospace;">DISK (HOME)</span>
-              <span style="font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;">\${fmt(disk.used)} / \${fmt(disk.total)} (\${diskPct}%)</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'JetBrains Mono',monospace;">DISK (HOME)</span>
+              <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${fmt(disk.used)} / \${fmt(disk.total)} (\${diskPct}%)</span>
             </div>
             <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
               <div style="height:100%;width:\${diskPct}%;background:\${diskPct>85?'#ef4444':diskPct>60?'#f59e0b':'#06b6d4'};transition:width 0.5s;box-shadow:0 0 8px \${diskPct>85?'rgba(239,68,68,0.3)':diskPct>60?'rgba(245,158,11,0.3)':'rgba(6,182,212,0.3)'};"></div>
@@ -6242,15 +6242,15 @@ async function loadStatus() {
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:"JetBrains Mono",monospace;">CPU CORES</div>
-              <div style="font-size:18px;font-weight:700;color:var(--accent2);font-family:"JetBrains Mono",monospace;">\${st.cpuCores || 'N/A'}</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">CPU CORES</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent2);font-family:'JetBrains Mono',monospace;">\${st.cpuCores || 'N/A'}</div>
             </div>
             <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:"JetBrains Mono",monospace;">PLATFORM</div>
-              <div style="font-size:14px;font-weight:600;color:var(--accent2);font-family:"JetBrains Mono",monospace;">\${st.platform || 'LINUX'}</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">PLATFORM</div>
+              <div style="font-size:14px;font-weight:600;color:var(--accent2);font-family:'JetBrains Mono',monospace;">\${st.platform || 'LINUX'}</div>
             </div>
           </div>
-          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:"JetBrains Mono",monospace;">⚠ Resource info unavailable</div>'}
+          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:'JetBrains Mono',monospace;">⚠ Resource info unavailable</div>'}
         </div>
       </div>
 
@@ -6258,7 +6258,7 @@ async function loadStatus() {
       <div class="card" style="padding:18px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">System Activity</div>
-          <div style="font-size:10px;color:var(--text3);font-family:"JetBrains Mono",monospace;">LAST 24H</div>
+          <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">LAST 24H</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           \${st.recentSessions && st.recentSessions.length > 0 ? st.recentSessions.slice(0,5).map(s => \`
@@ -6266,13 +6266,13 @@ async function loadStatus() {
               <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:6px;height:6px;border-radius:50%;background:\${s.status==='active'?'#10b981':'var(--text3)'}"></div>
                 <div>
-                  <div style="font-size:11px;font-family:"JetBrains Mono",monospace;color:var(--accent2);">\${s.id.slice(-12).toUpperCase()}</div>
+                  <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-12).toUpperCase()}</div>
                   <div style="font-size:10px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${s.agent || 'default'}</div>
                 </div>
               </div>
-              <div style="font-size:10px;color:var(--text3);font-family:"JetBrains Mono",monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
             </div>
-          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:"JetBrains Mono",monospace;">No recent activity</div>'}
+          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:'JetBrains Mono',monospace;">No recent activity</div>'}
         </div>
     \`;
   } catch(e) {
@@ -6329,7 +6329,7 @@ async function loadAnalytics(days) {
     mt.innerHTML = models.length === 0
       ? '<tr><td colspan="5" style="color:var(--text3);padding:12px 0;font-size:12px;">No LLM calls recorded yet.</td></tr>'
       : models.map(m => \`<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:8px 0;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--accent2);">\${esc(m.model)}</td>
+          <td style="padding:8px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);">\${esc(m.model)}</td>
           <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${m.calls}</td>
           <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${fmtNum(m.tokens_in)}</td>
           <td style="padding:8px 0;font-size:12px;color:var(--text2);">\${fmtNum(m.tokens_out)}</td>
@@ -6416,7 +6416,7 @@ function renderSessionsList(sessions) {
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           \${s.name ? '<span style="font-size:13px;font-weight:500;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.name) + '</span>' : ''}
-          <span style="font-size:12px;font-family:"JetBrains Mono",monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
+          <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
           \${s.agent_id && s.agent_id !== 'default' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
           \${ch ? '<span class="badge" style="background:' + chBg + ';color:' + chTc + ';font-size:10px;">' + esc(ch) + '</span>' : ''}
           \${hasParent ? '<span class="badge" style="background:rgba(245,158,11,0.08);color:#fbbf24;font-size:10px;">⤷ child</span>' : ''}
@@ -6480,7 +6480,7 @@ async function openSession(id) {
 
   // Show parent link if this session has a parent
   if (session && session.parent_session_id) {
-    meta.innerHTML = \`<span style="color:var(--text3);">← parent:</span> <a href="#" style="color:var(--accent2);font-family:"JetBrains Mono",monospace;font-size:11px;text-decoration:none;" onclick="event.preventDefault();openSession('\${session.parent_session_id}')">\${session.parent_session_id.slice(-20)}</a>\`;
+    meta.innerHTML = \`<span style="color:var(--text3);">← parent:</span> <a href="#" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;" onclick="event.preventDefault();openSession('\${session.parent_session_id}')">\${session.parent_session_id.slice(-20)}</a>\`;
   } else {
     meta.innerHTML = '';
   }
@@ -6489,7 +6489,7 @@ async function openSession(id) {
   if (children.length > 0) {
     const ch = channelLabel(session?.channel);
     ctn.innerHTML = '<span style="color:var(--text3);">sub-agents:</span> ' + children.map(c => \`
-      <a href="#" style="color:#fbbf24;font-family:"JetBrains Mono",monospace;font-size:11px;text-decoration:none;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.08);" onclick="event.preventDefault();openSession('\${c.id}')">
+      <a href="#" style="color:#fbbf24;font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.08);" onclick="event.preventDefault();openSession('\${c.id}')">
         \${c.channel?.startsWith('subagent:') ? c.channel.replace('subagent:','') : 'sub'}
       </a>\`).join(' ');
   } else if (session && !session.channel?.startsWith('subagent')) {
@@ -6521,7 +6521,7 @@ async function openSession(id) {
         <div class="bubble-agent md" style="font-size:13px;">\${md(ev.summary ?? ev.action ?? '')}</div></div>\`;
       if (isTool) return \`<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">
         <div class="bubble-tool">⚙ \${esc(ev.action)} \${ev.duration_ms ? '· '+ev.duration_ms+'ms' : ''}</div></div>\`;
-      return \`<div style="font-size:11px;color:var(--text3);padding:2px 0;font-family:"JetBrains Mono",monospace;">
+      return \`<div style="font-size:11px;color:var(--text3);padding:2px 0;font-family:'JetBrains Mono',monospace;">
         [\${ev.event_type}] \${esc(ev.summary ?? ev.action ?? '')}\${ev.duration_ms?' · '+ev.duration_ms+'ms':''}</div>\`;
     }).join('');
   } else {
@@ -6894,7 +6894,7 @@ async function loadSettings() {
                   \${config.defaultProvider === k ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">default</span>' : ''}
                 </div>
                 <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);flex-wrap:wrap;">
-                  <span>Model: <span style="color:var(--text);font-family:"JetBrains Mono",monospace;">\${esc(p.model || '—')}</span></span>
+                  <span>Model: <span style="color:var(--text);font-family:'JetBrains Mono',monospace;">\${esc(p.model || '—')}</span></span>
                   \${p.temperature != null ? \`<span>Temp: <span style="color:var(--text);">\${p.temperature}</span></span>\` : ''}
                   \${p.maxTokens != null ? \`<span>Max tokens: <span style="color:var(--text);">\${p.maxTokens}</span></span>\` : ''}
                   \${p.topP != null ? \`<span>Top P: <span style="color:var(--text);">\${p.topP}</span></span>\` : ''}
@@ -7746,7 +7746,7 @@ async function showAddModelModal(prefillKind) {
         </div>
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key</label>
-          <input class="inp" id="modal-apikey" type="password" placeholder="Enter API key…" autocomplete="off" style="font-family:"JetBrains Mono",monospace;font-size:12px;" />
+          <input class="inp" id="modal-apikey" type="password" placeholder="Enter API key…" autocomplete="off" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
         </div>
         <div id="modal-baseurl-wrap" style="display:none;">
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL / Region</label>
@@ -7819,7 +7819,7 @@ async function showEditModelModal(kind) {
         </div>
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">API Key \${p?.apiKey ? '<span style="color:#4ade80;">✓ set</span>' : ''}</label>
-          <input class="inp" id="modal-apikey" type="password" placeholder="Enter new key to update…" autocomplete="off" style="font-family:"JetBrains Mono",monospace;font-size:12px;" />
+          <input class="inp" id="modal-apikey" type="password" placeholder="Enter new key to update…" autocomplete="off" style="font-family:'JetBrains Mono',monospace;font-size:12px;" />
         </div>
         \${meta.needsBaseUrl ? \`<div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Base URL / Region</label>
           <input class="inp" id="modal-baseurl" value="\${esc(p?.baseUrl ?? '')}" style="font-size:12px;" /></div>\` : ''}
@@ -8644,7 +8644,7 @@ async function loadPlugins() {
             <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">v\${esc(p.version)}</span>
             <span class="badge" style="background:\${p.enabled?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${p.enabled?'#4ade80':'var(--text3)'};">\${p.enabled?'enabled':'disabled'}</span>
           </div>
-          <div style="font-size:11px;color:var(--text3);font-family:"JetBrains Mono",monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry)}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry)}</div>
         </div>
       </div>
       <div class="ext-card-body">
@@ -8871,7 +8871,7 @@ async function loadMarketplace() {
             <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;align-self:flex-start;margin-top:2px;" onclick="togglePluginReadme('\${readmeId}')">Show readme</button>\`
             : \`<div class="ext-card-desc">\${esc(desc || 'No description')}</div>\`}
           <div class="ext-card-meta">
-            <span style="font-family:"JetBrains Mono",monospace;">\${esc(p.slug)}</span>
+            <span style="font-family:'JetBrains Mono',monospace;">\${esc(p.slug)}</span>
             <span>·</span>
             <span>\${p.downloads != null ? p.downloads.toLocaleString() + ' downloads' : ''}</span>
             \${p.author ? '<span>· by ' + esc(p.author) + '</span>' : ''}
@@ -8914,7 +8914,7 @@ async function loadMarketplace() {
             <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;align-self:flex-start;margin-top:2px;" onclick="togglePluginReadme('\${readmeId}')">Show readme</button>\`
             : \`<div class="ext-card-desc">\${esc(desc || 'No description')}</div>\`}
           <div class="ext-card-meta">
-            <span style="font-family:"JetBrains Mono",monospace;">\${esc(a.slug)}</span>
+            <span style="font-family:'JetBrains Mono',monospace;">\${esc(a.slug)}</span>
             <span>·</span>
             <span>\${a.downloads != null ? a.downloads.toLocaleString() + ' downloads' : ''}</span>
             \${a.model ? '<span>· ' + esc(a.model) + '</span>' : ''}
@@ -9025,7 +9025,7 @@ async function loadCronJobs() {
           <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);">\${esc(j.kind)}</span>
           <span class="badge" style="background:rgba(0,0,0,0.2);color:\${statusColor[j.status]??'var(--text3)'};">\${j.status}</span>
         </div>
-        <div style="font-size:12px;color:var(--text3);font-family:"JetBrains Mono",monospace;margin-bottom:4px;">\${esc(j.command)}\${j.schedule?' · '+esc(j.schedule):''}</div>
+        <div style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:4px;">\${esc(j.command)}\${j.schedule?' · '+esc(j.schedule):''}</div>
         <div style="font-size:11px;color:var(--text3);">
           Attempts: \${j.attempts}/\${j.max_attempts}
           \${j.last_run_at?' · Last: '+new Date(j.last_run_at).toLocaleString():''}
@@ -9511,7 +9511,7 @@ function editorShowEditor(fileName, content) {
   }
 
   const container = document.getElementById('editor-container');
-  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:"JetBrains Mono",monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
+  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
   container.style.cssText = 'flex:1;overflow:hidden;display:flex;';
 
   const mode = editorDetectMode(fileName);
@@ -10071,7 +10071,7 @@ async function loadNodes() {
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">',
         '<div>',
         '<span style="font-weight:600;font-size:14px;">' + esc(n.name) + '</span>',
-        '<span style="font-size:11px;color:var(--text3);margin-left:8px;font-family:"JetBrains Mono",monospace;">' + esc(n.id) + '</span>',
+        '<span style="font-size:11px;color:var(--text3);margin-left:8px;font-family:'JetBrains Mono',monospace;">' + esc(n.id) + '</span>',
         '</div>',
         '<div style="display:flex;gap:8px;align-items:center;">',
         '<span class="badge" style="background:' + tierColor + '20;color:' + tierColor + ';border:1px solid ' + tierColor + '40;">' + tierLabel + '</span>',
