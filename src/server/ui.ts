@@ -2667,7 +2667,7 @@ function toggleReasoningPanel() {
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'reasoning-panel';
-      panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:JetBrains Mono,monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
+      panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
       chatArea.appendChild(panel);
     }
     renderReasoningPanel(panel);
@@ -4189,7 +4189,7 @@ function renderSkillCard(s) {
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
         // Name (read-only for inline edits - use designer for rename)
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span style="font-size:13px;font-weight:600;font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+          '<span style="font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;">' + esc(s.name) + '</span>' +
           originBadge +
           '<span style="font-size:10px;color:var(--accent2);margin-left:auto;">Editing...</span>' +
         '</div>' +
@@ -4243,7 +4243,7 @@ function renderSkillCard(s) {
       // Header row
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:4px;">' +
         '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
-          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:'JetBrains Mono',monospace;">' + esc(s.name) + '</span>' +
           originBadge +
           lifecycleBadge +
           trustBadge +
@@ -4264,7 +4264,7 @@ function renderSkillCard(s) {
       // Description + content preview
       '<p style="font-size:12px;color:var(--text2);margin:0 0 6px 0;line-height:1.4;">' + esc(descTrunc) + ((s.description ?? '').length > 80 ? '…' : '') + '</p>' +
       // Content snippet
-      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:JetBrains Mono,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
+      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
       // Tags
       (tags.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
         tags.slice(0, 5).map(tag => '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(tag) + '</span>').join('') +
@@ -4279,7 +4279,7 @@ function renderSkillCard(s) {
             (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
           '</div>'
         : '') +
-      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:JetBrains Mono,monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
+      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:'JetBrains Mono',monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
       // Expandable indicator
       (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
         '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
@@ -4289,7 +4289,7 @@ function renderSkillCard(s) {
       (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Lifecycle: <span style="color:' + (lifecycleTextColors[lifecycle] || lifecycleTextColors.candidate) + ';">' + lifecycle + '</span> | Trust: <span style="color:#06b6d4;">Tier ' + trustTier + '/4</span></div>' +
         (s.utility_score !== undefined ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Utility: ' + (s.utility_score ?? 0).toFixed(2) + ' | Freshness: ' + Math.round((s.freshness ?? 0) * 100) + '%</div>' : '') +
-        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:JetBrains Mono,monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
+        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:'JetBrains Mono',monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
         (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
         (Array.isArray(metadata.examples) && metadata.examples.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
@@ -4337,7 +4337,7 @@ function renderSkillListItem(s) {
     '</label>' +
     '<div style="flex:1;min-width:0;">' +
       '<div style="display:flex;align-items:center;gap:6px;">' +
-        '<span style="font-size:13px;font-weight:600;font-family:JetBrains Mono,monospace;">' + esc(s.name) + '</span>' +
+        '<span style="font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;">' + esc(s.name) + '</span>' +
         originBadge +
         lifecycleLabel +
         '<span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((s.description || '').slice(0, 60)) + '</span>' +
@@ -4670,7 +4670,7 @@ async function loadPolicies() {
       <span class="badge" style="min-width:52px;justify-content:center;background:\${isAllow ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};color:\${isAllow ? '#4ade80' : '#f87171'};">\${p.effect}</span>
       <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);min-width:80px;justify-content:center;">\${p.kind}</span>
       \${editingPolicyId === p.id
-        ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:JetBrains Mono,monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
+        ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
         : '<code style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
       \${editingPolicyId === p.id
         ? '<input id="edit-policy-reason" class="inp" style="max-width:200px;font-size:11px;padding:4px 8px;" value="' + escAttr(p.reason ?? '') + '" placeholder="reason" />'
@@ -4776,7 +4776,7 @@ function showNewPolicyForm() {
       <option value="deny">deny</option>
       <option value="allow">allow</option>
     </select>
-    <input id="new-policy-pattern" class="inp" style="flex:1;min-width:150px;font-family:JetBrains Mono,monospace;font-size:12px;padding:4px 8px;" placeholder="regex pattern" />
+    <input id="new-policy-pattern" class="inp" style="flex:1;min-width:150px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 8px;" placeholder="regex pattern" />
     <input id="new-policy-reason" class="inp" style="width:160px;font-size:11px;padding:4px 8px;" placeholder="reason (optional)" />
     <input id="new-policy-priority" class="inp" type="number" style="width:60px;font-size:11px;padding:4px 8px;" value="100" />
     <button class="btn btn-primary" style="font-size:11px;padding:4px 12px;" onclick="submitNewPolicy()">Add</button>
@@ -4869,10 +4869,10 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⚡</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ACTIVE SESSIONS</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:32px;font-weight:700;color:var(--accent2);font-family:JetBrains Mono,monospace;line-height:1;">\${st.activeSessions}</div>
+            <div style="font-size:32px;font-weight:700;color:var(--accent2);font-family:'JetBrains Mono',monospace;line-height:1;">\${st.activeSessions}</div>
             <div style="font-size:11px;color:#10b981;">+12% vs yesterday</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">across all agents</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">across all agents</div>
         </div>
         
         <!-- Uptime -->
@@ -4880,9 +4880,9 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⏱</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">SERVER UPTIME</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:32px;font-weight:700;color:#22d3ee;font-family:JetBrains Mono,monospace;line-height:1;">\${upH}h \${upM}m</div>
+            <div style="font-size:32px;font-weight:700;color:#22d3ee;font-family:'JetBrains Mono',monospace;line-height:1;">\${upH}h \${upM}m</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">99.8% reliability</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">99.8% reliability</div>
         </div>
 
         <!-- LLM Status -->
@@ -4890,10 +4890,10 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">🧠</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">LLM PROVIDER</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:16px;font-weight:700;color:#fbbf24;font-family:JetBrains Mono,monospace;line-height:1;">\${st.provider}</div>
+            <div style="font-size:16px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace;line-height:1;">\${st.provider}</div>
             <div style="font-size:11px;color:#10b981;">● ONLINE</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${st.model}</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${st.model}</div>
         </div>
 
         <!-- Version -->
@@ -4901,9 +4901,9 @@ async function loadStatus() {
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⬡</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">CORTEX BUILD</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:28px;font-weight:700;color:#4ade80;font-family:JetBrains Mono,monospace;line-height:1;">v\${st.version}</div>
+            <div style="font-size:28px;font-weight:700;color:#4ade80;font-family:'JetBrains Mono',monospace;line-height:1;">v\${st.version}</div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">latest stable</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">latest stable</div>
         </div>
       </div>
 
@@ -4912,7 +4912,7 @@ async function loadStatus() {
         <div class="card" style="padding:18px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">Process Daemons</div>
-            <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${daemons.filter(d => st.daemons[d.key]).length}/\${daemons.length} ONLINE</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${daemons.filter(d => st.daemons[d.key]).length}/\${daemons.length} ONLINE</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px;">
           \${daemons.map(d => {
@@ -4920,7 +4920,7 @@ async function loadStatus() {
             return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
               <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:8px;height:8px;border-radius:50%;background:\${up?'#10b981':'#ef4444'};box-shadow:0 0 8px \${up?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)'}"></div>
-                <span style="font-size:12px;font-weight:500;font-family:JetBrains Mono,monospace;color:var(--text);">\${d.label.toUpperCase()}</span>
+                <span style="font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace;color:var(--text);">\${d.label.toUpperCase()}</span>
               </div>
               <span style="font-size:10px;font-weight:600;letter-spacing:0.05em;color:\${up?'#10b981':'#ef4444'};">
                 \${up ? 'ONLINE' : 'OFFLINE'}
@@ -4929,8 +4929,8 @@ async function loadStatus() {
           }).join('')}
           </div>
           \${daemons.some(d => !st.daemons[d.key])
-            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:JetBrains Mono,monospace;">⚠ WARNING: Some daemons offline</div>'
-            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:JetBrains Mono,monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
+            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace;">⚠ WARNING: Some daemons offline</div>'
+            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:'JetBrains Mono',monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
         </div>
 
         <!-- Resources -->
@@ -4941,8 +4941,8 @@ async function loadStatus() {
           \${mem.total > 0 ? \`
           <div style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:JetBrains Mono,monospace;">MEMORY</span>
-              <span style="font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${fmt(mem.used)} / \${fmt(mem.total)} (\${memPct}%)</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'JetBrains Mono',monospace;">MEMORY</span>
+              <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${fmt(mem.used)} / \${fmt(mem.total)} (\${memPct}%)</span>
             </div>
             <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
               <div style="height:100%;width:\${memPct}%;background:\${memPct>85?'#ef4444':memPct>60?'#f59e0b':'#06b6d4'};transition:width 0.5s;box-shadow:0 0 8px \${memPct>85?'rgba(239,68,68,0.3)':memPct>60?'rgba(245,158,11,0.3)':'rgba(6,182,212,0.3)'};"></div>
@@ -4950,8 +4950,8 @@ async function loadStatus() {
           </div>
           <div style="margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:JetBrains Mono,monospace;">DISK (HOME)</span>
-              <span style="font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${fmt(disk.used)} / \${fmt(disk.total)} (\${diskPct}%)</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text2);font-family:'JetBrains Mono',monospace;">DISK (HOME)</span>
+              <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${fmt(disk.used)} / \${fmt(disk.total)} (\${diskPct}%)</span>
             </div>
             <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
               <div style="height:100%;width:\${diskPct}%;background:\${diskPct>85?'#ef4444':diskPct>60?'#f59e0b':'#06b6d4'};transition:width 0.5s;box-shadow:0 0 8px \${diskPct>85?'rgba(239,68,68,0.3)':diskPct>60?'rgba(245,158,11,0.3)':'rgba(6,182,212,0.3)'};"></div>
@@ -4959,15 +4959,15 @@ async function loadStatus() {
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:JetBrains Mono,monospace;">CPU CORES</div>
-              <div style="font-size:18px;font-weight:700;color:var(--accent2);font-family:JetBrains Mono,monospace;">\${st.cpuCores || 'N/A'}</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">CPU CORES</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent2);font-family:'JetBrains Mono',monospace;">\${st.cpuCores || 'N/A'}</div>
             </div>
             <div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:JetBrains Mono,monospace;">PLATFORM</div>
-              <div style="font-size:14px;font-weight:600;color:var(--accent2);font-family:JetBrains Mono,monospace;">\${st.platform || 'LINUX'}</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">PLATFORM</div>
+              <div style="font-size:14px;font-weight:600;color:var(--accent2);font-family:'JetBrains Mono',monospace;">\${st.platform || 'LINUX'}</div>
             </div>
           </div>
-          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:JetBrains Mono,monospace;">⚠ Resource info unavailable</div>'}
+          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:'JetBrains Mono',monospace;">⚠ Resource info unavailable</div>'}
         </div>
       </div>
 
@@ -4975,7 +4975,7 @@ async function loadStatus() {
       <div class="card" style="padding:18px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <div style="font-size:12px;font-weight:600;color:var(--text);letter-spacing:0.05em;text-transform:uppercase;">System Activity</div>
-          <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">LAST 24H</div>
+          <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">LAST 24H</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           \${st.recentSessions && st.recentSessions.length > 0 ? st.recentSessions.slice(0,5).map(s => \`
@@ -4983,13 +4983,13 @@ async function loadStatus() {
               <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:6px;height:6px;border-radius:50%;background:\${s.status==='active'?'#10b981':'var(--text3)'}"></div>
                 <div>
-                  <div style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--accent2);">\${s.id.slice(-12).toUpperCase()}</div>
+                  <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-12).toUpperCase()}</div>
                   <div style="font-size:10px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${s.agent || 'default'}</div>
                 </div>
               </div>
-              <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
             </div>
-          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:JetBrains Mono,monospace;">No recent activity</div>'}
+          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:'JetBrains Mono',monospace;">No recent activity</div>'}
         </div>
     \`;
   } catch(e) {
@@ -6791,7 +6791,7 @@ async function loadAgents() {
       ac.push('</div>');
       if (a.systemPrompt) ac.push('<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.systemPrompt) + '</div>');
       var wsDir = wsMap[a.id] || '';
-      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">' + esc(wsDir) + '</div>');
+      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">' + esc(wsDir) + '</div>');
       ac.push('</div><div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">');
       if (a.id !== currentAgentId) ac.push('<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent(\\'' + a.id + '\\')">Activate</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
@@ -7959,7 +7959,7 @@ function editorShowEditor(fileName, content) {
   }
 
   const container = document.getElementById('editor-container');
-  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:JetBrains Mono,monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
+  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
   container.style.cssText = 'flex:1;overflow:hidden;display:flex;';
 
   const mode = editorDetectMode(fileName);
@@ -8515,7 +8515,7 @@ async function loadNodes() {
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">',
         '<div>',
         '<span style="font-weight:600;font-size:14px;">' + esc(n.name) + '</span>',
-        '<span style="font-size:11px;color:var(--text3);margin-left:8px;font-family:JetBrains Mono,monospace;">' + esc(n.id) + '</span>',
+        '<span style="font-size:11px;color:var(--text3);margin-left:8px;font-family:'JetBrains Mono',monospace;">' + esc(n.id) + '</span>',
         '</div>',
         '<div style="display:flex;gap:8px;align-items:center;">',
         '<span class="badge" style="background:' + tierColor + '20;color:' + tierColor + ';border:1px solid ' + tierColor + '40;">' + tierLabel + '</span>',
