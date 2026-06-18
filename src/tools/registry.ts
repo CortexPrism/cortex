@@ -19,6 +19,10 @@ import { dbQueryTool } from './builtin/db_query.ts';
 import { browserTool } from './builtin/browser.ts';
 import { docsSearchTool } from './builtin/docs_search.ts';
 import { structuredExtractTool } from './builtin/structured_extract.ts';
+import { jsonQueryTool } from './builtin/json_query.ts';
+import { regexUtilsTool } from './builtin/regex_utils.ts';
+import { envManagerTool } from './builtin/env_manager.ts';
+import { codeSnippetTool } from './builtin/code_snippet.ts';
 import { speakTool } from './builtin/speak.ts';
 import { listenTool } from './builtin/listen.ts';
 import { shellTool } from './builtin/shell.ts';
@@ -192,6 +196,10 @@ export async function registerAllBuiltins(
     memory_note: memoryNoteTool,
     memory_search: memorySearchTool,
     structured_extract: structuredExtractTool,
+    json_query: jsonQueryTool,
+    regex_utils: regexUtilsTool,
+    env_manager: envManagerTool,
+    code_snippet: codeSnippetTool,
     speak: speakTool,
     listen: listenTool,
     dashboard_manage: dashboardManageTool,

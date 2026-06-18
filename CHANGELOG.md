@@ -52,6 +52,33 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Special escalation for lens.db (audit logs) to human approval
   - Context-aware supervision with audit trails
 
+- **json_query tool** — JSON querying and manipulation:
+  - JSONPath-like expression support ($.property, $.array[0], $.array[*])
+  - Operations: read, count, filter, set, delete
+  - Property access with array indexing
+  - Recursive descent with $.**
+  - Type-safe result validation
+
+- **regex_utils tool** — Regular expression utilities:
+  - Operations: match, replace, test, split, exec
+  - Regex flags: g, i, m, s (global, case-insensitive, multiline, dotall)
+  - Capture group support with $1, $2, etc.
+  - Multiple match tracking with exec operation
+  - Pattern validation and error handling
+
+- **env_manager tool** — Environment variable management:
+  - Operations: get, set, list, has
+  - Whitelist-based security for set operation
+  - Public variable filtering (no secrets exposure)
+  - Deno runtime integration
+
+- **code_snippet tool** — Code snippet extraction and formatting:
+  - Extract code blocks from markdown
+  - Format with optional line numbers
+  - Validate markdown code block structure
+  - Language detection from code fence
+  - Multiple snippet support
+
 - **structured_extract tool** — LLM-powered entity and relationship extraction:
   - JSON-Schema validation for extracted data
   - Multi-format input support: plain text, HTML, JSON
