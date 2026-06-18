@@ -245,6 +245,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '023_skills_enhancements.sql',
       label: 'memory.db (skills enhancements)',
     },
+    {
+      db: memoryDb,
+      sqlFile: '024_codegraph.sql',
+      label: 'memory.db (code graph)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
