@@ -5,9 +5,48 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.41.0] — 2026-06-18
+
+### Added — Agent Builder Overhaul: Multi-Select Dropdowns, 6 New Sub-Agent Types, Clone, & Enhanced Config
+
+- **6 new built-in sub-agent types** (`src/agent/sub-agent-types.ts`) — Security Auditor (vulnerability
+  assessment), Debugger (root cause analysis), Architect (system design & trade-offs), DevOps Engineer
+  (infrastructure & CI/CD), Data Analyst (queries & insights), UI/UX Designer (accessible interfaces).
+  Each with domain-specific system prompts and curated tool sets.
+
+- **Agent builder multi-select dropdowns** (`src/server/ui.ts`) — Replaced comma-separated text inputs
+  for tools and tags with interactive multi-select dropdowns:
+  - **Tools dropdown** — Checkbox list grouped by prefix (`file_`, `web_`, `code_`, etc.) with
+    real-time search/filter, fetched dynamically from the tool registry
+  - **Tags dropdown** — Common tag suggestions as checkboxes plus free-form custom tag input with
+    Enter-key support; selected tags rendered as removable chips
+  - Both dropdowns close on outside click
+
+- **Icon picker** (`src/server/ui.ts`) — 30-emoji grid popup for visually identifying agents at a
+  glance; triggers open on click, closes on outside click
+
+- **Agent category & version** (`src/config/config.ts`, `src/server/ui.ts`) — New `category` field
+  (general/specialist/assistant/creative/analytics/ops/custom with emoji labels in dropdown) and
+  `version` string for agent classification. Displayed as badges on agent cards.
+
+- **Agent cloning** (`src/agent/manager.ts`, `src/server/router.ts`, `src/cli/agent-cmd.ts`,
+  `src/server/ui.ts`) — `cloneAgent()` deep-copies an existing agent with a new ID. Exposed as:
+  - `POST /api/agents/:id/clone` REST endpoint
+  - `cortex agent clone <source-id> <new-name>` CLI command
+  - Clone button on each agent card in the UI
+
+- **Tool registry API** (`src/server/router.ts`) — New `GET /api/tools/list` endpoint returns all
+  registered tool names from the global registry, powering the tools multi-select dropdown.
+
+- **Enhanced CLI options** (`src/cli/agent-cmd.ts`) — `cortex agent create` and `update` now accept
+  `--icon`, `--category`, and `--version` flags. `cortex agent show` displays all new fields.
+
+- **Agent icon & category display** (`src/server/ui.ts`) — Agent cards now show the assigned emoji
+  icon, version badge, and category badge at a glance.
+
 ## [0.40.0] — 2026-06-18
 
-### Added — Sub-Agent Progress Streaming & Improved Metacognition
+### Added — Sub-Agent Progress Streaming, Improved Metacognition & Bulk Skill Deletion
 
 - **Real-time sub-agent progress in chat UI** — Sub-agent work is now displayed as
   live-streamed, collapsible cards in the main chat. Each sub-agent shows its type,
@@ -29,6 +68,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
   language ("You MUST use the sub_agent tool"), includes available sub-agent type
   descriptions, and frames delegation as the recommended approach for complex tasks.
   (`src/agent/metacog.ts`)
+
+- **Bulk skill deletion** — New `deleteSkills()` function supports mass deletion of
+  skills in a single operation. The REST API `DELETE /api/skills` accepts multiple
+  `?name=` params or a JSON body `{ names: [...] }`. The UI bulk action bar now
+  makes one HTTP call instead of N. The `skill_write` tool exposes a `bulk_delete`
+  operation. All paths include proper dependency checking (co-deleted skills are
+  excluded), LIKE wildcard escaping, and transaction safety.
+  (`src/memory/skills.ts`, `src/server/router.ts`, `src/server/ui.ts`,
+  `src/tools/builtin/skill_write.ts`)
 
 ## [0.39.0] — 2026-06-18
 

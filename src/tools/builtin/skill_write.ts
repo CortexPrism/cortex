@@ -1,6 +1,7 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import {
   deleteSkill,
+  deleteSkills,
   deprecateSkill,
   getSkillByName,
   getSkillDependencies,
@@ -23,12 +24,13 @@ export const skillWriteTool: Tool = {
         name: 'operation',
         type: 'string',
         description:
-          'Operation: "create", "update", "delete", "merge", "promote", "deprecate", "dependents", "dependencies"',
+          'Operation: "create", "update", "delete", "bulk_delete", "merge", "promote", "deprecate", "dependents", "dependencies"',
         required: true,
         enum: [
           'create',
           'update',
           'delete',
+          'bulk_delete',
           'merge',
           'promote',
           'deprecate',
@@ -41,6 +43,12 @@ export const skillWriteTool: Tool = {
         type: 'string',
         description: 'Skill name (snake_case, unique identifier)',
         required: true,
+      },
+      {
+        name: 'names',
+        type: 'array',
+        description: 'Array of skill names for bulk_delete operation',
+        required: false,
       },
       {
         name: 'description',
@@ -162,6 +170,33 @@ export const skillWriteTool: Tool = {
           durationMs: 0,
         };
       }
+    }
+
+    if (op === 'bulk_delete') {
+      const names = Array.isArray(args.names) ? args.names.map(String).filter(Boolean) : [];
+      if (names.length === 0) {
+        return {
+          toolName: 'skill_write',
+          success: false,
+          output: '',
+          error: 'Provide a "names" array of skills to delete.',
+          errorInfo: {
+            code: 'MISSING_NAMES',
+            message: 'bulk_delete requires a "names" array.',
+            retryable: true,
+          },
+          durationMs: 0,
+        };
+      }
+      const result = await deleteSkills(names);
+      const summary = `Deleted ${result.deleted} skill(s)${result.errors.length > 0 ? ', ' + result.errors.length + ' error(s): ' + result.errors.map(e => e.name + ': ' + e.error).join('; ') : ''}.`;
+      return {
+        toolName: 'skill_write',
+        success: result.errors.length === 0,
+        output: summary,
+        error: result.errors.length > 0 ? result.errors.map(e => `${e.name}: ${e.error}`).join('\n') : undefined,
+        durationMs: 0,
+      };
     }
 
     if (op === 'promote') {

@@ -98,6 +98,36 @@ export async function updateAgent(
   return config.agents[id];
 }
 
+/** Clone an existing agent with a new name */
+export async function cloneAgent(
+  sourceId: string,
+  newName: string,
+): Promise<AgentConfig> {
+  const config = await loadConfig();
+  const source = config.agents[sourceId];
+  if (!source) throw new Error(`Source agent "${sourceId}" not found`);
+
+  const id = makeAgentId(newName);
+  if (config.agents[id]) {
+    throw new Error(`Agent "${id}" already exists`);
+  }
+
+  const cloned: AgentConfig = {
+    ...source,
+    id,
+    name: newName,
+    description: source.description
+      ? `Clone of "${source.name}": ${source.description}`
+      : `Clone of "${source.name}"`,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+
+  config.agents[id] = cloned;
+  await saveConfig(config);
+  return cloned;
+}
+
 /** Delete an agent */
 export async function deleteAgent(id: string): Promise<void> {
   const config = await loadConfig();

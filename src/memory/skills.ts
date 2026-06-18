@@ -1,4 +1,4 @@
-import { getMemoryDb } from '../db/client.ts';
+import { getMemoryDb, type Db } from '../db/client.ts';
 import type { InValue } from '../db/client.ts';
 import type { LLMProvider } from '../llm/types.ts';
 import type { EmbeddingProvider, EmbeddingVector } from './embeddings.ts';
@@ -157,16 +157,37 @@ export async function storeSkill(opts: StoreSkillOpts): Promise<string> {
   return id;
 }
 
+function escapeLike(s: string): string {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
+
+async function countDependents(
+  db: Db,
+  name: string,
+  excludeNames?: Set<string>,
+): Promise<number> {
+  const escaped = escapeLike(name);
+  const params: InValue[] = [`%"${escaped}"%`];
+  let excludeClause = '';
+  if (excludeNames && excludeNames.size > 0) {
+    const ph = Array.from(excludeNames).map(() => '?').join(',');
+    excludeClause = ` AND name NOT IN (${ph})`;
+    params.push(...Array.from(excludeNames));
+  }
+  const row = await db.get<{ count: number }>(
+    `SELECT COUNT(*) as count FROM procedural_memory
+     WHERE depends_on IS NOT NULL AND depends_on LIKE ?${excludeClause}`,
+    params,
+  );
+  return row?.count ?? 0;
+}
+
 export async function deleteSkill(name: string): Promise<boolean> {
   const db = await getMemoryDb();
-  const dependents = await db.get<{ count: number }>(
-    `SELECT COUNT(*) as count FROM procedural_memory
-     WHERE depends_on IS NOT NULL AND depends_on LIKE ?`,
-    [`%"${name}"%`],
-  );
-  if (dependents && dependents.count > 0) {
+  const count = await countDependents(db, name);
+  if (count > 0) {
     throw new Error(
-      `Cannot delete "${name}": ${dependents.count} other skill(s) depend on it.`,
+      `Cannot delete "${name}": ${count} other skill(s) depend on it.`,
     );
   }
 
@@ -180,6 +201,51 @@ export async function deleteSkill(name: string): Promise<boolean> {
     [name],
   );
   return true;
+}
+
+export async function deleteSkills(names: string[]): Promise<{ deleted: number; errors: { name: string; error: string }[] }> {
+  if (names.length === 0) return { deleted: 0, errors: [] };
+  const db = await getMemoryDb();
+  const nameSet = new Set(names);
+  const errors: { name: string; error: string }[] = [];
+  const toDelete: string[] = [];
+
+  const ph = names.map(() => '?').join(',');
+  const existing = await db.all<{ name: string }>(
+    `SELECT name FROM procedural_memory WHERE name IN (${ph})`,
+    names as unknown as InValue[],
+  );
+  const existingSet = new Set(existing.map(s => s.name));
+
+  for (const name of names) {
+    if (!existingSet.has(name)) {
+      errors.push({ name, error: 'Skill not found' });
+      continue;
+    }
+    const count = await countDependents(db, name, nameSet);
+    if (count > 0) {
+      errors.push({ name, error: `${count} other skill(s) depend on it` });
+      continue;
+    }
+    toDelete.push(name);
+  }
+
+  if (toDelete.length > 0) {
+    const placeholders = toDelete.map(() => '?').join(',');
+    await db.client.execute('BEGIN');
+    try {
+      await db.run(
+        `DELETE FROM procedural_memory WHERE name IN (${placeholders})`,
+        toDelete as unknown as InValue[],
+      );
+      await db.client.execute('COMMIT');
+    } catch (e) {
+      await db.client.execute('ROLLBACK');
+      throw e;
+    }
+  }
+
+  return { deleted: toDelete.length, errors };
 }
 
 export async function recordSkillSuccess(name: string): Promise<void> {
