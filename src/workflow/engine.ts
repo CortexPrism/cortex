@@ -1,3 +1,5 @@
+import { PATHS } from '../config/paths.ts';
+
 type StepFn = (ctx: WorkflowContext) => Promise<void>;
 
 interface WorkflowStep {
@@ -47,6 +49,63 @@ export interface WorkflowResult {
   stepsCompleted: number;
   stepsTotal: number;
   context: Record<string, unknown>;
+}
+
+export interface WorkflowRunRecord {
+  workflowName: string;
+  name: string;
+  status: 'completed' | 'failed';
+  success: boolean;
+  started: string;
+  durationMs: number;
+  stepsCompleted: number;
+  stepsTotal: number;
+  error?: string;
+  context: Record<string, unknown>;
+}
+
+const WORKFLOW_RUNS_PATH = `${PATHS.dataDir}/workflow-runs.json`;
+let cachedRuns: WorkflowRunRecord[] | null = null;
+
+async function loadWorkflowRuns(): Promise<WorkflowRunRecord[]> {
+  if (cachedRuns) return cachedRuns;
+  try {
+    const raw = await Deno.readTextFile(WORKFLOW_RUNS_PATH);
+    const parsed = JSON.parse(raw);
+    cachedRuns = Array.isArray(parsed) ? parsed as WorkflowRunRecord[] : [];
+  } catch {
+    cachedRuns = [];
+  }
+  return cachedRuns;
+}
+
+async function saveWorkflowRuns(runs: WorkflowRunRecord[]): Promise<void> {
+  const capped = runs.slice(0, 200);
+  cachedRuns = capped;
+  await Deno.mkdir(PATHS.dataDir, { recursive: true });
+  await Deno.writeTextFile(WORKFLOW_RUNS_PATH, JSON.stringify(capped, null, 2));
+}
+
+export async function recordWorkflowRun(result: WorkflowResult): Promise<void> {
+  const runs = await loadWorkflowRuns();
+  runs.unshift({
+    workflowName: result.name,
+    name: result.name,
+    status: result.success ? 'completed' : 'failed',
+    success: result.success,
+    started: new Date(Date.now() - result.durationMs).toISOString(),
+    durationMs: result.durationMs,
+    stepsCompleted: result.stepsCompleted,
+    stepsTotal: result.stepsTotal,
+    error: result.error,
+    context: result.context,
+  });
+  await saveWorkflowRuns(runs);
+}
+
+export async function listWorkflowRuns(): Promise<WorkflowRunRecord[]> {
+  const runs = await loadWorkflowRuns();
+  return runs.map(({ context: _context, ...rest }) => rest as WorkflowRunRecord);
 }
 
 export class Workflow {

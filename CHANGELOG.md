@@ -25,6 +25,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Settings subnav cleanup** (`src/server/ui.ts`) — removed the duplicate Policies entry from the shared settings/tools/MCP/vault sub-navigation so Policies now appears only in the main page navigation.
 
+- **Workflow history persistence** (`src/workflow/engine.ts`, `src/server/router.ts`) — workflow runs are now recorded to a local history log so the Workflows history tab shows actual executions such as health-check runs.
+
 ## [0.41.2] — 2026-06-18
 
 ### Changed

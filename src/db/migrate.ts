@@ -280,6 +280,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '030_channels_config.sql',
       label: 'cortex.db (channels config)',
     },
+    {
+      db: coreDb,
+      sqlFile: '031_job_runs.sql',
+      label: 'cortex.db (job runs)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

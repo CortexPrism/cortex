@@ -11,7 +11,7 @@ import {
 } from '../db/sessions.ts';
 import { getSessionEvents } from '../db/lens.ts';
 import { getLensDb, type InValue } from '../db/client.ts';
-import { listJobs } from '../scheduler/scheduler.ts';
+import { getJob, listJobRuns, listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
 import { searchEntities, traverseGraph } from '../memory/graph.ts';
 import { listReflections } from '../agent/reflect.ts';
@@ -505,6 +505,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const status = url.searchParams.get('status') as never ?? undefined;
     const jobs = await listJobs(status);
     return json(jobs);
+  }
+
+  // GET /api/jobs/:id
+  const jobDetailMatch = path.match(/^\/api\/jobs\/([^/]+)$/);
+  if (req.method === 'GET' && jobDetailMatch) {
+    const job = await getJob(jobDetailMatch[1]);
+    if (!job) return notFound('Job not found');
+    return json(job);
+  }
+
+  // GET /api/jobs/:id/runs
+  const jobRunsMatch = path.match(/^\/api\/jobs\/([^/]+)\/runs$/);
+  if (req.method === 'GET' && jobRunsMatch) {
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    const runs = await listJobRuns(jobRunsMatch[1], Number.isFinite(limit) && limit > 0 ? limit : 20);
+    return json(runs);
   }
 
   // GET /api/memory/search?q=...
@@ -3294,11 +3310,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/workflows/:id/run
   const wfRunMatch = path.match(/^\/api\/workflows\/([^/]+)\/run$/);
   if (req.method === 'POST' && wfRunMatch) {
-    const { getWorkflow } = await import('../workflow/engine.ts');
+    const { getWorkflow, recordWorkflowRun } = await import('../workflow/engine.ts');
     const wf = getWorkflow(wfRunMatch[1]);
     if (!wf) return notFound('Workflow not found');
     try {
       const result = await wf.execute();
+      await recordWorkflowRun(result);
       return json(result);
     } catch (e) {
       return err((e as Error).message, 500);
@@ -3307,7 +3324,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/workflows/runs
   if (req.method === 'GET' && path === '/api/workflows/runs') {
-    return json([]);
+    const { listWorkflowRuns } = await import('../workflow/engine.ts');
+    return json(await listWorkflowRuns());
   }
 
   // GET /api/workflows/approvals
