@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.38.3.
+This document describes the implemented architecture of CortexPrism as of v0.39.0.
 
 ---
 

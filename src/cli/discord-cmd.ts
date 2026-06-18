@@ -6,7 +6,7 @@ import { agentTurn } from '../agent/loop.ts';
 import { initSessionDb, runMigrations } from '../db/migrate.ts';
 import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { createSession } from '../db/sessions.ts';
-import { DiscordAdapter } from '../channels/discord.ts';
+import { DiscordAdapter } from '../channels/discord_legacy.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 
 function makeSessionId(): string {
