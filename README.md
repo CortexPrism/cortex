@@ -134,14 +134,24 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 - **REST API** — full HTTP API for sessions, memory, jobs, git, GitHub, and code execution
 - **Session persistence** — page refresh resumes the active session (full history preserved)
 
-### Security (Parallax Model)
+### Security (Parallax Model + LLM Supervisor)
 
 - **Policy validator** — every tool call is evaluated against regex allow/deny rules before
   execution
+- **LLM supervisor** — sensitive data access (memory, databases, screenshots) requires approval from
+  a fast LLM supervisor model (Gemini 2.0 Flash, GPT-4o Mini) with decision caching and human
+  escalation for uncertain cases
+- **Data classification** — automatic sensitivity detection (SECRET/SENSITIVE/NORMAL/PUBLIC) based
+  on pattern matching (passwords, API keys, PII, confidential markers); all existing data backfilled
+  on first run
+- **Human approval flows** — CLI color-coded prompts and Web UI modal for sensitive access requests,
+  with AI supervisor reasoning and sample data preview
+- **Temporary grants** — approved access cached per session to prevent approval fatigue while
+  maintaining security
 - **AES-256-GCM vault** — encrypted credential storage with PBKDF2 key derivation
 - **Default deny rules** — ships with protection against `rm -rf /`, fork bombs, direct disk writes
-- **Activity** — full audit log of all sessions, tool calls, LLM calls, and policy decisions with
-  cost tracking
+- **Activity** — full audit log of all sessions, tool calls, LLM calls, policy decisions, and
+  security approvals with cost tracking
 - **No telemetry** — all data stays on your machine
 
 ### Ops & Extensibility

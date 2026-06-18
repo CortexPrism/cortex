@@ -11,53 +11,7 @@ import type { ContentBlock } from '../llm/types.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { globalRegistry } from '../tools/registry.ts';
 import type { Tool } from '../tools/types.ts';
-import { fileReadTool } from '../tools/builtin/file_read.ts';
-import { fileReadEnhancedTool } from '../tools/builtin/file_read_enhanced.ts';
-import { webSearchTool } from '../tools/builtin/web_search.ts';
-import { webSearchEnhancedTool } from '../tools/builtin/web/search_enhanced.ts';
-import { webFetchEnhancedTool } from '../tools/builtin/web/fetch_enhanced.ts';
-import { codeExecTool } from '../tools/builtin/code_exec.ts';
-import { subAgentTool } from '../tools/builtin/sub_agent.ts';
-import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
-import { loadSkillTool } from '../tools/builtin/load_skill.ts';
-import { skillWriteTool } from '../tools/builtin/skill_write.ts';
-import { skillReadTool } from '../tools/builtin/skill_read.ts';
-import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
-import { memoryNoteTool } from '../tools/builtin/memory_note.ts';
-import { speakTool } from '../tools/builtin/speak.ts';
-import { listenTool } from '../tools/builtin/listen.ts';
-import { shellTool } from '../tools/builtin/shell.ts';
-import { webFetchTool } from '../tools/builtin/web_fetch.ts';
-import { braveSearchTool } from '../tools/builtin/web/brave_search.ts';
-import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
-import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
-import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
-import { computerTool } from '../tools/builtin/computer.ts';
-import { mcpAgentTool } from '../tools/builtin/mcp_agent.ts';
-import { fileGlobTool } from '../tools/builtin/workspace/file_glob.ts';
-import {
-  githubIssueCreateTool,
-  githubIssueListTool,
-  githubPRCreateTool,
-  githubPRListTool,
-  gitPushTool,
-} from '../tools/builtin/github/index.ts';
 import { onFileChange } from '../workspace/events.ts';
-import {
-  fileCopyTool,
-  fileDeleteTool,
-  fileEditTool,
-  fileInfoTool,
-  fileListTool,
-  fileMoveTool,
-  filePatchTool,
-  fileRedoTool,
-  fileRenameTool,
-  fileSearchTool,
-  fileTreeTool,
-  fileUndoTool,
-  fileWriteTool,
-} from '../tools/builtin/workspace/index.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 const _log = logger('server:ws');
@@ -79,13 +33,20 @@ type WsMsg =
   | { type: 'audio_end'; session: boolean }
   | { type: 'speak'; text: string; voice?: string }
   | { type: 'audio'; data: string; format?: string }
-  | { type: 'voice_state'; speaking: boolean };
+  | { type: 'voice_state'; speaking: boolean }
+  | { type: 'approval_response'; requestId: string; approved: boolean };
 
 function send(ws: WebSocket, data: unknown): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
   }
 }
+
+/**
+ * Pending approval requests (requestId -> resolver)
+ * Maps request IDs to promise resolvers for async approval flow
+ */
+const pendingApprovals = new Map<string, (approved: boolean) => void>();
 
 const wsClients = new Set<WebSocket>();
 
@@ -110,6 +71,60 @@ async function isWsAuthenticated(req: Request): Promise<boolean> {
   const cookies = parseCookies(req.headers.get('cookie') || '');
   const sessionId = cookies['cortex_session'];
   return sessionId ? validateSession(sessionId) : false;
+}
+
+/**
+ * Request Web UI approval for sensitive data access
+ * Sends approval_request message and waits for approval_response
+ *
+ * @param ws — WebSocket connection to send request on
+ * @param req — Access request details
+ * @param reasoning — AI supervisor's reasoning
+ * @returns Promise<boolean> — true if approved, false if denied or timeout
+ */
+export async function requestWebUIApproval(
+  ws: WebSocket,
+  req: Parameters<typeof import('../security/supervisor.ts')['requestSupervisorDecision']>[0],
+  reasoning: string,
+): Promise<boolean> {
+  const requestId = crypto.randomUUID();
+
+  return new Promise((resolve) => {
+    pendingApprovals.set(requestId, resolve);
+
+    // Send approval request to Web UI
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(
+        JSON.stringify({
+          type: 'approval_request',
+          request: req,
+          reasoning,
+          requestId,
+        }),
+      );
+    } else {
+      // Can't send if WebSocket not open
+      pendingApprovals.delete(requestId);
+      resolve(false);
+      return;
+    }
+
+    // Timeout after 5 minutes
+    const timeoutId = setTimeout(() => {
+      if (pendingApprovals.has(requestId)) {
+        pendingApprovals.delete(requestId);
+        resolve(false); // Deny on timeout
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    // Clean up timeout on resolution
+    const originalResolve = resolve;
+    pendingApprovals.set(requestId, (approved: boolean) => {
+      clearTimeout(timeoutId);
+      pendingApprovals.delete(requestId);
+      originalResolve(approved);
+    });
+  });
 }
 
 export async function handleWebSocket(req: Request): Promise<Response> {
@@ -269,63 +284,22 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         identity.memory,
       );
 
+      // Register all builtin tools (centralized registration)
       const registry = globalRegistry;
-      const allTools: Record<string, Tool> = {
-        file_read: fileReadTool,
-        file_read_enhanced: fileReadEnhancedTool,
-        file_write: fileWriteTool,
-        file_edit: fileEditTool,
-        file_patch: filePatchTool,
-        file_delete: fileDeleteTool,
-        file_rename: fileRenameTool,
-        file_copy: fileCopyTool,
-        file_move: fileMoveTool,
-        file_list: fileListTool,
-        file_tree: fileTreeTool,
-        file_info: fileInfoTool,
-        file_search: fileSearchTool,
-        file_undo: fileUndoTool,
-        file_redo: fileRedoTool,
-        web_search: webSearchTool,
-        web_search_enhanced: webSearchEnhancedTool,
-        web_fetch: webFetchTool,
-        web_fetch_enhanced: webFetchEnhancedTool,
-        code_exec: codeExecTool,
-        sub_agent: subAgentTool,
-        node_dispatch: nodeDispatchTool,
-        github_pr_create: githubPRCreateTool,
-        github_pr_list: githubPRListTool,
-        github_issue_create: githubIssueCreateTool,
-        github_issue_list: githubIssueListTool,
-        git_push: gitPushTool,
-        load_skill: loadSkillTool,
-        skill_write: skillWriteTool,
-        skill_read: skillReadTool,
-        dashboard_manage: dashboardManageTool,
-        memory_note: memoryNoteTool,
-        speak: speakTool,
-        listen: listenTool,
-        shell: shellTool,
-        file_glob: fileGlobTool,
-        brave_search: braveSearchTool,
-        tavily_search: tavilySearchTool,
-        serpapi_search: serpapiSearchTool,
-        firecrawl: firecrawlTool,
-        computer: computerTool,
-        mcp_agent: mcpAgentTool,
-        code_index: (await import('../tools/builtin/codegraph/code_index.ts')).default,
-        code_search_symbol:
-          (await import('../tools/builtin/codegraph/code_search_symbol.ts')).default,
-        code_trace_path: (await import('../tools/builtin/codegraph/code_trace_path.ts')).default,
-        code_get_architecture:
-          (await import('../tools/builtin/codegraph/code_architecture.ts')).default,
-        code_analyze_impact: (await import('../tools/builtin/codegraph/code_impact.ts')).default,
-        code_list_projects:
-          (await import('../tools/builtin/codegraph/code_list_projects.ts')).default,
-      };
-      const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
-      for (const name of allowedTools) {
-        if (allTools[name]) registry.register(allTools[name]);
+      const { registerAllBuiltins } = await import('../tools/registry.ts');
+      const allTools = await registerAllBuiltins(registry, true);
+
+      // Filter to allowed tools if agent specifies a subset
+      if (agent.tools?.length) {
+        // Clear registry and re-register only allowed tools
+        for (const name of Object.keys(allTools)) {
+          registry.unregister(name);
+        }
+        for (const name of agent.tools) {
+          if (allTools[name]) {
+            registry.register(allTools[name]);
+          }
+        }
       }
 
       const { pluginManager } = await import('../plugins/manager.ts');
@@ -659,6 +633,16 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
     if (msg.type === 'ping') {
       send(ws, { type: 'pong' });
+      return;
+    }
+
+    // Handle approval responses from Web UI
+    if (msg.type === 'approval_response') {
+      const resolver = pendingApprovals.get(msg.requestId);
+      if (resolver) {
+        resolver(msg.approved);
+        pendingApprovals.delete(msg.requestId);
+      }
       return;
     }
 

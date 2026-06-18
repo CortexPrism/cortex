@@ -16,28 +16,6 @@ import { globalRegistry } from '../tools/registry.ts';
 import type { Tool } from '../tools/types.ts';
 import { ensureDaemons } from './daemon.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
-import { fileReadTool } from '../tools/builtin/file_read.ts';
-import { fileReadEnhancedTool } from '../tools/builtin/file_read_enhanced.ts';
-import { shellTool } from '../tools/builtin/shell.ts';
-import { webSearchTool } from '../tools/builtin/web_search.ts';
-import { webSearchEnhancedTool } from '../tools/builtin/web/search_enhanced.ts';
-import { webFetchEnhancedTool } from '../tools/builtin/web/fetch_enhanced.ts';
-import { webFetchTool } from '../tools/builtin/web_fetch.ts';
-import { codeExecTool } from '../tools/builtin/code_exec.ts';
-import { subAgentTool } from '../tools/builtin/sub_agent.ts';
-import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
-import { loadSkillTool } from '../tools/builtin/load_skill.ts';
-import { skillWriteTool } from '../tools/builtin/skill_write.ts';
-import { skillReadTool } from '../tools/builtin/skill_read.ts';
-import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
-import { memoryNoteTool } from '../tools/builtin/memory_note.ts';
-import { braveSearchTool } from '../tools/builtin/web/brave_search.ts';
-import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
-import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
-import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
-import { computerTool } from '../tools/builtin/computer.ts';
-import { mcpAgentTool } from '../tools/builtin/mcp_agent.ts';
-import { fileCopyTool, fileMoveTool } from '../tools/builtin/workspace/index.ts';
 import {
   formatSkillsAsAvailableList,
   getAllHumanSkills,
@@ -196,36 +174,22 @@ export const chatCommand = new Command()
         started_at: sessionStart,
       });
 
-      // Build tool registry respecting agent's tool allow-list
+      // Build tool registry respecting agent's tool allow-list (centralized registration)
       const registry = globalRegistry;
-      const allTools: Record<string, Tool> = {
-        file_read: fileReadTool,
-        file_read_enhanced: fileReadEnhancedTool,
-        file_copy: fileCopyTool,
-        file_move: fileMoveTool,
-        web_search: webSearchTool,
-        web_search_enhanced: webSearchEnhancedTool,
-        web_fetch: webFetchTool,
-        web_fetch_enhanced: webFetchEnhancedTool,
-        shell: shellTool,
-        code_exec: codeExecTool,
-        sub_agent: subAgentTool,
-        node_dispatch: nodeDispatchTool,
-        load_skill: loadSkillTool,
-        skill_write: skillWriteTool,
-        skill_read: skillReadTool,
-        dashboard_manage: dashboardManageTool,
-        memory_note: memoryNoteTool,
-        brave_search: braveSearchTool,
-        tavily_search: tavilySearchTool,
-        serpapi_search: serpapiSearchTool,
-        firecrawl: firecrawlTool,
-        computer: computerTool,
-        mcp_agent: mcpAgentTool,
-      };
-      const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
-      for (const name of allowedTools) {
-        if (allTools[name]) registry.register(allTools[name]);
+      const { registerAllBuiltins } = await import('../tools/registry.ts');
+      const allTools = await registerAllBuiltins(registry, false); // Exclude codegraph in CLI
+
+      // Filter to allowed tools if agent specifies a subset
+      if (agent.tools?.length) {
+        // Clear registry and re-register only allowed tools
+        for (const name of Object.keys(allTools)) {
+          registry.unregister(name);
+        }
+        for (const name of agent.tools) {
+          if (allTools[name]) {
+            registry.register(allTools[name]);
+          }
+        }
       }
 
       // Load active plugin tools

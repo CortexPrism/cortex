@@ -4,6 +4,7 @@ import { blobToVector, vectorToBlob } from './embeddings.ts';
 import type { InValue } from 'npm:@libsql/client';
 import { searchEntities, traverseGraph } from './graph.ts';
 import { recordBatchAccess } from './heuristics.ts';
+import { classifyContent, classifyMultiple } from '../security/classification.ts';
 
 function memId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -56,6 +57,9 @@ export async function writeEpisodic(opts: {
   const entities = JSON.stringify(opts.entities ?? []);
   const importance = opts.importance ?? 0.5;
 
+  // Auto-classify sensitivity
+  const sensitivity = classifyContent(opts.summary);
+
   let embedding: Uint8Array | null = null;
   let embModel: string | null = null;
 
@@ -71,8 +75,8 @@ export async function writeEpisodic(opts: {
 
   await db.run(
     `INSERT INTO episodic_memory
-       (id, session_id, summary, topics, entities, start_time, importance, embedding, embedding_model, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, session_id, summary, topics, entities, start_time, importance, sensitivity, embedding, embedding_model, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       opts.sessionId,
@@ -81,6 +85,7 @@ export async function writeEpisodic(opts: {
       entities,
       now,
       importance,
+      sensitivity,
       embedding,
       embModel,
       now,
@@ -111,6 +116,9 @@ export async function writeSemantic(opts: {
   const category = opts.category ?? 'general';
   const importance = opts.importance ?? 0.5;
 
+  // Auto-classify sensitivity
+  const sensitivity = classifyMultiple(opts.content, opts.summary);
+
   let embedding: Uint8Array | null = null;
   let embModel: string | null = null;
 
@@ -126,8 +134,8 @@ export async function writeSemantic(opts: {
 
   await db.run(
     `INSERT INTO semantic_memory
-       (id, content, summary, category, tags, importance, embedding, embedding_model, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, content, summary, category, tags, importance, sensitivity, embedding, embedding_model, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       opts.content,
@@ -135,6 +143,7 @@ export async function writeSemantic(opts: {
       category,
       tags,
       importance,
+      sensitivity,
       embedding,
       embModel,
       now,
