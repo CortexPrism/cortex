@@ -19,7 +19,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.36.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.38.3-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 
 **CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
@@ -70,19 +70,33 @@ full-featured web UI, and enterprise-grade security — all running locally on y
   session resume
 - **Tool use with approval gates** — every tool call is reviewed by the security policy before
   execution; agents can request human approval for sensitive operations
-- **Sub-agent orchestration** — agents can spawn specialized child agents (Explorer, Coder,
+- **Sub-agent orchestration** — agents can spawn 5 specialized child agents (Explorer, Coder,
   Researcher, Planner, Generalist) for parallel and delegated work
 - **Per-turn reflection** — LLM self-assessment of confidence and quality after each response; meta-
   pattern consolidation over time
 - **Voice pipeline** — speech-to-text (OpenAI Whisper), text-to-speech (OpenAI TTS / ElevenLabs),
   energy-based VAD, real-time audio streaming over WebSocket
+- **Computer use** — GUI automation via virtual displays (Xvfb) with mouse, keyboard, and screenshot
+  actions; Docker-isolated or native runtime
+- **Code intelligence** — tree-sitter WASM code indexing across 14+ languages; call graph traversal,
+  impact analysis, architecture extraction, and symbol search
+- **Browser automation** — headless Playwright-powered browser for web navigation, interaction,
+  screenshots, and accessibility snapshots
 
 ### Memory System
 
 - **5-tier memory** — episodic (FTS5 full-text search), semantic (vector embeddings), procedural
-  (skills), and reflection (learned patterns) with multi-strategy retrieval and decay scoring
+  (skills), graph (knowledge graph), and reflection (learned patterns) with multi-strategy retrieval
+  and decay scoring
+- **Heuristic self-learning** — AI-driven memory improvement: access-tracking importance boosting,
+  decay-slowing for frequent memories, co-occurrence graph relations, and 12-rule
+  auto-categorization
+- **Hybrid search** — keyword (FTS5 BM25) + vector (cosine similarity) search with time-decay
+  scoring
 - **Automatic memory injection** — relevant memories are injected into each turn's system prompt
 - **Memory search CLI** — keyword, semantic, and hybrid search from the terminal
+- **Memory health dashboard** — aggregated metrics for active/stale counts, decay, importance,
+  access frequency, and graph stats
 
 ### Skills System
 
@@ -108,24 +122,42 @@ full-featured web UI, and enterprise-grade security — all running locally on y
 
 See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
+### Code Intelligence (Codegraph)
+
+- **Multi-language parsing** — tree-sitter WASM parser for 14+ languages (TS, JS, Python, Go, Rust,
+  Java, Kotlin, C, C++, Ruby, PHP, Swift, Lua, Bash)
+- **Call graph resolution** — 6-strategy call target resolution with import analysis across all
+  supported languages
+- **Code graph storage** — 14 node labels (CodeProject, CodeFile, CodeFunction, CodeClass, etc.), 18
+  edge types (CALLS, IMPORTS, DEFINES, IMPLEMENTS, INHERITS, HTTP_CALLS, DECORATES, etc.)
+- **6 agent tools** — code_index, code_search_symbol, code_trace_path, code_get_architecture,
+  code_analyze_impact, code_list_projects
+- **Web UI** — D3.js force-directed dependency graph with symbol search, impact analysis, and path
+  tracing
+- **Incremental sync** — file-hash-based change detection with chunked bulk insert and BFS-batched
+  queries
+
 ### Built-in Tools
 
-| Category       | Tools                                                                               |
-| -------------- | ----------------------------------------------------------------------------------- |
-| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo |
-| Shell          | execute shell commands (sandboxed through policy validator)                         |
-| Web            | web_search, web_fetch, web_crawl, docs_search (context7), firecrawl (web scraping)  |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                 |
-| Browser        | navigate, click, type, screenshot, snapshot, evaluate (Playwright automation)       |
-| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                        |
-| Git workspace  | status, commit, push, pull, branch, clone                                           |
-| Voice          | speak, listen (STT/TTS agent tools)                                                 |
-| Data & Util    | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils   |
-| Environment    | env_manager (get/set variables), code_snippet (extract/format code blocks)          |
-| Sub-agents     | spawn typed child agents for parallel and delegated tasks                           |
-| Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)  |
-| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                             |
-| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                          |
+| Category          | Tools                                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------- |
+| File system       | read, write, edit, patch, delete, rename, copy, move, list, tree, info, search, glob, undo/redo |
+| Shell             | execute shell commands (sandboxed through policy validator)                                     |
+| Web               | web_search, web_fetch, web_crawl, docs_search (Context7 docs), firecrawl (web scraping)         |
+| Code execution    | sandboxed Docker/gVisor containers with resource limits; LLM auto-fix loop                      |
+| Browser           | navigate, click, type, screenshot, snapshot, evaluate, wait (Playwright headless automation)    |
+| GitHub            | PR creation/listing, issue tracking, repo browsing, git push                                    |
+| Git workspace     | status, commit, push, pull, branch, clone                                                       |
+| Voice             | speak, listen (STT/TTS agent tools)                                                             |
+| Data & Util       | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils, code_snippet |
+| Environment       | env_manager (get/set variables), schedule (cron-based job scheduling)                           |
+| Image & Vision    | image_analyze (multimodal image analysis via 18+ LLM providers)                                 |
+| Sub-agents        | spawn typed child agents for parallel and delegated tasks                                       |
+| Skills            | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)              |
+| Dashboard         | dashboard_manage — CRUD operations on dashboard widgets                                         |
+| Nodes             | node_dispatch — dispatch tasks to remote distributed nodes                                      |
+| Code Intelligence | code_index, code_search_symbol, code_trace_path, code_analyze_impact, code_get_architecture     |
+| Computer Use      | screenshot, left_click, type, key, scroll, mouse_move, drag (GUI automation via Xvfb + xdotool) |
 
 ### Web UI & REST API
 
@@ -153,8 +185,24 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 - **AES-256-GCM vault** — encrypted credential storage with PBKDF2 key derivation
 - **Default deny rules** — ships with protection against `rm -rf /`, fork bombs, direct disk writes
 - **Activity** — full audit log of all sessions, tool calls, LLM calls, policy decisions, and
-  security approvals with cost tracking
-- **No telemetry** — all data stays on your machine
+  security approvals with cost tracking See
+  [docs/SECURITY_SUPERVISOR.md](docs/SECURITY_SUPERVISOR.md) for the full architecture.
+
+### Computer Use (GUI Automation)
+
+- **Virtual display** — X11 virtual framebuffer (Xvfb) lifecycle management with multi-display
+  support
+- **Mouse control** — coordinate-based movement, left/right/middle clicks, double/triple clicks,
+  drag
+- **Keyboard control** — text typing with configurable delays, key combinations, key holding
+- **Screenshot capture** — PNG/JPEG output via scrot, ImageMagick, or xwd with automatic fallback
+- **15 agent actions** — screenshot, click, type, key, scroll, wait, mouse_move, drag, and more
+- **Security** — all actions gated through policy validator with user approval; sensitive data
+  auto-blocked
+- **Docker support** — pre-built Ubuntu 22.04 image with XFCE, Firefox, Chromium, LibreOffice
+- **Requirements** — `xvfb`, `xdotool`, `scrot` (Linux-only)
+
+See [docs/computer-use/README.md](docs/computer-use/README.md) for the full guide.
 
 ### Ops & Extensibility
 
@@ -470,6 +518,88 @@ cortex plugins verify <name>                  # Verify integrity hash
 cortex plugins permissions <name>             # Inspect plugin permissions
 ```
 
+### `cortex eval`
+
+```bash
+cortex eval list                              # List available evaluation suites
+cortex eval run <suite>                       # Run an evaluation suite
+cortex eval run <suite> --save-baseline       # Save results as baseline
+cortex eval run <suite> --baseline <name>     # Compare against a baseline
+cortex eval baselines                         # List saved baselines
+```
+
+### `cortex node`
+
+```bash
+cortex node register <name> [--tier root|sudo|unprivileged]   # Register a distributed node
+cortex node list                                               # List all nodes
+cortex node show <id>                                          # Show node details + metrics
+cortex node deregister <id>                                    # Remove a node
+cortex node rekey <id>                                         # Rotate node auth token
+cortex node connect <endpoint> [--tier <tier>]                 # Connect as a Cortex Node
+```
+
+### `cortex mcp`
+
+```bash
+cortex mcp serve                              # Start MCP server in HTTP mode
+cortex mcp stdio                              # Start MCP server over stdio (Claude Desktop)
+```
+
+### `cortex workflow`
+
+```bash
+cortex workflow list                          # List defined workflows
+cortex workflow run <name>                    # Execute a workflow
+cortex workflow approve <runId>               # Approve a pending workflow step
+```
+
+### `cortex triggers`
+
+```bash
+cortex triggers list                          # List event triggers
+cortex triggers add <type> [--pattern <glob>] # Add a file-watch or cron trigger
+cortex triggers remove <id>                   # Remove a trigger
+cortex triggers install-hooks                 # Install git post-receive/commit hooks
+cortex triggers uninstall-hooks               # Remove git hooks
+```
+
+### `cortex hooks`
+
+```bash
+cortex hooks list                             # List pipeline hooks
+cortex hooks disable <name>                   # Disable a hook
+cortex hooks init                             # Initialize hook config
+```
+
+### `cortex channels`
+
+```bash
+cortex channels list                          # List configured channels
+cortex channels start <name>                  # Start a channel adapter
+cortex channels stop <name>                   # Stop a channel adapter
+```
+
+### `cortex desktop`
+
+```bash
+cortex desktop screenshot                     # Capture a screenshot
+cortex desktop click <x> <y>                  # Click at coordinates
+cortex desktop type <text>                    # Type text
+cortex desktop keypress <key>                 # Press a key or key combination
+cortex desktop clipboard get|set <text>       # Clipboard operations
+cortex desktop dockerfile                     # Generate Docker desktop container config
+cortex desktop entrypoint                     # Generate desktop automation entrypoint
+```
+
+### `cortex projects`
+
+```bash
+cortex projects list                          # List workspace projects
+cortex projects create <name>                 # Create a new project
+cortex projects delete <name>                 # Delete a project
+```
+
 ---
 
 ## Configuration
@@ -546,36 +676,39 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 Start with `cortex serve` and open `http://127.0.0.1:3000`.
 
-| Tab               | Description                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| **Chat**          | WebSocket streaming chat with file upload (PDF, images, documents)   |
-| **Editor**        | Full file editor powered by CodeMirror                               |
-| **Git**           | Visual git workspace — status, stage, commit, push, pull             |
-| **GitHub**        | PR management, issue tracking, repository browser                    |
-| **Code Runner**   | Sandboxed code execution with language selection and live output     |
-| **Activity**      | Full activity audit timeline with cost tracking and auto-refresh     |
-| **Memory**        | Search episodic and semantic memory                                  |
-| **Jobs**          | View and manage scheduled jobs                                       |
-| **Sessions**      | Browse and resume past chat sessions                                 |
-| **Agents**        | View active and completed sub-agent sessions                         |
-| **Services**      | Monitor running micro-services                                       |
-| **Codegraph**     | Interactive D3.js dependency graph with symbol search & path tracer  |
-| **Workflows**     | Visual workflow engine designer with run history & approval queue    |
-| **Eval**          | Agent evaluation suite runner with pass/fail dashboard & regressions |
-| **MCP**           | Model Context Protocol connection management & tool browser          |
-| **Vault**         | AES-256-GCM encrypted credential store with audit log & export       |
-| **Computer**      | Remote desktop viewer with screenshot gallery & action log           |
-| **Remote**        | Distributed agent deployment across nodes with directive history     |
-| **Daemons**       | Process health dashboard with live pings, log tails & restart        |
-| **Import/Export** | Data migration with type selector, dry-run, and JSON download        |
-| **Update**        | Version check, install, rollback with changelog viewer               |
-| **Reflection**    | Consolidation schedule, meta-patterns browser & manual trigger       |
-| **Tools**         | Tool registry browser with parameter docs, capabilities & toggles    |
-| **Metacognition** | Task assessment tester, decision distribution & history log          |
-| **Voice**         | TTS/STT provider config, VAD threshold, audio format preferences     |
-| **Settings**      | Provider config + model selection + router + supervisor + voice      |
-| **Soul**          | Edit the agent's identity / system prompt                            |
-| **Plugins**       | Manage installed plugins                                             |
+| Section        | Page                | Description                                                             |
+| -------------- | ------------------- | ----------------------------------------------------------------------- |
+| Core           | **Chat**            | WebSocket streaming chat with file upload (PDF, images, documents)      |
+| Core           | **Dashboard**       | Widget-based overview with KPI cards, daemon status, system resources   |
+| Core           | **Sessions**        | Browse, search, archive, and resume past chat sessions                  |
+| Intelligence   | **Memory**          | 5-tier memory search with graph browser, reflections, and health        |
+| Intelligence   | **Skills**          | Skill library with lifecycle badges, trust stars, and dependency graphs |
+| Intelligence   | **Soul**            | Edit agent identity / system prompt (SOUL.md, USER.md, MEMORY.md)       |
+| Development    | **Editor**          | Full file editor powered by CodeMirror with git integration             |
+| Development    | **Code Runner**     | Sandboxed code execution (Docker/gVisor) with language selection        |
+| Development    | **Version Control** | Git workspace — status, stage, commit, diff, push, pull, branch         |
+| Infrastructure | **Agents**          | Agent registry with sub-agent types, process management, CRUD           |
+| Infrastructure | **Services**        | Micro-service lifecycle with start/stop, health pings, auto-restart     |
+| Infrastructure | **Nodes**           | Distributed node registry with tier/filter/status, heartbeat monitor    |
+| Infrastructure | **Daemons**         | Process health dashboard with live pings, log tails, restart controls   |
+| Infrastructure | **Automation**      | Pipeline hooks and event triggers with webhook test-fire                |
+| Infrastructure | **Channels**        | Channel adapters (Discord) with token management and enable/disable     |
+| Tools & MCP    | **Tools**           | Full tool registry browser with parameter schemas and capability badges |
+| Tools & MCP    | **MCP Server**      | Model Context Protocol connections with tool browser and start/stop     |
+| Tools & MCP    | **Codegraph**       | D3.js force-directed dependency graph, symbol search, impact analysis   |
+| Security       | **Policies**        | Enable/disable toggles, inline pattern editing, classification rules    |
+| Security       | **Vault**           | AES-256-GCM credential store with table view, audit log, export/import  |
+| System         | **Settings**        | Providers, model router, security supervisor, metrics, observability    |
+| System         | **Quartermaster**   | Tool orchestration patterns + Model intelligence with strategy config   |
+| System         | **Extensions**      | Plugin management (installed + discover tabs with marketplace)          |
+| System         | **Analytics**       | Token usage charts, cost tracking, per-model breakdown                  |
+| System         | **Activity**        | Full audit timeline with level filter, auto-refresh, actor column       |
+| Other          | **Workflows**       | Visual workflow designer with JSON editor, run history, approvals       |
+| Other          | **Eval Runner**     | Suite browser, run configuration, results dashboard, regression diff    |
+| Other          | **Computer Use**    | Screenshot gallery, action log, display configuration                   |
+| Other          | **Remote Agents**   | Distributed agent deployment with status badges and directive history   |
+| Other          | **Metacognition**   | Task assessment tester, decision distribution, assessment history       |
+| Other          | **Voice**           | TTS/STT provider config, VAD threshold, audio format preferences        |
 
 ### REST API
 
@@ -750,25 +883,36 @@ WS     /ws   (streaming chat)
 
 ## Security Model
 
-CortexPrism uses a **Parallax security model** — all tool calls pass through a multi-layer policy
-system before execution:
+CortexPrism uses a **Parallax security model** with a three-layer LLM-based access control system:
 
 ```
 Agent → Tool Intent → Policy Validator → Executor
-                             │
+                            │
                     [regex allow/deny rules]
                     [capability level (CPL)]
                     [optional human approval]
+                            
+Agent requests sensitive data →
+  Layer 1: Data Classification (SECRET/SENSITIVE/NORMAL/PUBLIC)
+  Layer 2: LLM Supervisor (Gemini 2.0 Flash, GPT-4o Mini) with decision caching
+  Layer 3: Human Approval (CLI prompts + Web UI modal with 1-hour TTL grants)
 ```
 
 1. **Policy rules** — regex-based allow/deny rules evaluated against every shell command, file path,
    and network request. Managed with `cortex policy`.
-2. **AES-256-GCM vault** — all credentials stored encrypted; never written to config in plain text
+2. **LLM security supervisor** — sensitive data access (memory, databases, screenshots) requires
+   approval from a fast LLM supervisor with decision caching (1-hour session TTL) and human
+   escalation for uncertain cases.
+3. **Data classification** — automatic sensitivity detection (SECRET/SENSITIVE/NORMAL/PUBLIC) based
+   on pattern matching (passwords, API keys, PII, confidential markers); all existing data
+   backfilled on first run.
+4. **AES-256-GCM vault** — all credentials stored encrypted; never written to config in plain text
    once vaulted.
-3. **Activity** — append-only audit log in `lens.db`; every tool call, LLM call, and policy decision
-   is recorded with timestamp, cost, and session context.
-4. **Sandbox isolation** — code execution runs in ephemeral Docker containers with resource limits
-   (CPU, memory, network disabled by default); subprocess fallback for systems without Docker.
+5. **Activity** — append-only audit log in `lens.db`; every tool call, LLM call, policy decision,
+   and security approval is recorded with timestamp, cost, and session context.
+6. **Sandbox isolation** — code execution runs in ephemeral Docker/gVisor containers with resource
+   limits (CPU, memory, network disabled by default); subprocess fallback for systems without
+   Docker.
 
 See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy.
 
@@ -847,12 +991,15 @@ deno task test
 
 ## Roadmap
 
-- [ ] MCP (Model Context Protocol) server — expose CortexPrism as an MCP server to other clients
-- [ ] Distributed cluster mode — Hub + Node agent distribution across machines
-- [ ] Enhanced desktop app with tray support and native notifications
-- [ ] Projects system — workspace-scoped context and memory isolation
-- [ ] Workflow engine — visual no-code agentic workflow builder
-- [ ] Extended LLM provider coverage and streaming improvements
+- [x] MCP (Model Context Protocol) server — expose CortexPrism as an MCP server to other clients
+- [x] Distributed cluster mode — Hub + Node agent distribution across machines
+- [x] Projects system — workspace-scoped context and memory isolation
+- [x] Workflow engine — visual no-code agentic workflow builder
+- [x] Extended LLM provider coverage (24 providers) and streaming improvements
+- [ ] Enhanced desktop app with tray support and native notifications (Tauri — scaffolded)
+- [ ] MCP client mode — connect CortexPrism to external MCP servers
+- [ ] Multi-agent collaboration — peer-to-peer agent communication
+- [ ] Memory embeddings integration with external vector DBs (Chroma, Pinecone, Weaviate)
 
 ---
 
