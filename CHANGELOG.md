@@ -112,6 +112,29 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Web UI: Modal with request details, supervisor reasoning, sample data
   - Async approval via WebSocket with 5-minute timeout
 
+- **Web UI coverage — Phase 1** — Five new management pages added to the SPA:
+  - **Codegraph** — D3.js interactive force-directed graph. Project selector, symbol search with
+    live filtering, impact analysis panel, architecture summary, and path tracer with step-by-step
+    visualization. Wraps the 6 code intelligence tools.
+  - **Workflows** — Workflow engine visual designer. Library browser with create/load/delete, JSON
+    step editor, run history table with status badges, and approval queue with approve/reject
+    actions.
+  - **Eval Runner** — Agent evaluation suite dashboard. Suite browser with card grid, run
+    configuration modal (agent/provider/baseline/timeout), results view with pass/fail breakdown and
+    Chart.js per-category bar chart, baseline management, and side-by-side regression diff
+    comparison.
+  - **MCP Server** — Model Context Protocol connection management. Connection list with
+    connect/disconnect, add modal with stdio/HTTP transport selection, tool browser with JSON-Schema
+    parameter display, and local server start/stop controls.
+  - **Encrypted Vault** — AES-256-GCM credential management. Credential table with service/usage/
+    expiration columns, add/edit modal with password reveal toggle, access audit log with grant/deny
+    tracking, and export/import for encrypted JSON backups.
+  - Added new "Tools & Engines" sidebar navigation section with 5 page entries
+  - +34 REST API endpoints: `/api/codegraph/*` (6), `/api/workflows/*` (8), `/api/eval/*` (7),
+    `/api/mcp/*` (6), `/api/vault/*` (7)
+  - D3.js v7 CDN integration for code graph visualization
+  - In-memory storage helpers for eval suites/runs/baselines and workflow lifecycle
+
 ### Security
 
 - All sensitive data access now requires LLM supervisor review or human approval

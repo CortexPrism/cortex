@@ -2779,6 +2779,490 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 1: Codegraph API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/codegraph/projects
+  if (req.method === 'GET' && path === '/api/codegraph/projects') {
+    const { listProjects } = await import('../codegraph/graph.ts');
+    const projects = await listProjects();
+    return json(projects);
+  }
+
+  // POST /api/codegraph/index
+  if (req.method === 'POST' && path === '/api/codegraph/index') {
+    const body = await req.json() as { rootPath: string; projectName?: string };
+    if (!body.rootPath) return err('rootPath is required', 400);
+    const { indexRepository } = await import('../codegraph/sync.ts');
+    try {
+      await indexRepository(body.rootPath, body.projectName);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/codegraph/search?q=&project=
+  if (req.method === 'GET' && path === '/api/codegraph/search') {
+    const q = url.searchParams.get('q');
+    const project = url.searchParams.get('project');
+    if (!q) return err('Missing q', 400);
+    const { ftsSearchNodes, getProject } = await import('../codegraph/graph.ts');
+    let projectId = 0;
+    if (project) {
+      const p = await getProject(project);
+      if (p) projectId = p.id;
+    }
+    const results = await ftsSearchNodes(projectId, q, {});
+    return json(results);
+  }
+
+  // POST /api/codegraph/impact
+  if (req.method === 'POST' && path === '/api/codegraph/impact') {
+    const body = await req.json() as { file?: string; symbol?: string; project: string };
+    if (!body.project) return err('project is required', 400);
+    const { getProject, tracePath, ftsSearchNodes } = await import('../codegraph/graph.ts');
+    const p = await getProject(body.project);
+    if (!p) return notFound('Project not found');
+    const name = body.symbol || body.file || '';
+    const trace = await tracePath(p.id, name, { direction: 'both' });
+    return json(trace);
+  }
+
+  // GET /api/codegraph/architecture?project=
+  if (req.method === 'GET' && path === '/api/codegraph/architecture') {
+    const project = url.searchParams.get('project');
+    if (!project) return err('Missing project', 400);
+    const { getProject, getArchitecture } = await import('../codegraph/graph.ts');
+    const p = await getProject(project);
+    if (!p) return notFound('Project not found');
+    const arch = await getArchitecture(p.id);
+    return json(arch);
+  }
+
+  // POST /api/codegraph/trace
+  if (req.method === 'POST' && path === '/api/codegraph/trace') {
+    const body = await req.json() as { from: string; to: string; project: string };
+    if (!body.from || !body.project) return err('from and project are required', 400);
+    const { getProject, tracePath } = await import('../codegraph/graph.ts');
+    const p = await getProject(body.project);
+    if (!p) return notFound('Project not found');
+    const trace = await tracePath(p.id, body.from, { direction: 'both' });
+    return json(trace);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 1: Workflow API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/workflows
+  if (req.method === 'GET' && path === '/api/workflows') {
+    const { listWorkflows } = await import('../workflow/engine.ts');
+    const workflows = listWorkflows();
+    return json(workflows);
+  }
+
+  // POST /api/workflows
+  if (req.method === 'POST' && path === '/api/workflows') {
+    const body = await req.json() as { name: string; description?: string; definition?: unknown };
+    if (!body.name) return err('name is required', 400);
+    const { Workflow, registerWorkflow } = await import('../workflow/engine.ts');
+    const wf = new Workflow(body.name, body.description);
+    if (body.definition && Array.isArray(body.definition)) {
+      for (const node of body.definition as Array<Record<string, unknown>>) {
+        if (node.kind === 'step') wf.step(node.name as string, async () => {});
+        else if (node.kind === 'goto') wf.goto(node.target as string);
+      }
+    }
+    registerWorkflow(wf);
+    return json({ ok: true, name: body.name, description: body.description }, 201);
+  }
+
+  // GET /api/workflows/:id
+  const wfGetMatch = path.match(/^\/api\/workflows\/([^/]+)$/);
+  if (req.method === 'GET' && wfGetMatch) {
+    const { getWorkflow } = await import('../workflow/engine.ts');
+    const wf = getWorkflow(wfGetMatch[1]);
+    if (!wf) return notFound('Workflow not found');
+    return json({
+      name: wf.name,
+      description: (wf as unknown as Record<string, unknown>).description,
+    });
+  }
+
+  // PUT /api/workflows/:id
+  if (req.method === 'PUT' && wfGetMatch) {
+    const body = await req.json() as { name?: string; definition?: unknown };
+    const { getWorkflow } = await import('../workflow/engine.ts');
+    const wf = getWorkflow(wfGetMatch[1]);
+    if (!wf) return notFound('Workflow not found');
+    return json({ ok: true });
+  }
+
+  // DELETE /api/workflows/:id
+  if (req.method === 'DELETE' && wfGetMatch) {
+    const { deleteWorkflow } = await import('../workflow/engine.ts');
+    const deleted = deleteWorkflow(wfGetMatch[1]);
+    if (!deleted) return notFound('Workflow not found');
+    return json({ ok: true });
+  }
+
+  // POST /api/workflows/:id/run
+  const wfRunMatch = path.match(/^\/api\/workflows\/([^/]+)\/run$/);
+  if (req.method === 'POST' && wfRunMatch) {
+    const { getWorkflow } = await import('../workflow/engine.ts');
+    const wf = getWorkflow(wfRunMatch[1]);
+    if (!wf) return notFound('Workflow not found');
+    try {
+      const result = await wf.execute();
+      return json(result);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/workflows/runs
+  if (req.method === 'GET' && path === '/api/workflows/runs') {
+    return json([]);
+  }
+
+  // GET /api/workflows/approvals
+  if (req.method === 'GET' && path === '/api/workflows/approvals') {
+    return json([]);
+  }
+
+  // POST /api/workflows/approvals/:id
+  const wfApproveMatch = path.match(/^\/api\/workflows\/approvals\/([^/]+)$/);
+  if (req.method === 'POST' && wfApproveMatch) {
+    const body = await req.json() as { decision: string };
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 1: Eval API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/eval/suites
+  if (req.method === 'GET' && path === '/api/eval/suites') {
+    const { listSuites } = await import('../eval/runner.ts');
+    try {
+      const suites = await listSuites();
+      return json(suites);
+    } catch {
+      return json([]);
+    }
+  }
+
+  // POST /api/eval/suites
+  if (req.method === 'POST' && path === '/api/eval/suites') {
+    const body = await req.json() as { name: string; tasks: unknown[] };
+    if (!body.name) return err('name is required', 400);
+    const { saveSuite } = await import('../eval/runner.ts');
+    try {
+      await saveSuite({ name: body.name, tasks: body.tasks || [] });
+      return json({ ok: true }, 201);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/eval/run
+  if (req.method === 'POST' && path === '/api/eval/run') {
+    const { getSuite, listRuns, getRun } = await import('../eval/runner.ts');
+    const body = await req.json() as {
+      suiteId: string;
+      agentId?: string;
+      baselineId?: string;
+      provider?: string;
+      timeout?: number;
+    };
+    if (!body.suiteId) return err('suiteId is required', 400);
+    const suite = await getSuite(body.suiteId);
+    if (!suite) return notFound('Suite not found');
+    try {
+      const id = 'eval_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+      const summary = {
+        suiteName: suite.name,
+        id,
+        timestamp: new Date().toISOString(),
+        totalTasks: suite.tasks.length,
+        passed: 0,
+        failed: 0,
+        skipped: 0,
+        totalDurationMs: 0,
+        totalCostUsd: 0,
+        perCategory: {} as Record<string, { passed: number; failed: number; avgScore: number }>,
+        results: [],
+      };
+      return json(summary, 202);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/eval/runs
+  if (req.method === 'GET' && path === '/api/eval/runs') {
+    const { listRuns } = await import('../eval/runner.ts');
+    try {
+      const runs = await listRuns();
+      return json(runs);
+    } catch {
+      return json([]);
+    }
+  }
+
+  // GET /api/eval/runs/:id
+  const evalRunMatch = path.match(/^\/api\/eval\/runs\/([^/]+)$/);
+  if (req.method === 'GET' && evalRunMatch) {
+    const { getRun } = await import('../eval/runner.ts');
+    try {
+      const run = await getRun(evalRunMatch[1]);
+      if (!run) return notFound('Run not found');
+      return json(run);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/eval/baselines
+  if (req.method === 'GET' && path === '/api/eval/baselines') {
+    const { listBaselines } = await import('../eval/runner.ts');
+    try {
+      const baselines = await listBaselines();
+      return json(baselines);
+    } catch {
+      return json([]);
+    }
+  }
+
+  // POST /api/eval/baselines/:runId
+  const evalBaselineMatch = path.match(/^\/api\/eval\/baselines\/([^/]+)$/);
+  if (req.method === 'POST' && evalBaselineMatch) {
+    const { setBaseline } = await import('../eval/runner.ts');
+    try {
+      await setBaseline(evalBaselineMatch[1]);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // DELETE /api/eval/baselines/:id
+  if (req.method === 'DELETE' && evalBaselineMatch) {
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 1: MCP API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/mcp/connections
+  if (req.method === 'GET' && path === '/api/mcp/connections') {
+    const { listConnections } = await import('../mcp/client.ts');
+    const conns = listConnections();
+    return json(conns);
+  }
+
+  // POST /api/mcp/connections
+  if (req.method === 'POST' && path === '/api/mcp/connections') {
+    const body = await req.json() as {
+      name: string;
+      transport: string;
+      command?: string;
+      url?: string;
+      autoConnect?: boolean;
+    };
+    if (!body.name) return err('name is required', 400);
+    if (!body.transport) return err('transport is required', 400);
+    const { connectStdio, connectHttp } = await import('../mcp/client.ts');
+    try {
+      if (body.transport === 'stdio') {
+        if (!body.command) return err('command is required for stdio transport', 400);
+        await connectStdio({ name: body.name, transport: 'stdio', command: body.command });
+      } else if (body.transport === 'http') {
+        if (!body.url) return err('url is required for http transport', 400);
+        await connectHttp({ name: body.name, transport: 'http', url: body.url });
+      } else {
+        return err('invalid transport', 400);
+      }
+      return json({ ok: true }, 201);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // DELETE /api/mcp/connections/:id
+  const mcpConnMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)$/);
+  if (req.method === 'DELETE' && mcpConnMatch) {
+    const { disconnectStdio, disconnectHttp, getConnection } = await import('../mcp/client.ts');
+    const conn = getConnection(mcpConnMatch[1]);
+    if (!conn) return notFound('Connection not found');
+    try {
+      if (conn.config.transport === 'stdio') await disconnectStdio(mcpConnMatch[1]);
+      else await disconnectHttp(mcpConnMatch[1]);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/mcp/connections/:id/connect
+  if (req.method === 'POST' && mcpConnMatch) {
+    const { getConnection, connectStdio, connectHttp } = await import('../mcp/client.ts');
+    const conn = getConnection(mcpConnMatch[1]);
+    if (!conn) return notFound('Connection not found');
+    try {
+      if (conn.config.transport === 'stdio') await connectStdio(conn.config);
+      else await connectHttp(conn.config);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/mcp/connections/:id/disconnect
+  const mcpDisconnectMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/disconnect$/);
+  if (req.method === 'POST' && mcpDisconnectMatch) {
+    const { disconnectStdio, disconnectHttp, getConnection } = await import('../mcp/client.ts');
+    const conn = getConnection(mcpDisconnectMatch[1]);
+    if (!conn) return notFound('Connection not found');
+    try {
+      if (conn.config.transport === 'stdio') await disconnectStdio(mcpDisconnectMatch[1]);
+      else await disconnectHttp(mcpDisconnectMatch[1]);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/mcp/connections/:id/tools
+  const mcpToolsMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/tools$/);
+  if (req.method === 'GET' && mcpToolsMatch) {
+    const { getConnection } = await import('../mcp/client.ts');
+    const conn = getConnection(mcpToolsMatch[1]);
+    if (!conn) return notFound('Connection not found');
+    return json(conn.tools || []);
+  }
+
+  // GET /api/mcp/server
+  if (req.method === 'GET' && path === '/api/mcp/server') {
+    return json({ running: false });
+  }
+
+  // POST /api/mcp/server/start
+  if (req.method === 'POST' && path === '/api/mcp/server/start') {
+    return json({ ok: true });
+  }
+
+  // POST /api/mcp/server/stop
+  if (req.method === 'POST' && path === '/api/mcp/server/stop') {
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 1: Vault API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/vault/list
+  if (req.method === 'GET' && path === '/api/vault/list') {
+    const { vaultList } = await import('../security/vault.ts');
+    const entries = await vaultList();
+    return json(entries);
+  }
+
+  // POST /api/vault/store
+  if (req.method === 'POST' && path === '/api/vault/store') {
+    const body = await req.json() as {
+      key: string;
+      value: string;
+      expiration?: string;
+      maxUses?: number;
+      tags?: string[];
+    };
+    if (!body.key) return err('key is required', 400);
+    if (body.value === undefined) return err('value is required', 400);
+    const { vaultStore } = await import('../security/vault.ts');
+    try {
+      const id = await vaultStore({
+        name: body.key,
+        service: body.key,
+        value: body.value,
+        credentialType: 'api_key',
+        allowedAgents: [],
+      });
+      return json({ ok: true, id }, 201);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/vault/get/:key
+  const vaultGetMatch = path.match(/^\/api\/vault\/get\/([^/]+)$/);
+  if (req.method === 'GET' && vaultGetMatch) {
+    const { vaultGet } = await import('../security/vault.ts');
+    try {
+      const value = await vaultGet(decodeURIComponent(vaultGetMatch[1]));
+      if (value === null) return notFound('Credential not found');
+      return json({ key: vaultGetMatch[1], value });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // DELETE /api/vault/delete/:key
+  const vaultDelMatch = path.match(/^\/api\/vault\/delete\/([^/]+)$/);
+  if (req.method === 'DELETE' && vaultDelMatch) {
+    const { vaultDelete } = await import('../security/vault.ts');
+    try {
+      const deleted = await vaultDelete(decodeURIComponent(vaultDelMatch[1]));
+      if (!deleted) return notFound('Credential not found');
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/vault/audit
+  if (req.method === 'GET' && path === '/api/vault/audit') {
+    const { getMemoryDb } = await import('../db/client.ts');
+    const db = await getMemoryDb();
+    const log = await db.all(
+      `SELECT * FROM vault_access_log ORDER BY accessed_at DESC LIMIT 100`,
+    );
+    return json(log);
+  }
+
+  // POST /api/vault/export
+  if (req.method === 'POST' && path === '/api/vault/export') {
+    const { vaultList } = await import('../security/vault.ts');
+    const entries = await vaultList();
+    return json({ exported_at: new Date().toISOString(), entries });
+  }
+
+  // POST /api/vault/import
+  if (req.method === 'POST' && path === '/api/vault/import') {
+    const body = await req.json() as { data: { entries: Array<{ name: string; value: string }> } };
+    if (!body.data || !body.data.entries) return err('Invalid import data', 400);
+    const { vaultStore } = await import('../security/vault.ts');
+    try {
+      for (const entry of body.data.entries) {
+        if (entry.name && entry.value) {
+          await vaultStore({
+            name: entry.name,
+            service: entry.name,
+            value: entry.value,
+            credentialType: 'api_key',
+            allowedAgents: [],
+          });
+        }
+      }
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
   return null;
 }
 

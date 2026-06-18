@@ -51,10 +51,12 @@ export interface WorkflowResult {
 
 export class Workflow {
   name: string;
+  description?: string;
   private nodes: WorkflowNode[] = [];
 
-  constructor(name: string) {
+  constructor(name: string, description?: string) {
     this.name = name;
+    this.description = description;
   }
 
   step(name: string, fn: StepFn): this {
@@ -244,10 +246,15 @@ export function getWorkflow(name: string): Workflow | undefined {
   return workflows.get(name);
 }
 
-export function listWorkflows(): { name: string }[] {
+export function listWorkflows(): { name: string; description?: string }[] {
   return [...workflows.values()].map((w) => ({
     name: w.name,
+    description: w.description,
   }));
+}
+
+export function deleteWorkflow(name: string): boolean {
+  return workflows.delete(name);
 }
 
 registerWorkflow(
