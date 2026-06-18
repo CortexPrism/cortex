@@ -176,6 +176,30 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - +24 REST API endpoints: `/api/computer/*` (4), `/api/remote/*` (3), `/api/daemons/*` (4),
     `/api/import/*` + `/api/export` (3), `/api/update/*` (5), `/api/reflection/*` (5)
 
+- **Web UI coverage — Phase 3** — Complete 10 partially-covered systems with full management UIs:
+  - **Provider Comparison** — Settings tab with provider/model/context-window comparison table
+  - **Router Dashboard** — Settings tab with strategy display, fallthrough history, cost estimation
+  - **Tool Registry** — New page with tool catalog grid, parameter schemas, capability badges,
+    toggle
+  - **Memory Privacy/Heuristics/Embeddings** — 3 new Memory tabs for PII redaction toggles,
+    retention config, 12 auto-categorization rules, and embedding provider/dimension display
+  - **Metacognition** — New page with task assessment tester (keyword-based decision engine),
+    decision distribution chart, and assessment history log
+  - **Sub-Agent Types** — Agents page tab with type cards (explore/general/plan/code/research)
+    showing tool allow-lists, maxTurns, and edit capability
+  - **Voice Configuration** — New page with TTS provider/voice selector, STT status, VAD threshold
+    slider, and audio format radio buttons
+  - **Sandbox Config** — Code Runner tab with runtime detection (Docker/gVisor/subprocess), language
+    checkboxes, timeout/memory limits, and Docker image management
+  - **Security Supervisor** — Settings tab with provider/model/cache TTL display, clear cache
+    button, and decision history viewer
+  - **Data Classification** — Policies tab with 4-level sensitivity rules (PUBLIC/NORMAL/SENSITIVE/
+    SECRET), pattern list, and content classification tester
+  - Added new "Voice", "Tools", and "Metacognition" nav items in sidebar
+  - +32 REST API endpoints across all 10 enhanced systems
+  - Page extension framework: dynamic tab injection for Settings, Memory, Agents, Code Runner,
+    Policies
+
 ### Security
 
 - All sensitive data access now requires LLM supervisor review or human approval

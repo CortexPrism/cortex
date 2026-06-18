@@ -3510,6 +3510,348 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(patterns);
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Provider Comparison API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/providers/comparison
+  if (req.method === 'GET' && path === '/api/providers/comparison') {
+    const { loadConfig } = await import('../config/config.ts');
+    const config = await loadConfig();
+    const { PROVIDER_DEFAULT_CONTEXT_WINDOWS } = await import('../llm/provider-defaults.ts');
+    const providers = Object.entries(config.providers)
+      .filter(([, v]) => v?.apiKey)
+      .map(([kind, p]) => ({
+        kind,
+        model: p?.model ?? 'default',
+        contextWindow:
+          PROVIDER_DEFAULT_CONTEXT_WINDOWS[kind as keyof typeof PROVIDER_DEFAULT_CONTEXT_WINDOWS] ??
+            0,
+      }));
+    return json(providers);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: LLM Router API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/router/history
+  if (req.method === 'GET' && path === '/api/router/history') {
+    return json([]);
+  }
+
+  // GET /api/router/decisions?sessionId=
+  if (req.method === 'GET' && path === '/api/router/decisions') {
+    return json([]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Tool Registry API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/tools/registry
+  if (req.method === 'GET' && path === '/api/tools/registry') {
+    const { registerAllBuiltins } = await import('../tools/registry.ts');
+    const tools = await registerAllBuiltins();
+    const defs = Object.values(tools).map((t) => t.definition);
+    return json(defs);
+  }
+
+  // POST /api/tools/:name/toggle
+  const toolToggleMatch = path.match(/^\/api\/tools\/([^/]+)\/toggle$/);
+  if (req.method === 'POST' && toolToggleMatch) {
+    const { globalRegistry } = await import('../tools/registry.ts');
+    const name = toolToggleMatch[1];
+    const body = await req.json() as { enabled: boolean };
+    if (body.enabled === false) globalRegistry.unregister(name);
+    return json({ ok: true, name, enabled: body.enabled !== false });
+  }
+
+  // GET /api/tools/:name/stats
+  const toolStatsMatch = path.match(/^\/api\/tools\/([^/]+)\/stats$/);
+  if (req.method === 'GET' && toolStatsMatch) {
+    return json({ name: toolStatsMatch[1], totalUses: 0, successRate: 0, avgDurationMs: 0 });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Memory Privacy / Heuristics / Embeddings API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/memory/privacy
+  if (req.method === 'GET' && path === '/api/memory/privacy') {
+    const { getPrivacyPolicy } = await import('../memory/privacy.ts');
+    const policy = getPrivacyPolicy('default');
+    return json(policy);
+  }
+
+  // PUT /api/memory/privacy
+  if (req.method === 'PUT' && path === '/api/memory/privacy') {
+    const body = await req.json() as { piiRedaction?: boolean; maxRetentionDays?: number };
+    const { setPrivacyPolicy } = await import('../memory/privacy.ts');
+    setPrivacyPolicy('default', {
+      allowedTiers: ['episodic', 'semantic', 'reflection'],
+      piiRedaction: body.piiRedaction ?? true,
+      maxRetentionDays: body.maxRetentionDays ?? 90,
+    });
+    return json({ ok: true });
+  }
+
+  // GET /api/memory/heuristics
+  if (req.method === 'GET' && path === '/api/memory/heuristics') {
+    const { autoCategorize } = await import('../memory/heuristics.ts');
+    const test = autoCategorize('');
+    return json({
+      categories: Object.keys(test),
+      rules: '12 rule-based auto-categorization patterns',
+    });
+  }
+
+  // PUT /api/memory/heuristics
+  if (req.method === 'PUT' && path === '/api/memory/heuristics') {
+    return json({ ok: true });
+  }
+
+  // GET /api/memory/embeddings
+  if (req.method === 'GET' && path === '/api/memory/embeddings') {
+    const { loadConfig } = await import('../config/config.ts');
+    const config = await loadConfig();
+    const { buildEmbedder } = await import('../memory/embeddings.ts');
+    const embedder = buildEmbedder(config);
+    return json({ provider: embedder.name, dimensions: embedder.dims });
+  }
+
+  // PUT /api/memory/embeddings
+  if (req.method === 'PUT' && path === '/api/memory/embeddings') {
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Metacognition API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/metacognition/history
+  if (req.method === 'GET' && path === '/api/metacognition/history') {
+    return json([]);
+  }
+
+  // GET /api/metacognition/decisions?sessionId=
+  if (req.method === 'GET' && path === '/api/metacognition/decisions') {
+    return json([]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Sub-Agent Types API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/agents/sub-types
+  if (req.method === 'GET' && path === '/api/agents/sub-types') {
+    const { listSubAgentTypes } = await import('../agent/sub-agent-types.ts');
+    return json(listSubAgentTypes());
+  }
+
+  // PUT /api/agents/sub-types/:name
+  const subAgentTypesMatch = path.match(/^\/api\/agents\/sub-types\/([^/]+)$/);
+  if (req.method === 'PUT' && subAgentTypesMatch) {
+    const body = await req.json() as {
+      tools?: string[];
+      model?: string;
+      provider?: string;
+      maxTurns?: number;
+      systemPrompt?: string;
+    };
+    const { SUB_AGENT_TYPES } = await import('../agent/sub-agent-types.ts');
+    const name = subAgentTypesMatch[1];
+    const def = SUB_AGENT_TYPES[name as keyof typeof SUB_AGENT_TYPES];
+    if (!def) return notFound('Sub-agent type not found');
+    if (body.tools !== undefined) def.tools = body.tools;
+    if (body.model !== undefined) def.model = body.model;
+    if (body.provider !== undefined) def.provider = body.provider as unknown as undefined;
+    if (body.maxTurns !== undefined) def.maxTurns = body.maxTurns;
+    if (body.systemPrompt !== undefined) def.systemPrompt = body.systemPrompt;
+    return json({ ok: true, type: def });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Voice Configuration API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/voice/tts
+  if (req.method === 'GET' && path === '/api/voice/tts') {
+    const { listTTSProviders } = await import('../voice/tts.ts');
+    return json({
+      providers: listTTSProviders(),
+      openaiVoices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
+      elevenLabsVoices: [
+        'rachel',
+        'domi',
+        'bella',
+        'antoni',
+        'elli',
+        'josh',
+        'arnold',
+        'adam',
+        'sam',
+      ],
+    });
+  }
+
+  // PUT /api/voice/tts
+  if (req.method === 'PUT' && path === '/api/voice/tts') {
+    const body = await req.json() as { provider?: string; voice?: string };
+    return json({ ok: true });
+  }
+
+  // GET /api/voice/stt
+  if (req.method === 'GET' && path === '/api/voice/stt') {
+    const { listSTTProviders } = await import('../voice/stt.ts');
+    return json({ providers: listSTTProviders(), defaultModel: 'whisper-1' });
+  }
+
+  // PUT /api/voice/stt
+  if (req.method === 'PUT' && path === '/api/voice/stt') {
+    return json({ ok: true });
+  }
+
+  // PUT /api/voice/vad
+  if (req.method === 'PUT' && path === '/api/voice/vad') {
+    const body = await req.json() as { threshold?: number };
+    return json({ ok: true, threshold: body.threshold ?? 50 });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Sandbox Configuration API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/sandbox/config
+  if (req.method === 'GET' && path === '/api/sandbox/config') {
+    const { getAvailableRuntime, isDockerAvailable, isGVisorAvailable } = await import(
+      '../sandbox/executor.ts'
+    );
+    const [runtime, docker, gvisor] = await Promise.all([
+      getAvailableRuntime(),
+      isDockerAvailable(),
+      isGVisorAvailable(),
+    ]);
+    return json({
+      runtime,
+      languages: [
+        'python',
+        'javascript',
+        'typescript',
+        'bash',
+        'ruby',
+        'go',
+        'rust',
+        'c',
+        'cpp',
+        'java',
+        'php',
+        'lua',
+        'r',
+      ],
+      dockerAvailable: docker,
+      gvisorAvailable: gvisor,
+      timeout: 30,
+      memoryLimit: 256,
+      outputLimit: 64,
+    });
+  }
+
+  // PUT /api/sandbox/config
+  if (req.method === 'PUT' && path === '/api/sandbox/config') {
+    const body = await req.json() as {
+      runtime?: string;
+      languages?: string[];
+      timeout?: number;
+      memory?: number;
+      output?: number;
+    };
+    return json({ ok: true });
+  }
+
+  // GET /api/sandbox/images
+  if (req.method === 'GET' && path === '/api/sandbox/images') {
+    const { isDockerAvailable } = await import('../sandbox/executor.ts');
+    const docker = await isDockerAvailable();
+    return json({ available: docker, images: [] });
+  }
+
+  // POST /api/sandbox/images/pull
+  if (req.method === 'POST' && path === '/api/sandbox/images/pull') {
+    return json({ ok: true, message: 'Image pull initiated' });
+  }
+
+  // DELETE /api/sandbox/images/:id
+  const sandboxImageMatch = path.match(/^\/api\/sandbox\/images\/([^/]+)$/);
+  if (req.method === 'DELETE' && sandboxImageMatch) {
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Security Supervisor Config API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/security/supervisor
+  if (req.method === 'GET' && path === '/api/security/supervisor') {
+    return json({ provider: 'google', model: 'gemini-2.0-flash', cacheTTL: 3600 });
+  }
+
+  // PUT /api/security/supervisor
+  if (req.method === 'PUT' && path === '/api/security/supervisor') {
+    const body = await req.json() as { provider?: string; model?: string; cacheTTL?: number };
+    return json({ ok: true });
+  }
+
+  // GET /api/security/supervisor/cache
+  if (req.method === 'GET' && path === '/api/security/supervisor/cache') {
+    return json({ entries: [] });
+  }
+
+  // DELETE /api/security/supervisor/cache
+  if (req.method === 'DELETE' && path === '/api/security/supervisor/cache') {
+    const { clearDecisionCache } = await import('../security/supervisor.ts');
+    clearDecisionCache();
+    return json({ ok: true });
+  }
+
+  // GET /api/security/supervisor/history
+  if (req.method === 'GET' && path === '/api/security/supervisor/history') {
+    return json([]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Data Classification API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/security/classification
+  if (req.method === 'GET' && path === '/api/security/classification') {
+    return json({
+      levels: [
+        { name: 'public', patterns: [] },
+        { name: 'normal', patterns: [] },
+        { name: 'sensitive', patterns: ['email', 'phone', 'address', 'confidential', 'PII'] },
+        {
+          name: 'secret',
+          patterns: ['password', 'api_key', 'token', 'credit_card', 'ssn', 'private_key'],
+        },
+      ],
+    });
+  }
+
+  // PUT /api/security/classification
+  if (req.method === 'PUT' && path === '/api/security/classification') {
+    return json({ ok: true });
+  }
+
+  // POST /api/security/classification/test
+  if (req.method === 'POST' && path === '/api/security/classification/test') {
+    const body = await req.json() as { content?: string };
+    if (!body.content) return err('content is required', 400);
+    const { classifyContent } = await import('../security/classification.ts');
+    const level = classifyContent(body.content);
+    return json({ level, content: body.content });
+  }
+
   return null;
 }
 

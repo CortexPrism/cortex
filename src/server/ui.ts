@@ -916,6 +916,12 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('lens');closeMobileSidebar()" id="nav-lens">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></span> Activity
     </button>
+    <button class="nav-item" onclick="showPage('tools');closeMobileSidebar()" id="nav-tools">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools
+    </button>
+    <button class="nav-item" onclick="showPage('metacognition');closeMobileSidebar()" id="nav-metacognition">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10h-5.39a3 3 0 0 0-4.61 0H7a2 2 0 0 0 0 4h12a2 2 0 0 0 0-4h-3"/></svg></span> Metacognition
+    </button>
 
     <!-- Development -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Development <span class="nav-section-toggle">▼</span></div>
@@ -991,6 +997,9 @@ const HTML = `<!DOCTYPE html>
 
     <!-- System -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System <span class="nav-section-toggle">▼</span></div>
+    <button class="nav-item" onclick="showPage('voice');closeMobileSidebar()" id="nav-voice">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span> Voice
+    </button>
     <button class="nav-item" onclick="showPage('settings');closeMobileSidebar()" id="nav-settings">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings
     </button>
@@ -2660,6 +2669,90 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Page: Tools -->
+  <div id="page-tools" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Tool Registry</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">All registered built-in tools with metadata and controls</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadTools()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;" id="tools-catalog"></div>
+    </div>
+  </div>
+
+  <!-- Page: Metacognition -->
+  <div id="page-metacognition" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Metacognition</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Agent task assessment history and decision patterns</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadMetacognition()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Task Assessment Tester</h3>
+        <div style="display:flex;gap:8px;">
+          <input id="mc-test-input" class="inp" placeholder="Enter a task description to assess..." style="font-size:12px;flex:1;" onkeydown="if(event.key==='Enter')testMetacognition()">
+          <button class="btn btn-primary" onclick="testMetacognition()" style="font-size:12px;">Assess</button>
+        </div>
+        <div id="mc-test-result" style="margin-top:8px;font-size:12px;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Decision Distribution</h3>
+          <div id="mc-chart-container" style="height:200px;"></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Decision History</h3>
+          <div style="max-height:200px;overflow-y:auto;font-size:11px;" id="mc-history"><div class="empty">No assessment history</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Voice -->
+  <div id="page-voice" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Voice Configuration</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">TTS / STT provider settings and voice preview</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadVoiceConfig()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Text-to-Speech (TTS)</h3>
+        <div class="stat-row"><span>Provider</span><select id="voice-tts-provider" class="inp" style="width:150px;font-size:11px;" onchange="loadVoiceTTSConfig()"><option>loading...</option></select></div>
+        <div class="stat-row"><span>Voice</span><select id="voice-tts-voice" class="inp" style="width:150px;font-size:11px;"></select></div>
+        <div style="margin-top:8px;"><button class="btn btn-ghost" onclick="saveVoiceTTS()" style="font-size:11px;">Save TTS</button></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Speech-to-Text (STT)</h3>
+        <div class="stat-row"><span>Provider</span><span id="voice-stt-provider">openai</span></div>
+        <div class="stat-row"><span>Model</span><span>whisper-1</span></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Voice Activity Detection (VAD)</h3>
+        <div class="stat-row"><span>Threshold</span><input id="voice-vad-threshold" type="range" min="0" max="100" value="50" style="width:150px;" onchange="document.getElementById('voice-vad-val').textContent=this.value+'%'"><span id="voice-vad-val" style="font-size:11px;color:var(--text2);">50%</span></div>
+        <div style="margin-top:8px;"><button class="btn btn-ghost" onclick="saveVoiceVAD()" style="font-size:11px;">Save VAD</button></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Audio Format</h3>
+        <div style="display:flex;gap:12px;" id="voice-format-options"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Remote deploy modal -->
   <div id="remote-deploy-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
     <div class="card" style="width:480px;">
@@ -3706,7 +3799,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','automation','channels','sessions','codegraph','workflow','eval','mcp','vault','computer','remote','daemons','importexport','update','reflection','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','tools','metacognition','agents','services','nodes','jobs','projects','automation','channels','sessions','codegraph','workflow','eval','mcp','vault','computer','remote','daemons','importexport','update','reflection','voice','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3767,6 +3860,9 @@ function showPage(name) {
     importexport: loadImportExportPage,
     update: loadUpdatePage,
     reflection: loadReflectionPage,
+    tools: loadTools,
+    metacognition: loadMetacognition,
+    voice: loadVoiceConfig,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -11998,6 +12094,453 @@ async function saveReflectionSchedule() {
     });
   } catch(e) {}
 }
+
+// ── Phase 3 New Page Functions ────────────────────────────────────────────
+
+// ── Tools Page ──
+async function loadTools() {
+  var el = document.getElementById('tools-catalog');
+  showSkeleton(el, 6, 'card');
+  try {
+    var tools = await fetch(BASE + '/api/tools/registry').then(r => r.json()).catch(function() { return []; });
+    if (!tools || !tools.length) { el.innerHTML = '<div class="empty">No tools registered</div>'; return; }
+    el.innerHTML = (Array.isArray(tools) ? tools : []).map(function(t) {
+      var params = t.params || [];
+      var reqCount = params.filter(function(p) { return p.required; }).length;
+      return '<div class="card" style="display:flex;flex-direction:column;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:start;">' +
+        '<div><div style="font-weight:500;font-size:13px;font-family:JetBrains Mono,monospace;">' + esc(t.name) + '</div>' +
+        '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '').substring(0, 100) + '</div></div>' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="toggleTool(\\'' + escAttr(t.name) + '\\')">Toggle</button></div>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:6px;">' +
+        params.length + ' params (' + reqCount + ' required) · ' +
+        (t.capabilities || []).map(function(c) { return '<span style="background:var(--bg2);padding:1px 6px;border-radius:4px;margin-right:3px;">' + esc(c) + '</span>'; }).join('') +
+        '</div>' +
+        (params.length ? '<details style="margin-top:6px;"><summary style="font-size:10px;color:var(--text2);cursor:pointer;">Parameters</summary><div style="font-size:10px;color:var(--text3);margin-top:4px;background:var(--bg2);padding:6px;border-radius:4px;">' +
+          params.map(function(p) { return '<div>' + (p.required ? '<strong>' + esc(p.name) + '</strong>' : esc(p.name)) + ' <span style="color:var(--text3);">(' + p.type + ')</span> — ' + esc(p.description || '') + '</div>'; }).join('') +
+          '</div></details>' : '') +
+        '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load tools</div>'; }
+}
+async function toggleTool(name) {
+  try {
+    await fetch(BASE + '/api/tools/' + encodeURIComponent(name) + '/toggle', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: false }) });
+    toast(name + ' toggled', 'success');
+  } catch(e) { toast('Failed', 'error'); }
+}
+
+// ── Metacognition Page ──
+function loadMetacognition() { loadMetacognitionHistory(); }
+function testMetacognition() {
+  var input = document.getElementById('mc-test-input').value.trim();
+  if (!input) return;
+  var el = document.getElementById('mc-test-result');
+  // Simple keyword-based assessment (matches metacog.ts logic)
+  var signals = { isAmbiguous: /\\?$/.test(input), isComplex: input.split(' ').length > 20, isCodeTask: /code|function|class|bug|fix|implement|refactor/i.test(input), isDestructive: /rm|delete|remove|purge|drop/i.test(input), hasIndependentSubtasks: /and.*also|then.*after|first.*second|step/i.test(input) };
+  var decision = signals.isDestructive ? 'ask_first' : signals.hasIndependentSubtasks ? 'parallelize' : signals.isAmbiguous ? 'ask_first' : signals.isCodeTask ? 'plan_with_rollback' : 'direct';
+  var colors = { direct: 'var(--accent-green)', ask_first: 'var(--accent-amber)', delegate: 'var(--accent)', plan_with_rollback: 'var(--accent2)', parallelize: '#8b5cf6' };
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><span>Decision:</span><span style="font-weight:500;color:' + (colors[decision] || '') + '">' + decision + '</span></div>' +
+    '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Signals: ' + Object.entries(signals).filter(function(e) { return e[1]; }).map(function(e) { return e[0]; }).join(', ') || 'none' + '</div>';
+}
+async function loadMetacognitionHistory() {
+  var el = document.getElementById('mc-history');
+  try {
+    var history = await fetch(BASE + '/api/metacognition/history').then(r => r.json()).catch(function() { return []; });
+    if (!history || !history.length) { el.innerHTML = '<div class="empty">No assessment history</div>'; return; }
+    el.innerHTML = (Array.isArray(history) ? history : []).map(function(h) {
+      return '<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;">' +
+        '<span style="color:var(--accent);">' + esc(h.decision || '') + '</span> ' +
+        '<span style="color:var(--text2);">' + esc(h.reason || h.task || '').substring(0, 50) + '</span> ' +
+        '<span style="color:var(--text3);">' + timeAgo(h.timestamp) + '</span></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+
+// ── Voice Page ──
+async function loadVoiceConfig() {
+  loadVoiceTTSConfig();
+  loadVoiceSTTConfig();
+  renderVoiceFormats();
+}
+async function loadVoiceTTSConfig() {
+  try {
+    var data = await fetch(BASE + '/api/voice/tts').then(r => r.json());
+    var provSel = document.getElementById('voice-tts-provider');
+    provSel.innerHTML = (data.providers || ['openai']).map(function(p) { return '<option>' + esc(p) + '</option>'; }).join('');
+    var voiceSel = document.getElementById('voice-tts-voice');
+    var voices = provSel.value === 'elevenlabs' ? (data.elevenLabsVoices || []) : (data.openaiVoices || []);
+    voiceSel.innerHTML = voices.map(function(v) { return '<option>' + esc(v) + '</option>'; }).join('');
+  } catch(e) {}
+}
+async function loadVoiceSTTConfig() {
+  try {
+    var data = await fetch(BASE + '/api/voice/stt').then(r => r.json());
+    document.getElementById('voice-stt-provider').textContent = (data.providers || ['openai']).join(', ');
+  } catch(e) {}
+}
+async function saveVoiceTTS() {
+  var body = { provider: document.getElementById('voice-tts-provider').value, voice: document.getElementById('voice-tts-voice').value };
+  await fetch(BASE + '/api/voice/tts', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).catch(function(){});
+  toast('TTS saved', 'success');
+}
+async function saveVoiceVAD() {
+  await fetch(BASE + '/api/voice/vad', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ threshold: parseInt(document.getElementById('voice-vad-threshold').value) }) }).catch(function(){});
+  toast('VAD saved', 'success');
+}
+function renderVoiceFormats() {
+  var formats = ['wav', 'ogg', 'mp3', 'webm'];
+  document.getElementById('voice-format-options').innerHTML = formats.map(function(f) {
+    return '<label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;"><input type="radio" name="voice-format" value="' + f + '" ' + (f === 'mp3' ? 'checked' : '') + '>' + f.toUpperCase() + '</label>';
+  }).join('');
+}
+
+// ── Settings Extensions ──
+// Extend Settings page with Provider Comparison, Router, and Supervisor sections
+var origLoadSettings = null;
+function extendSettings() {
+  if (origLoadSettings) return;
+  origLoadSettings = loadSettings;
+  loadSettings = function() {
+    origLoadSettings();
+    setTimeout(function() { loadSettingsExtensions(); }, 500);
+  };
+}
+function loadSettingsExtensions() {
+  var tabs = document.querySelector('#page-settings [style*="border-bottom"]');
+  if (!tabs) return;
+  // Add extra tab buttons if not already present
+  if (!document.getElementById('settings-tab-providers')) {
+    tabs.innerHTML += '<button class="btn btn-ghost" onclick="switchSettingsExtTab(this,\\'providers\\')" id="settings-tab-providers" style="font-size:11px;padding:4px 10px;">Providers</button>' +
+      '<button class="btn btn-ghost" onclick="switchSettingsExtTab(this,\\'router\\')" id="settings-tab-router" style="font-size:11px;padding:4px 10px;">Router</button>' +
+      '<button class="btn btn-ghost" onclick="switchSettingsExtTab(this,\\'supervisor\\')" id="settings-tab-supervisor" style="font-size:11px;padding:4px 10px;">Supervisor</button>';
+    // Add content containers
+    var container = document.querySelector('#page-settings > div:last-of-type') || document.getElementById('page-settings');
+    var extDiv = document.createElement('div');
+    extDiv.id = 'settings-ext-content';
+    extDiv.style.cssText = 'padding:16px;display:none;';
+    container.appendChild(extDiv);
+  }
+}
+function switchSettingsExtTab(btn, tab) {
+  var el = document.getElementById('settings-ext-content');
+  ['providers','router','supervisor'].forEach(function(t) {
+    var b = document.getElementById('settings-tab-' + t);
+    if (b) b.classList.toggle('active', t === tab);
+  });
+  el.style.display = 'block';
+  if (tab === 'providers') loadProviderComparison();
+  else if (tab === 'router') loadRouterDashboard();
+  else loadSupervisorConfig();
+}
+async function loadProviderComparison() {
+  var el = document.getElementById('settings-ext-content');
+  el.innerHTML = '<div class="widget-loading">Loading provider comparison…</div>';
+  try {
+    var providers = await fetch(BASE + '/api/providers/comparison').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Provider Comparison</h3>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Provider</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Model</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:right;">Context Window</th></tr></thead><tbody>' +
+      (Array.isArray(providers) ? providers : []).map(function(p) {
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:4px 0;">' + esc(p.kind) + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + esc(p.model || '—') + '</td>' +
+          '<td style="padding:4px 0;text-align:right;color:var(--text2);">' + (p.contextWindow ? fmtNum(p.contextWindow) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadRouterDashboard() {
+  var el = document.getElementById('settings-ext-content');
+  el.innerHTML = '<div class="widget-loading">Loading router dashboard…</div>';
+  try {
+    var history = await fetch(BASE + '/api/router/history').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Router Dashboard</h3>' +
+      '<div class="stat-row"><span>Strategy</span><span id="router-strategy">cascade</span></div>' +
+      '<div class="stat-row"><span>Fallthrough Events</span><span>' + (Array.isArray(history) ? history.length : 0) + '</span></div>' +
+      '<div class="stat-row"><span>Cost Estimation</span><span>Enter prompt below</span></div>' +
+      '<input id="router-cost-input" class="inp" placeholder="Sample prompt for cost estimation..." style="font-size:11px;margin-top:8px;">' +
+      '<div id="router-cost-result" style="margin-top:4px;font-size:11px;color:var(--text3);"></div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadSupervisorConfig() {
+  var el = document.getElementById('settings-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/security/supervisor').then(r => r.json()).catch(function() { return {}; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Security Supervisor</h3>' +
+      '<div class="stat-row"><span>Provider</span><span>' + esc(data.provider || 'google') + '</span></div>' +
+      '<div class="stat-row"><span>Model</span><span>' + esc(data.model || 'gemini-2.0-flash') + '</span></div>' +
+      '<div class="stat-row"><span>Cache TTL</span><span>' + (data.cacheTTL || 3600) + 's</span></div>' +
+      '<div style="margin-top:12px;">' +
+      '<button class="btn btn-ghost" onclick="clearSupervisorCache()" style="font-size:10px;">Clear Decision Cache</button>' +
+      '<button class="btn btn-ghost" onclick="loadSupervisorHistory()" style="font-size:10px;">View History</button></div>' +
+      '<div id="supervisor-extra" style="margin-top:8px;"></div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function clearSupervisorCache() {
+  await fetch(BASE + '/api/security/supervisor/cache', { method: 'DELETE' });
+  toast('Cache cleared', 'success');
+}
+async function loadSupervisorHistory() {
+  var el = document.getElementById('supervisor-extra');
+  try {
+    var history = await fetch(BASE + '/api/security/supervisor/history').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:2px 0;color:var(--text3);">Time</th><th style="padding:2px 0;color:var(--text3);">Decision</th><th style="padding:2px 0;color:var(--text3);">Tool</th></tr></thead><tbody>' +
+      (Array.isArray(history) ? history : []).map(function(h) {
+        return '<tr><td style="padding:2px 0;">' + timeAgo(h.timestamp) + '</td><td style="padding:2px 0;">' + renderBadge(h.allowed ? 'ALLOW' : 'DENY', h.allowed ? 'green' : 'red') + '</td><td style="padding:2px 0;">' + esc(h.tool || '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">No history</div>'; }
+}
+
+// ── Memory Extensions ──
+function extendMemoryPage() {
+  if (document.getElementById('mem-tab-privacy')) return;
+  var tabs = document.querySelector('#page-memory [style*="display:flex;gap"]');
+  if (!tabs) { setTimeout(extendMemoryPage, 300); return; }
+  ['Privacy','Heuristics','Embeddings'].forEach(function(label) {
+    var id = 'mem-tab-' + label.toLowerCase();
+    tabs.innerHTML += '<button class="btn btn-ghost" onclick="switchMemExtTab(\\'' + label.toLowerCase() + '\\')" id="' + id + '" style="font-size:11px;padding:4px 10px;">' + label + '</button>';
+  });
+  var container = document.getElementById('page-memory');
+  var extDiv = document.createElement('div');
+  extDiv.id = 'mem-ext-content';
+  extDiv.style.cssText = 'flex:1;overflow-y:auto;padding:16px;display:none;';
+  container.appendChild(extDiv);
+}
+var origLoadMemoryStats;
+function patchMemoryLoader() {
+  if (origLoadMemoryStats) return;
+  origLoadMemoryStats = loadMemoryStats;
+  loadMemoryStats = function() {
+    origLoadMemoryStats();
+    setTimeout(extendMemoryPage, 500);
+  };
+}
+function switchMemExtTab(tab) {
+  var el = document.getElementById('mem-ext-content');
+  ['privacy','heuristics','embeddings'].forEach(function(t) {
+    var b = document.getElementById('mem-tab-' + t);
+    if (b) b.classList.toggle('active', t === tab);
+    // Hide main memory content when extended tab is active
+    var mainContent = document.querySelector('#page-memory > div:first-of-type > div:last-of-type');
+    if (mainContent) mainContent.style.display = tab ? 'none' : 'block';
+  });
+  el.style.display = 'block';
+  if (tab === 'privacy') loadMemPrivacy();
+  else if (tab === 'heuristics') loadMemHeuristics();
+  else loadMemEmbeddings();
+}
+async function loadMemPrivacy() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/privacy').then(r => r.json()).catch(function() { return {}; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:12px;">Privacy Settings</h3>' +
+      '<div class="stat-row"><span>PII Redaction</span><input type="checkbox" id="mem-privacy-pii" ' + (data.piiRedaction !== false ? 'checked' : '') + ' onchange="saveMemPrivacy()"></div>' +
+      '<div class="stat-row"><span>Max Retention (days)</span><input id="mem-privacy-retention" class="inp" type="number" value="' + (data.maxRetentionDays || 90) + '" style="width:80px;font-size:11px;" onchange="saveMemPrivacy()"></div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:8px;">PII patterns: email, IP, SSN, credit card, API keys</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function saveMemPrivacy() {
+  var body = {
+    piiRedaction: document.getElementById('mem-privacy-pii').checked,
+    maxRetentionDays: parseInt(document.getElementById('mem-privacy-retention').value) || 90,
+  };
+  await fetch(BASE + '/api/memory/privacy', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Privacy updated', 'success');
+}
+async function loadMemHeuristics() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/heuristics').then(r => r.json()).catch(function() { return {}; });
+    var cats = data.categories || ['api','database','devops','frontend','debugging','testing','security','performance','vcs','containers','ai-ml','programming'];
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Auto-Categorization Rules (12 patterns)</h3>' +
+      cats.map(function(c) {
+        return '<div class="list-item"><span class="dot" style="background:var(--accent);"></span><div style="font-size:11px;text-transform:capitalize;">' + esc(c) + '</div></div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadMemEmbeddings() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/embeddings').then(r => r.json()).catch(function() { return {}; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Embedding Provider</h3>' +
+      '<div class="stat-row"><span>Provider</span><span>' + esc(data.provider || 'stub') + '</span></div>' +
+      '<div class="stat-row"><span>Dimensions</span><span>' + (data.dimensions || 64) + '</span></div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+
+// ── Agents Extension: Sub-Agent Types ──
+var origLoadAgents;
+function patchAgentsLoader() {
+  if (origLoadAgents) return;
+  origLoadAgents = loadAgents;
+  loadAgents = function() {
+    origLoadAgents();
+    setTimeout(extendAgentsPage, 500);
+  };
+}
+function extendAgentsPage() {
+  if (document.getElementById('agents-sub-tab')) return;
+  var header = document.querySelector('#page-agents > div:first-of-type');
+  if (!header) return;
+  var container = document.getElementById('page-agents');
+  var tabBar = document.createElement('div');
+  tabBar.id = 'agents-sub-tab';
+  tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
+  tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchAgentsSubTab(this,\\'agents\\')" style="font-size:11px;padding:4px 10px;">Agents</button>' +
+    '<button class="btn btn-ghost" onclick="switchAgentsSubTab(this,\\'types\\')" style="font-size:11px;padding:4px 10px;">Sub-Agent Types</button>';
+  container.insertBefore(tabBar, container.children[1]);
+  var typesPanel = document.createElement('div');
+  typesPanel.id = 'agents-types-panel';
+  typesPanel.style.cssText = 'display:none;overflow-y:auto;padding:16px;';
+  container.appendChild(typesPanel);
+}
+function switchAgentsSubTab(btn, tab) {
+  var list = document.querySelector('#page-agents [style*="overflow-y:auto"]');
+  var types = document.getElementById('agents-types-panel');
+  if (tab === 'agents') { if (list) list.style.display = 'block'; types.style.display = 'none'; }
+  else { if (list) list.style.display = 'none'; types.style.display = 'block'; loadSubAgentTypes(); }
+}
+async function loadSubAgentTypes() {
+  var el = document.getElementById('agents-types-panel');
+  try {
+    var types = await fetch(BASE + '/api/agents/sub-types').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Sub-Agent Types</h3>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">' +
+      (Array.isArray(types) ? types : []).map(function(t) {
+        return '<div class="card">' +
+          '<div style="font-weight:500;font-size:13px;text-transform:capitalize;">' + esc(t.type) + '</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.label || '') + '</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Max Turns: ' + (t.maxTurns || '—') + ' · Tools: ' + (t.tools ? t.tools.length : 'all') + '</div>' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;margin-top:6px;" onclick="editSubAgentType(\\'' + escAttr(t.type) + '\\')">Edit</button></div>';
+      }).join('') + '</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function editSubAgentType(type) {
+  document.getElementById('agent-modal-title').textContent = 'Edit Sub-Agent: ' + type;
+  document.getElementById('new-agent-modal').style.display = 'flex';
+}
+
+// ── Code Runner Extension: Config Tab ──
+var origCoderunnerInit;
+function patchCoderunnerLoader() {
+  setTimeout(extendCoderunnerPage, 500);
+}
+function extendCoderunnerPage() {
+  if (document.getElementById('cr-tab-config')) return;
+  var header = document.querySelector('#page-coderunner > div:first-of-type');
+  if (!header) { setTimeout(extendCoderunnerPage, 500); return; }
+  var tabBar = document.createElement('div');
+  tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
+  tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchCoderunnerTab(this,\\'exec\\')" style="font-size:11px;padding:4px 10px;">Execute</button>' +
+    '<button class="btn btn-ghost" onclick="switchCoderunnerTab(this,\\'config\\')" id="cr-tab-config" style="font-size:11px;padding:4px 10px;">Config</button>';
+  var container = document.getElementById('page-coderunner');
+  var firstChild = container.children[1];
+  container.insertBefore(tabBar, firstChild);
+  var configPanel = document.createElement('div');
+  configPanel.id = 'cr-config-panel';
+  configPanel.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:16px;';
+  container.appendChild(configPanel);
+}
+function switchCoderunnerTab(btn, tab) {
+  var mainContent = document.querySelector('#page-coderunner > div:last-of-type');
+  var configPanel = document.getElementById('cr-config-panel');
+  if (tab === 'exec') { if (mainContent) mainContent.style.display = 'block'; configPanel.style.display = 'none'; }
+  else { if (mainContent) mainContent.style.display = 'none'; configPanel.style.display = 'block'; loadSandboxConfig(); }
+}
+async function loadSandboxConfig() {
+  var el = document.getElementById('cr-config-panel');
+  try {
+    var data = await fetch(BASE + '/api/sandbox/config').then(r => r.json());
+    el.innerHTML = '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Sandbox Configuration</h3>' +
+      '<div class="stat-row"><span>Runtime</span><span>' + esc(data.runtime || 'subprocess') + '</span></div>' +
+      '<div class="stat-row"><span>Docker</span><span>' + renderBadge(data.dockerAvailable ? 'Available' : 'Not Installed', data.dockerAvailable ? 'green' : 'red') + '</span></div>' +
+      '<div class="stat-row"><span>gVisor</span><span>' + renderBadge(data.gvisorAvailable ? 'Available' : 'Not Installed', data.gvisorAvailable ? 'green' : 'red') + '</span></div>' +
+      '<div class="stat-row"><span>Timeout</span><span>' + (data.timeout || 30) + 's</span></div>' +
+      '<div class="stat-row"><span>Memory Limit</span><span>' + (data.memoryLimit || 256) + 'MB</span></div>' +
+      '<div style="font-size:12px;font-weight:500;margin:8px 0;">Languages</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;">' + (data.languages || []).map(function(l) {
+        return '<label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:2px;"><input type="checkbox" checked disabled>' + esc(l) + '</label>';
+      }).join('') + '</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+
+// ── Policies Extension: Classification Tab ──
+var origLoadPolicies;
+function patchPoliciesLoader() {
+  if (origLoadPolicies) return;
+  origLoadPolicies = loadPolicies;
+  loadPolicies = function() {
+    origLoadPolicies();
+    setTimeout(extendPoliciesPage, 500);
+  };
+}
+function extendPoliciesPage() {
+  if (document.getElementById('pol-tab-classification')) return;
+  var header = document.querySelector('#page-policies > div:first-of-type');
+  if (!header) return;
+  var tabBar = document.createElement('div');
+  tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
+  tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchPoliciesTab(this,\\'rules\\')" style="font-size:11px;padding:4px 10px;">Rules</button>' +
+    '<button class="btn btn-ghost" onclick="switchPoliciesTab(this,\\'classification\\')" id="pol-tab-classification" style="font-size:11px;padding:4px 10px;">Classification</button>';
+  var container = document.getElementById('page-policies');
+  container.insertBefore(tabBar, container.children[1]);
+  var classPanel = document.createElement('div');
+  classPanel.id = 'pol-classification-panel';
+  classPanel.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:16px;';
+  container.appendChild(classPanel);
+}
+function switchPoliciesTab(btn, tab) {
+  var mainContent = document.querySelector('#page-policies > div:last-of-type');
+  var classPanel = document.getElementById('pol-classification-panel');
+  if (tab === 'rules') { if (mainContent) mainContent.style.display = 'block'; classPanel.style.display = 'none'; }
+  else { if (mainContent) mainContent.style.display = 'none'; classPanel.style.display = 'block'; loadClassificationConfig(); }
+}
+async function loadClassificationConfig() {
+  var el = document.getElementById('pol-classification-panel');
+  try {
+    var data = await fetch(BASE + '/api/security/classification').then(r => r.json());
+    var levels = data.levels || [];
+    el.innerHTML = '<h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Data Classification</h3>' +
+      '<div style="margin-bottom:12px;">' +
+      '<input id="class-test-input" class="inp" placeholder="Test classification with sample text..." style="font-size:12px;margin-bottom:8px;" onkeydown="if(event.key===\\'Enter\\')testClassification()">' +
+      '<button class="btn btn-ghost" onclick="testClassification()" style="font-size:10px;">Test</button>' +
+      '<div id="class-test-result" style="margin-top:4px;font-size:11px;"></div></div>' +
+      levels.map(function(l) {
+        var colors = { public: 'var(--accent-green)', normal: 'var(--accent)', sensitive: 'var(--accent-amber)', secret: 'var(--accent-red)' };
+        return '<div class="card-sm" style="margin-bottom:4px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="font-weight:500;font-size:12px;color:' + (colors[l.name] || '') + '">' + esc(l.name.toUpperCase()) + '</span>' +
+          '<span style="font-size:10px;color:var(--text3);">' + (l.patterns || []).length + ' patterns</span></div>' +
+          '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + (l.patterns || []).join(', ') || 'none' + '</div></div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function testClassification() {
+  var text = document.getElementById('class-test-input').value;
+  if (!text) return;
+  var el = document.getElementById('class-test-result');
+  try {
+    var data = await fetch(BASE + '/api/security/classification/test', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content: text })
+    }).then(r => r.json());
+    var colors = { public: 'var(--accent-green)', normal: 'var(--accent)', sensitive: 'var(--accent-amber)', secret: 'var(--accent-red)' };
+    el.innerHTML = '<span>Classification: </span><span style="font-weight:500;color:' + (colors[data.level] || '') + '">' + data.level.toUpperCase() + '</span>';
+  } catch(e) { el.innerHTML = '<span style="color:var(--accent-red);">Test failed</span>'; }
+}
+
+// Initialize page extensions on first visit
+(function initPageExtensions() {
+  patchMemoryLoader();
+  patchAgentsLoader();
+  patchCoderunnerLoader();
+  patchPoliciesLoader();
+  extendSettings();
+})();
 
 // Handle browser back/forward
 window.addEventListener('hashchange', () => {
