@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.34.0.
+This document describes the implemented architecture of CortexPrism as of v0.36.0.
 
 ---
 
@@ -352,6 +352,68 @@ retrieve(query, embedder)
 
 ---
 
+## Skills System (`src/skills/`, `src/memory/skills.ts`)
+
+Skills are Tier 4 (Procedural Memory) in the 5-tier memory architecture. They are reusable
+multi-step patterns that guide agent behavior, stored in the `procedural_memory` table of
+`memory.db`.
+
+### Sources
+
+1. **Built-in** (`src/skills/builtin/`) — 12 TypeScript modules registered in `BUILTIN_SKILLS`
+2. **Filesystem** (`.cortex/skills/<name>/SKILL.md`) — YAML frontmatter + markdown body
+3. **LLM-extracted** — Auto-generated from successful tool-call sequences during sessions
+
+### Retrieval Flow
+
+```
+User input
+  → findMatchingSkills(query, limit, embedder)
+       ├── Embedding path (when embedder available):
+       │     1. Embed query via configured embedding provider
+       │     2. Load top-100 skills with precomputed embeddings
+       │     3. Compute cosine similarity, filter > 0.3 threshold
+       │     4. Fill gaps from lexical fallback
+       │
+       └── Lexical path (fallback):
+             1. Split query into words ≥4 chars
+             2. LIKE %word% match against name, description, trigger_pattern
+             3. Rank by utility_score DESC, success_rate DESC
+  → filterReliableSkills() — gate by origin, lifecycle, trust tier, success rate
+  → formatSkillsForPrompt() — render as markdown section in system prompt
+```
+
+### Lifecycle
+
+```
+candidate → verified → released → degraded → deprecated → archived
+```
+
+LLM-extracted: `candidate` · Human-authored: `released` · Built-in: `released`
+
+### Quality & Health
+
+- `success_rate`: Bayesian rolling average
+- `utility_score`: Composite usage + success signal
+- `freshness`: Time-decay factor (30-day half-life)
+- `token_cost`: Average tokens per invocation
+- `getSkillHealth()`: Composite score from utility, redundancy, freshness, failure risk
+- `runSkillHealthMaintenance()`: Auto-deprecates stale/low-quality LLM skills
+
+### Key Modules
+
+| Module | Purpose |
+|--------|---------|
+| `src/memory/skills.ts` | CRUD, retrieval, lifecycle, health, dedup, extraction |
+| `src/skills/builtin/mod.ts` | BuiltinSkill interface, BUILTIN_SKILLS registry |
+| `src/tools/builtin/load_skill.ts` | Agent tool: load skill instructions |
+| `src/tools/builtin/skill_read.ts` | Agent tool: list/inspect skills |
+| `src/tools/builtin/skill_write.ts` | Agent tool: 8 CRUD/lifecycle operations |
+
+See [docs/SKILLS.md](SKILLS.md) for the full reference.
+
+---
+
 ## Tool System (`src/tools/`)
 
 ### Flow
@@ -392,9 +454,9 @@ LLM response text
 | `code_exec` | `builtin/code_exec.ts` | Run code in isolated Docker sandbox |
 | `sub_agent` | `builtin/sub_agent.ts` | Delegate work to a sub-agent process |
 | `node_dispatch` | `builtin/node_dispatch.ts` | Dispatch tasks to remote distributed nodes |
-| `load_skill` | `builtin/load_skill.ts` | Load a skill by name |
-| `skill_read` | `builtin/skill_read.ts` | Read a skill file |
-| `skill_write` | `builtin/skill_write.ts` | Write a new skill file |
+| `load_skill` | `builtin/load_skill.ts` | Load full skill instructions with lifecycle and quality data |
+| `skill_read` | `builtin/skill_read.ts` | List/inspect skills with origin, lifecycle, and trust filtering |
+| `skill_write` | `builtin/skill_write.ts` | Create/update/delete/merge/promote/deprecate skills |
 | `dashboard_manage` | `builtin/dashboard_manage.ts` | Manage dashboard widgets |
 | `memory_note` | `builtin/memory_note.ts` | Persist notes to episodic memory |
 | `speak` | `builtin/speak.ts` | Text-to-speech via configured TTS provider |
@@ -521,9 +583,9 @@ Token resolution order:
 | `git_push` | Stage, commit, and push to remote |
 | `sub_agent` | Spawn a specialized sub-agent process (explore, plan, code, research, general) |
 | `node_dispatch` | Delegate tasks to remote connected nodes |
-| `load_skill` | Load a skill by identifier |
-| `skill_read` | Read the contents of a skill |
-| `skill_write` | Create or update a skill |
+| `load_skill` | Load full skill instructions including lifecycle, trust, and quality scores |
+| `skill_read` | List/inspect skills with origin, lifecycle, and trust filtering |
+| `skill_write` | Create/update/delete/merge/promote/deprecate skills and manage dependencies |
 
 ### REST API
 
@@ -671,14 +733,16 @@ All databases use SQLite WAL mode via `@libsql/client`. Migrations are idempoten
 | 011_workspace.sql | cortex.db | workspace_config + file_edit_log |
 | 012_plugins_enhanced.sql | plugins.db | enhanced plugin columns |
 | 013_sessions_parent.sql | cortex.db | parent_session_id for sub-agent tracking |
-| 014_skills_origin.sql | cortex.db | skills table with origin tracking |
+| 014_skills_origin.sql | memory.db | Skills origin and content columns |
 | 015_nodes.sql | cortex.db | distributed node registry |
 | 016_node_policies.sql | cortex.db | per-node policy rules |
-| 017_skills_metadata.sql | cortex.db | skills metadata extension |
+| 017_skills_metadata.sql | memory.db | Skills metadata and indexes |
 | 018_quartermaster.sql | cortex.db | tool orchestration learning (legacy QM) |
 | 019_model_quartermaster.sql | cortex.db | Model Quartermaster (MQM) intelligence |
 | 020_episodic_updated_at.sql | memory.db | episodic_memory updated_at + graph_relation_types seed |
 | 021_workspace_type_config.sql | cortex.db | workspace type configuration |
+| 022_policy_enabled.sql | cortex.db | policy enabled flag |
+| 023_skills_enhancements.sql | memory.db | Skills lifecycle, trust, health, deps, embedding |
 
 ---
 
