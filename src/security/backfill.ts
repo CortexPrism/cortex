@@ -53,8 +53,8 @@ async function backfillCoreDb(): Promise<number> {
   let updated = 0;
 
   // Backfill sessions table
-  const sessions = await db.all<{ id: string; created_at: string }>(
-    'SELECT id, created_at FROM sessions WHERE sensitivity IS NULL',
+  const sessions = await db.all<{ id: string }>(
+    'SELECT id FROM sessions WHERE sensitivity IS NULL',
   );
 
   for (const session of sessions) {
@@ -62,20 +62,6 @@ async function backfillCoreDb(): Promise<number> {
     await db.run(
       'UPDATE sessions SET sensitivity = ? WHERE id = ?',
       ['sensitive', session.id],
-    );
-    updated++;
-  }
-
-  // Backfill agents table
-  const agents = await db.all<{ id: string; name: string; description: string }>(
-    'SELECT id, name, description FROM agents WHERE sensitivity IS NULL',
-  );
-
-  for (const agent of agents) {
-    // Agents are system configuration, classify as 'normal'
-    await db.run(
-      'UPDATE agents SET sensitivity = ? WHERE id = ?',
-      ['normal', agent.id],
     );
     updated++;
   }
