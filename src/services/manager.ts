@@ -52,6 +52,7 @@ interface ServiceRuntime {
 
 // In-memory runtime map (process handles are not serializable)
 const runningServices = new Map<string, ServiceRuntime>();
+let serviceManagerBooted = false;
 
 // Health check intervals
 const healthTimers = new Map<string, number>();
@@ -360,12 +361,17 @@ function stopHealthCheck(id: string): void {
 // ── Auto-start registered services ─────────────────────────
 
 export async function startAutoServices(): Promise<void> {
+  serviceManagerBooted = true;
   const services = await listServices();
   for (const s of services) {
     if (s.autoStart && s.status === 'stopped') {
       startService(s.id).catch(() => {});
     }
   }
+}
+
+export function isServiceManagerActive(): boolean {
+  return serviceManagerBooted;
 }
 
 export async function getRuntimeStatus(): Promise<

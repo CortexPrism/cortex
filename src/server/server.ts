@@ -10,6 +10,7 @@ import { loadConfig } from '../config/config.ts';
 import { configureLogger } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
 import { hasPassword, parseCookies, requireAuth } from './auth.ts';
+import { startAutoServices } from '../services/manager.ts';
 
 const _log = logger('server');
 
@@ -78,6 +79,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   }
 
   ensureDaemons().catch(() => {});
+  startAutoServices().catch(() => {});
   schedulePluginUpdateChecks();
 
   const { port, host } = opts;
