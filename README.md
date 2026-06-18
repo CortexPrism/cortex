@@ -120,7 +120,7 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 | GitHub         | PR creation/listing, issue tracking, repo browsing, git push                               |
 | Git workspace  | status, commit, push, pull, branch, clone                                                  |
 | Voice          | speak, listen (STT/TTS agent tools)                                                        |
-| Memory         | memory_note — persist notes; memory_search — query memory tiers; db_query — read databases |
+| Memory & Data  | memory_note, memory_search, db_query, structured_extract (LLM-powered extraction)         |
 | Sub-agents     | spawn typed child agents for parallel and delegated tasks                                  |
 | Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)         |
 | Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                    |
