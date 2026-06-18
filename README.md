@@ -110,20 +110,20 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 ### Built-in Tools
 
-| Category       | Tools                                                                                   |
-| -------------- | --------------------------------------------------------------------------------------- |
-| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo     |
-| Shell          | execute shell commands (sandboxed through policy validator)                             |
-| Web            | web_search (DuckDuckGo, Brave, Tavily, SerpAPI), web_fetch (returns cleaned plain text) |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                     |
-| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                            |
-| Git workspace  | status, commit, push, pull, branch, clone                                               |
-| Voice          | speak, listen (STT/TTS agent tools)                                                     |
-| Memory         | memory_note — persist notes; memory_search — query episodic/semantic/graph memory tiers |
-| Sub-agents     | spawn typed child agents for parallel and delegated tasks                               |
-| Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)      |
-| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                 |
-| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                              |
+| Category       | Tools                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo        |
+| Shell          | execute shell commands (sandboxed through policy validator)                                |
+| Web            | web_search (DuckDuckGo, Brave, Tavily, SerpAPI), web_fetch (returns cleaned plain text)    |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                        |
+| GitHub         | PR creation/listing, issue tracking, repo browsing, git push                               |
+| Git workspace  | status, commit, push, pull, branch, clone                                                  |
+| Voice          | speak, listen (STT/TTS agent tools)                                                        |
+| Memory         | memory_note — persist notes; memory_search — query memory tiers; db_query — read databases |
+| Sub-agents     | spawn typed child agents for parallel and delegated tasks                                  |
+| Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)         |
+| Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                                    |
+| Nodes          | node_dispatch — dispatch tasks to remote distributed nodes                                 |
 
 ### Web UI & REST API
 
