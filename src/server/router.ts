@@ -1552,9 +1552,38 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
+  // GET /api/agents/sub-types — static route, must precede :id wildcard
+  if (req.method === 'GET' && path === '/api/agents/sub-types') {
+    const { listSubAgentTypes } = await import('../agent/sub-agent-types.ts');
+    return json(listSubAgentTypes());
+  }
+
+  // PUT /api/agents/sub-types/:name — static route, must precede :id wildcard
+  const subAgentTypesMatch = path.match(/^\/api\/agents\/sub-types\/([^/]+)$/);
+  if (req.method === 'PUT' && subAgentTypesMatch) {
+    const body = await req.json() as {
+      tools?: string[];
+      model?: string;
+      provider?: string;
+      maxTurns?: number;
+      systemPrompt?: string;
+    };
+    const { SUB_AGENT_TYPES } = await import('../agent/sub-agent-types.ts');
+    const name = subAgentTypesMatch[1];
+    const def = SUB_AGENT_TYPES[name as keyof typeof SUB_AGENT_TYPES];
+    if (!def) return notFound('Sub-agent type not found');
+    if (body.tools !== undefined) def.tools = body.tools;
+    if (body.model !== undefined) def.model = body.model;
+    if (body.provider !== undefined) def.provider = body.provider as unknown as undefined;
+    if (body.maxTurns !== undefined) def.maxTurns = body.maxTurns;
+    if (body.systemPrompt !== undefined) def.systemPrompt = body.systemPrompt;
+    return json({ ok: true, type: def });
+  }
+
   // GET /api/agents/:id
   const agentGetMatch = path.match(/^\/api\/agents\/([^/]+)$/);
   if (req.method === 'GET' && agentGetMatch) {
+    if (agentGetMatch[1] === 'sub-types') return notFound('Use /api/agents/sub-types');
     const agent = await getAgent(agentGetMatch[1]);
     if (!agent) return notFound('Agent not found');
     return json(agent);
@@ -3637,38 +3666,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/metacognition/decisions?sessionId=
   if (req.method === 'GET' && path === '/api/metacognition/decisions') {
     return json([]);
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // Phase 3: Sub-Agent Types API
-  // ═══════════════════════════════════════════════════════════════
-
-  // GET /api/agents/sub-types
-  if (req.method === 'GET' && path === '/api/agents/sub-types') {
-    const { listSubAgentTypes } = await import('../agent/sub-agent-types.ts');
-    return json(listSubAgentTypes());
-  }
-
-  // PUT /api/agents/sub-types/:name
-  const subAgentTypesMatch = path.match(/^\/api\/agents\/sub-types\/([^/]+)$/);
-  if (req.method === 'PUT' && subAgentTypesMatch) {
-    const body = await req.json() as {
-      tools?: string[];
-      model?: string;
-      provider?: string;
-      maxTurns?: number;
-      systemPrompt?: string;
-    };
-    const { SUB_AGENT_TYPES } = await import('../agent/sub-agent-types.ts');
-    const name = subAgentTypesMatch[1];
-    const def = SUB_AGENT_TYPES[name as keyof typeof SUB_AGENT_TYPES];
-    if (!def) return notFound('Sub-agent type not found');
-    if (body.tools !== undefined) def.tools = body.tools;
-    if (body.model !== undefined) def.model = body.model;
-    if (body.provider !== undefined) def.provider = body.provider as unknown as undefined;
-    if (body.maxTurns !== undefined) def.maxTurns = body.maxTurns;
-    if (body.systemPrompt !== undefined) def.systemPrompt = body.systemPrompt;
-    return json({ ok: true, type: def });
   }
 
   // ═══════════════════════════════════════════════════════════════
