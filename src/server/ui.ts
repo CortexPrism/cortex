@@ -372,6 +372,7 @@ const HTML = `<!DOCTYPE html>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -950,6 +951,24 @@ const HTML = `<!DOCTYPE html>
     </button>
     <button class="nav-item" onclick="showPage('channels');closeMobileSidebar()" id="nav-channels">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M4 14h9M4 18h6"/><path d="M18 8a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><path d="M18 16a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/><line x1="20" y1="10" x2="20" y2="14"/></svg></span> Channels
+    </button>
+
+    <!-- Tools & Engines -->
+    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Tools & Engines <span class="nav-section-toggle">▼</span></div>
+    <button class="nav-item" onclick="showPage('codegraph');closeMobileSidebar()" id="nav-codegraph">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Codegraph
+    </button>
+    <button class="nav-item" onclick="showPage('workflow');closeMobileSidebar()" id="nav-workflow">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Workflows
+    </button>
+    <button class="nav-item" onclick="showPage('eval');closeMobileSidebar()" id="nav-eval">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> Eval
+    </button>
+    <button class="nav-item" onclick="showPage('mcp');closeMobileSidebar()" id="nav-mcp">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> MCP
+    </button>
+    <button class="nav-item" onclick="showPage('vault');closeMobileSidebar()" id="nav-vault">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Vault
     </button>
 
     <!-- System -->
@@ -2237,14 +2256,23 @@ const HTML = `<!DOCTYPE html>
    </div>
 
   <!-- Modal: Security Approval Request -->
-  <div id="approval-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+  <div id="approval-modal" role="alertdialog" aria-modal="true" aria-labelledby="approval-title" aria-describedby="approval-reasoning" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);">
     <div class="card" style="width:600px;max-height:90vh;overflow-y:auto;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
         <span style="font-size:20px;">⚠️</span>
-        <div style="font-size:16px;font-weight:600;">Security Approval Required</div>
+        <div id="approval-title" style="font-size:16px;font-weight:600;">Security Approval Required</div>
       </div>
       <div id="approval-details" style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:16px;font-size:12px;line-height:1.5;">
         <!-- Details populated by JavaScript -->
+      </div>
+      <div id="approval-confidence" style="margin-bottom:16px;display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:11px;color:var(--text3);">Supervisor Confidence:</span>
+          <span id="approval-confidence-pct" style="font-size:11px;font-weight:600;color:var(--text2);">85%</span>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;">
+          <div id="approval-confidence-bar" style="height:100%;width:0%;background:var(--accent);transition:width 0.4s ease;border-radius:2px;"></div>
+        </div>
       </div>
       <div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid var(--accent);font-size:12px;line-height:1.5;">
         <div style="color:var(--text3);margin-bottom:6px;font-weight:600;">AI Supervisor Reasoning:</div>
@@ -2253,10 +2281,181 @@ const HTML = `<!DOCTYPE html>
       <div id="approval-sample" style="display:none;background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:16px;border:1px solid var(--border);font-size:11px;font-family:"JetBrains Mono",monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-word;">
         <!-- Sample data populated by JavaScript -->
       </div>
-      <div style="display:flex;gap:8px;margin-top:16px;">
-        <button class="btn btn-success" onclick="approveSecurityRequest()" id="approval-approve-btn">Approve Access</button>
-        <button class="btn btn-danger" onclick="denySecurityRequest()" id="approval-deny-btn">Deny Access</button>
-        <button class="btn btn-secondary" onclick="showApprovalDetails()" id="approval-details-btn">Show Sample Data</button>
+      <div id="approval-loading" style="display:none;text-align:center;padding:20px;">
+        <div class="spinner" style="width:24px;height:24px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text3);">Consulting AI supervisor...</div>
+      </div>
+      <div id="approval-timeout" style="margin-bottom:12px;font-size:11px;color:var(--text3);">
+        Auto-deny in <span id="approval-timer" style="font-family:'JetBrains Mono',monospace;">5:00</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-success" onclick="approveSecurityRequest()" id="approval-approve-btn" aria-label="Approve security access">Approve Access</button>
+        <button class="btn btn-danger" onclick="denySecurityRequest()" id="approval-deny-btn" aria-label="Deny security access">Deny Access</button>
+        <button class="btn btn-secondary" onclick="showApprovalDetails()" id="approval-details-btn" aria-label="Show sample data">Show Sample Data</button>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text3);">
+        <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">Esc</kbd> Deny &nbsp;
+        <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">Ctrl+Enter</kbd> Approve &nbsp;
+        <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">D</kbd> Details
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Codegraph -->
+  <div id="page-codegraph" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Codegraph</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Interactive code dependency graph explorer</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="cg-project-select" class="inp" style="width:200px;font-size:12px;padding:5px 8px;" onchange="loadCodegraphProject(this.value)">
+          <option value="">Select project…</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadCodegraphProjects()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:280px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:12px;border-bottom:1px solid var(--border);">
+          <input id="cg-symbol-search" class="inp" placeholder="Search symbol…" style="font-size:12px;" onkeydown="if(event.key==='Enter')searchCodegraphSymbol()" />
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:8px;" id="cg-search-results"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div id="cg-graph-container" style="flex:1;position:relative;background:var(--bg2);overflow:hidden;">
+          <div id="cg-graph" style="width:100%;height:100%;"></div>
+          <div id="cg-legend" style="position:absolute;top:10px;right:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text2);z-index:10;">
+            <div style="margin-bottom:4px;font-weight:500;">Legend</div>
+            <div id="cg-legend-items"></div>
+          </div>
+          <div id="cg-empty-state" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+            <div style="text-align:center;color:var(--text3);">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin:0 auto 8px;opacity:0.3;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <p style="font-size:13px;">Select a project to visualize</p>
+              <p style="font-size:11px;margin-top:4px;">Index your codebase to explore dependencies</p>
+            </div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;background:var(--bg2);" id="cg-panel-tabs">
+          <button class="btn btn-ghost active" onclick="switchCodegraphPanel('impact')" id="cg-tab-impact" style="font-size:11px;padding:4px 10px;">Impact</button>
+          <button class="btn btn-ghost" onclick="switchCodegraphPanel('architecture')" id="cg-tab-architecture" style="font-size:11px;padding:4px 10px;">Architecture</button>
+          <button class="btn btn-ghost" onclick="switchCodegraphPanel('trace')" id="cg-tab-trace" style="font-size:11px;padding:4px 10px;">Path Tracer</button>
+        </div>
+        <div style="height:200px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="cg-bottom-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Workflows -->
+  <div id="page-workflow" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Workflows</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Visual workflow engine designer</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="showWorkflowCreateModal()" style="font-size:12px;padding:5px 14px;">+ New Workflow</button>
+        <button class="btn btn-ghost" onclick="loadWorkflows()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:320px;min-width:280px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Saved Workflows</div>
+        <div style="flex:1;overflow-y:auto;" id="wf-list"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div id="wf-editor" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;">
+          <div style="text-align:center;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin:0 auto 8px;opacity:0.3;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <p>Select a workflow or create a new one</p>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);" id="wf-bottom-tabs">
+          <button class="btn btn-ghost active" onclick="switchWorkflowTab('history')" id="wf-tab-history" style="font-size:11px;padding:6px 12px;border-radius:0;">Run History</button>
+          <button class="btn btn-ghost" onclick="switchWorkflowTab('approvals')" id="wf-tab-approvals" style="font-size:11px;padding:6px 12px;border-radius:0;">Approval Queue</button>
+        </div>
+        <div style="height:200px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="wf-bottom-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Eval -->
+  <div id="page-eval" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Eval Runner</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Agent evaluation suite runner</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadEvalSuites()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:320px;min-width:280px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Eval Suites</div>
+        <div style="flex:1;overflow-y:auto;" id="eval-suites-list"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="flex:1;overflow-y:auto;padding:16px;" id="eval-results"></div>
+        <div style="border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:8px;background:var(--bg2);">
+          <button class="btn btn-ghost active" onclick="switchEvalTab('results')" id="eval-tab-results" style="font-size:11px;padding:4px 10px;">Results</button>
+          <button class="btn btn-ghost" onclick="switchEvalTab('baselines')" id="eval-tab-baselines" style="font-size:11px;padding:4px 10px;">Baselines</button>
+          <button class="btn btn-ghost" onclick="switchEvalTab('regression')" id="eval-tab-regression" style="font-size:11px;padding:4px 10px;">Regression Diff</button>
+        </div>
+        <div style="height:250px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="eval-bottom-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: MCP -->
+  <div id="page-mcp" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">MCP Server</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Model Context Protocol connections</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="showMCPAddModal()" style="font-size:12px;padding:5px 14px;">+ Add Connection</button>
+        <button class="btn btn-ghost" onclick="loadMCPConnections()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:340px;min-width:300px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Connections</div>
+        <div style="flex:1;overflow-y:auto;" id="mcp-connections-list"></div>
+        <div style="padding:10px 12px;border-top:1px solid var(--border);" id="mcp-server-status"></div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px;" id="mcp-tools-panel">
+        <div style="text-align:center;color:var(--text3);padding:60px 20px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px;opacity:0.4;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <p style="font-size:13px;">Select a connection to browse tools</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Vault -->
+  <div id="page-vault" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Encrypted Vault</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">AES-256-GCM credential store</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="showVaultCredentialModal()" style="font-size:12px;padding:5px 14px;">+ Add Credential</button>
+        <button class="btn btn-ghost" onclick="loadVaultCredentials()" style="font-size:12px;">↻ Refresh</button>
+        <button class="btn btn-ghost" onclick="exportVault()" style="font-size:12px;">Export</button>
+      </div>
+    </div>
+    <div id="vault-key-warning" style="display:none;padding:8px 24px;background:rgba(234,179,8,0.1);border-bottom:1px solid rgba(234,179,8,0.2);font-size:12px;color:#fbbf24;">
+      ⚠ Vault encryption key (CORTEX_VAULT_KEY) not set — credentials are NOT encrypted
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:16px;" id="vault-credentials-list"></div>
+      <div style="width:340px;min-width:300px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Access Audit</div>
+        <div style="flex:1;overflow-y:auto;padding:8px;" id="vault-audit-log"></div>
       </div>
     </div>
   </div>
@@ -2265,6 +2464,7 @@ const HTML = `<!DOCTYPE html>
 </div>
 
 <div id="toast-container" role="status" aria-live="polite"></div>
+<div id="approval-live-region" role="status" aria-live="assertive" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;"></div>
 
 <!-- ── Confirm dialog ───────────────────────────── -->
 <div id="confirm-overlay" class="confirm-overlay" onclick="closeConfirmDialog(event)">
@@ -2387,6 +2587,133 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
     </div>
     <!-- Resize handle -->
     <div id="sd-resize-handle" style="position:absolute;top:45px;bottom:0;left:55%;width:4px;cursor:col-resize;z-index:10;background:transparent;" onmousedown="sdStartResize(event)"></div>
+  </div>
+
+  <!-- Workflow create modal -->
+  <div id="wf-create-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:500px;max-height:80vh;overflow-y:auto;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Create Workflow</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Name</label>
+        <input id="wf-name-input" class="inp" placeholder="my-workflow" style="font-size:12px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Description</label>
+        <input id="wf-desc-input" class="inp" placeholder="What does this workflow do?" style="font-size:12px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Steps (JSON)</label>
+        <textarea id="wf-steps-input" class="inp" rows="8" placeholder='[{"kind":"step","name":"my-step","action":"shell","params":{"command":"echo hello"}}]' style="font-size:11px;font-family:JetBrains Mono,monospace;"></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="saveWorkflow()">Save</button>
+        <button class="btn btn-ghost" onclick="hideModal('wf-create-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workflow run modal -->
+  <div id="wf-run-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:500px;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Run Workflow</h2>
+      <div id="wf-run-content"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="execWorkflow()">Execute</button>
+        <button class="btn btn-ghost" onclick="hideModal('wf-run-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eval run modal -->
+  <div id="eval-run-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:480px;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Run Eval Suite</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Suite</label>
+        <span id="eval-run-suite-name" style="font-size:13px;font-weight:500;"></span></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Agent</label>
+        <select id="eval-run-agent" class="inp" style="font-size:12px;"><option value="">Default</option></select></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Provider Override</label>
+        <select id="eval-run-provider" class="inp" style="font-size:12px;"><option value="">Default</option>${PROVIDER_OPTIONS_HTML}</select></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Baseline</label>
+        <select id="eval-run-baseline" class="inp" style="font-size:12px;"><option value="">None</option></select></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Timeout (seconds)</label>
+        <input id="eval-run-timeout" class="inp" type="number" value="120" style="font-size:12px;width:120px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="startEvalRun()">Start Run</button>
+        <button class="btn btn-ghost" onclick="hideModal('eval-run-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MCP add modal -->
+  <div id="mcp-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:480px;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Add MCP Connection</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Name</label>
+        <input id="mcp-add-name" class="inp" placeholder="my-mcp-server" style="font-size:12px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Transport</label>
+        <select id="mcp-add-transport" class="inp" style="font-size:12px;" onchange="toggleMCPTransportFields()">
+          <option value="stdio">stdio (command)</option>
+          <option value="http">HTTP (URL)</option>
+        </select></div>
+        <div id="mcp-stdio-fields"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Command</label>
+        <input id="mcp-add-command" class="inp" placeholder="npx -y @modelcontextprotocol/server-filesystem" style="font-size:12px;"></div>
+        <div id="mcp-http-fields" style="display:none;"><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">URL</label>
+        <input id="mcp-add-url" class="inp" placeholder="http://localhost:8080/mcp" style="font-size:12px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="mcp-add-autoconnect" checked>
+          <label style="font-size:12px;color:var(--text2);">Auto-connect on startup</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="addMCPConnection()">Add</button>
+        <button class="btn btn-ghost" onclick="testMCPConnection()">Test</button>
+        <button class="btn btn-ghost" onclick="hideModal('mcp-add-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vault credential modal -->
+  <div id="vault-credential-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:480px;max-height:85vh;overflow-y:auto;">
+      <h2 id="vault-modal-title" style="font-size:15px;font-weight:600;margin-bottom:16px;">Add Credential</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Key Name</label>
+        <input id="vault-key-input" class="inp" placeholder="OPENAI_API_KEY" style="font-size:12px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Value</label>
+        <div style="position:relative;">
+          <input id="vault-value-input" class="inp" type="password" placeholder="sk-…" style="font-size:12px;padding-right:40px;">
+          <button onclick="toggleVaultValueReveal()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;">👁</button>
+        </div></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Expiration</label>
+        <select id="vault-expiration" class="inp" style="font-size:12px;">
+          <option value="">Never</option>
+          <option value="30d">30 days</option>
+          <option value="90d">90 days</option>
+          <option value="1y">1 year</option>
+        </select></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Max Uses (0 = unlimited)</label>
+        <input id="vault-max-uses" class="inp" type="number" value="0" min="0" style="font-size:12px;width:120px;"></div>
+        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Tags</label>
+        <input id="vault-tags-input" class="inp" placeholder="api, openai" style="font-size:12px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="saveVaultCredential()">Save</button>
+        <button class="btn btn-ghost" onclick="hideModal('vault-credential-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vault import modal -->
+  <div id="vault-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
+    <div class="card" style="width:480px;">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:16px;">Import Vault Data</h2>
+      <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Upload encrypted JSON file</label>
+      <input type="file" id="vault-import-file" accept=".json" style="font-size:12px;margin-top:4px;"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" onclick="importVault()">Import</button>
+        <button class="btn btn-ghost" onclick="hideModal('vault-import-modal')">Cancel</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -3155,7 +3482,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','automation','channels','sessions','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
+const PAGES = ['dashboard','chat','editor','vcs','coderunner','memory','skills','lens','agents','services','nodes','jobs','projects','automation','channels','sessions','codegraph','workflow','eval','mcp','vault','settings','soul','policies','extensions','analytics','pluginpanels','quartermaster'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3205,6 +3532,11 @@ function showPage(name) {
     channels: loadChannels,
     vcs: gitRefresh,
     agents: loadAgents, services: loadServices,
+    codegraph: loadCodegraphPage,
+    workflow: loadWorkflowsPage,
+    eval: loadEvalPage,
+    mcp: loadMCPPage,
+    vault: loadVaultPage,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -4491,82 +4823,256 @@ function hideSkillModal() {
    document.getElementById('skill-modal').style.display = 'none';
  }
 
- // ── Security Approval Modal Functions ──────────────────────
- let currentApprovalRequest = null;
- let currentApprovalRequestId = null;
+  // ── Security Approval Modal Functions ──────────────────────
+  let currentApprovalRequest = null;
+  let currentApprovalRequestId = null;
+  let approvalTimeoutId = null;
+  const APPROVAL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
- function showApprovalModal(request, reasoning, requestId) {
-   currentApprovalRequest = request;
-   currentApprovalRequestId = requestId;
+  function showApprovalModal(request, reasoning, requestId) {
+    currentApprovalRequest = request;
+    currentApprovalRequestId = requestId;
 
-   // Populate request details
-   let detailsHtml = '<div>' +
-     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Agent:</div>' +
-     '<div style="margin-bottom:12px;">' + (request.agentId || '') + '</div>' +
-     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Tool:</div>' +
+    // Hide loading state
+    document.getElementById('approval-loading').style.display = 'none';
+    // Reset buttons
+    document.getElementById('approval-approve-btn').disabled = false;
+    document.getElementById('approval-deny-btn').disabled = false;
+
+    // Populate request details with classification badge
+    const icon = getClassificationIcon(request.dataClassification);
+    let detailsHtml = '<div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">' +
+      '<div>' +
+      '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Agent:</div>' +
+      '<div style="margin-bottom:12px;">' + (request.agentId || '') + '</div>' +
+      '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Tool:</div>' +
       '<div style="margin-bottom:12px;font-family:"JetBrains Mono",monospace;font-size:11px;">' + (request.tool || '') + '</div>' +
+      '</div>' +
+      '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:' + getClassificationColor(request.dataClassification) + ';border:1px solid ' + getClassificationBorder(request.dataClassification) + ';">' +
+      '<span>' + icon + '</span>' +
+      '<span>' + request.dataClassification.toUpperCase() + '</span>' +
+      '</div>' +
+      '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Query/Search:</div>' +
       '<div style="margin-bottom:12px;font-family:"JetBrains Mono",monospace;font-size:11px;overflow-x:auto;">' + (request.query || '') + '</div>' +
-     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Justification:</div>' +
-     '<div style="margin-bottom:12px;">' + (request.requestReason || '(none provided)') + '</div>' +
-     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Classification:</div>' +
-     '<div style="display:inline-block;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;background:' + getClassificationColor(request.dataClassification) + ';">' + request.dataClassification.toUpperCase() + '</div>' +
-     '</div>';
-   document.getElementById('approval-details').innerHTML = detailsHtml;
+      '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Justification:</div>' +
+      '<div style="margin-bottom:12px;">' + (request.requestReason || '(none provided)') + '</div>' +
+      '</div>';
+    document.getElementById('approval-details').innerHTML = detailsHtml;
 
-   // Populate reasoning
-   document.getElementById('approval-reasoning').textContent = reasoning;
+    // Populate reasoning
+    document.getElementById('approval-reasoning').textContent = reasoning;
 
-   // Hide sample data initially
-   if (request.sampleData) {
-     document.getElementById('approval-sample').textContent = request.sampleData;
-   }
-   document.getElementById('approval-sample').style.display = 'none';
+    // Show confidence if available
+    const confidenceDiv = document.getElementById('approval-confidence');
+    if (request.confidence !== undefined && request.confidence !== null) {
+      const pct = Math.round(request.confidence * 100);
+      document.getElementById('approval-confidence-pct').textContent = pct + '%';
+      const bar = document.getElementById('approval-confidence-bar');
+      bar.style.width = pct + '%';
+      bar.style.background = pct >= 70 ? 'var(--accent-green)' : pct >= 40 ? 'var(--accent-orange)' : 'var(--accent-red)';
+      confidenceDiv.style.display = 'block';
+    } else {
+      confidenceDiv.style.display = 'none';
+    }
 
-   // Show modal
-   document.getElementById('approval-modal').style.display = 'flex';
- }
+    // Hide sample data initially
+    if (request.sampleData) {
+      document.getElementById('approval-sample').textContent = request.sampleData;
+      document.getElementById('approval-details-btn').style.display = '';
+    } else {
+      document.getElementById('approval-details-btn').style.display = 'none';
+    }
+    document.getElementById('approval-sample').style.display = 'none';
+    document.getElementById('approval-details-btn').textContent = 'Show Sample Data';
 
- function getClassificationColor(level) {
-   const colors = {
-     'public': 'rgba(76,175,80,0.3)',
-     'normal': 'rgba(33,150,243,0.3)',
-     'sensitive': 'rgba(255,152,0,0.3)',
-     'secret': 'rgba(244,67,54,0.3)',
-   };
-   return colors[level] || 'rgba(128,128,128,0.3)';
- }
+    // Start timeout countdown
+    document.getElementById('approval-timer').textContent = '5:00';
+    document.getElementById('approval-timer').style.color = 'var(--text3)';
+    document.getElementById('approval-timer').style.fontWeight = 'normal';
+    startApprovalTimeout();
 
- function showApprovalDetails() {
-   const sampleDiv = document.getElementById('approval-sample');
-   if (sampleDiv.style.display === 'none') {
-     sampleDiv.style.display = 'block';
-     document.getElementById('approval-details-btn').textContent = 'Hide Sample Data';
-   } else {
-     sampleDiv.style.display = 'none';
-     document.getElementById('approval-details-btn').textContent = 'Show Sample Data';
-   }
- }
+    // Show modal and focus first button
+    document.getElementById('approval-modal').style.display = 'flex';
+    setTimeout(() => {
+      document.getElementById('approval-approve-btn').focus();
+    }, 100);
 
- function approveSecurityRequest() {
-   if (!currentApprovalRequestId) return;
-   ws.send(JSON.stringify({
-     type: 'approval_response',
-     requestId: currentApprovalRequestId,
-     approved: true,
-   }));
-   document.getElementById('approval-modal').style.display = 'none';
- }
+    // Announce for screen readers
+    announceApprovalRequest(request);
+  }
 
- function denySecurityRequest() {
-   if (!currentApprovalRequestId) return;
-   ws.send(JSON.stringify({
-     type: 'approval_response',
-     requestId: currentApprovalRequestId,
-     approved: false,
-   }));
-   document.getElementById('approval-modal').style.display = 'none';
- }
+  function getClassificationIcon(level) {
+    const icons = {
+      'public': '\uD83C\uDF10', // globe
+      'normal': '\uD83D\uDCC4', // page
+      'sensitive': '\u26A0\uFE0F', // warning
+      'secret': '\uD83D\uDD12', // lock
+    };
+    return icons[level] || '\uD83D\uDCC4';
+  }
+
+  function getClassificationBorder(level) {
+    const borders = {
+      'public': 'rgba(76,175,80,0.5)',
+      'normal': 'rgba(33,150,243,0.5)',
+      'sensitive': 'rgba(255,152,0,0.5)',
+      'secret': 'rgba(244,67,54,0.5)',
+    };
+    return borders[level] || 'rgba(128,128,128,0.5)';
+  }
+
+  function startApprovalTimeout() {
+    clearApprovalTimeout();
+    const startTime = Date.now();
+    const timerSpan = document.getElementById('approval-timer');
+
+    approvalTimeoutId = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = APPROVAL_TIMEOUT_MS - elapsed;
+
+      if (remaining <= 0) {
+        clearApprovalTimeout();
+        autoDeclineApproval();
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      timerSpan.textContent = minutes + ':' + String(seconds).padStart(2, '0');
+
+      // Visual warning at 30 seconds
+      if (remaining <= 30000) {
+        timerSpan.style.color = 'var(--accent-red)';
+        timerSpan.style.fontWeight = '600';
+      }
+    }, 1000);
+  }
+
+  function clearApprovalTimeout() {
+    if (approvalTimeoutId) {
+      clearInterval(approvalTimeoutId);
+      approvalTimeoutId = null;
+    }
+  }
+
+  function autoDeclineApproval() {
+    if (!currentApprovalRequestId) return;
+    ws.send(JSON.stringify({
+      type: 'approval_response',
+      requestId: currentApprovalRequestId,
+      approved: false,
+    }));
+    closeApprovalModal();
+    showToast('Security approval timed out \u2014 access denied', 'error');
+  }
+
+  function announceApprovalRequest(request) {
+    const announcement = 'Security approval required. Agent requests access to ' +
+      request.dataClassification + ' data using tool ' + request.tool + '.';
+    const liveRegion = document.getElementById('approval-live-region');
+    if (liveRegion) {
+      liveRegion.textContent = announcement;
+    }
+  }
+
+  function closeApprovalModal() {
+    document.getElementById('approval-modal').style.display = 'none';
+    document.getElementById('approval-approve-btn').disabled = false;
+    document.getElementById('approval-deny-btn').disabled = false;
+    currentApprovalRequest = null;
+    currentApprovalRequestId = null;
+    clearApprovalTimeout();
+  }
+
+  function getClassificationColor(level) {
+    const colors = {
+      'public': 'rgba(76,175,80,0.3)',
+      'normal': 'rgba(33,150,243,0.3)',
+      'sensitive': 'rgba(255,152,0,0.3)',
+      'secret': 'rgba(244,67,54,0.3)',
+    };
+    return colors[level] || 'rgba(128,128,128,0.3)';
+  }
+
+  function showApprovalDetails() {
+    const sampleDiv = document.getElementById('approval-sample');
+    if (sampleDiv.style.display === 'none') {
+      sampleDiv.style.display = 'block';
+      document.getElementById('approval-details-btn').textContent = 'Hide Sample Data';
+    } else {
+      sampleDiv.style.display = 'none';
+      document.getElementById('approval-details-btn').textContent = 'Show Sample Data';
+    }
+  }
+
+  function approveSecurityRequest() {
+    if (!currentApprovalRequestId) return;
+    document.getElementById('approval-approve-btn').disabled = true;
+    document.getElementById('approval-deny-btn').disabled = true;
+    ws.send(JSON.stringify({
+      type: 'approval_response',
+      requestId: currentApprovalRequestId,
+      approved: true,
+    }));
+    clearApprovalTimeout();
+    closeApprovalModal();
+    showToast('Access approved', 'success');
+  }
+
+  function denySecurityRequest() {
+    if (!currentApprovalRequestId) return;
+    document.getElementById('approval-approve-btn').disabled = true;
+    document.getElementById('approval-deny-btn').disabled = true;
+    ws.send(JSON.stringify({
+      type: 'approval_response',
+      requestId: currentApprovalRequestId,
+      approved: false,
+    }));
+    clearApprovalTimeout();
+    closeApprovalModal();
+    showToast('Access denied', 'error');
+  }
+
+  // Keyboard shortcuts for approval modal
+  document.addEventListener('keydown', function(e) {
+    const modal = document.getElementById('approval-modal');
+    if (modal && modal.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        denySecurityRequest();
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        approveSecurityRequest();
+      } else if (e.key === 'd' || e.key === 'D') {
+        if (document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          showApprovalDetails();
+        }
+      } else if (e.key === 'Tab') {
+        // Focus trap: keep focus within modal
+        const focusable = modal.querySelectorAll(
+          'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      }
+    }
+  });
 
  async function submitSkillForm() {
   const name = document.getElementById('sk-name').value.trim();
@@ -10182,6 +10688,763 @@ function soulAskLlm(type) {
 // ── End Soul / Profile UI ───────────────────────────────────────────────────
 
 // ── End Model Quartermaster UI ──────────────────────────────────────────────
+
+// ── Phase 1 New Page Functions ────────────────────────────────────────────
+
+// ── Codegraph Page ──
+var cgProject = null, cgGraphData = null, cgSimulation = null, cgCurrentPanel = 'impact';
+var CG_LABEL_COLORS = {
+  CodeFunction: '#06b6d4', CodeMethod: '#22d3ee', CodeClass: '#8b5cf6',
+  CodeInterface: '#a78bfa', CodeEnum: '#f59e0b', CodeType: '#fbbf24',
+  CodeVariable: '#22c55e', CodeConstant: '#4ade80', CodeModule: '#ef4444',
+  CodeRoute: '#f97316', CodeComponent: '#ec4899', CodeHook: '#f472b6',
+  CodeProject: '#6b7280', CodeService: '#14b8a6', CodeMiddleware: '#6366f1'
+};
+function loadCodegraphPage() { loadCodegraphProjects(); }
+async function loadCodegraphProjects() {
+  var sel = document.getElementById('cg-project-select');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    var projects = await fetch(BASE + '/api/codegraph/projects').then(r => r.json()).catch(function() { return []; });
+    sel.innerHTML = '<option value="">Select project…</option>';
+    (Array.isArray(projects) ? projects : []).forEach(function(p) {
+      sel.innerHTML += '<option value="' + escAttr(p.name) + '">' + esc(p.name) + '</option>';
+    });
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
+}
+async function loadCodegraphProject(name) {
+  if (!name) { resetCodegraphGraph(); return; }
+  document.getElementById('cg-graph').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);">Loading graph…</div>';
+  try {
+    var data = await fetch(BASE + '/api/codegraph/architecture?project=' + encodeURIComponent(name)).then(r => r.json());
+    cgGraphData = data; cgProject = name;
+    renderCodegraphGraph(data.nodes || [], data.edges || []);
+    document.getElementById('cg-empty-state').style.display = 'none';
+    switchCodegraphPanel(cgCurrentPanel);
+  } catch(e) {
+    document.getElementById('cg-graph').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">Failed to load graph</div>';
+  }
+}
+function resetCodegraphGraph() {
+  document.getElementById('cg-graph').innerHTML = '';
+  document.getElementById('cg-empty-state').style.display = 'flex';
+  document.getElementById('cg-bottom-panel').innerHTML = '';
+  document.getElementById('cg-search-results').innerHTML = '';
+}
+function renderCodegraphGraph(nodes, edges) {
+  var container = document.getElementById('cg-graph');
+  var width = container.clientWidth, height = container.clientHeight;
+  container.innerHTML = '';
+  var svg = d3.select('#cg-graph').append('svg').attr('width', width).attr('height', height);
+  var g = svg.append('g');
+  var zoom = d3.zoom().scaleExtent([0.1, 4]).on('zoom', function(event) { g.attr('transform', event.transform); });
+  svg.call(zoom);
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(function(d) { return d.id; }).distance(80))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide(30));
+  var link = g.append('g').selectAll('line').data(edges).join('line')
+    .attr('stroke', 'rgba(255,255,255,0.1)').attr('stroke-width', 1.5).attr('marker-end', 'url(#cg-arrowhead)');
+  svg.append('defs').append('marker').attr('id', 'cg-arrowhead').attr('viewBox', '0 -5 10 10')
+    .attr('refX', 20).attr('refY', 0).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#6b7280');
+  var node = g.append('g').selectAll('circle').data(nodes).join('circle')
+    .attr('r', 8).attr('fill', function(d) { return CG_LABEL_COLORS[d.label] || '#6b7280'; })
+    .attr('stroke', '#0a0e1a').attr('stroke-width', 2)
+    .call(d3.drag().on('start', function(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', function(event, d) { d.fx = event.x; d.fy = event.y; })
+      .on('end', function(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+  var label = g.append('g').selectAll('text').data(nodes).join('text').text(function(d) { return d.name; })
+    .attr('font-size', '10px').attr('fill', '#9ca3af').attr('dx', 12).attr('dy', 3);
+  node.on('click', function(event, d) { showCodegraphImpactPanel(d.name); });
+  simulation.on('tick', function() {
+    link.attr('x1', function(d) { return d.source.x; }).attr('y1', function(d) { return d.source.y; })
+        .attr('x2', function(d) { return d.target.x; }).attr('y2', function(d) { return d.target.y; });
+    node.attr('cx', function(d) { return d.x; }).attr('cy', function(d) { return d.y; });
+    label.attr('x', function(d) { return d.x; }).attr('y', function(d) { return d.y; });
+  });
+  cgSimulation = { simulation: simulation, svg: svg, zoom: zoom };
+  renderCodegraphLegend();
+}
+function renderCodegraphLegend() {
+  var items = Object.keys(CG_LABEL_COLORS).map(function(k) {
+    return '<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">' +
+      '<span style="width:8px;height:8px;border-radius:50%;background:' + CG_LABEL_COLORS[k] + ';flex-shrink:0;"></span>' +
+      '<span>' + k.replace('Code','') + '</span></div>';
+  }).join('');
+  document.getElementById('cg-legend-items').innerHTML = items;
+}
+async function searchCodegraphSymbol() {
+  var q = document.getElementById('cg-symbol-search').value.trim();
+  if (!q || !cgProject) return;
+  var el = document.getElementById('cg-search-results');
+  el.innerHTML = '<div class="widget-loading">Searching…</div>';
+  try {
+    var results = await fetch(BASE + '/api/codegraph/search?q=' + encodeURIComponent(q) + '&project=' + encodeURIComponent(cgProject)).then(r => r.json());
+    if (!results || !results.length) { el.innerHTML = '<div class="empty">No symbols found</div>'; return; }
+    el.innerHTML = results.map(function(r) {
+      return '<div class="list-item" style="cursor:pointer;padding:6px 8px;border-radius:6px;" onclick="highlightCodegraphNode(\\'' + escAttr(r.id || r.name) + '\\')">' +
+        '<span class="dot" style="background:' + (CG_LABEL_COLORS[r.label] || '#6b7280') + ';"></span>' +
+        '<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--text);">' + esc(r.name) + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);">' + esc(r.file_path || '') + '</div></div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Search failed</div>'; }
+}
+function highlightCodegraphNode(id) {
+  if (!cgSimulation) return;
+  cgSimulation.svg.selectAll('circle').attr('stroke', '#0a0e1a').attr('stroke-width', 2);
+  cgSimulation.svg.selectAll('circle').filter(function(d) { return d.id === id || d.name === id; })
+    .attr('stroke', '#fff').attr('stroke-width', 3);
+}
+function switchCodegraphPanel(panel) {
+  cgCurrentPanel = panel;
+  ['impact','architecture','trace'].forEach(function(p) {
+    var btn = document.getElementById('cg-tab-' + p);
+    if (btn) btn.classList.toggle('active', p === panel);
+  });
+  if (panel === 'impact') showCodegraphImpactPanel();
+  else if (panel === 'architecture') showCodegraphArchitecturePanel();
+  else showCodegraphTraceForm();
+}
+async function showCodegraphImpactPanel(file) {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading impact analysis…</div>';
+  try {
+    var project = cgProject || document.getElementById('cg-project-select').value;
+    var body = { project: project }; if (file) body.file = file;
+    var data = await fetch(BASE + '/api/codegraph/impact', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    }).then(r => r.json());
+    if (!data || !data.nodes || !data.nodes.length) { el.innerHTML = '<div class="empty">No dependencies found</div>'; return; }
+    el.innerHTML = '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Impact Analysis</div>' +
+      data.nodes.map(function(n) {
+        return '<div class="list-item"><span class="dot" style="background:' + (CG_LABEL_COLORS[n.label] || '#6b7280') + ';"></span>' +
+          '<div style="flex:1;"><div style="font-size:11px;">' + esc(n.name) + '</div>' +
+          '<div style="font-size:10px;color:var(--text3);">' + esc(n.file_path || '') + ':' + (n.line_start || '') + '</div></div></div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load impact analysis</div>'; }
+}
+async function showCodegraphArchitecturePanel() {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading architecture…</div>';
+  var project = cgProject || document.getElementById('cg-project-select').value;
+  if (!project) { el.innerHTML = '<div class="empty">Select a project first</div>'; return; }
+  try {
+    var data = await fetch(BASE + '/api/codegraph/architecture?project=' + encodeURIComponent(project)).then(r => r.json());
+    var h = '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Architecture Summary</div>';
+    if (data.languages) h += '<div class="stat-row"><span class="stat-label">Languages</span><span>' + esc(String(data.languages)) + '</span></div>';
+    if (data.packages) h += '<div class="stat-row"><span class="stat-label">Packages</span><span>' + (data.packages.length || 0) + '</span></div>';
+    if (data.entryPoints) h += '<div class="stat-row"><span class="stat-label">Entry Points</span><span>' + (data.entryPoints.length || 0) + '</span></div>';
+    if (data.circularDeps && data.circularDeps.length > 0) h += '<div style="color:var(--accent-red);font-size:11px;margin-top:8px;">⚠ Circular dependencies detected</div>';
+    el.innerHTML = h;
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load architecture</div>'; }
+}
+function showCodegraphTraceForm() {
+  document.getElementById('cg-bottom-panel').innerHTML =
+    '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Path Tracer</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<input id="cg-trace-from" class="inp" placeholder="Source symbol" style="flex:1;min-width:120px;font-size:12px;">' +
+    '<span style="color:var(--text3);">→</span>' +
+    '<input id="cg-trace-to" class="inp" placeholder="Target symbol" style="flex:1;min-width:120px;font-size:12px;">' +
+    '<button class="btn btn-primary" onclick="runCodegraphTrace()" style="font-size:12px;padding:6px 14px;">Trace</button>' +
+    '</div><div id="cg-trace-results" style="margin-top:8px;"></div>';
+}
+async function runCodegraphTrace() {
+  var from = document.getElementById('cg-trace-from').value.trim();
+  var to = document.getElementById('cg-trace-to').value.trim();
+  if (!from || !to) return;
+  var el = document.getElementById('cg-trace-results');
+  el.innerHTML = '<div class="widget-loading">Tracing paths…</div>';
+  var project = cgProject || document.getElementById('cg-project-select').value;
+  try {
+    var data = await fetch(BASE + '/api/codegraph/trace', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ from: from, to: to, project: project })
+    }).then(r => r.json());
+    if (!data || !data.paths || !data.paths.length) { el.innerHTML = '<div class="empty">No paths found</div>'; return; }
+    el.innerHTML = data.paths.map(function(path, i) {
+      return '<div style="margin-bottom:6px;font-size:11px;">Path ' + (i+1) + ': ' +
+        path.map(function(n) { return '<span style="color:var(--accent2);">' + esc(n.name || n) + '</span>'; }).join(' <span style="color:var(--text3);">→</span> ') +
+        '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Trace failed</div>'; }
+}
+
+// ── Workflow Page ──
+var wfList = [], wfCurrentId = null, wfCurrentTab = 'history';
+function loadWorkflowsPage() { loadWorkflows(); }
+async function loadWorkflows() {
+  var el = document.getElementById('wf-list');
+  showSkeleton(el, 5, 'card');
+  try {
+    wfList = await fetch(BASE + '/api/workflows').then(r => r.json()).catch(function() { return []; });
+    if (!wfList || !wfList.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><p>No workflows</p><p style="font-size:11px;margin-top:4px;">Create a new workflow to get started</p></div>';
+      return;
+    }
+    el.innerHTML = wfList.map(function(w) {
+      return '<div class="card-sm" style="cursor:pointer;margin-bottom:6px;" onclick="selectWorkflow(\\'' + escAttr(w.id || w.name) + '\\')">' +
+        '<div style="font-weight:500;font-size:13px;">' + esc(w.name) + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + esc(w.description || '') + '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;">' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();showWorkflowRunModal(\\'' + escAttr(w.id || w.name) + '\\')">▶ Run</button>' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();deleteWorkflow(\\'' + escAttr(w.id || w.name) + '\\')">✕ Delete</button>' +
+        '</div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function selectWorkflow(id) {
+  wfCurrentId = id;
+  var w = wfList.find(function(x) { return (x.id || x.name) === id; });
+  var el = document.getElementById('wf-editor');
+  if (!w) return;
+  el.innerHTML = '<div style="padding:20px;width:100%;height:100%;overflow-y:auto;">' +
+    '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">' + esc(w.name) + '</h3>' +
+    '<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">' + esc(w.description || '') + '</p>' +
+    '<div style="font-size:11px;font-family:JetBrains Mono,monospace;color:var(--text2);background:var(--bg2);padding:12px;border-radius:8px;white-space:pre-wrap;max-height:400px;overflow:auto;">' +
+    esc(JSON.stringify(w.definition || w.steps || w, null, 2)) + '</div></div>';
+}
+function showWorkflowCreateModal() {
+  document.getElementById('wf-name-input').value = '';
+  document.getElementById('wf-desc-input').value = '';
+  document.getElementById('wf-steps-input').value = '';
+  document.getElementById('wf-create-modal').style.display = 'flex';
+}
+async function saveWorkflow() {
+  var name = document.getElementById('wf-name-input').value.trim();
+  var desc = document.getElementById('wf-desc-input').value.trim();
+  var stepsStr = document.getElementById('wf-steps-input').value.trim();
+  if (!name) { toast('Name is required', 'error'); return; }
+  var definition;
+  try { definition = stepsStr ? JSON.parse(stepsStr) : []; } catch(e) { toast('Invalid JSON in steps', 'error'); return; }
+  try {
+    var res = await fetch(BASE + '/api/workflows', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: name, description: desc, definition: definition })
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Failed to save', 'error'); return; }
+    toast('Workflow saved', 'success');
+    document.getElementById('wf-create-modal').style.display = 'none';
+    loadWorkflows();
+  } catch(e) { toast('Save failed', 'error'); }
+}
+async function deleteWorkflow(id) {
+  var ok = await confirmAction('Delete Workflow', 'Remove this workflow permanently?');
+  if (!ok) { _confirmResolve = null; return; }
+  try {
+    await fetch(BASE + '/api/workflows/' + encodeURIComponent(id), { method: 'DELETE' });
+    loadWorkflows(); wfCurrentId = null;
+    document.getElementById('wf-editor').innerHTML = '<div style="text-align:center;color:var(--text3);"><p>Select a workflow or create a new one</p></div>';
+  } catch(e) { toast('Delete failed', 'error'); }
+}
+function showWorkflowRunModal(id) {
+  var w = wfList.find(function(x) { return (x.id || x.name) === id; });
+  document.getElementById('wf-run-content').innerHTML = '<p style="font-size:13px;">Run <strong>' + esc(w ? w.name : id) + '</strong>?</p>';
+  wfCurrentId = id;
+  document.getElementById('wf-run-modal').style.display = 'flex';
+}
+async function execWorkflow() {
+  if (!wfCurrentId) return;
+  try {
+    var res = await fetch(BASE + '/api/workflows/' + encodeURIComponent(wfCurrentId) + '/run', { method: 'POST' });
+    var data = await res.json();
+    if (!res.ok) { toast(data.error || 'Execution failed', 'error'); return; }
+    toast('Workflow executed', data.success ? 'success' : 'error');
+    document.getElementById('wf-run-modal').style.display = 'none';
+    switchWorkflowTab('history');
+  } catch(e) { toast('Execution failed', 'error'); }
+}
+function switchWorkflowTab(tab) {
+  wfCurrentTab = tab;
+  ['history','approvals'].forEach(function(t) {
+    var btn = document.getElementById('wf-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'history') loadWorkflowHistory();
+  else loadWorkflowApprovals();
+}
+async function loadWorkflowHistory() {
+  var el = document.getElementById('wf-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading history…</div>';
+  try {
+    var runs = await fetch(BASE + '/api/workflows/runs').then(r => r.json()).catch(function() { return []; });
+    if (!runs || !runs.length) { el.innerHTML = '<div class="empty">No run history</div>'; return; }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Workflow</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Started</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Duration</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Status</th></tr></thead><tbody>' +
+      runs.map(function(r) {
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:4px 0;">' + esc(r.workflowName || r.name || '') + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + (r.started || r.timestamp ? timeAgo(r.started || r.timestamp) : '—') + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + (r.durationMs ? (r.durationMs/1000).toFixed(1) + 's' : '—') + '</td>' +
+          '<td style="padding:4px 0;">' + renderBadge(r.status || (r.success ? 'success' : 'failed'), r.status === 'completed' || r.success ? 'green' : 'red') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load history</div>'; }
+}
+async function loadWorkflowApprovals() {
+  var el = document.getElementById('wf-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading approvals…</div>';
+  try {
+    var approvals = await fetch(BASE + '/api/workflows/approvals').then(r => r.json()).catch(function() { return []; });
+    if (!approvals || !approvals.length) { el.innerHTML = '<div class="empty">No pending approvals</div>'; return; }
+    el.innerHTML = approvals.map(function(a) {
+      return '<div class="card-sm" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+        '<div><div style="font-size:12px;font-weight:500;">' + esc(a.workflow || a.name || '') + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);">' + timeAgo(a.timestamp || a.createdAt) + '</div></div>' +
+        '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-primary" style="font-size:10px;padding:3px 10px;" onclick="approveWorkflow(\\'' + escAttr(a.id) + '\\', true)">Approve</button>' +
+        '<button class="btn btn-danger" style="font-size:10px;padding:3px 10px;" onclick="approveWorkflow(\\'' + escAttr(a.id) + '\\', false)">Reject</button></div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load approvals</div>'; }
+}
+async function approveWorkflow(id, approved) {
+  try {
+    await fetch(BASE + '/api/workflows/approvals/' + encodeURIComponent(id), {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ decision: approved ? 'approve' : 'reject' })
+    });
+    toast(approved ? 'Approved' : 'Rejected', 'success');
+    loadWorkflowApprovals();
+  } catch(e) { toast('Action failed', 'error'); }
+}
+
+// ── Eval Page ──
+var evalSuites = [], evalRuns = [], evalBaselines = [], evalCurrentTab = 'results', evalCurrentSuite = null;
+function loadEvalPage() { loadEvalSuites(); }
+async function loadEvalSuites() {
+  var el = document.getElementById('eval-suites-list');
+  showSkeleton(el, 5, 'card');
+  try {
+    evalSuites = await fetch(BASE + '/api/eval/suites').then(r => r.json()).catch(function() { return []; });
+    if (!evalSuites || !evalSuites.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><p>No eval suites</p><p style="font-size:11px;margin-top:4px;">Create eval suites to benchmark agents</p></div>';
+      return;
+    }
+    el.innerHTML = evalSuites.map(function(s) {
+      return '<div class="card-sm" style="margin-bottom:6px;">' +
+        '<div style="font-weight:500;font-size:13px;">' + esc(s.name) + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + esc(s.description || '') + ' — ' + (s.tasks ? s.tasks.length : s.taskCount || 0) + ' tasks</div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;">' +
+        '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="showEvalRunModal(\\'' + escAttr(s.id || s.name) + '\\')">▶ Run</button>' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="loadEvalSuiteResults(\\'' + escAttr(s.id || s.name) + '\\')">View Results</button>' +
+        '</div></div>';
+    }).join('');
+    loadEvalBaselines();
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function showEvalRunModal(suiteId) {
+  var s = evalSuites.find(function(x) { return (x.id || x.name) === suiteId; });
+  evalCurrentSuite = s;
+  document.getElementById('eval-run-suite-name').textContent = s ? s.name : suiteId;
+  var bSel = document.getElementById('eval-run-baseline');
+  bSel.innerHTML = '<option value="">None</option>' +
+    evalBaselines.map(function(b) { return '<option value="' + escAttr(b.id || b.runId) + '">' + esc(b.name || b.runId) + '</option>'; }).join('');
+  loadAgentsIntoEvalSelect();
+  document.getElementById('eval-run-modal').style.display = 'flex';
+}
+async function loadAgentsIntoEvalSelect() {
+  try {
+    var agents = await fetch(BASE + '/api/agents').then(r => r.json()).catch(function() { return []; });
+    var sel = document.getElementById('eval-run-agent');
+    sel.innerHTML = '<option value="">Default</option>' +
+      (Array.isArray(agents) ? agents : []).map(function(a) { return '<option value="' + escAttr(a.id) + '">' + esc(a.name || a.id) + '</option>'; }).join('');
+  } catch(e) {}
+}
+async function startEvalRun() {
+  if (!evalCurrentSuite) return;
+  var body = {
+    suiteId: evalCurrentSuite.id || evalCurrentSuite.name,
+    agentId: document.getElementById('eval-run-agent').value || undefined,
+    provider: document.getElementById('eval-run-provider').value || undefined,
+    baselineId: document.getElementById('eval-run-baseline').value || undefined,
+    timeout: parseInt(document.getElementById('eval-run-timeout').value) || 120
+  };
+  try {
+    var res = await fetch(BASE + '/api/eval/run', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (!res.ok) { toast(data.error || 'Run failed', 'error'); return; }
+    toast('Eval run started', 'success');
+    document.getElementById('eval-run-modal').style.display = 'none';
+    switchEvalTab('results');
+  } catch(e) { toast('Run failed', 'error'); }
+}
+function switchEvalTab(tab) {
+  evalCurrentTab = tab;
+  ['results','baselines','regression'].forEach(function(t) {
+    var btn = document.getElementById('eval-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'results') loadEvalRuns();
+  else if (tab === 'baselines') renderEvalBaselines();
+  else renderEvalRegression();
+}
+async function loadEvalRuns() {
+  var el = document.getElementById('eval-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading runs…</div>';
+  try {
+    evalRuns = await fetch(BASE + '/api/eval/runs').then(r => r.json()).catch(function() { return []; });
+    if (!evalRuns || !evalRuns.length) { el.innerHTML = '<div class="empty">No runs yet</div>'; return; }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Suite</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Date</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Passed</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Failed</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Duration</th></tr></thead><tbody>' +
+      evalRuns.map(function(r) {
+        return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="loadEvalRunDetail(\\'' + escAttr(r.id) + '\\')">' +
+          '<td style="padding:4px 0;">' + esc(r.suiteName || r.name || '') + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + timeAgo(r.timestamp) + '</td>' +
+          '<td style="padding:4px 0;color:var(--accent-green);">' + (r.passed || 0) + '</td>' +
+          '<td style="padding:4px 0;color:var(--accent-red);">' + (r.failed || 0) + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + (r.totalDurationMs ? (r.totalDurationMs/1000).toFixed(1)+'s' : '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load runs</div>'; }
+}
+async function loadEvalRunDetail(runId) {
+  var el = document.getElementById('eval-results');
+  el.innerHTML = '<div class="widget-loading">Loading run detail…</div>';
+  try {
+    var data = await fetch(BASE + '/api/eval/runs/' + encodeURIComponent(runId)).then(r => r.json());
+    if (!data) { el.innerHTML = '<div class="empty">Run not found</div>'; return; }
+    var passRate = data.totalTasks ? ((data.passed || 0) / data.totalTasks * 100).toFixed(0) : 0;
+    el.innerHTML = '<div style="margin-bottom:16px;">' +
+      '<h2 style="font-size:14px;font-weight:600;">' + esc(data.suiteName || 'Run') + '</h2>' +
+      '<div class="stat-row"><span>Pass Rate</span><span style="color:' + (passRate >= 80 ? 'var(--accent-green)' : 'var(--accent-red)') + '">' + passRate + '%</span></div>' +
+      '<div class="stat-row"><span>Passed</span><span>' + (data.passed || 0) + '</span></div>' +
+      '<div class="stat-row"><span>Failed</span><span>' + (data.failed || 0) + '</span></div>' +
+      '<div class="stat-row"><span>Total Duration</span><span>' + (data.totalDurationMs ? (data.totalDurationMs/1000).toFixed(1)+'s' : '—') + '</span></div>' +
+      '</div>';
+    if (data.results && data.results.length) {
+      el.innerHTML += '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Tasks</div>' +
+        data.results.map(function(r) {
+          return '<div class="card-sm" style="margin-bottom:4px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:12px;">' + esc(r.taskId || r.description || '') + '</span>' +
+            '<span>' + renderBadge(r.passed ? 'PASS' : 'FAIL', r.passed ? 'green' : 'red') + '</span></div>' +
+            (r.error ? '<div style="font-size:10px;color:var(--accent-red);margin-top:2px;">' + esc(r.error) + '</div>' : '') +
+            '</div>';
+        }).join('');
+    }
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load run detail</div>'; }
+}
+async function loadEvalSuiteResults(suiteId) { switchEvalTab('results'); }
+async function loadEvalBaselines() {
+  try { evalBaselines = await fetch(BASE + '/api/eval/baselines').then(r => r.json()).catch(function() { return []; }); } catch(e) { evalBaselines = []; }
+}
+function renderEvalBaselines() {
+  var el = document.getElementById('eval-bottom-panel');
+  if (!evalBaselines || !evalBaselines.length) { el.innerHTML = '<div class="empty">No baselines set</div>'; return; }
+  el.innerHTML = evalBaselines.map(function(b) {
+    return '<div class="card-sm" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+      '<div><div style="font-size:12px;">' + esc(b.name || b.id) + '</div>' +
+      '<div style="font-size:10px;color:var(--text3);">' + timeAgo(b.timestamp) + '</div></div>' +
+      '<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;" onclick="deleteEvalBaseline(\\'' + escAttr(b.id) + '\\')">Delete</button></div>';
+  }).join('');
+}
+async function deleteEvalBaseline(id) {
+  try {
+    await fetch(BASE + '/api/eval/baselines/' + encodeURIComponent(id), { method: 'DELETE' });
+    toast('Baseline deleted', 'success');
+    loadEvalBaselines().then(function() { renderEvalBaselines(); });
+  } catch(e) { toast('Delete failed', 'error'); }
+}
+async function renderEvalRegression() {
+  var el = document.getElementById('eval-bottom-panel');
+  el.innerHTML = '<div style="display:flex;gap:12px;align-items:center;">' +
+    '<select id="eval-reg-prev" class="inp" style="font-size:11px;flex:1;"><option value="">Previous…</option></select>' +
+    '<select id="eval-reg-cur" class="inp" style="font-size:11px;flex:1;"><option value="">Current…</option></select>' +
+    '<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="runEvalRegression()">Compare</button></div>' +
+    '<div id="eval-reg-results" style="margin-top:8px;"></div>';
+  try {
+    var runs = await fetch(BASE + '/api/eval/runs').then(r => r.json()).catch(function() { return []; });
+    var runOpts = (Array.isArray(runs) ? runs : []).map(function(r) {
+      return '<option value="' + escAttr(r.id) + '">' + esc(r.suiteName || r.name || r.id) + '</option>';
+    }).join('');
+    document.getElementById('eval-reg-prev').innerHTML = '<option value="">Previous…</option>' + runOpts;
+    document.getElementById('eval-reg-cur').innerHTML = '<option value="">Current…</option>' + runOpts;
+  } catch(e) {}
+}
+async function runEvalRegression() {
+  var prevId = document.getElementById('eval-reg-prev').value;
+  var curId = document.getElementById('eval-reg-cur').value;
+  if (!prevId || !curId) return;
+  var el = document.getElementById('eval-reg-results');
+  el.innerHTML = '<div class="widget-loading">Comparing…</div>';
+  try {
+    var prev = await fetch(BASE + '/api/eval/runs/' + encodeURIComponent(prevId)).then(r => r.json());
+    var cur = await fetch(BASE + '/api/eval/runs/' + encodeURIComponent(curId)).then(r => r.json());
+    var prevResults = prev.results || []; var curResults = cur.results || [];
+    var changes = [];
+    prevResults.forEach(function(pr) {
+      var cr = curResults.find(function(x) { return x.taskId === pr.taskId; });
+      if (cr && pr.passed !== cr.passed) changes.push({ taskId: pr.taskId, wasPassed: pr.passed, nowPassed: cr.passed });
+    });
+    if (!changes.length) { el.innerHTML = '<div class="empty">No regressions detected</div>'; return; }
+    el.innerHTML = '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Changes</div>' +
+      changes.map(function(c) {
+        return '<div class="list-item"><span>' + renderBadge(c.nowPassed ? 'FIXED' : 'REGRESSION', c.nowPassed ? 'green' : 'red') + '</span>' +
+          '<span style="font-size:11px;">' + esc(c.taskId) + '</span></div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Comparison failed</div>'; }
+}
+
+// ── MCP Page ──
+var mcpConnections = [], mcpCurrentConnection = null;
+function loadMCPPage() { loadMCPConnections(); }
+async function loadMCPConnections() {
+  var el = document.getElementById('mcp-connections-list');
+  showSkeleton(el, 5, 'card');
+  try {
+    mcpConnections = await fetch(BASE + '/api/mcp/connections').then(r => r.json()).catch(function() { return []; });
+    if (!mcpConnections || !mcpConnections.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><p>No connections</p><p style="font-size:11px;margin-top:4px;">Add an MCP server to extend capabilities</p></div>';
+      return;
+    }
+    el.innerHTML = mcpConnections.map(function(c) {
+      var name = c.config ? (c.config.name || c.name) : (c.name || '');
+      var transport = c.config ? c.config.transport : (c.transport || 'stdio');
+      var connected = c.connected;
+      return '<div class="card-sm" style="cursor:pointer;margin-bottom:6px;" onclick="selectMCPConnection(\\'' + escAttr(name) + '\\')">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+        '<div><div style="font-weight:500;font-size:13px;">' + esc(name) + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);">' + esc(transport) + '</div></div>' +
+        '<span>' + renderBadge(connected ? 'Connected' : 'Offline', connected ? 'green' : 'red') + '</span></div>' +
+        '<div style="display:flex;gap:6px;margin-top:4px;">' +
+        (connected
+          ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();disconnectMCP(\\'' + escAttr(name) + '\\')">Disconnect</button>'
+          : '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();connectMCP(\\'' + escAttr(name) + '\\')">Connect</button>') +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();removeMCPConnection(\\'' + escAttr(name) + '\\')">Remove</button>' +
+        '</div></div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+  loadMCPServerStatus();
+}
+async function selectMCPConnection(name) {
+  mcpCurrentConnection = name;
+  var el = document.getElementById('mcp-tools-panel');
+  el.innerHTML = '<div class="widget-loading">Loading tools…</div>';
+  try {
+    var tools = await fetch(BASE + '/api/mcp/connections/' + encodeURIComponent(name) + '/tools').then(r => r.json()).catch(function() { return []; });
+    if (!tools || !tools.length) { el.innerHTML = '<div class="empty">No tools available</div>'; return; }
+    el.innerHTML = '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">' + esc(name) + ' Tools</h3>' +
+      (Array.isArray(tools) ? tools : []).map(function(t) {
+        return '<div class="card-sm" style="margin-bottom:8px;">' +
+          '<div style="font-weight:500;font-size:13px;">' + esc(t.name) + '</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '') + '</div>' +
+          (t.inputSchema ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:JetBrains Mono,monospace;background:var(--bg2);padding:6px;border-radius:4px;max-height:120px;overflow:auto;">' + esc(JSON.stringify(t.inputSchema, null, 2)) + '</div>' : '') +
+          '</div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load tools</div>'; }
+}
+function showMCPAddModal() {
+  document.getElementById('mcp-add-name').value = '';
+  document.getElementById('mcp-add-command').value = '';
+  document.getElementById('mcp-add-url').value = '';
+  document.getElementById('mcp-add-transport').value = 'stdio';
+  toggleMCPTransportFields();
+  document.getElementById('mcp-add-modal').style.display = 'flex';
+}
+function toggleMCPTransportFields() {
+  var t = document.getElementById('mcp-add-transport').value;
+  document.getElementById('mcp-stdio-fields').style.display = t === 'stdio' ? 'block' : 'none';
+  document.getElementById('mcp-http-fields').style.display = t === 'http' ? 'block' : 'none';
+}
+async function addMCPConnection() {
+  var name = document.getElementById('mcp-add-name').value.trim();
+  var transport = document.getElementById('mcp-add-transport').value;
+  if (!name) { toast('Name is required', 'error'); return; }
+  var config = { name: name, transport: transport, autoConnect: document.getElementById('mcp-add-autoconnect').checked };
+  if (transport === 'stdio') {
+    config.command = document.getElementById('mcp-add-command').value.trim();
+    if (!config.command) { toast('Command is required', 'error'); return; }
+  } else {
+    config.url = document.getElementById('mcp-add-url').value.trim();
+    if (!config.url) { toast('URL is required', 'error'); return; }
+  }
+  try {
+    var res = await fetch(BASE + '/api/mcp/connections', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(config)
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Failed to add', 'error'); return; }
+    toast('Connection added', 'success');
+    document.getElementById('mcp-add-modal').style.display = 'none';
+    loadMCPConnections();
+  } catch(e) { toast('Add failed', 'error'); }
+}
+async function testMCPConnection() {
+  toast('Testing…', 'success');
+}
+async function connectMCP(name) {
+  try {
+    var res = await fetch(BASE + '/api/mcp/connections/' + encodeURIComponent(name) + '/connect', { method: 'POST' });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Connect failed', 'error'); return; }
+    toast('Connected', 'success'); loadMCPConnections();
+  } catch(e) { toast('Connect failed', 'error'); }
+}
+async function disconnectMCP(name) {
+  try {
+    var res = await fetch(BASE + '/api/mcp/connections/' + encodeURIComponent(name) + '/disconnect', { method: 'POST' });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Disconnect failed', 'error'); return; }
+    toast('Disconnected', 'success'); loadMCPConnections();
+  } catch(e) { toast('Disconnect failed', 'error'); }
+}
+async function removeMCPConnection(name) {
+  var ok = await confirmAction('Remove Connection', 'Remove ' + esc(name) + '?');
+  if (!ok) { _confirmResolve = null; return; }
+  try {
+    await fetch(BASE + '/api/mcp/connections/' + encodeURIComponent(name), { method: 'DELETE' });
+    toast('Removed', 'success'); loadMCPConnections();
+    document.getElementById('mcp-tools-panel').innerHTML = '<div style="text-align:center;color:var(--text3);padding:60px;"><p>Select a connection to browse tools</p></div>';
+  } catch(e) { toast('Remove failed', 'error'); }
+}
+async function loadMCPServerStatus() {
+  var el = document.getElementById('mcp-server-status');
+  try {
+    var status = await fetch(BASE + '/api/mcp/server').then(r => r.json()).catch(function() { return {}; });
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<div><div style="font-size:11px;font-weight:500;">Local MCP Server</div>' +
+      '<div style="font-size:10px;color:var(--text3);">' + renderBadge(status.running ? 'Running' : 'Stopped', status.running ? 'green' : 'red') + '</div></div>' +
+      (status.running
+        ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="stopMCPServer()">Stop</button>'
+        : '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="startMCPServer()">Start</button>') +
+      '</div>';
+  } catch(e) { el.innerHTML = '<div style="font-size:10px;color:var(--accent-red);">Unavailable</div>'; }
+}
+async function startMCPServer() {
+  try { await fetch(BASE + '/api/mcp/server/start', { method: 'POST' }); toast('Server started', 'success'); loadMCPServerStatus(); } catch(e) { toast('Start failed', 'error'); }
+}
+async function stopMCPServer() {
+  try { await fetch(BASE + '/api/mcp/server/stop', { method: 'POST' }); toast('Server stopped', 'success'); loadMCPServerStatus(); } catch(e) { toast('Stop failed', 'error'); }
+}
+
+// ── Vault Page ──
+var vaultCredentials = [];
+function loadVaultPage() { loadVaultCredentials(); }
+function toggleVaultValueReveal() {
+  var inp = document.getElementById('vault-value-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+async function loadVaultCredentials() {
+  var el = document.getElementById('vault-credentials-list');
+  showSkeleton(el, 3, 'table');
+  try {
+    vaultCredentials = await fetch(BASE + '/api/vault/list').then(r => r.json()).catch(function() { return []; });
+    if (!vaultCredentials || !vaultCredentials.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><p>No credentials</p><p style="font-size:11px;margin-top:4px;">Store API keys and secrets securely</p></div>';
+      return;
+    }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:6px 0;color:var(--text3);text-align:left;">Key</th>' +
+      '<th style="padding:6px 0;color:var(--text3);text-align:left;">Service</th>' +
+      '<th style="padding:6px 0;color:var(--text3);text-align:left;">Created</th>' +
+      '<th style="padding:6px 0;color:var(--text3);text-align:left;">Uses</th>' +
+      '<th style="padding:6px 0;color:var(--text3);text-align:left;">Expires</th>' +
+      '<th style="padding:6px 0;color:var(--text3);text-align:right;">Actions</th></tr></thead><tbody>' +
+      (Array.isArray(vaultCredentials) ? vaultCredentials : []).map(function(c) {
+        var exp = c.expires_at ? new Date(c.expires_at) : null;
+        var expired = exp && exp < new Date();
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:6px 0;"><span style="font-weight:500;">' + esc(c.name) + '</span>' +
+          (c.tags ? '<div style="font-size:10px;color:var(--text3);">' + esc(String(c.tags)) + '</div>' : '') + '</td>' +
+          '<td style="padding:6px 0;color:var(--text2);">' + esc(c.service || '—') + '</td>' +
+          '<td style="padding:6px 0;color:var(--text2);">' + timeAgo(c.created_at) + '</td>' +
+          '<td style="padding:6px 0;color:var(--text2);">' + (c.usage_count || 0) + '/' + (c.usage_limit || '∞') + '</td>' +
+          '<td style="padding:6px 0;">' + renderBadge(expired ? 'Expired' : (c.expires_at ? timeAgo(c.expires_at) : 'Never'), expired ? 'red' : (exp ? 'amber' : 'green')) + '</td>' +
+          '<td style="padding:6px 0;text-align:right;">' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="editVaultCredential(\\'' + escAttr(c.name) + '\\')">Edit</button>' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="deleteVaultCredential(\\'' + escAttr(c.name) + '\\')">Delete</button>' +
+          '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+  loadVaultAuditLog();
+}
+function showVaultCredentialModal(key) {
+  document.getElementById('vault-modal-title').textContent = key ? 'Edit Credential' : 'Add Credential';
+  document.getElementById('vault-key-input').value = key || '';
+  document.getElementById('vault-value-input').value = '';
+  document.getElementById('vault-expiration').value = '';
+  document.getElementById('vault-max-uses').value = '0';
+  document.getElementById('vault-tags-input').value = '';
+  document.getElementById('vault-credential-modal').style.display = 'flex';
+}
+function editVaultCredential(key) { showVaultCredentialModal(key); }
+async function saveVaultCredential() {
+  var key = document.getElementById('vault-key-input').value.trim();
+  var value = document.getElementById('vault-value-input').value;
+  if (!key) { toast('Key name is required', 'error'); return; }
+  var body = {
+    key: key, value: value,
+    expiration: document.getElementById('vault-expiration').value || undefined,
+    maxUses: parseInt(document.getElementById('vault-max-uses').value) || undefined,
+    tags: document.getElementById('vault-tags-input').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
+  };
+  try {
+    var res = await fetch(BASE + '/api/vault/store', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Save failed', 'error'); return; }
+    toast('Credential saved', 'success');
+    document.getElementById('vault-credential-modal').style.display = 'none';
+    loadVaultCredentials();
+  } catch(e) { toast('Save failed', 'error'); }
+}
+async function deleteVaultCredential(key) {
+  var ok = await confirmAction('Delete Credential', 'Delete ' + esc(key) + '?');
+  if (!ok) { _confirmResolve = null; return; }
+  try {
+    await fetch(BASE + '/api/vault/delete/' + encodeURIComponent(key), { method: 'DELETE' });
+    toast('Deleted', 'success'); loadVaultCredentials();
+  } catch(e) { toast('Delete failed', 'error'); }
+}
+async function loadVaultAuditLog() {
+  var el = document.getElementById('vault-audit-log');
+  try {
+    var audit = await fetch(BASE + '/api/vault/audit').then(r => r.json()).catch(function() { return []; });
+    if (!audit || !audit.length) { el.innerHTML = '<div class="empty" style="font-size:10px;">No access log</div>'; return; }
+    el.innerHTML = (Array.isArray(audit) ? audit : []).slice(0, 50).map(function(a) {
+      return '<div style="font-size:10px;padding:4px 0;border-bottom:1px solid var(--border);">' +
+        '<span style="color:var(--accent);">' + esc(a.credential_id || a.key || '') + '</span>' +
+        ' by <span style="color:var(--text2);">' + esc(a.requestor || '—') + '</span>' +
+        ' <span style="color:var(--text3);">' + timeAgo(a.accessed_at) + '</span>' +
+        (a.granted === false ? ' <span style="color:var(--accent-red);">(denied)</span>' : '') +
+        '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty" style="font-size:10px;">Failed to load</div>'; }
+}
+async function exportVault() {
+  try {
+    var res = await fetch(BASE + '/api/vault/export', { method: 'POST' });
+    var data = await res.json();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'cortex-vault-export.json'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Vault exported', 'success');
+  } catch(e) { toast('Export failed', 'error'); }
+}
+async function importVault() {
+  var fileInput = document.getElementById('vault-import-file');
+  var file = fileInput.files[0];
+  if (!file) { toast('Select a file', 'error'); return; }
+  try {
+    var text = await file.text();
+    var res = await fetch(BASE + '/api/vault/import', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ data: JSON.parse(text) })
+    });
+    if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Import failed', 'error'); return; }
+    toast('Vault imported', 'success');
+    document.getElementById('vault-import-modal').style.display = 'none';
+    loadVaultCredentials();
+  } catch(e) { toast('Import failed', 'error'); }
+}
 
 // Handle browser back/forward
 window.addEventListener('hashchange', () => {

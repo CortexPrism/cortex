@@ -8,6 +8,51 @@ import { checkRegression, scoreFileContent, scoreResponse } from './scorer.ts';
 
 const DEFAULT_TIMEOUT = 120_000;
 
+const suiteStore = new Map<string, EvalSuite>();
+const runStore = new Map<string, EvalRunSummary>();
+const baselineStore = new Map<string, { runId: string; name: string; timestamp: string }>();
+
+export async function listSuites(): Promise<EvalSuite[]> {
+  return Array.from(suiteStore.values());
+}
+
+export async function saveSuite(suite: { name: string; tasks: unknown[] }): Promise<void> {
+  suiteStore.set(suite.name, { name: suite.name, tasks: suite.tasks as EvalTask[] });
+}
+
+export async function getSuite(name: string): Promise<EvalSuite | undefined> {
+  return suiteStore.get(name);
+}
+
+export async function listRuns(): Promise<EvalRunSummary[]> {
+  return Array.from(runStore.values());
+}
+
+export async function getRun(id: string): Promise<EvalRunSummary | undefined> {
+  return runStore.get(id);
+}
+
+export async function listBaselines(): Promise<
+  Array<{ id: string; name: string; timestamp: string }>
+> {
+  return Array.from(baselineStore.values()).map((b) => ({
+    id: b.runId,
+    name: b.name,
+    timestamp: b.timestamp,
+  }));
+}
+
+export async function setBaseline(runId: string): Promise<void> {
+  const run = runStore.get(runId);
+  if (!run) return;
+  baselineStore.set(runId, { runId, name: run.suiteName, timestamp: run.timestamp });
+}
+
+let runCounter = 0;
+function nextRunId(): string {
+  return 'eval_run_' + (++runCounter) + '_' + Date.now().toString(36);
+}
+
 export interface EvalRunnerOptions {
   provider: LLMProvider;
   model: string;

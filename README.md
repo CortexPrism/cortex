@@ -120,8 +120,8 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 | GitHub         | PR creation/listing, issue tracking, repo browsing, git push                        |
 | Git workspace  | status, commit, push, pull, branch, clone                                           |
 | Voice          | speak, listen (STT/TTS agent tools)                                                 |
-| Data & Util    | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils        |
-| Environment    | env_manager (get/set variables), code_snippet (extract/format code blocks)               |
+| Data & Util    | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils   |
+| Environment    | env_manager (get/set variables), code_snippet (extract/format code blocks)          |
 | Sub-agents     | spawn typed child agents for parallel and delegated tasks                           |
 | Skills         | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)  |
 | Dashboard      | dashboard_manage — CRUD operations on dashboard widgets                             |
@@ -546,22 +546,27 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 Start with `cortex serve` and open `http://127.0.0.1:3000`.
 
-| Tab             | Description                                                        |
-| --------------- | ------------------------------------------------------------------ |
-| **Chat**        | WebSocket streaming chat with file upload (PDF, images, documents) |
-| **Editor**      | Full file editor powered by CodeMirror                             |
-| **Git**         | Visual git workspace — status, stage, commit, push, pull           |
-| **GitHub**      | PR management, issue tracking, repository browser                  |
-| **Code Runner** | Sandboxed code execution with language selection and live output   |
-| **Activity**    | Full activity audit timeline with cost tracking and auto-refresh   |
-| **Memory**      | Search episodic and semantic memory                                |
-| **Jobs**        | View and manage scheduled jobs                                     |
-| **Sessions**    | Browse and resume past chat sessions                               |
-| **Agents**      | View active and completed sub-agent sessions                       |
-| **Services**    | Monitor running micro-services                                     |
-| **Settings**    | Provider configuration, voice settings                             |
-| **Soul**        | Edit the agent's identity / system prompt                          |
-| **Plugins**     | Manage installed plugins                                           |
+| Tab             | Description                                                          |
+| --------------- | -------------------------------------------------------------------- |
+| **Chat**        | WebSocket streaming chat with file upload (PDF, images, documents)   |
+| **Editor**      | Full file editor powered by CodeMirror                               |
+| **Git**         | Visual git workspace — status, stage, commit, push, pull             |
+| **GitHub**      | PR management, issue tracking, repository browser                    |
+| **Code Runner** | Sandboxed code execution with language selection and live output     |
+| **Activity**    | Full activity audit timeline with cost tracking and auto-refresh     |
+| **Memory**      | Search episodic and semantic memory                                  |
+| **Jobs**        | View and manage scheduled jobs                                       |
+| **Sessions**    | Browse and resume past chat sessions                                 |
+| **Agents**      | View active and completed sub-agent sessions                         |
+| **Services**    | Monitor running micro-services                                       |
+| **Codegraph**   | Interactive D3.js dependency graph with symbol search & path tracer  |
+| **Workflows**   | Visual workflow engine designer with run history & approval queue    |
+| **Eval**        | Agent evaluation suite runner with pass/fail dashboard & regressions |
+| **MCP**         | Model Context Protocol connection management & tool browser          |
+| **Vault**       | AES-256-GCM encrypted credential store with audit log & export       |
+| **Settings**    | Provider configuration, voice settings                               |
+| **Soul**        | Edit the agent's identity / system prompt                            |
+| **Plugins**     | Manage installed plugins                                             |
 
 ### REST API
 
@@ -614,6 +619,45 @@ POST   /api/skills/export
 GET    /api/skills/dependencies?name=<name>
 GET    /api/skills/health?name=<name>
 DELETE /api/skills?name=<name>
+GET    /api/codegraph/projects
+POST   /api/codegraph/index
+GET    /api/codegraph/search?q=&project=
+POST   /api/codegraph/impact
+GET    /api/codegraph/architecture?project=
+POST   /api/codegraph/trace
+GET    /api/workflows
+POST   /api/workflows
+GET    /api/workflows/:id
+PUT    /api/workflows/:id
+DELETE /api/workflows/:id
+POST   /api/workflows/:id/run
+GET    /api/workflows/runs
+GET    /api/workflows/approvals
+POST   /api/workflows/approvals/:id
+GET    /api/eval/suites
+POST   /api/eval/suites
+POST   /api/eval/run
+GET    /api/eval/runs
+GET    /api/eval/runs/:id
+GET    /api/eval/baselines
+POST   /api/eval/baselines/:runId
+DELETE /api/eval/baselines/:id
+GET    /api/mcp/connections
+POST   /api/mcp/connections
+DELETE /api/mcp/connections/:id
+POST   /api/mcp/connections/:id/connect
+POST   /api/mcp/connections/:id/disconnect
+GET    /api/mcp/connections/:id/tools
+GET    /api/mcp/server
+POST   /api/mcp/server/start
+POST   /api/mcp/server/stop
+GET    /api/vault/list
+POST   /api/vault/store
+GET    /api/vault/get/:key
+DELETE /api/vault/delete/:key
+GET    /api/vault/audit
+POST   /api/vault/export
+POST   /api/vault/import
 GET    /api/soul/templates
 GET    /api/workspace/files
 GET    /api/workspace/git/status
