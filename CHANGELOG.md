@@ -21,10 +21,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
   source, and bumps the target version. `deduplicateExtractedSkill()` auto-runs after each LLM
   extraction session.
 
-- **Skill lifecycle management** — 6-state lifecycle: `candidate → verified → released → degraded →
-  deprecated → archived`. Built-in skills default to `released`, LLM-extracted skills start as
-  `candidate`. `promoteSkill()` transitions up, `deprecateSkill()`/`degradeSkill()` transition down.
-  Deprecated/archived skills are excluded from agent matching and the available list.
+- **Skill lifecycle management** — 6-state lifecycle:
+  `candidate → verified → released → degraded →
+  deprecated → archived`. Built-in skills default to
+  `released`, LLM-extracted skills start as `candidate`. `promoteSkill()` transitions up,
+  `deprecateSkill()`/`degradeSkill()` transition down. Deprecated/archived skills are excluded from
+  agent matching and the available list.
 
 - **Skill health system** — `getSkillHealth()` computes a composite score from utility (usage +
   success), redundancy (duplicate penalty), freshness (time-decay from last use), and failure risk
@@ -42,8 +44,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   names). `getSkillDependents()`/`getSkillDependencies()` traverse the graph. `deleteSkill()` blocks
   deletion if other skills depend on the target.
 
-- **Hierarchical skill organization** — `parent_skill_id` column enables skill trees. Built-in skills
-  can declare parent relationships via `BuiltinSkill.parentSkillId`.
+- **Hierarchical skill organization** — `parent_skill_id` column enables skill trees. Built-in
+  skills can declare parent relationships via `BuiltinSkill.parentSkillId`.
 
 - **Improved LLM skill extraction** — Prompt upgraded with few-shot examples (good extraction vs.
   non-reusable pattern), validation rules, prerequisite capture, and expected outcomes. Max tokens
@@ -54,14 +56,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
   freshness computation, health maintenance, stats metrics, extraction rejection/validity, and
   lifecycle-filtered listing.
 
-- **Server API endpoints** — `POST /api/skills/merge`, `POST /api/skills/deprecate`, `POST
-  /api/skills/promote`, `GET /api/skills/dependencies?name=`, `GET /api/skills/health?name=`.
-  Existing `GET /api/skills` now supports `?lifecycle=` filter.
+- **Server API endpoints** — `POST /api/skills/merge`, `POST /api/skills/deprecate`,
+  `POST
+  /api/skills/promote`, `GET /api/skills/dependencies?name=`,
+  `GET /api/skills/health?name=`. Existing `GET /api/skills` now supports `?lifecycle=` filter.
 
 - **Skill management UI** — Lifecycle badges (color-coded by state), trust tier stars (★☆☆☆ to
   ★★★★), utility/freshness scores in stats bar. Health check button runs maintenance.
-  Promote/deprecate buttons per skill. Lifecycle filter tabs (Released, Deprecated). All rendered
-  in both card and list views.
+  Promote/deprecate buttons per skill. Lifecycle filter tabs (Released, Deprecated). All rendered in
+  both card and list views.
 
 ### Changed
 
@@ -81,7 +84,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Startup** — `registerBuiltinSkills()` accepts optional `EmbeddingProvider`; builds embedding
   index as fire-and-forget after registration. Server startup passes config-built embedder.
 
-- **`BuiltinSkill` interface** — Added `parentSkillId`, `dependsOn`, `conflictsWith` optional fields.
+- **`BuiltinSkill` interface** — Added `parentSkillId`, `dependsOn`, `conflictsWith` optional
+  fields.
 
 - **DB migration 023** — Adds 14 columns + 5 indexes to `procedural_memory`.
 
