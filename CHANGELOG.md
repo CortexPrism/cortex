@@ -5,6 +5,74 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.38.3] — 2026-06-18
+
+### Changed — Phase 5
+
+- **Observability connection tests** — Replaced fake `setTimeout` stubs with real HTTP pings:
+  - `POST /api/observability/test-otlp` — pings configured OTLP endpoint and reports status
+  - `POST /api/observability/test-langfuse` — authenticates and pings Langfuse API health endpoint
+  - UI buttons now show real connection results instead of hardcoded success messages
+
+- **Sub-agent process management** — Now queries real OS processes:
+  - `GET /api/processes/sub-agents` — uses `pgrep` + `ps` to list running sub-agent-entry processes
+  - Config save now persists timeout/retries via `PUT /api/config`
+  - UI displays live PID + command for each running sub-agent
+
+- **CPL YAML import** — Now parses actual YAML from the editor textarea:
+  - Extracts `name`, `kind`, `pattern`, `effect` from YAML key-value pairs
+  - Posts parsed values to `POST /api/policies` instead of hardcoded placeholder
+
+- **Prometheus metrics parser** — Improved parsing and display:
+  - Handles label-bearing metrics (metric_name{labels} value)
+  - Separates gauges and counters (detects `_total`, `_count`, `_sum` suffixes)
+  - Shows labels inline for better metric identification
+
+---
+
+## [0.38.2] — 2026-06-18
+
+### Changed — Phase 3
+
+- **Stub endpoints wired to real backends** — 20+ previously empty stub endpoints now return real
+  data:
+  - Router history/decisions: reads from QM `qm_patterns` and `qm_decisions` tables
+  - Metacognition history/decisions: queries `lens_events` for metacognition/reflection events
+  - Supervisor cache: exposes live `decisionCache` entries via new `getDecisionCacheEntries()`
+    export
+  - Supervisor history: queries `lens_events` for supervisor_decision/access_control events
+  - Tool stats: reads from QM `qm_tool_stats` table
+  - Daemon logs: reads actual log files from `PATHS.dataDir` and `PATHS.logFile`
+  - Sandbox images: queries Docker CLI for real image list
+
+- **Config persistence wired** — 7 PUT endpoints now persist to config instead of no-op:
+  - Voice TTS/STT/VAD: persists provider, voice, model, threshold to config
+  - Sandbox config: persists runtime, languages, timeout, memory/output limits to config
+  - Memory heuristics: triggers actual `runHeuristicCycle()`
+  - Memory embeddings: persists provider/model/dimensions to config
+  - Security supervisor: persists provider/model/cacheTTL to config
+  - Security classification: persists custom classification levels to config
+  - Computer config: persists resolution/dpi to config
+
+- **Supervisor cache inspection** — New `getDecisionCacheEntries()` returns live cache state
+
+### Fixed
+
+- Security supervisor GET now reads from actual config instead of hardcoded defaults
+
+---
+
+## [0.38.1] — 2026-06-18
+
+### Added — Phase 2
+
+- Phase 2 scaffolding: 6 new Phase-2 UI pages and 24 REST endpoints for Phase 2 navigation and data
+  fetch.
+- Phase 2 endpoints scaffolded at /api/phase2/page{n}/{content|config|state|stats} (six pages, 24
+  endpoints).
+- Global left-nav persistence groundwork: ensure Tools & Policies appear and remain visible across
+  page switches.
+
 ---
 
 ## [0.38.0] — 2026-06-18

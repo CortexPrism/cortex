@@ -240,6 +240,34 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ status: 'ok', ts: new Date().toISOString() });
   }
 
+  // Phase 2 scaffolding endpoints (public, no auth required)
+  // Six Phase-2 pages with four sub-endpoints each: content, config, state, stats
+  // This provides a minimal surface area to bootstrap Phase 2 UI routing.
+  // Path example: /api/phase2/page1/content
+  if (req.method === 'GET' && path.startsWith('/api/phase2/page')) {
+    const m = path.match(/^\/api\/phase2\/page(\d+)\/(content|config|state|stats)$/);
+    if (m) {
+      const page = Number(m[1]);
+      const section = m[2];
+      const payload = {
+        ok: true,
+        page,
+        section,
+        content: `<div>Phase 2 Page ${page} - ${section}</div>`,
+      };
+      return json(payload);
+    }
+  }
+  // GET /api/phase2/pages — metadata for Phase 2 pages (list all pages)
+  if (req.method === 'GET' && path === '/api/phase2/pages') {
+    const pages = [1, 2, 3, 4, 5, 6].map((id) => ({
+      id,
+      slug: `page${id}`,
+      title: `Phase 2 Page ${id}`,
+    }));
+    return json({ ok: true, pages });
+  }
+
   // GET /api/status — daemon health (no auth, used by frontend sidebar)
   if (req.method === 'GET' && path === '/api/status') {
     const [validator, executor, scheduler] = await Promise.all([
@@ -3318,6 +3346,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // PUT /api/computer/config
   if (req.method === 'PUT' && path === '/api/computer/config') {
     const body = await req.json() as { resolution?: string; dpi?: number };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.computerUse) cfg.computerUse = {};
+    const cu = cfg.computerUse as Record<string, unknown>;
+    if (body.resolution) cu.resolution = body.resolution;
+    if (body.dpi !== undefined) cu.dpi = body.dpi;
+    await saveConfig(config);
     return json({ ok: true });
   }
 
@@ -3388,7 +3423,19 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const daemonLogMatch = path.match(/^\/api\/daemons\/([^/]+)\/logs$/);
   if (req.method === 'GET' && daemonLogMatch) {
     const lines = Number(url.searchParams.get('lines') ?? 100);
-    return json({ name: daemonLogMatch[1], lines: [] });
+    const name = daemonLogMatch[1];
+    const logPath = join(PATHS.dataDir, name === 'server' ? 'server.log' : `${name}.log`);
+    let logLines: string[] = [];
+    try {
+      const content = await Deno.readTextFile(logPath);
+      logLines = content.split('\n').filter(Boolean).slice(-lines);
+    } catch {
+      try {
+        const content = await Deno.readTextFile(PATHS.logFile);
+        logLines = content.split('\n').filter(Boolean).slice(-lines);
+      } catch { /* no logs available */ }
+    }
+    return json({ name, lines: logLines });
   }
 
   // POST /api/daemons/:name/restart
@@ -3566,12 +3613,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/router/history
   if (req.method === 'GET' && path === '/api/router/history') {
-    return json([]);
+    const { getPatterns } = await import('../quartermaster/store.ts');
+    const patterns = await getPatterns(50);
+    return json(patterns);
   }
 
   // GET /api/router/decisions?sessionId=
   if (req.method === 'GET' && path === '/api/router/decisions') {
-    return json([]);
+    const { getDecisions } = await import('../quartermaster/store.ts');
+    const sessionId = url.searchParams.get('sessionId') ?? undefined;
+    const decisions = await getDecisions(sessionId, 50);
+    return json(decisions);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3599,7 +3651,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/tools/:name/stats
   const toolStatsMatch = path.match(/^\/api\/tools\/([^/]+)\/stats$/);
   if (req.method === 'GET' && toolStatsMatch) {
-    return json({ name: toolStatsMatch[1], totalUses: 0, successRate: 0, avgDurationMs: 0 });
+    const { getToolStat } = await import('../quartermaster/store.ts');
+    const stat = await getToolStat(toolStatsMatch[1]);
+    return json(
+      stat ?? { name: toolStatsMatch[1], totalUses: 0, successRate: 0, avgDurationMs: 0 },
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3637,7 +3693,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // PUT /api/memory/heuristics
   if (req.method === 'PUT' && path === '/api/memory/heuristics') {
-    return json({ ok: true });
+    const { runHeuristicCycle } = await import('../memory/heuristics.ts');
+    const result = await runHeuristicCycle();
+    return json({ ok: true, affected: result });
   }
 
   // GET /api/memory/embeddings
@@ -3651,6 +3709,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // PUT /api/memory/embeddings
   if (req.method === 'PUT' && path === '/api/memory/embeddings') {
+    const body = await req.json() as { provider?: string; model?: string; dimensions?: number };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.embeddings) cfg.embeddings = {};
+    const emb = cfg.embeddings as Record<string, unknown>;
+    if (body.provider) emb.provider = body.provider;
+    if (body.model) emb.model = body.model;
+    if (body.dimensions !== undefined) emb.dimensions = body.dimensions;
+    await saveConfig(config);
     return json({ ok: true });
   }
 
@@ -3660,12 +3727,25 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/metacognition/history
   if (req.method === 'GET' && path === '/api/metacognition/history') {
-    return json([]);
+    const db = await getLensDb();
+    const rows = await db.all(
+      `SELECT * FROM lens_events WHERE event_type IN ('metacognition','reflection','meta_pattern')
+       ORDER BY started_at DESC LIMIT 50`,
+    );
+    return json(rows);
   }
 
   // GET /api/metacognition/decisions?sessionId=
   if (req.method === 'GET' && path === '/api/metacognition/decisions') {
-    return json([]);
+    const sessionId = url.searchParams.get('sessionId');
+    if (!sessionId) return err('sessionId required', 400);
+    const db = await getLensDb();
+    const rows = await db.all(
+      `SELECT * FROM lens_events WHERE session_id = ? AND event_type IN ('metacognition','reflection','meta_pattern')
+       ORDER BY started_at DESC LIMIT 50`,
+      [sessionId],
+    );
+    return json(rows);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3695,6 +3775,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // PUT /api/voice/tts
   if (req.method === 'PUT' && path === '/api/voice/tts') {
     const body = await req.json() as { provider?: string; voice?: string };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.voice) cfg.voice = {};
+    (cfg.voice as Record<string, unknown>).ttsProvider = body.provider ?? 'openai';
+    (cfg.voice as Record<string, unknown>).ttsVoice = body.voice ?? 'alloy';
+    await saveConfig(config);
     return json({ ok: true });
   }
 
@@ -3706,12 +3792,25 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // PUT /api/voice/stt
   if (req.method === 'PUT' && path === '/api/voice/stt') {
+    const body = await req.json() as { provider?: string; model?: string };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.voice) cfg.voice = {};
+    (cfg.voice as Record<string, unknown>).sttProvider = body.provider ?? 'openai';
+    (cfg.voice as Record<string, unknown>).sttModel = body.model ?? 'whisper-1';
+    await saveConfig(config);
     return json({ ok: true });
   }
 
   // PUT /api/voice/vad
   if (req.method === 'PUT' && path === '/api/voice/vad') {
-    const body = await req.json() as { threshold?: number };
+    const body = await req.json() as { threshold?: number; enabled?: boolean };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.voice) cfg.voice = {};
+    (cfg.voice as Record<string, unknown>).vadThreshold = body.threshold ?? 50;
+    (cfg.voice as Record<string, unknown>).vadEnabled = body.enabled ?? true;
+    await saveConfig(config);
     return json({ ok: true, threshold: body.threshold ?? 50 });
   }
 
@@ -3763,6 +3862,16 @@ export async function handleApi(req: Request): Promise<Response | null> {
       memory?: number;
       output?: number;
     };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.sandbox) cfg.sandbox = {};
+    const sb = cfg.sandbox as Record<string, unknown>;
+    if (body.runtime) sb.runtime = body.runtime;
+    if (body.languages) sb.languages = body.languages;
+    if (body.timeout !== undefined) sb.timeout = body.timeout;
+    if (body.memory !== undefined) sb.memoryLimit = body.memory;
+    if (body.output !== undefined) sb.outputLimit = body.output;
+    await saveConfig(config);
     return json({ ok: true });
   }
 
@@ -3770,7 +3879,28 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/sandbox/images') {
     const { isDockerAvailable } = await import('../sandbox/executor.ts');
     const docker = await isDockerAvailable();
-    return json({ available: docker, images: [] });
+    let images: Array<{ id: string; repository: string; tag: string; size: string }> = [];
+    if (docker) {
+      try {
+        const cmd = new Deno.Command('docker', {
+          args: ['images', '--format', '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Size}}'],
+          stdout: 'piped',
+          stderr: 'null',
+        });
+        const output = await cmd.output();
+        const text = new TextDecoder().decode(output.stdout);
+        images = text.split('\n').filter(Boolean).map((line) => {
+          const [id, repository, tag, size] = line.split('\t');
+          return {
+            id: id || line,
+            repository: repository || '',
+            tag: tag || 'latest',
+            size: size || '',
+          };
+        });
+      } catch { /* Docker CLI not available */ }
+    }
+    return json({ available: docker, images });
   }
 
   // POST /api/sandbox/images/pull
@@ -3790,18 +3920,38 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/security/supervisor
   if (req.method === 'GET' && path === '/api/security/supervisor') {
-    return json({ provider: 'google', model: 'gemini-2.0-flash', cacheTTL: 3600 });
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    const sec = (cfg.security as Record<string, unknown> | undefined) ?? {};
+    const sup = (sec.supervisor as Record<string, unknown> | undefined) ?? {};
+    return json({
+      provider: sup.provider ?? 'google',
+      model: sup.model ?? 'gemini-2.0-flash',
+      cacheTTL: sup.cacheTTL ?? 3600,
+    });
   }
 
   // PUT /api/security/supervisor
   if (req.method === 'PUT' && path === '/api/security/supervisor') {
     const body = await req.json() as { provider?: string; model?: string; cacheTTL?: number };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.security) cfg.security = {};
+    const sec = cfg.security as Record<string, unknown>;
+    if (!sec.supervisor) sec.supervisor = {};
+    const sup = sec.supervisor as Record<string, unknown>;
+    if (body.provider) sup.provider = body.provider;
+    if (body.model) sup.model = body.model;
+    if (body.cacheTTL !== undefined) sup.cacheTTL = body.cacheTTL;
+    await saveConfig(config);
     return json({ ok: true });
   }
 
   // GET /api/security/supervisor/cache
   if (req.method === 'GET' && path === '/api/security/supervisor/cache') {
-    return json({ entries: [] });
+    const { getDecisionCacheEntries } = await import('../security/supervisor.ts');
+    const entries = getDecisionCacheEntries();
+    return json({ entries });
   }
 
   // DELETE /api/security/supervisor/cache
@@ -3813,7 +3963,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/security/supervisor/history
   if (req.method === 'GET' && path === '/api/security/supervisor/history') {
-    return json([]);
+    const db = await getLensDb();
+    const rows = await db.all(
+      `SELECT * FROM lens_events WHERE event_type IN ('supervisor_decision','access_control')
+       ORDER BY started_at DESC LIMIT 50`,
+    );
+    return json(rows);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3837,6 +3992,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // PUT /api/security/classification
   if (req.method === 'PUT' && path === '/api/security/classification') {
+    const body = await req.json() as { levels?: Array<{ name: string; patterns: string[] }> };
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    if (!cfg.security) cfg.security = {};
+    const sec = cfg.security as Record<string, unknown>;
+    sec.classificationLevels = body.levels ?? [];
+    await saveConfig(config);
     return json({ ok: true });
   }
 
@@ -3847,6 +4009,92 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { classifyContent } = await import('../security/classification.ts');
     const level = classifyContent(body.content);
     return json({ level, content: body.content });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 5: Observability Test Endpoints
+  // ═══════════════════════════════════════════════════════════════
+
+  // POST /api/observability/test-otlp
+  if (req.method === 'POST' && path === '/api/observability/test-otlp') {
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    const logging = (cfg.logging ?? {}) as Record<string, unknown>;
+    const endpoint = logging.otlpEndpoint as string | undefined;
+    if (!endpoint) return json({ ok: false, error: 'OTLP endpoint not configured' });
+    try {
+      const resp = await fetch(endpoint, { method: 'HEAD' });
+      return json({
+        ok: resp.ok,
+        status: resp.status,
+        endpoint,
+        message: resp.ok ? 'OTLP endpoint reachable' : `HTTP ${resp.status}`,
+      });
+    } catch (e) {
+      return json({ ok: false, error: (e as Error).message, endpoint });
+    }
+  }
+
+  // POST /api/observability/test-langfuse
+  if (req.method === 'POST' && path === '/api/observability/test-langfuse') {
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    const lf = (cfg.langfuse ?? {}) as Record<string, unknown>;
+    const publicKey = lf.publicKey as string | undefined;
+    const secretKey = lf.secretKey as string | undefined;
+    if (!publicKey || !secretKey) {
+      return json({ ok: false, error: 'Langfuse keys not configured' });
+    }
+    const baseUrl = (lf.baseUrl as string) ?? 'https://cloud.langfuse.com';
+    try {
+      const auth = btoa(`${publicKey}:${secretKey}`);
+      const resp = await fetch(`${baseUrl}/api/public/health`, {
+        headers: { Authorization: `Basic ${auth}` },
+      });
+      return json({
+        ok: resp.ok,
+        status: resp.status,
+        baseUrl,
+        message: resp.ok ? 'Langfuse API reachable' : `HTTP ${resp.status}`,
+      });
+    } catch (e) {
+      return json({ ok: false, error: (e as Error).message, baseUrl });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 5: Sub-Agent Process Management
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/processes/sub-agents
+  if (req.method === 'GET' && path === '/api/processes/sub-agents') {
+    const processes: Array<{ pid: number; cmd: string }> = [];
+    try {
+      const cmd = new Deno.Command('pgrep', {
+        args: ['-f', 'sub-agent-entry'],
+        stdout: 'piped',
+        stderr: 'null',
+      });
+      const output = await cmd.output();
+      const pids = new TextDecoder().decode(output.stdout).trim().split('\n').filter(Boolean);
+      for (const pidStr of pids) {
+        const pid = parseInt(pidStr, 10);
+        if (isNaN(pid)) continue;
+        try {
+          const psCmd = new Deno.Command('ps', {
+            args: ['-p', String(pid), '-o', 'args='],
+            stdout: 'piped',
+            stderr: 'null',
+          });
+          const psOut = await psCmd.output();
+          const cmd = new TextDecoder().decode(psOut.stdout).trim();
+          processes.push({ pid, cmd });
+        } catch {
+          processes.push({ pid, cmd: 'sub-agent-entry' });
+        }
+      }
+    } catch { /* no sub-agents running */ }
+    return json({ processes });
   }
 
   return null;
