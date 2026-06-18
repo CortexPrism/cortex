@@ -115,7 +115,8 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 | File system    | read, write, edit, patch, delete, rename, list, tree, info, search, glob, undo/redo        |
 | Shell          | execute shell commands (sandboxed through policy validator)                                |
 | Web            | web_search (DuckDuckGo, Brave, Tavily, SerpAPI), web_fetch (returns cleaned plain text)    |
-| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                        |
+| Code execution | sandboxed Docker containers with resource limits; LLM auto-fix loop                     |
+| Browser        | navigate, click, type, screenshot, snapshot, evaluate (Playwright automation)            |
 | GitHub         | PR creation/listing, issue tracking, repo browsing, git push                               |
 | Git workspace  | status, commit, push, pull, branch, clone                                                  |
 | Voice          | speak, listen (STT/TTS agent tools)                                                        |
