@@ -28,10 +28,17 @@ import type {
 import { buildEmbedder } from '../memory/embeddings.ts';
 import {
   deleteSkill,
+  deprecateSkill,
   getSkillByName,
+  getSkillDependencies,
+  getSkillDependents,
+  getSkillHealth,
   getSkillStats,
   listSkills,
   loadHumanSkills,
+  mergeSkill,
+  promoteSkill,
+  runSkillHealthMaintenance,
   storeSkill,
 } from '../memory/skills.ts';
 import {
@@ -527,7 +534,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/skills
   if (req.method === 'GET' && path === '/api/skills') {
     const origin = url.searchParams.get('origin') as 'human' | 'llm' | null;
-    const skills = await listSkills(50, origin ?? undefined);
+    const lifecycle = url.searchParams.get('lifecycle') as
+      | 'candidate'
+      | 'verified'
+      | 'released'
+      | 'degraded'
+      | 'deprecated'
+      | 'archived'
+      | null;
+    const skills = await listSkills(50, origin ?? undefined, lifecycle ?? undefined);
     return json(skills);
   }
 
@@ -635,6 +650,61 @@ export async function handleApi(req: Request): Promise<Response | null> {
     await ensureDir(dir);
     await Deno.writeTextFile(join(dir, 'SKILL.md'), frontmatter + content);
     return json({ ok: true, path: '.cortex/skills/' + name + '/SKILL.md' });
+  }
+
+  // POST /api/skills/merge — merge two skills
+  if (req.method === 'POST' && path === '/api/skills/merge') {
+    const body = await req.json() as { target: string; source: string };
+    if (!body.target?.trim() || !body.source?.trim()) {
+      return err('Missing target or source skill name', 400);
+    }
+    try {
+      const result = await mergeSkill(body.target.trim(), body.source.trim());
+      return json({ ok: true, skill: result });
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
+  }
+
+  // POST /api/skills/deprecate — deprecate a skill
+  if (req.method === 'POST' && path === '/api/skills/deprecate') {
+    const body = await req.json() as { name: string; reason?: string };
+    if (!body.name?.trim()) return err('Missing skill name', 400);
+    const ok = await deprecateSkill(body.name.trim(), body.reason ?? 'Deprecated via API');
+    if (!ok) return err('Skill not found', 404);
+    return json({ ok: true });
+  }
+
+  // POST /api/skills/promote — promote a skill lifecycle
+  if (req.method === 'POST' && path === '/api/skills/promote') {
+    const body = await req.json() as { name: string };
+    if (!body.name?.trim()) return err('Missing skill name', 400);
+    const ok = await promoteSkill(body.name.trim());
+    if (!ok) return err('Skill not found', 404);
+    return json({ ok: true });
+  }
+
+  // GET /api/skills/dependencies?name=... — get skill dependency graph
+  if (req.method === 'GET' && path === '/api/skills/dependencies') {
+    const name = url.searchParams.get('name');
+    if (!name) return err('Missing skill name', 400);
+    const [dependents, dependencies] = await Promise.all([
+      getSkillDependents(name),
+      getSkillDependencies(name),
+    ]);
+    return json({ name, dependents, dependencies });
+  }
+
+  // GET /api/skills/health?name=... — get skill health report
+  if (req.method === 'GET' && path === '/api/skills/health') {
+    const name = url.searchParams.get('name');
+    if (name) {
+      const health = await getSkillHealth(name);
+      if (!health) return err('Skill not found', 404);
+      return json(health);
+    }
+    const result = await runSkillHealthMaintenance();
+    return json(result);
   }
 
   // GET /api/policies

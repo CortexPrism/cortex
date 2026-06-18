@@ -166,9 +166,11 @@ export const chatCommand = new Command()
         identity.memory,
       );
 
+      const embedder = buildEmbedder(config);
+
       // Register built-in skills and load filesystem skills at startup
-      await registerBuiltinSkills().catch(() => {});
-      // Inject all human-authored skills into the system prompt
+      await registerBuiltinSkills(undefined, embedder).catch(() => {});
+      // Inject only active human-authored skills into the system prompt (lazy)
       const humanSkills = await getAllHumanSkills().catch(() => []);
       if (humanSkills.length > 0) {
         systemPrompt += formatSkillsAsAvailableList(humanSkills);
@@ -193,8 +195,6 @@ export const chatCommand = new Command()
         summary: `CLI session started with agent "${agent.name}" / ${activeProvider.name}/${model}`,
         started_at: sessionStart,
       });
-
-      const embedder = buildEmbedder(config);
 
       // Build tool registry respecting agent's tool allow-list
       const registry = globalRegistry;

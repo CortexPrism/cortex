@@ -7,6 +7,84 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.36.0] — 2026-06-18
+
+### Added — Major
+
+- **Embedding-based skill retrieval** — `findMatchingSkills()` now accepts an `EmbeddingProvider`;
+  ranks skills via cosine similarity against precomputed embeddings with lexical fallback.
+  `buildSkillEmbeddingIndex()` precomputes embeddings from skill name + description + content.
+  Embedder is passed through from the agent loop and server startup.
+
+- **Skill deduplication** — `findSimilarSkills()` detects near-duplicate skills via embedding
+  similarity. `mergeSkill()` combines steps, descriptions, and content from two skills, archives the
+  source, and bumps the target version. `deduplicateExtractedSkill()` auto-runs after each LLM
+  extraction session.
+
+- **Skill lifecycle management** — 6-state lifecycle: `candidate → verified → released → degraded →
+  deprecated → archived`. Built-in skills default to `released`, LLM-extracted skills start as
+  `candidate`. `promoteSkill()` transitions up, `deprecateSkill()`/`degradeSkill()` transition down.
+  Deprecated/archived skills are excluded from agent matching and the available list.
+
+- **Skill health system** — `getSkillHealth()` computes a composite score from utility (usage +
+  success), redundancy (duplicate penalty), freshness (time-decay from last use), and failure risk
+  (1 − success rate). `runSkillHealthMaintenance()` auto-deprecates stale/low-quality LLM skills.
+
+- **Quality signals** — `utility_score` (Bayesian rolling average with success bonus), `freshness`
+  (30-day half-life decay, computed by `computeSkillFreshness()`), `token_cost`. All updated on
+  `recordSkillSuccess()`/`recordSkillFailure()`.
+
+- **Security trust tiering** — 4-tier system on `trust_tier` column: 1 (untrusted/LLM-extracted), 2
+  (provisional), 3 (trusted/human-authored), 4 (vetted/built-in). `filterReliableSkills()` gates
+  agent exposure based on tier + success rate. Trust stars rendered in system prompt and web UI.
+
+- **Skill dependency graph** — `depends_on` and `conflicts_with` columns (JSON arrays of skill
+  names). `getSkillDependents()`/`getSkillDependencies()` traverse the graph. `deleteSkill()` blocks
+  deletion if other skills depend on the target.
+
+- **Hierarchical skill organization** — `parent_skill_id` column enables skill trees. Built-in skills
+  can declare parent relationships via `BuiltinSkill.parentSkillId`.
+
+- **Improved LLM skill extraction** — Prompt upgraded with few-shot examples (good extraction vs.
+  non-reusable pattern), validation rules, prerequisite capture, and expected outcomes. Max tokens
+  increased from 512 → 1024. Steps now require tool name and params placeholders.
+
+- **Skill evaluation benchmark** — New `tests/skills_eval_test.ts` with 13 tests covering: CRUD,
+  lifecycle promotion, lexical search, reliability filtering, merge, dependencies, health scores,
+  freshness computation, health maintenance, stats metrics, extraction rejection/validity, and
+  lifecycle-filtered listing.
+
+- **Server API endpoints** — `POST /api/skills/merge`, `POST /api/skills/deprecate`, `POST
+  /api/skills/promote`, `GET /api/skills/dependencies?name=`, `GET /api/skills/health?name=`.
+  Existing `GET /api/skills` now supports `?lifecycle=` filter.
+
+- **Skill management UI** — Lifecycle badges (color-coded by state), trust tier stars (★☆☆☆ to
+  ★★★★), utility/freshness scores in stats bar. Health check button runs maintenance.
+  Promote/deprecate buttons per skill. Lifecycle filter tabs (Released, Deprecated). All rendered
+  in both card and list views.
+
+### Changed
+
+- **`skill_write` tool** — Expanded from 3 operations to 8: `create`, `update`, `delete`, `merge`,
+  `promote`, `deprecate`, `dependents`, `dependencies`. New params: `lifecycle`, `trust_tier`,
+  `depends_on`, `conflicts_with`, `parent_skill_id`, `reason`, `source_name`.
+
+- **`skill_read` tool** — Added `lifecycle` filter parameter; listings now show trust stars and
+  lifecycle badges.
+
+- **`load_skill` tool** — Output now includes lifecycle, trust tier, utility score, and freshness.
+  Auto-records `last_used_at` on load.
+
+- **Agent loop** — Skill matching delegates to embedding-based retrieval when embedder is available.
+  Uses `filterReliableSkills()` instead of inline filtering. Auto-deduplicates after LLM extraction.
+
+- **Startup** — `registerBuiltinSkills()` accepts optional `EmbeddingProvider`; builds embedding
+  index as fire-and-forget after registration. Server startup passes config-built embedder.
+
+- **`BuiltinSkill` interface** — Added `parentSkillId`, `dependsOn`, `conflictsWith` optional fields.
+
+- **DB migration 023** — Adds 14 columns + 5 indexes to `procedural_memory`.
+
 ## [0.35.3] — 2026-06-18
 
 ### Changed

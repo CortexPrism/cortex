@@ -240,6 +240,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '022_policy_enabled.sql',
       label: 'cortex.db (policy enabled)',
     },
+    {
+      db: memoryDb,
+      sqlFile: '023_skills_enhancements.sql',
+      label: 'memory.db (skills enhancements)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

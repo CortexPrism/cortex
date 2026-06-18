@@ -24,6 +24,7 @@ import { cleanupSessionState, registerBuiltinHooks } from '../pipeline/builtin.t
 import type { AgentState } from '../pipeline/types.ts';
 import {
   extractSkillFromSession,
+  filterReliableSkills,
   findMatchingSkills,
   formatSkillsForPrompt,
 } from '../memory/skills.ts';
@@ -461,8 +462,8 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
   let skillEnrichedPrompt = memoryEnrichedPrompt;
   try {
-    const skills = await findMatchingSkills(effectiveInput, 3);
-    const reliable = skills.filter((s) => s.origin === 'human' || s.success_rate >= 0.3);
+    const skills = await findMatchingSkills(effectiveInput, 3, options.embedder ?? null);
+    const reliable = filterReliableSkills(skills);
     if (reliable.length > 0) {
       skillEnrichedPrompt = memoryEnrichedPrompt + formatSkillsForPrompt(reliable);
     }
@@ -1188,7 +1189,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         collectedToolCalls,
         provider,
         model,
-      ).catch(() => {});
+      ).then(async (skillId) => {
+        if (skillId && options.embedder) {
+          const { deduplicateExtractedSkill } = await import('../memory/skills.ts');
+          deduplicateExtractedSkill(skillId, options.embedder).catch(() => {});
+        }
+      }).catch(() => {});
     }
 
     await runHooksForStage(
