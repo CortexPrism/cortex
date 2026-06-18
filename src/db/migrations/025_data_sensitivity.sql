@@ -13,8 +13,6 @@
 
 -- Core database (cortex.db)
 ALTER TABLE sessions ADD COLUMN sensitivity TEXT DEFAULT 'sensitive';
-ALTER TABLE agents ADD COLUMN sensitivity TEXT DEFAULT 'normal';
 
 -- Create indexes for efficient sensitivity-based queries
 CREATE INDEX IF NOT EXISTS idx_sessions_sensitivity ON sessions(sensitivity);
-CREATE INDEX IF NOT EXISTS idx_agents_sensitivity ON agents(sensitivity);
