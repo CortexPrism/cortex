@@ -7,7 +7,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
-## [Unreleased] — 2026-06-18
+## [0.38.0] — 2026-06-18
 
 ### Added — Major
 
@@ -31,7 +31,6 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Centralized `registerAllBuiltins()` in `src/tools/registry.ts`
   - 43 builtin tools grouped by category
   - Applied to ws.ts, cli/chat.ts, service-entry.ts, sub-agent-entry.ts
-  - Agent-level tool filtering preserved
 
 - **memory_search tool** — Agent memory search with automatic security supervision:
   - Search across episodic, semantic, reflection, and graph memory tiers
@@ -40,186 +39,106 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Tier filtering and optional session scoping
   - Automatic sensitivity classification on results
   - Security supervisor integration for SENSITIVE/SECRET hits
-  - Returns ranked results with confidence scores and timestamps
 
 - **db_query tool** — Read-only database querying with security supervision:
-  - Query cortex (sessions/agents), memory (episodic/semantic/reflection/graph), lens (audit),
-    plugins (registry), or session-specific databases
-  - Strict read-only enforcement: blocks INSERT, UPDATE, DELETE, DROP, ALTER, CREATE
-  - Allows SELECT, WITH (CTEs), PRAGMA (schema introspection), EXPLAIN
+  - Query cortex/memory/lens/plugins/session databases
+  - Strict read-only enforcement (blocks INSERT, UPDATE, DELETE, DROP, ALTER, CREATE)
   - Multiple output formats: table (ASCII), JSON, CSV
-  - Automatic sensitivity classification on results
-  - Special escalation for lens.db (audit logs) to human approval
-  - Context-aware supervision with audit trails
+  - Automatic sensitivity classification and audit trail
 
-- **json_query tool** — JSON querying and manipulation:
-  - JSONPath-like expression support ($.property, $.array[0], $.array[*])
-  - Operations: read, count, filter, set, delete
-  - Property access with array indexing
-  - Recursive descent with $.**
-  - Type-safe result validation
+- **json_query tool** — JSONPath-like expression support ($.property, $.array[0], $.array[*])
+  - Operations: read, count, filter, set, delete; recursive descent with $.**
 
-- **regex_utils tool** — Regular expression utilities:
-  - Operations: match, replace, test, split, exec
-  - Regex flags: g, i, m, s (global, case-insensitive, multiline, dotall)
-  - Capture group support with $1, $2, etc.
-  - Multiple match tracking with exec operation
-  - Pattern validation and error handling
+- **regex_utils tool** — Regular expression utilities with capture group support
+  - Operations: match, replace, test, split, exec; flags: g, i, m, s
 
-- **env_manager tool** — Environment variable management:
-  - Operations: get, set, list, has
-  - Whitelist-based security for set operation
-  - Public variable filtering (no secrets exposure)
-  - Deno runtime integration
+- **env_manager tool** — Environment variable management with whitelist-based set security
 
-- **code_snippet tool** — Code snippet extraction and formatting:
-  - Extract code blocks from markdown
-  - Format with optional line numbers
-  - Validate markdown code block structure
-  - Language detection from code fence
-  - Multiple snippet support
+- **code_snippet tool** — Code block extraction from markdown with line numbers and language
+  detection
 
-- **structured_extract tool** — LLM-powered entity and relationship extraction:
-  - JSON-Schema validation for extracted data
-  - Multi-format input support: plain text, HTML, JSON
-  - Pattern-based extraction (emails, phones, URLs)
-  - Streaming output for large extractions (JSONL format)
-  - Schema-based validation with strict/lenient modes
-  - Input length handling with graceful truncation
-  - Configurable extraction descriptions
+- **structured_extract tool** — LLM-powered entity/relationship extraction with JSON-Schema
+  validation
+  - Multi-format input (text, HTML, JSON), pattern-based extraction, streaming JSONL output
 
 - **browser tool** — Headless browser automation with security supervision:
-  - Actions: navigate, click, type, screenshot, snapshot, evaluate, wait, close
-  - Playwright-powered Chromium automation (lazy-loaded singleton)
-  - Screenshot capture as base64 PNG with sensitivity classification
-  - Accessibility snapshot (structured tree) for content analysis
-  - JavaScript evaluation with supervisor approval (arbitrary code execution)
-  - Click/type interaction for form automation and testing
-  - Configurable timeout (default: 30s) and async page context management
-  - Base64-encoded image output for LLM-friendly usage
+  - Playwright-powered: navigate, click, type, screenshot, snapshot, evaluate, wait
+  - Base64 PNG screenshot output, accessibility snapshots, configurable timeout (30s)
 
-- **docs_search tool** — Official library documentation search (Context7):
-  - Search 25+ popular libraries: React, Vue, Angular, Next.js, TypeScript, Node.js, etc.
-  - Version-specific documentation support (e.g., React 18.0.0)
-  - 24-hour result caching to prevent duplicate API calls
-  - Code example inclusion (configurable)
-  - Fallback to formatted output if Context7 unavailable
-  - Library name resolution (fuzzy matching for common names)
-  - Prevents hallucinated API calls by providing official reference material
+- **docs_search tool** — Official library documentation search via Context7
+  - 25+ libraries, version-specific docs, 24-hour result caching, fuzzy library name resolution
 
-- **Human approval flows**:
-  - CLI: Color-coded prompts with y/n/details options
-  - Web UI: Modal with request details, supervisor reasoning, sample data
-  - Async approval via WebSocket with 5-minute timeout
+- **image_analyze tool** — Multimodal image analysis via 18+ LLM providers
+  - Local files, data URLs, base64; detail level control, MIME type detection
 
-- **image_analyze tool** — Multimodal image analysis via LLM providers:
-  - Supports 18+ providers with vision capabilities (Claude, GPT-4V, Gemini, etc.)
-  - Local file paths, data URLs, and base64-encoded images
-  - Detail level control (low/auto/high) for cost optimization
-  - Automatic MIME type detection from file extensions
-  - File existence validation and size checks
+- **schedule tool** — Cron-based job scheduling with full lifecycle: create/list/cancel/status/due
 
-- **schedule tool** — Agent-controlled job scheduling with cron support:
-  - CRUD operations: create, list, cancel, status, due
-  - Cron expression parsing and next-run calculation
-  - Integrates with the existing SQLite-persisted scheduler
-  - Full lifecycle: create → enqueue → run → mark done/failed
-  - Job metadata display including attempts, error history, next run time
+- **Enhanced file_diff tool** — Unified diff format, lookahead matching, configurable output formats
 
-- **Enhanced file_diff tool** — Improved unified diff output with lookahead matching:
-  - Proper unified diff format with `---`/`+++` headers and `@@` hunk markers
-  - Configurable output formats: default, unified, side_by_side, minimal
-  - Smart lookahead matching for better hunk alignment
-  - Context line control for surrounding unchanged lines
+### Web UI Coverage — 58/58 Systems (100%)
 
-- **Web UI coverage — Phase 1** — Five new management pages added to the SPA:
-  - **Codegraph** — D3.js interactive force-directed graph. Project selector, symbol search with
-    live filtering, impact analysis panel, architecture summary, and path tracer with step-by-step
-    visualization. Wraps the 6 code intelligence tools.
-  - **Workflows** — Workflow engine visual designer. Library browser with create/load/delete, JSON
-    step editor, run history table with status badges, and approval queue with approve/reject
-    actions.
-  - **Eval Runner** — Agent evaluation suite dashboard. Suite browser with card grid, run
-    configuration modal (agent/provider/baseline/timeout), results view with pass/fail breakdown and
-    Chart.js per-category bar chart, baseline management, and side-by-side regression diff
-    comparison.
-  - **MCP Server** — Model Context Protocol connection management. Connection list with
-    connect/disconnect, add modal with stdio/HTTP transport selection, tool browser with JSON-Schema
-    parameter display, and local server start/stop controls.
-  - **Encrypted Vault** — AES-256-GCM credential management. Credential table with service/usage/
-    expiration columns, add/edit modal with password reveal toggle, access audit log with grant/deny
-    tracking, and export/import for encrypted JSON backups.
-  - Added new "Tools & Engines" sidebar navigation section with 5 page entries
-  - +34 REST API endpoints: `/api/codegraph/*` (6), `/api/workflows/*` (8), `/api/eval/*` (7),
-    `/api/mcp/*` (6), `/api/vault/*` (7)
-  - D3.js v7 CDN integration for code graph visualization
-  - In-memory storage helpers for eval suites/runs/baselines and workflow lifecycle
+Five implementation phases took the SPA from partial to full coverage across all backend systems.
+The sidebar was restructured from 8 sections / 37 items down to 5 sections / 25 items.
 
-- **Web UI coverage — Phase 2** — Six additional management pages for operational systems:
-  - **Computer Use** — Remote desktop viewer page with screenshot gallery, action log table, and
-    display configuration panel. Computer use availability detection via Xvfb/xdotool checks.
-  - **Remote Agents** — Distributed agent management with agent list (name/node/tier/status), deploy
-    modal with tier selection, and directive history log.
-  - **Daemon Health** — Process health dashboard with 5 daemon cards (validator/executor/scheduler/
-    supervisor/service-manager), live health pings via Unix socket IPC, per-daemon log tail viewer,
-    restart controls with confirmation, and 10-second auto-refresh.
-  - **Import/Export** — Data migration page with import panel (type selector, file upload, dry-run
-    preview), export panel (sessions/config/skills/memory checkboxes with JSON download), and
-    migration history sidebar.
-  - **Update System** — Version management page with status display
-    (current/latest/channel/up-to-date badge), check/install/rollback action buttons with progress
-    feedback, and changelog viewer.
-  - **Reflection Consolidation** — LLM reflection management with consolidation schedule toggles
-    (hourly/daily/weekly), manual consolidation trigger, meta-patterns browser with confidence bars,
-    and consolidation history table.
-  - Added new "Operations" sidebar navigation section with 5 page entries
-  - +24 REST API endpoints: `/api/computer/*` (4), `/api/remote/*` (3), `/api/daemons/*` (4),
-    `/api/import/*` + `/api/export` (3), `/api/update/*` (5), `/api/reflection/*` (5)
+**New Management Pages (14):**
 
-- **Web UI coverage — Phase 3** — Complete 10 partially-covered systems with full management UIs:
-  - **Provider Comparison** — Settings tab with provider/model/context-window comparison table
-  - **Router Dashboard** — Settings tab with strategy display, fallthrough history, cost estimation
-  - **Tool Registry** — New page with tool catalog grid, parameter schemas, capability badges,
-    toggle
-  - **Memory Privacy/Heuristics/Embeddings** — 3 new Memory tabs for PII redaction toggles,
-    retention config, 12 auto-categorization rules, and embedding provider/dimension display
-  - **Metacognition** — New page with task assessment tester (keyword-based decision engine),
-    decision distribution chart, and assessment history log
-  - **Sub-Agent Types** — Agents page tab with type cards (explore/general/plan/code/research)
-    showing tool allow-lists, maxTurns, and edit capability
-  - **Voice Configuration** — New page with TTS provider/voice selector, STT status, VAD threshold
-    slider, and audio format radio buttons
-  - **Sandbox Config** — Code Runner tab with runtime detection (Docker/gVisor/subprocess), language
-    checkboxes, timeout/memory limits, and Docker image management
-  - **Security Supervisor** — Settings tab with provider/model/cache TTL display, clear cache
-    button, and decision history viewer
-  - **Data Classification** — Policies tab with 4-level sensitivity rules (PUBLIC/NORMAL/SENSITIVE/
-    SECRET), pattern list, and content classification tester
-  - Added new "Voice", "Tools", and "Metacognition" nav items in sidebar
-  - +32 REST API endpoints across all 10 enhanced systems
-  - Page extension framework: dynamic tab injection for Settings, Memory, Agents, Code Runner,
-    Policies
+| Page          | Description                                                                         |
+| ------------- | ----------------------------------------------------------------------------------- |
+| Codegraph     | D3.js interactive force-directed graph, symbol search, impact analysis, path tracer |
+| Workflows     | Visual workflow designer with JSON editor, run history, approval queue              |
+| Eval Runner   | Suite browser, run configuration, results dashboard, baselines, regression diff     |
+| MCP Server    | Model Context Protocol connections, tool browser, server start/stop                 |
+| Vault         | AES-256-GCM credential store, table view, audit log, export/import                  |
+| Computer Use  | Screenshot gallery, action log, display configuration                               |
+| Remote Agents | Distributed agent deployment with status badges, directive history                  |
+| Daemon Health | 5 process cards, IPC health pings, log tails, restart controls, auto-refresh        |
+| Tools         | Tool registry catalog with parameter schemas, capability badges, toggles            |
+| Metacognition | Task assessment tester, decision distribution, assessment history                   |
 
-- **Web UI coverage — Phase 4** — Connected all 10 orphaned API endpoints to the UI:
-  - Skills Export/Merge/Dependencies/Health — Export button, Merge file upload, Dependencies prompt,
-    health detail display
-  - Workspace History — Editor History tab with file path/agent/timestamp table
-  - QM/MQM Config — Quartermaster Config button with guidance
-  - Voice Providers — Voice page provider browser showing STT/TTS providers
-  - Webhook Test-Fire — Automation Test button for webhook endpoints
-  - Git Diff Viewer — VCS Diff button opens agent-specific git diff in popup
-  - Cross-page extension triggers for Skills, Editor, Quartermaster, Voice, Automation, VCS
+**Page Extensions (18 tabs/sections added to existing pages):**
 
-- **Web UI coverage — Phase 5** — Final 4 partial coverage gaps completed:
-  - **Observability** — Settings System tab: OTLP/Langfuse connection test buttons with status
-    feedback, Langfuse trace deep-link to cloud console, Grafana embed placeholder
-  - **Prometheus Metrics** — Settings Metrics tab: fetches `/metrics` endpoint, parses and displays
-    all Prometheus metrics in a monospace table with auto-refresh every 15 seconds
-  - **CPL Policy Editor** — Policies Classification tab: YAML textarea with syntax validation (checks
-    for policies/name/kind structure), import button to create policies from CPL definitions
-  - **Sub-Agent Process Management** — Agents Sub-Agent Types tab: active process list, global
-    timeout (default 120s) and max retries (default 3) configuration inputs with save button
-  - ShowPage patching for automatic Phase 5 UI injection on Settings, Policies, and Agents navigation
+| Page          | Extensions                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Settings      | Providers comparison, Router dashboard, Security Supervisor config, Metrics, Observability |
+| Memory        | Privacy (PII redaction, retention), Heuristics (12 auto-categorization rules), Embeddings  |
+| Agents        | Sub-Agent Types (5 type cards with tool allow-lists, maxTurns), Process Management         |
+| Code Runner   | Sandbox Config (runtime, languages, Docker/gVisor status)                                  |
+| Policies      | Classification (4-level sensitivity rules, pattern list, content tester), CPL YAML editor  |
+| Skills        | Export/Merge/Dependencies/Health actions                                                   |
+| Editor        | Workspace History tab                                                                      |
+| Quartermaster | Config button                                                                              |
+| Automation    | Webhook Test-Fire button                                                                   |
+| VCS           | Git Diff viewer                                                                            |
+
+**Orphaned Endpoints Connected (10):** Skills export/merge/dependencies/health, workspace history,
+QM/MQM config, voice providers, webhook test-fire, git diff
+
+**Sidebar Restructure:** 8 sections → 5 sections, 37 items → 25 items. Merged 8 standalone pages
+into 5 tabbed anchor pages with persistent global sub-navigation bar. Anchors: Infrastructure
+(Services/Nodes/Daemons), Automation (Triggers/Workflows/Eval/Jobs), Tools & MCP, Security
+(Policies/Vault), Remote Access (Remote/Computer).
+
+**+90 REST API endpoints** across codegraph, workflows, eval, MCP, vault, computer, remote, daemons,
+import/export, update, reflection, providers, router, tools, memory, metacognition, sub-agents,
+voice, sandbox, supervisor, and classification.
+
+**Infrastructure:** D3.js v7 CDN, in-memory storage for eval/workflow engines, `injectSubNav()`
+global tab bar system, page extension framework with DOM-safe injection.
+
+### Fixed
+
+- **Route ordering:** Moved `/api/agents/sub-types` before wildcard `/api/agents/:id` regex match to
+  prevent 404s (static routes must precede regex wildcards in the if-else chain)
+- **Sub-nav persistence:** Replaced page-local sub-nav bars with a single global `#global-subnav`
+  bar outside page divs, preventing tabs from disappearing on page switches
+- **Memory extension tabs:** `switchMemExtTab` now properly hides all 5 main memory panes when
+  showing Privacy/Heuristics/Embeddings content; main memory tabs hide extension content
+- **Agents/Code Runner/Policies tabs:** Replaced fragile DOM selectors (`div:last-of-type`,
+  `[style*="overflow-y:auto"]`) with stable element IDs and stored references
+- **JS escaping:** Fixed 4 instances of literal `\n` in inline strings rendering as actual newlines
+  in the output HTML, breaking browser JavaScript parsing
+- **Orphan page cleanup:** Removed unreachable `status`, `importexport`, `update`, `reflection`, and
+  `voice` page divs and JS code after they were removed from the PAGES array
 
 ### Security
 
@@ -232,10 +151,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - New `docs/SECURITY_SUPERVISOR.md` — architecture guide with diagrams
 - Updated `docs/TOOLS_CONFIGURATION.md` — security model section
+- Updated `README.md` with full Web UI table and REST API reference
 - 14 comprehensive unit tests for classification and approval systems
-- Security foundation stable for all future tools (PR #2 onward)
-
----
 
 ## [0.37.0] — 2026-06-18
 
