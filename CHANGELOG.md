@@ -7,6 +7,53 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [Unreleased] — 2026-06-18
+
+### Added — Major
+
+- **Security supervisor system** — Three-layer LLM-based access control for sensitive data:
+  - Data classification: automatic sensitivity detection (SECRET/SENSITIVE/NORMAL/PUBLIC)
+  - LLM supervisor: fast model selection (Gemini 2.0 Flash, GPT-4o Mini) with decision caching
+  - Human approval: CLI and Web UI approval flows with temporary grants (1-hour TTL)
+
+- **Data sensitivity metadata** — New `sensitivity` columns in all databases:
+  - `cortex.db`: sessions, agents
+  - `memory.db`: episodic_memory, semantic_memory, reflection_memory, graph_entities
+  - `lens.db`: lens_events (audit logs)
+  - One-time backfill migration classifies all existing data
+
+- **Sensitivity classification engine** — Pattern-based detection:
+  - SECRET patterns: passwords, API keys, tokens, SSNs, credit cards, private keys
+  - SENSITIVE patterns: email, phone, addresses, confidential markers
+  - Default security-first approach (non-empty = sensitive)
+
+- **Consolidated tool registration** — Eliminated 125+ lines of duplication across 4 entry points:
+  - Centralized `registerAllBuiltins()` in `src/tools/registry.ts`
+  - 43 builtin tools grouped by category
+  - Applied to ws.ts, cli/chat.ts, service-entry.ts, sub-agent-entry.ts
+  - Agent-level tool filtering preserved
+
+- **Human approval flows**:
+  - CLI: Color-coded prompts with y/n/details options
+  - Web UI: Modal with request details, supervisor reasoning, sample data
+  - Async approval via WebSocket with 5-minute timeout
+
+### Security
+
+- All sensitive data access now requires LLM supervisor review or human approval
+- Agents cannot access sensitive memory, audit logs, or databases without justification
+- Temporary grants prevent repeated approval prompts for same operation
+- Supervisor decisions cached per session (1-hour TTL) to reduce costs
+
+### Documentation
+
+- New `docs/SECURITY_SUPERVISOR.md` — architecture guide with diagrams
+- Updated `docs/TOOLS_CONFIGURATION.md` — security model section
+- 14 comprehensive unit tests for classification and approval systems
+- Security foundation stable for all future tools (PR #2 onward)
+
+---
+
 ## [0.37.0] — 2026-06-18
 
 ### Added — Major
