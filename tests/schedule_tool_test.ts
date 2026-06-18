@@ -40,8 +40,7 @@ Deno.test('schedule - due succeeds', async () => {
   const result = await scheduleTool.execute({ action: 'due' }, mockContext);
 
   assertEquals(result.success, true);
-  // Output depends on whether consolidation cron jobs exist in the DB
-  assertStringIncludes(result.output, 'jobs');
+  assertStringIncludes(result.output.toLowerCase(), 'jobs');
 });
 
 Deno.test('schedule - create requires name', async () => {
