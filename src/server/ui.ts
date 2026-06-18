@@ -342,8 +342,6 @@ function sanitizeHtml(html){
     .replace(new RegExp("\\\\bon\\\\w+\\\\s*=","gi"),"data-blocked-");
 }
 
-function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
 function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(1)+"m";return"$"+v.toFixed(4)}
 function fmtBytes(b){if(!b)return"0 B";var u=["B","KB","MB","GB","TB"],i=0;while(b>=1024&&i<4){b/=1024;i++}return b.toFixed(1)+" "+u[i]}
 
@@ -4138,11 +4136,11 @@ function renderProjects(projects) {
     d.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;';
     d.innerHTML = \`
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:13px;">\${escHtml(p.name)}</div>
-        \${p.description ? \`<div style="font-size:12px;color:var(--text3);margin-top:2px;">\${escHtml(p.description)}</div>\` : ''}
+        <div style="font-weight:600;font-size:13px;">\${esc(p.name)}</div>
+        \${p.description ? \`<div style="font-size:12px;color:var(--text3);margin-top:2px;">\${esc(p.description)}</div>\` : ''}
         <div style="display:flex;gap:14px;margin-top:6px;font-size:11px;color:var(--text3);">
-          <span>Path: <code style="font-size:10px;">\${escHtml(p.path ?? '—')}</code></span>
-          \${p.agentId ? \`<span>Agent: <strong>\${escHtml(p.agentId)}</strong></span>\` : ''}
+          <span>Path: <code style="font-size:10px;">\${esc(p.path ?? '—')}</code></span>
+          \${p.agentId ? \`<span>Agent: <strong>\${esc(p.agentId)}</strong></span>\` : ''}
           <span>Created: \${created}</span>
         </div>
       </div>
@@ -4207,12 +4205,12 @@ function renderHooks(hooks) {
   }
   tbody.innerHTML = hooks.map(h => \`
     <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:8px 10px;font-weight:500;">\${escHtml(h.name)}</td>
+      <td style="padding:8px 10px;font-weight:500;">\${esc(h.name)}</td>
       <td style="padding:8px 10px;font-size:12px;color:var(--text3);">\${(h.stages||[]).join(', ')}</td>
       <td style="padding:8px 10px;">\${h.priority ?? '—'}</td>
       <td style="padding:8px 10px;">\${h.async ? '<span style="color:#4ade80;">yes</span>' : 'no'}</td>
-      <td style="padding:8px 10px;font-size:12px;">\${escHtml(h.source ?? '—')}</td>
-      <td style="padding:8px 10px;font-size:12px;color:var(--text3);">\${escHtml(h.pluginName ?? '—')}</td>
+      <td style="padding:8px 10px;font-size:12px;">\${esc(h.source ?? '—')}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--text3);">\${esc(h.pluginName ?? '—')}</td>
       <td style="padding:8px 10px;">
         \${h.disableable
           ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="disableHook(\${JSON.stringify(h.name)})">Disable</button>\`
@@ -4267,22 +4265,22 @@ function renderTriggers(triggers) {
     d.innerHTML = \`
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:600;font-size:13px;">\${escHtml(t.name)}</span>
-          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${escHtml(t.source)}</span>
+          <span style="font-weight:600;font-size:13px;">\${esc(t.name)}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${esc(t.source)}</span>
           <span style="font-size:11px;color:\${statusColor};">⬤ \${statusLabel}</span>
         </div>
         \${webhookUrl ? \`<div style="margin-top:5px;font-size:11px;color:var(--text3);">
-          URL: <code style="font-size:10px;cursor:pointer;text-decoration:underline;" onclick="navigator.clipboard.writeText(\${JSON.stringify(webhookUrl)});showToast('URL copied','success')">\${escHtml(webhookUrl)}</code>
+          URL: <code style="font-size:10px;cursor:pointer;text-decoration:underline;" onclick="navigator.clipboard.writeText(\${JSON.stringify(webhookUrl)});showToast('URL copied','success')">\${esc(webhookUrl)}</code>
         </div>\` : ''}
         <div style="margin-top:5px;font-size:11px;color:var(--text3);">
-          Agent: <strong>\${escHtml(t.action?.agent || 'default')}</strong>
+          Agent: <strong>\${esc(t.action?.agent || 'default')}</strong>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         \${t.enabled
-          ? \`<button class="btn btn-ghost" style="font-size:11px;" onclick="disableTrigger(\${escHtml(JSON.stringify(t.name))})">Disable</button>\`
-          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="enableTrigger(\${escHtml(JSON.stringify(t.name))})">Enable</button>\`}
-        <button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="removeTrigger(\${escHtml(JSON.stringify(t.name))})">Remove</button>
+          ? \`<button class="btn btn-ghost" style="font-size:11px;" onclick="disableTrigger(\${esc(JSON.stringify(t.name))})">Disable</button>\`
+          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="enableTrigger(\${esc(JSON.stringify(t.name))})">Enable</button>\`}
+        <button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="removeTrigger(\${esc(JSON.stringify(t.name))})">Remove</button>
       </div>
     \`;
     el.appendChild(d);
@@ -4398,17 +4396,17 @@ function renderChannels(channels) {
     d.innerHTML = \`
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-weight:600;font-size:13px;">\${escHtml(c.name || c.id)}</span>
-          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${escHtml(c.protocol)}</span>
+          <span style="font-weight:600;font-size:13px;">\${esc(c.name || c.id)}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${esc(c.protocol)}</span>
           <span style="font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.04);color:\${statusColor};">⬤ \${statusLabel}</span>
         </div>
-        <div style="margin-top:4px;font-size:11px;color:var(--text3);">Agent: <strong>\${escHtml(c.agentId)}</strong></div>
+        <div style="margin-top:4px;font-size:11px;color:var(--text3);">Agent: <strong>\${esc(c.agentId)}</strong></div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         \${c.enabled
-          ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="stopChannel(\${escHtml(JSON.stringify(c.id))})">Stop</button>\`
-          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="startChannel(\${escHtml(JSON.stringify(c.id))})">Start</button>\`}
-        <button class="btn btn-ghost" style="font-size:11px;color:var(--text3);" onclick="deleteChannel(\${escHtml(JSON.stringify(c.id))})" title="Remove">✕</button>
+          ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="stopChannel(\${esc(JSON.stringify(c.id))})">Stop</button>\`
+          : \`<button class="btn btn-ghost" style="font-size:11px;color:#22c55e;" onclick="startChannel(\${esc(JSON.stringify(c.id))})">Start</button>\`}
+        <button class="btn btn-ghost" style="font-size:11px;color:var(--text3);" onclick="deleteChannel(\${esc(JSON.stringify(c.id))})" title="Remove">✕</button>
       </div>
     \`;
     el.appendChild(d);
@@ -4443,7 +4441,7 @@ async function showAddChannelModal() {
     channelTypes = await fetch(BASE + '/api/channels/types').then(r => r.json()).catch(() => []);
   }
 
-  const typeOptions = channelTypes.map(t => \`<option value="\${escHtml(t.id)}">\${escHtml(t.name)}</option>\`).join('');
+  const typeOptions = channelTypes.map(t => \`<option value="\${esc(t.id)}">\${esc(t.name)}</option>\`).join('');
 
   const modal = document.createElement('div');
   modal.id = 'add-channel-modal';
@@ -4496,28 +4494,28 @@ function updateAddChannelAuth() {
   for (const f of (cfg.auth || [])) {
     const inputType = f.type === 'password' ? 'password' : 'text';
     html += \`<div>
-      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
-      <input id="add-ch-auth-\${escHtml(f.key)}" type="\${inputType}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${escHtml(f.label)}" />
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
+      <input id="add-ch-auth-\${esc(f.key)}" type="\${inputType}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${esc(f.label)}" />
     </div>\`;
   }
   for (const f of (cfg.extra || [])) {
     if (f.ifMode) {
-      html += \`<div id="add-ch-extra-\${escHtml(f.key)}-wrap" style="display:none;">
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
-        <input id="add-ch-extra-\${escHtml(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${escHtml(f.label)}" />
+      html += \`<div id="add-ch-extra-\${esc(f.key)}-wrap" style="display:none;">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
+        <input id="add-ch-extra-\${esc(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" placeholder="\${esc(f.label)}" />
       </div>\`;
       continue;
     }
     if (f.type === 'select' && f.options) {
-      const opts = f.options.map(o => \`<option value="\${escHtml(o)}"\${o === f.default ? ' selected' : ''}>\${escHtml(o)}</option>\`).join('');
+      const opts = f.options.map(o => \`<option value="\${esc(o)}"\${o === f.default ? ' selected' : ''}>\${esc(o)}</option>\`).join('');
       html += \`<div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
-        <select id="add-ch-extra-\${escHtml(f.key)}" class="input" style="width:100%;box-sizing:border-box;" onchange="updateAddChannelAuth()">\${opts}</select>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
+        <select id="add-ch-extra-\${esc(f.key)}" class="input" style="width:100%;box-sizing:border-box;" onchange="updateAddChannelAuth()">\${opts}</select>
       </div>\`;
     } else {
       html += \`<div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${escHtml(f.label)}</label>
-        <input id="add-ch-extra-\${escHtml(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" value="\${escHtml(f.default || '')}" placeholder="\${escHtml(f.label)}" />
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:2px;">\${esc(f.label)}</label>
+        <input id="add-ch-extra-\${esc(f.key)}" type="\${f.type}" class="input" style="width:100%;box-sizing:border-box;" value="\${esc(f.default || '')}" placeholder="\${esc(f.label)}" />
       </div>\`;
     }
   }
