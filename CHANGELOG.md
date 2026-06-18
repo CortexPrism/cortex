@@ -7,6 +7,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.41.3] — 2026-06-18
+
 ### Changed
 
 - **Daemon health and restart handling** (`src/server/server.ts`, `src/server/router.ts`, `src/services/manager.ts`, `src/server/ui.ts`) — server startup now boots auto-start services, daemon health reports real supervisor and service-manager status, and the Daemons page restart dialog uses a restart-specific action label.
