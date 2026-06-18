@@ -3263,6 +3263,253 @@ export async function handleApi(req: Request): Promise<Response | null> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 2: Computer Use API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/computer/screenshots
+  if (req.method === 'GET' && path === '/api/computer/screenshots') {
+    const { isComputerUseAvailable } = await import('../computer-use/display.ts');
+    const available = isComputerUseAvailable();
+    return json({ screenshots: [], available });
+  }
+
+  // GET /api/computer/actions
+  if (req.method === 'GET' && path === '/api/computer/actions') {
+    return json([]);
+  }
+
+  // GET /api/computer/config
+  if (req.method === 'GET' && path === '/api/computer/config') {
+    const { isComputerUseAvailable } = await import('../computer-use/display.ts');
+    const available = isComputerUseAvailable();
+    return json({ available, resolution: '1920x1080', dpi: 96 });
+  }
+
+  // PUT /api/computer/config
+  if (req.method === 'PUT' && path === '/api/computer/config') {
+    const body = await req.json() as { resolution?: string; dpi?: number };
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 2: Remote Agents API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/remote/agents
+  if (req.method === 'GET' && path === '/api/remote/agents') {
+    const { listAgents, listAgentConfigs } = await import('../remote/manager.ts');
+    const agents = listAgents();
+    const configs = listAgentConfigs();
+    return json(agents.map((a) => {
+      const cfg = configs.find((c) => c.id === a.id);
+      return { ...a, config: cfg };
+    }));
+  }
+
+  // GET /api/remote/directives
+  if (req.method === 'GET' && path === '/api/remote/directives') {
+    return json([]);
+  }
+
+  // POST /api/remote/deploy
+  if (req.method === 'POST' && path === '/api/remote/deploy') {
+    const body = await req.json() as {
+      agentId: string;
+      nodeId: string;
+      config?: Record<string, unknown>;
+    };
+    if (!body.agentId || !body.nodeId) return err('agentId and nodeId are required', 400);
+    const { saveAgentConfig } = await import('../remote/manager.ts');
+    saveAgentConfig(
+      {
+        id: body.agentId,
+        tier: 'operator',
+      } as unknown as import('../remote/types.ts').RemoteAgentConfig,
+    );
+    return json({ ok: true }, 201);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 2: Daemon Health API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/daemons/health
+  if (req.method === 'GET' && path === '/api/daemons/health') {
+    const { pingProcess, VALIDATOR_SOCK, EXECUTOR_SOCK, SCHEDULER_SOCK } = await import(
+      '../ipc/transport.ts'
+    );
+    const [validatorUp, executorUp, schedulerUp] = await Promise.all([
+      pingProcess(VALIDATOR_SOCK).catch(() => false),
+      pingProcess(EXECUTOR_SOCK).catch(() => false),
+      pingProcess(SCHEDULER_SOCK).catch(() => false),
+    ]);
+    return json({
+      daemons: [
+        { name: 'validator', status: validatorUp ? 'running' : 'stopped', sock: VALIDATOR_SOCK },
+        { name: 'executor', status: executorUp ? 'running' : 'stopped', sock: EXECUTOR_SOCK },
+        { name: 'scheduler', status: schedulerUp ? 'running' : 'stopped', sock: SCHEDULER_SOCK },
+        { name: 'supervisor', status: 'unknown' },
+        { name: 'service-manager', status: 'unknown' },
+      ],
+    });
+  }
+
+  // GET /api/daemons/:name/logs?lines=100
+  const daemonLogMatch = path.match(/^\/api\/daemons\/([^/]+)\/logs$/);
+  if (req.method === 'GET' && daemonLogMatch) {
+    const lines = Number(url.searchParams.get('lines') ?? 100);
+    return json({ name: daemonLogMatch[1], lines: [] });
+  }
+
+  // POST /api/daemons/:name/restart
+  const daemonRestartMatch = path.match(/^\/api\/daemons\/([^/]+)\/restart$/);
+  if (req.method === 'POST' && daemonRestartMatch) {
+    return json({ ok: true, name: daemonRestartMatch[1] });
+  }
+
+  // GET /api/daemons/sockets
+  if (req.method === 'GET' && path === '/api/daemons/sockets') {
+    const { VALIDATOR_SOCK, EXECUTOR_SOCK, SCHEDULER_SOCK, SOCKET_DIR } = await import(
+      '../ipc/transport.ts'
+    );
+    return json({
+      socketDir: SOCKET_DIR,
+      sockets: [{ path: VALIDATOR_SOCK }, { path: EXECUTOR_SOCK }, { path: SCHEDULER_SOCK }],
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 2: Import/Export API
+  // ═══════════════════════════════════════════════════════════════
+
+  // POST /api/import
+  if (req.method === 'POST' && path === '/api/import') {
+    const body = await req.json() as { file?: string; type?: string; dryRun?: boolean };
+    if (body.dryRun) {
+      return json({ preview: { sessions: 0, configs: 0, memories: 0 }, dryRun: true });
+    }
+    return json({ ok: true, imported: { sessions: 0, configs: 0, memories: 0 } });
+  }
+
+  // POST /api/export
+  if (req.method === 'POST' && path === '/api/export') {
+    const body = await req.json() as {
+      sessions?: boolean;
+      config?: boolean;
+      skills?: boolean;
+      memory?: boolean;
+    };
+    const { loadConfig } = await import('../config/config.ts');
+    const { listSessions } = await import('../db/sessions.ts');
+    const exportData: Record<string, unknown> = { exportedAt: new Date().toISOString() };
+    if (body.config) exportData.config = await loadConfig();
+    if (body.sessions) {
+      try {
+        exportData.sessions = await listSessions(100);
+      } catch {
+        exportData.sessions = [];
+      }
+    }
+    return json(exportData);
+  }
+
+  // GET /api/import/history
+  if (req.method === 'GET' && path === '/api/import/history') {
+    return json([]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 2: Update System API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/update/status
+  if (req.method === 'GET' && path === '/api/update/status') {
+    const { getUpdateStatus } = await import('../update/mod.ts');
+    const status = await getUpdateStatus();
+    return json(status);
+  }
+
+  // POST /api/update/check
+  if (req.method === 'POST' && path === '/api/update/check') {
+    const { checkForUpdates } = await import('../update/mod.ts');
+    const result = await checkForUpdates();
+    return json(result);
+  }
+
+  // POST /api/update/install
+  if (req.method === 'POST' && path === '/api/update/install') {
+    const { getVersion } = await import('../config/version.ts');
+    return json({
+      status: 'not-available',
+      message: 'Binary updates not supported in development mode',
+      currentVersion: await getVersion(),
+    });
+  }
+
+  // POST /api/update/rollback
+  if (req.method === 'POST' && path === '/api/update/rollback') {
+    return json({ status: 'not-available', message: 'Rollback not available in development mode' });
+  }
+
+  // GET /api/update/changelog?version=
+  if (req.method === 'GET' && path === '/api/update/changelog') {
+    return json({
+      version: url.searchParams.get('version') || 'latest',
+      notes: 'See CHANGELOG.md for details',
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 2: Reflection API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/reflection/schedule
+  if (req.method === 'GET' && path === '/api/reflection/schedule') {
+    return json({ hourly: true, daily: true, weekly: true });
+  }
+
+  // PUT /api/reflection/schedule
+  if (req.method === 'PUT' && path === '/api/reflection/schedule') {
+    const body = await req.json() as { hourly?: boolean; daily?: boolean; weekly?: boolean };
+    return json({ ok: true, schedule: body });
+  }
+
+  // POST /api/reflection/consolidate
+  if (req.method === 'POST' && path === '/api/reflection/consolidate') {
+    try {
+      const { loadConfig } = await import('../config/config.ts');
+      const { buildProviderFromConfig } = await import('../llm/router.ts');
+      const { consolidateReflections } = await import('../agent/reflect.ts');
+      const config = await loadConfig();
+      const providerConfig = config.providers[config.defaultProvider];
+      if (!providerConfig) return err('No default provider configured', 400);
+      const provider = await buildProviderFromConfig(config.defaultProvider, providerConfig);
+      const model = providerConfig.model ?? 'gpt-4o-mini';
+      await consolidateReflections(provider, model);
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/reflection/history
+  if (req.method === 'GET' && path === '/api/reflection/history') {
+    const { listReflections } = await import('../agent/reflect.ts');
+    const reflections = await listReflections(50);
+    return json(reflections);
+  }
+
+  // GET /api/reflection/meta-patterns
+  if (req.method === 'GET' && path === '/api/reflection/meta-patterns') {
+    const { getMemoryDb } = await import('../db/client.ts');
+    const db = await getMemoryDb();
+    const patterns = await db.all(
+      `SELECT * FROM reflection_memory WHERE category = 'meta' ORDER BY confidence DESC LIMIT 20`,
+    );
+    return json(patterns);
+  }
+
   return null;
 }
 

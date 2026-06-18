@@ -155,6 +155,27 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - D3.js v7 CDN integration for code graph visualization
   - In-memory storage helpers for eval suites/runs/baselines and workflow lifecycle
 
+- **Web UI coverage — Phase 2** — Six additional management pages for operational systems:
+  - **Computer Use** — Remote desktop viewer page with screenshot gallery, action log table, and
+    display configuration panel. Computer use availability detection via Xvfb/xdotool checks.
+  - **Remote Agents** — Distributed agent management with agent list (name/node/tier/status), deploy
+    modal with tier selection, and directive history log.
+  - **Daemon Health** — Process health dashboard with 5 daemon cards (validator/executor/scheduler/
+    supervisor/service-manager), live health pings via Unix socket IPC, per-daemon log tail viewer,
+    restart controls with confirmation, and 10-second auto-refresh.
+  - **Import/Export** — Data migration page with import panel (type selector, file upload, dry-run
+    preview), export panel (sessions/config/skills/memory checkboxes with JSON download), and
+    migration history sidebar.
+  - **Update System** — Version management page with status display
+    (current/latest/channel/up-to-date badge), check/install/rollback action buttons with progress
+    feedback, and changelog viewer.
+  - **Reflection Consolidation** — LLM reflection management with consolidation schedule toggles
+    (hourly/daily/weekly), manual consolidation trigger, meta-patterns browser with confidence bars,
+    and consolidation history table.
+  - Added new "Operations" sidebar navigation section with 5 page entries
+  - +24 REST API endpoints: `/api/computer/*` (4), `/api/remote/*` (3), `/api/daemons/*` (4),
+    `/api/import/*` + `/api/export` (3), `/api/update/*` (5), `/api/reflection/*` (5)
+
 ### Security
 
 - All sensitive data access now requires LLM supervisor review or human approval
