@@ -3819,6 +3819,14 @@ function switchMemoryTab(name) {
     const el = document.getElementById('mem-pane-'+p);
     if (el) el.style.display = p === name ? 'flex' : 'none';
   });
+  // Hide extension content when switching to main tabs
+  var ext = document.getElementById('mem-ext-content');
+  if (ext) ext.style.display = 'none';
+  // Reset extension tab buttons
+  ['privacy','heuristics','embeddings'].forEach(function(t) {
+    var b = document.getElementById('mem-tab-' + t);
+    if (b) b.classList.remove('active');
+  });
   if (name === 'graph') searchGraphEntities();
   if (name === 'reflections') loadReflections();
   if (name === 'health') loadMemoryHealth();
@@ -11928,11 +11936,19 @@ async function loadSupervisorHistory() {
 // ── Memory Extensions ──
 function extendMemoryPage() {
   if (document.getElementById('mem-tab-privacy')) return;
-  var tabs = document.querySelector('#page-memory [style*="display:flex;gap"]');
-  if (!tabs) { setTimeout(extendMemoryPage, 300); return; }
+  // Find the tab bar by searching for existing .mem-tab buttons
+  var existingTab = document.querySelector('#page-memory .mem-tab');
+  if (!existingTab) { setTimeout(extendMemoryPage, 300); return; }
+  var tabBar = existingTab.parentElement;
+  if (!tabBar) return;
   ['Privacy','Heuristics','Embeddings'].forEach(function(label) {
     var id = 'mem-tab-' + label.toLowerCase();
-    tabs.innerHTML += '<button class="btn btn-ghost" onclick="switchMemExtTab(\\'' + label.toLowerCase() + '\\')" id="' + id + '" style="font-size:11px;padding:4px 10px;">' + label + '</button>';
+    var btn = document.createElement('button');
+    btn.className = 'mem-tab';
+    btn.id = id;
+    btn.textContent = label;
+    btn.onclick = function() { switchMemExtTab(label.toLowerCase()); };
+    tabBar.appendChild(btn);
   });
   var container = document.getElementById('page-memory');
   var extDiv = document.createElement('div');
@@ -11951,14 +11967,22 @@ function patchMemoryLoader() {
 }
 function switchMemExtTab(tab) {
   var el = document.getElementById('mem-ext-content');
+  if (!el) return;
+  // Update tab button active states
   ['privacy','heuristics','embeddings'].forEach(function(t) {
     var b = document.getElementById('mem-tab-' + t);
     if (b) b.classList.toggle('active', t === tab);
-    // Hide main memory content when extended tab is active
-    var mainContent = document.querySelector('#page-memory > div:first-of-type > div:last-of-type');
-    if (mainContent) mainContent.style.display = tab ? 'none' : 'block';
   });
+  // Deactivate main memory tabs
+  document.querySelectorAll('.mem-tab').forEach(function(b) { b.classList.remove('active'); });
+  // Hide all main memory panes
+  ['search','graph','reflections','health','persistent'].forEach(function(p) {
+    var pane = document.getElementById('mem-pane-' + p);
+    if (pane) pane.style.display = 'none';
+  });
+  // Show extension content
   el.style.display = 'block';
+  // Load content
   if (tab === 'privacy') loadMemPrivacy();
   else if (tab === 'heuristics') loadMemHeuristics();
   else loadMemEmbeddings();
