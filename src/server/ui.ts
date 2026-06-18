@@ -4669,9 +4669,9 @@ async function loadPolicies() {
       </label>
       <span class="badge" style="min-width:52px;justify-content:center;background:\${isAllow ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};color:\${isAllow ? '#4ade80' : '#f87171'};">\${p.effect}</span>
       <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);min-width:80px;justify-content:center;">\${p.kind}</span>
-      \${editingPolicyId === p.id
-        ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
-        : '<code style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
+       \${editingPolicyId === p.id
+         ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
+         : '<code style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
       \${editingPolicyId === p.id
         ? '<input id="edit-policy-reason" class="inp" style="max-width:200px;font-size:11px;padding:4px 8px;" value="' + escAttr(p.reason ?? '') + '" placeholder="reason" />'
         : '<span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.reason ?? '') + '</span>'}
