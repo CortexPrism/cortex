@@ -2233,6 +2233,31 @@ const HTML = `<!DOCTYPE html>
         <span id="sk-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
       </div>
       <input type="hidden" id="sk-edit-name" value="" />
+     </div>
+   </div>
+
+  <!-- Modal: Security Approval Request -->
+  <div id="approval-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+    <div class="card" style="width:600px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span style="font-size:20px;">⚠️</span>
+        <div style="font-size:16px;font-weight:600;">Security Approval Required</div>
+      </div>
+      <div id="approval-details" style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:16px;font-size:12px;line-height:1.5;">
+        <!-- Details populated by JavaScript -->
+      </div>
+      <div style="background:rgba(0,0,0,0.2);padding:12px;border-radius:6px;margin-bottom:16px;border-left:3px solid var(--accent);font-size:12px;line-height:1.5;">
+        <div style="color:var(--text3);margin-bottom:6px;font-weight:600;">AI Supervisor Reasoning:</div>
+        <div id="approval-reasoning" style="color:var(--text2);"><!-- Reasoning populated by JavaScript --></div>
+      </div>
+      <div id="approval-sample" style="display:none;background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:16px;border:1px solid var(--border);font-size:11px;font-family:'JetBrains Mono',monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-word;">
+        <!-- Sample data populated by JavaScript -->
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-success" onclick="approveSecurityRequest()" id="approval-approve-btn">Approve Access</button>
+        <button class="btn btn-danger" onclick="denySecurityRequest()" id="approval-deny-btn">Deny Access</button>
+        <button class="btn btn-secondary" onclick="showApprovalDetails()" id="approval-details-btn">Show Sample Data</button>
+      </div>
     </div>
   </div>
 
@@ -2747,10 +2772,13 @@ function connect() {
          saveSession();
          if (currentPage === 'lens') loadLens();
          loadAgentPanel();
-         const ml = document.getElementById('model-label');
-         if (ml && msg.model) ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+          const ml = document.getElementById('model-label');
+          if (ml && msg.model) ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+          break;
+       case 'approval_request':
+         showApprovalModal(msg.request, msg.reasoning, msg.requestId);
          break;
-      case 'error':
+       case 'error':
         document.getElementById('thinking-bar').style.display = 'none';
         appendBubble('error', msg.error);
         loadAgentPanel();
@@ -4460,10 +4488,87 @@ function showSkillModal(editName) {
 }
 
 function hideSkillModal() {
-  document.getElementById('skill-modal').style.display = 'none';
-}
+   document.getElementById('skill-modal').style.display = 'none';
+ }
 
-async function submitSkillForm() {
+ // ── Security Approval Modal Functions ──────────────────────
+ let currentApprovalRequest = null;
+ let currentApprovalRequestId = null;
+
+ function showApprovalModal(request, reasoning, requestId) {
+   currentApprovalRequest = request;
+   currentApprovalRequestId = requestId;
+
+   // Populate request details
+   let detailsHtml = '<div>' +
+     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Agent:</div>' +
+     '<div style="margin-bottom:12px;">' + (request.agentId || '') + '</div>' +
+     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Tool:</div>' +
+     '<div style="margin-bottom:12px;font-family:\'JetBrains Mono\',monospace;font-size:11px;">' + (request.tool || '') + '</div>' +
+     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Query/Search:</div>' +
+     '<div style="margin-bottom:12px;font-family:\'JetBrains Mono\',monospace;font-size:11px;overflow-x:auto;">' + (request.query || '') + '</div>' +
+     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Justification:</div>' +
+     '<div style="margin-bottom:12px;">' + (request.requestReason || '(none provided)') + '</div>' +
+     '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Classification:</div>' +
+     '<div style="display:inline-block;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;background:' + getClassificationColor(request.dataClassification) + ';">' + request.dataClassification.toUpperCase() + '</div>' +
+     '</div>';
+   document.getElementById('approval-details').innerHTML = detailsHtml;
+
+   // Populate reasoning
+   document.getElementById('approval-reasoning').textContent = reasoning;
+
+   // Hide sample data initially
+   if (request.sampleData) {
+     document.getElementById('approval-sample').textContent = request.sampleData;
+   }
+   document.getElementById('approval-sample').style.display = 'none';
+
+   // Show modal
+   document.getElementById('approval-modal').style.display = 'flex';
+ }
+
+ function getClassificationColor(level) {
+   const colors = {
+     'public': 'rgba(76,175,80,0.3)',
+     'normal': 'rgba(33,150,243,0.3)',
+     'sensitive': 'rgba(255,152,0,0.3)',
+     'secret': 'rgba(244,67,54,0.3)',
+   };
+   return colors[level] || 'rgba(128,128,128,0.3)';
+ }
+
+ function showApprovalDetails() {
+   const sampleDiv = document.getElementById('approval-sample');
+   if (sampleDiv.style.display === 'none') {
+     sampleDiv.style.display = 'block';
+     document.getElementById('approval-details-btn').textContent = 'Hide Sample Data';
+   } else {
+     sampleDiv.style.display = 'none';
+     document.getElementById('approval-details-btn').textContent = 'Show Sample Data';
+   }
+ }
+
+ function approveSecurityRequest() {
+   if (!currentApprovalRequestId) return;
+   ws.send(JSON.stringify({
+     type: 'approval_response',
+     requestId: currentApprovalRequestId,
+     approved: true,
+   }));
+   document.getElementById('approval-modal').style.display = 'none';
+ }
+
+ function denySecurityRequest() {
+   if (!currentApprovalRequestId) return;
+   ws.send(JSON.stringify({
+     type: 'approval_response',
+     requestId: currentApprovalRequestId,
+     approved: false,
+   }));
+   document.getElementById('approval-modal').style.display = 'none';
+ }
+
+ async function submitSkillForm() {
   const name = document.getElementById('sk-name').value.trim();
   if (!name) { document.getElementById('sk-status').textContent = 'Name is required.'; return; }
   const editName = document.getElementById('sk-edit-name').value;

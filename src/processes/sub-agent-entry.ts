@@ -22,36 +22,6 @@ import { initSessionDb } from '../db/migrate.ts';
 import { closeSession, createSession } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
 import type { Tool } from '../tools/types.ts';
-import { fileReadTool } from '../tools/builtin/file_read.ts';
-import { webSearchTool } from '../tools/builtin/web_search.ts';
-import { shellTool } from '../tools/builtin/shell.ts';
-import { codeExecTool } from '../tools/builtin/code_exec.ts';
-import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
-import { computerTool } from '../tools/builtin/computer.ts';
-import { mcpAgentTool } from '../tools/builtin/mcp_agent.ts';
-import {
-  fileCopyTool,
-  fileDeleteTool,
-  fileEditTool,
-  fileInfoTool,
-  fileListTool,
-  fileMoveTool,
-  filePatchTool,
-  fileRedoTool,
-  fileRenameTool,
-  fileSearchTool,
-  fileTreeTool,
-  fileUndoTool,
-  fileWriteTool,
-} from '../tools/builtin/workspace/index.ts';
-import {
-  githubIssueCreateTool,
-  githubIssueListTool,
-  githubPRCreateTool,
-  githubPRListTool,
-  gitPushTool,
-} from '../tools/builtin/github/index.ts';
-import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
 
 interface InitMessage {
   type: 'init';
@@ -140,41 +110,27 @@ async function main(): Promise<void> {
 
     const systemPrompt = buildSystemPrompt(soul, config.config.systemPrompt, user, memory);
 
-    // Build tool registry
+    // Build tool registry (centralized registration)
     const registry = new ToolRegistry();
-    const allTools: Record<string, Tool> = {
-      file_read: fileReadTool,
-      file_write: fileWriteTool,
-      file_edit: fileEditTool,
-      file_patch: filePatchTool,
-      file_delete: fileDeleteTool,
-      file_rename: fileRenameTool,
-      file_copy: fileCopyTool,
-      file_move: fileMoveTool,
-      file_list: fileListTool,
-      file_tree: fileTreeTool,
-      file_info: fileInfoTool,
-      file_search: fileSearchTool,
-      file_undo: fileUndoTool,
-      file_redo: fileRedoTool,
-      web_search: webSearchTool,
-      shell: shellTool,
-      code_exec: codeExecTool,
-      node_dispatch: nodeDispatchTool,
-      github_pr_create: githubPRCreateTool,
-      github_pr_list: githubPRListTool,
-      github_issue_create: githubIssueCreateTool,
-      github_issue_list: githubIssueListTool,
-      git_push: gitPushTool,
-      dashboard_manage: dashboardManageTool,
-      computer: computerTool,
-      mcp_agent: mcpAgentTool,
-    };
+    const { registerAllBuiltins } = await import('../tools/registry.ts');
+    const allTools = await registerAllBuiltins(registry, false); // Exclude codegraph for sub-agents
+
+    // Determine allowed tools from config or agent defaults
     const allowedTools = config.config.tools?.length
       ? config.config.tools
       : (agentConfig.tools?.length ? agentConfig.tools : Object.keys(allTools));
-    for (const name of allowedTools) {
-      if (allTools[name]) registry.register(allTools[name]);
+
+    // Filter to allowed tools if specified
+    if (config.config.tools?.length || agentConfig.tools?.length) {
+      // Clear registry and re-register only allowed tools
+      for (const name of Object.keys(allTools)) {
+        registry.unregister(name);
+      }
+      for (const name of allowedTools) {
+        if (allTools[name]) {
+          registry.register(allTools[name]);
+        }
+      }
     }
 
     const embedder = buildEmbedder(cortexConfig);

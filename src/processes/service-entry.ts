@@ -22,14 +22,6 @@ import { buildEmbedder } from '../memory/embeddings.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { createSession } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
-import { fileReadTool } from '../tools/builtin/file_read.ts';
-import { webSearchTool } from '../tools/builtin/web_search.ts';
-import { shellTool } from '../tools/builtin/shell.ts';
-import { codeExecTool } from '../tools/builtin/code_exec.ts';
-import { nodeDispatchTool } from '../tools/builtin/node_dispatch.ts';
-import { dashboardManageTool } from '../tools/builtin/dashboard_manage.ts';
-import { computerTool } from '../tools/builtin/computer.ts';
-import { mcpAgentTool } from '../tools/builtin/mcp_agent.ts';
 import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 
 const flags = parse(Deno.args, {
@@ -83,23 +75,26 @@ async function main(): Promise<void> {
     identity.memory,
   );
 
-  // Tool registry
+  // Tool registry (centralized registration)
   const registry = new ToolRegistry();
-  const allTools: Record<string, Tool> = {
-    file_read: fileReadTool,
-    web_search: webSearchTool,
-    shell: shellTool,
-    code_exec: codeExecTool,
-    node_dispatch: nodeDispatchTool,
-    dashboard_manage: dashboardManageTool,
-    computer: computerTool,
-    mcp_agent: mcpAgentTool,
-  };
+  const { registerAllBuiltins } = await import('../tools/registry.ts');
+  const allTools = await registerAllBuiltins(registry, false); // Exclude codegraph for services
+
+  // Filter to service-specified tools if provided
   const toolList = def.tools
     ? def.tools.split(',').map((s) => s.trim()).filter(Boolean)
     : Object.keys(allTools);
-  for (const name of toolList) {
-    if (allTools[name]) registry.register(allTools[name]);
+
+  if (def.tools) {
+    // Clear registry and re-register only allowed tools
+    for (const name of Object.keys(allTools)) {
+      registry.unregister(name);
+    }
+    for (const name of toolList) {
+      if (allTools[name]) {
+        registry.register(allTools[name]);
+      }
+    }
   }
 
   const embedder = buildEmbedder(cortexConfig);

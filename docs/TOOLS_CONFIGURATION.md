@@ -200,6 +200,89 @@ export CORTEX_VAULT_KEY="your-secure-passphrase-here"
 - If a key is in both locations, the vault key is used
 - Remove the environment variable if you want to use only the vault
 
+## Security Supervision
+
+CortexPrism includes a built-in security supervisor system that automatically gates access to sensitive tools. This is configured automatically and requires no setup, but here's what you should know:
+
+### Protected Tools
+
+The following tools require approval for sensitive data access:
+
+- **memory_search** — Searching personal memory (conversations, preferences)
+- **db_query** — Querying internal databases (audit logs, user sessions, stored facts)
+- **browser** — Taking screenshots (may contain sensitive UI)
+- **image_analyze** — Analyzing images (vision models see all content)
+
+### How It Works
+
+1. **Agent requests sensitive data** via a protected tool
+2. **Data classification** checks the sensitivity level (PUBLIC → NORMAL → SENSITIVE → SECRET)
+3. **LLM supervisor** evaluates the request (< 500ms)
+4. **Decision cached** for the session (prevents re-evaluation within 1 hour)
+5. **If uncertain or SECRET tier** → Human approval required via CLI or Web UI
+
+### Approval Flows
+
+**In terminal mode** (`deno task dev`):
+```
+⚠️ SECURITY APPROVAL REQUIRED
+
+Agent "agent_claude" is requesting access to SENSITIVE data.
+
+Tool: memory_search
+Query: "user preferences"
+Justification: "Personalize UI"
+
+AI Supervisor Reasoning: Request is legitimate for personalization. Confidence: 0.85
+
+Allow this access? [y]es / [n]o / [d]etails: 
+```
+
+**In Web UI** (`deno task serve`):
+- A modal appears with request details
+- Shows AI supervisor's reasoning
+- Option to preview sample data
+- Approve, deny, or skip buttons
+
+### Security Configuration
+
+Security is enabled by default. To customize:
+
+```json
+{
+  "security": {
+    "enabled": true,
+    "supervisorModel": "gemini-2.0-flash",
+    "approvalTimeoutSeconds": 300,
+    "grantDurationSeconds": 3600
+  }
+}
+```
+
+**Settings:**
+- `supervisorModel`: LLM to use (auto-selects fastest/cheapest)
+- `approvalTimeoutSeconds`: How long to wait for human approval (default: 5 min)
+- `grantDurationSeconds`: Cache approval for N seconds (default: 1 hour)
+
+### Common Scenarios
+
+**Scenario 1: Personalization**
+- Agent: "Need to personalize UI based on user preferences"
+- Supervisor: ✅ Approves (legitimate, narrow scope)
+- **Result:** Access granted, cached for 1 hour
+
+**Scenario 2: Leaked Password**
+- Agent: Requests memory search for "password"
+- Supervisor: 🚫 Denies or escalates (high-risk access)
+- **Result:** Human approval required
+
+**Scenario 3: Audit Log Analysis**
+- Agent: "Analyzing system performance issues"
+- Supervisor: ⚠️ Uncertain (could be legitimate or reconnaissance)
+- **Result:** Human approval required
+
+For detailed information, see [Security Supervisor Architecture](./SECURITY_SUPERVISOR.md).
+
 ## Best Practices
 
 1. **Use the vault** for all sensitive credentials in production

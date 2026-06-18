@@ -250,6 +250,21 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '024_codegraph.sql',
       label: 'memory.db (code graph)',
     },
+    {
+      db: coreDb,
+      sqlFile: '025_data_sensitivity.sql',
+      label: 'cortex.db (data sensitivity)',
+    },
+    {
+      db: memoryDb,
+      sqlFile: '026_memory_sensitivity.sql',
+      label: 'memory.db (sensitivity)',
+    },
+    {
+      db: lensDb,
+      sqlFile: '027_lens_sensitivity.sql',
+      label: 'lens.db (sensitivity)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
@@ -263,6 +278,10 @@ export async function runMigrations(): Promise<void> {
   }
 
   await seedSystemJobs();
+
+  // Run sensitivity backfill if needed (one-time after adding sensitivity columns)
+  const { runBackfill } = await import('../security/backfill.ts');
+  await runBackfill();
 }
 
 export async function seedSystemJobs(): Promise<void> {
