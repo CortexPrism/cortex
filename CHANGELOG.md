@@ -62,6 +62,15 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Configurable timeout (default: 30s) and async page context management
   - Base64-encoded image output for LLM-friendly usage
 
+- **docs_search tool** — Official library documentation search (Context7):
+  - Search 25+ popular libraries: React, Vue, Angular, Next.js, TypeScript, Node.js, etc.
+  - Version-specific documentation support (e.g., React 18.0.0)
+  - 24-hour result caching to prevent duplicate API calls
+  - Code example inclusion (configurable)
+  - Fallback to formatted output if Context7 unavailable
+  - Library name resolution (fuzzy matching for common names)
+  - Prevents hallucinated API calls by providing official reference material
+
 - **Human approval flows**:
   - CLI: Color-coded prompts with y/n/details options
   - Web UI: Modal with request details, supervisor reasoning, sample data
