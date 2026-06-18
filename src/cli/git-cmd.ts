@@ -1,5 +1,5 @@
 import { Command } from '@cliffy/command';
-import { ensureAgentWorkspace } from '../workspace/paths.ts';
+import { ensureAgentWorkspace, getGlobalWorkspaceDir } from '../workspace/paths.ts';
 import {
   gitAdd,
   gitAddRemote,
@@ -19,7 +19,7 @@ import {
 
 async function resolveDir(agentId?: string): Promise<string> {
   if (agentId) return await ensureAgentWorkspace(agentId);
-  return Deno.cwd();
+  return getGlobalWorkspaceDir();
 }
 
 export const gitCommand = new Command()

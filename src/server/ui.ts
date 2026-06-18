@@ -9042,7 +9042,12 @@ async function editorLoadWorkspaces() {
       const currentVal = sel.value;
       sel.innerHTML = '<option value="global">Global</option>' +
         agents.map(a => '<option value="' + esc(a.agentId) + '">' + esc(a.agentName) + ' (agent)</option>').join('');
-      sel.value = currentVal;
+      if (currentVal === 'global' && agents.length > 0) {
+        sel.value = agents[0].agentId;
+        editorWorkspace = agents[0].agentId;
+      } else {
+        sel.value = currentVal;
+      }
     }
   } catch {}
 }
@@ -9511,6 +9516,10 @@ async function gitLoadAgentSelector() {
   sel.innerHTML = '<option value="">Current directory</option>';
   for (const a of agents) {
     sel.innerHTML += '<option value="' + a.id + '">' + a.name + ' (' + a.id.slice(0, 8) + ')</option>';
+  }
+  if (agents.length > 0) {
+    sel.value = agents[0].id;
+    gitAgentId = agents[0].id;
   }
   sel.onchange = () => {
     const val = sel.value;

@@ -5,6 +5,17 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.41.1] — 2026-06-18
+
+### Changed
+
+- **Editor & VCS default directories** (`src/workspace/paths.ts`, `src/server/router.ts`,
+  `src/cli/git-cmd.ts`, `src/server/ui.ts`) — Editor and version control no longer default to
+  the cortex install directory (`Deno.cwd()`). `getGlobalWorkspaceDir()` now returns
+  `PATHS.workspacesDir` (`~/.cortex/data/workspaces`). All git API endpoints and the CLI git
+  command use `getGlobalWorkspaceDir()` as fallback. Editor defaults to the first available
+  agent workspace; VCS agent selector defaults to the first available agent.
+
 ## [0.41.0] — 2026-06-18
 
 ### Added — Agent Builder Overhaul: Multi-Select Dropdowns, 6 New Sub-Agent Types, Clone, & Enhanced Config
