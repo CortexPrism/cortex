@@ -7,6 +7,13 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.35.3] — 2026-06-18
+
+### Changed
+
+- **Extensions page** — Redesigned Installed and Discover tabs from list layout to responsive
+  card grid with colored icon headers, expandable readme support, and richer metadata display.
+
 ## [0.35.2] — 2026-06-17
 
 ### Fixed — High
