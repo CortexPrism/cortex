@@ -100,11 +100,26 @@ export interface ModelSelectionConfig {
   quartermasterModel?: string;
 }
 
+export type AgentCategory =
+  | 'general'
+  | 'specialist'
+  | 'assistant'
+  | 'creative'
+  | 'analytics'
+  | 'ops'
+  | 'custom';
+
 /** Defines a named, selectable agent with its own identity, model, tools, and behaviour. */
 export interface AgentConfig {
   id: string;
   name: string;
   description?: string;
+  /** Emoji or text icon for UI display */
+  icon?: string;
+  /** Agent category for classification / filtering */
+  category?: AgentCategory;
+  /** Agent version string */
+  version?: string;
   /** Inline soul content (takes precedence over soulFile) */
   soul?: string;
   /** Path to a SOUL.md file */

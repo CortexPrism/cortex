@@ -28,6 +28,7 @@ import type {
 import { buildEmbedder } from '../memory/embeddings.ts';
 import {
   deleteSkill,
+  deleteSkills,
   deprecateSkill,
   getSkillByName,
   getSkillDependencies,
@@ -640,13 +641,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true, id });
   }
 
-  // DELETE /api/skills?name=...
+  // DELETE /api/skills?name=... (single) or DELETE /api/skills with JSON body { names: [...] }
   if (req.method === 'DELETE' && path === '/api/skills') {
-    const name = url.searchParams.get('name');
-    if (!name) return err('Missing skill name', 400);
-    const deleted = await deleteSkill(name);
-    if (!deleted) return err('Skill not found', 404);
-    return json({ ok: true });
+    const names = url.searchParams.getAll('name');
+    if (names.length === 0) {
+      const body = await req.json().catch(() => ({})) as { names?: string[] };
+      if (Array.isArray(body.names) && body.names.length > 0) {
+        names.push(...body.names);
+      }
+    }
+    if (names.length === 0) return err('Missing skill name(s)', 400);
+    const result = await deleteSkills(names);
+    return json({ ok: result.errors.length === 0, deleted: result.deleted, errors: result.errors });
   }
 
   // POST /api/skills/load-human (load skills from .cortex/skills/)
@@ -1788,6 +1794,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true });
   }
 
+  // GET /api/tools/list — all registered tool names grouped by category
+  if (req.method === 'GET' && path === '/api/tools/list') {
+    const { globalRegistry } = await import('../tools/registry.ts');
+    const names = globalRegistry.toolNames();
+    return json(names);
+  }
+
   // ── Agent Manager ────────────────────────────────────────
 
   // GET /api/agents
@@ -1888,6 +1901,20 @@ export async function handleApi(req: Request): Promise<Response | null> {
       return json({ ok: true });
     } catch (e) {
       return err((e as Error).message, 404);
+    }
+  }
+
+  // POST /api/agents/:id/clone — duplicate an agent
+  const agentCloneMatch = path.match(/^\/api\/agents\/([^/]+)\/clone$/);
+  if (req.method === 'POST' && agentCloneMatch) {
+    const { cloneAgent } = await import('../agent/manager.ts');
+    const body = await req.json().catch(() => ({})) as { name?: string };
+    const newName = body.name || agentCloneMatch[1] + '-copy';
+    try {
+      const agent = await cloneAgent(agentCloneMatch[1], newName);
+      return json(agent, 201);
+    } catch (e) {
+      return err((e as Error).message, 400);
     }
   }
 

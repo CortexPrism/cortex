@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import {
+  cloneAgent,
   deleteAgent,
   getAgent,
   listAgents,
@@ -10,7 +11,7 @@ import {
   updateAgent,
 } from '../agent/manager.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
-import type { ProviderKind } from '../config/config.ts';
+import type { AgentCategory, ProviderKind } from '../config/config.ts';
 import { runMigrations } from '../db/migrate.ts';
 
 export const agentCommand = new Command()
@@ -63,6 +64,9 @@ export const agentCommand = new Command()
         const fields: [string, string][] = [
           ['ID', agent.id],
           ['Name', agent.name],
+          ['Icon', agent.icon || '(none)'],
+          ['Category', agent.category || '(default)'],
+          ['Version', agent.version || '(none)'],
           ['Provider', agent.provider || '(default)'],
           ['Model', agent.model || '(default)'],
           ['Temperature', agent.temperature != null ? String(agent.temperature) : '(default)'],
@@ -83,9 +87,18 @@ export const agentCommand = new Command()
       .description('Create a new agent')
       .arguments('<name:string>')
       .option('-d, --description <desc:string>', 'Agent description')
-      .option('-p, --provider <provider:string>', 'Provider (anthropic|openai|ollama)')
+      .option(
+        '-p, --provider <provider:string>',
+        'Provider (anthropic|openai|ollama|google|deepseek|groq|…)',
+      )
       .option('-m, --model <model:string>', 'Model name')
       .option('-t, --temperature <temp:number>', 'Model temperature (0–2)')
+      .option('--icon <icon:string>', 'Emoji or text icon for UI display')
+      .option(
+        '--category <category:string>',
+        'Agent category (general|specialist|assistant|creative|analytics|ops|custom)',
+      )
+      .option('--version <version:string>', 'Agent version string')
       .option('--soul <soul:string>', 'Path to a SOUL.md file')
       .option('--system-prompt <prompt:string>', 'Additional system prompt text')
       .option('--tools <tools:string>', 'Comma-separated tool allow-list')
@@ -96,6 +109,9 @@ export const agentCommand = new Command()
           id,
           name,
           description: opts.description,
+          icon: opts.icon,
+          category: opts.category as AgentCategory,
+          version: opts.version,
           provider: opts.provider as ProviderKind,
           model: opts.model,
           temperature: opts.temperature,
@@ -114,9 +130,15 @@ export const agentCommand = new Command()
       .arguments('<id:string>')
       .option('-n, --name <name:string>', 'New name')
       .option('-d, --description <desc:string>', 'New description')
-      .option('-p, --provider <provider:string>', 'Provider (anthropic|openai|ollama)')
+      .option(
+        '-p, --provider <provider:string>',
+        'Provider (anthropic|openai|ollama|google|deepseek|groq|…)',
+      )
       .option('-m, --model <model:string>', 'Model name')
       .option('-t, --temperature <temp:number>', 'Model temperature (0–2)')
+      .option('--icon <icon:string>', 'Emoji or text icon for UI display')
+      .option('--category <category:string>', 'Agent category')
+      .option('--version <version:string>', 'Agent version string')
       .option('--soul <soul:string>', 'Path to a SOUL.md file or "inline:<content>"')
       .option('--system-prompt <prompt:string>', 'Additional system prompt')
       .option('--tools <tools:string>', 'Comma-separated tool allow-list (empty=all)')
@@ -125,6 +147,9 @@ export const agentCommand = new Command()
         const patch: Record<string, unknown> = {};
         if (opts.name) patch.name = opts.name;
         if (opts.description !== undefined) patch.description = opts.description;
+        if (opts.icon !== undefined) patch.icon = opts.icon;
+        if (opts.category !== undefined) patch.category = opts.category;
+        if (opts.version !== undefined) patch.version = opts.version;
         if (opts.provider) patch.provider = opts.provider;
         if (opts.model) patch.model = opts.model;
         if (opts.temperature !== undefined) patch.temperature = opts.temperature;
@@ -279,6 +304,21 @@ export const agentCommand = new Command()
           console.log(green(`  ✓ Imported agent "${agent.name}" (${agent.id})`));
         } catch (e) {
           console.log(red(`  Failed to import agent: ${(e as Error).message}`));
+        }
+      }),
+  )
+  .command(
+    'clone',
+    new Command()
+      .description('Clone an existing agent with a new name')
+      .arguments('<source-id:string> <new-name:string>')
+      .action(async (_opts, sourceId: string, newName: string) => {
+        try {
+          const agent = await cloneAgent(sourceId, newName);
+          console.log(green(`  ✓ Cloned agent "${agent.name}" (${agent.id}) from "${sourceId}"`));
+        } catch (e) {
+          console.error(red(`  ${(e as Error).message}`));
+          Deno.exit(1);
         }
       }),
   );

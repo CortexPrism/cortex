@@ -1809,13 +1809,38 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Plugin install modal (shared) -->
+  <!-- Agent create/edit modal -->
   <div id="new-agent-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
-    <div class="card" style="width:540px;max-height:90vh;overflow-y:auto;">
+    <div class="card" style="width:580px;max-height:92vh;overflow-y:auto;">
       <div style="font-size:14px;font-weight:600;margin-bottom:14px;" id="agent-modal-title">Create Agent</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name *</label><input class="inp" id="ag-name" placeholder="My Agent" /></div>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Name *</label><input class="inp" id="ag-name" placeholder="My Agent" /></div>
+          <div style="width:80px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Icon</label>
+            <div style="position:relative;">
+              <input class="inp" id="ag-icon" placeholder="🤖" style="text-align:center;cursor:pointer;font-size:18px;" readonly onclick="toggleIconPicker()" />
+              <div id="ag-icon-picker" style="display:none;position:absolute;top:100%;left:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;width:240px;z-index:200;display:none;flex-wrap:wrap;gap:4px;">
+                <div style="width:100%;font-size:10px;color:var(--text3);margin-bottom:4px;">Pick an icon:</div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Description</label><input class="inp" id="ag-desc" placeholder="What this agent does" /></div>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Category</label>
+            <select class="inp" id="ag-category">
+              <option value="">Default (uncategorized)</option>
+              <option value="general">🤖 General</option>
+              <option value="specialist">🔧 Specialist</option>
+              <option value="assistant">💁 Assistant</option>
+              <option value="creative">🎨 Creative</option>
+              <option value="analytics">📊 Analytics</option>
+              <option value="ops">⚙️ Ops</option>
+              <option value="custom">⭐ Custom</option>
+            </select>
+          </div>
+          <div style="width:100px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Version</label><input class="inp" id="ag-version" placeholder="1.0.0" style="text-align:center;" /></div>
+        </div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Provider (optional override)</label>
           <select class="inp" id="ag-provider" onchange="onAgentProviderChange()"><option value="">Default (use global)</option></select>
         </div>
@@ -1824,10 +1849,42 @@ const HTML = `<!DOCTYPE html>
           <select class="inp" id="ag-model" style="display:none;"><option value="">Default for provider</option></select>
           <input class="inp" id="ag-model-text" placeholder="e.g. gpt-4o-mini" />
         </div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature (0–2)</label><input class="inp" id="ag-temp" type="number" step="0.1" min="0" max="2" placeholder="Default" style="width:100px;" /></div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">System Prompt (appended to soul)</label><textarea class="inp" id="ag-sysprompt" placeholder="Additional instructions…" style="resize:vertical;min-height:60px;font-size:12px;"></textarea></div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tool Allow-list (comma-separated, empty=all)</label><input class="inp" id="ag-tools" placeholder="file_read, web_search, code_exec" /></div>
-        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tags (comma-separated)</label><input class="inp" id="ag-tags" placeholder="coding, research" /></div>
+        <div style="display:flex;gap:10px;">
+          <div style="width:120px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Temperature (0–2)</label><input class="inp" id="ag-temp" type="number" step="0.1" min="0" max="2" placeholder="Default" /></div>
+          <div style="width:100px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Max Turns</label><input class="inp" id="ag-maxturns" type="number" min="1" max="200" placeholder="Default" /></div>
+        </div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tool Allow-list (empty = all tools)</label>
+          <div id="ag-tools-multiselect" style="position:relative;">
+            <div onclick="toggleToolsDropdown()" style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:space-between;background:var(--bg3);">
+              <span id="ag-tools-display" style="color:var(--text3);">All tools (click to select)</span>
+              <span style="color:var(--text3);font-size:10px;">▼</span>
+            </div>
+            <div id="ag-tools-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.3);">
+              <div style="padding:4px 6px;margin-bottom:4px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;">
+                <input id="ag-tools-filter" type="text" placeholder="Search tools…" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--text2);outline:none;" oninput="filterToolsList()" />
+                <button onclick="clearToolsSelection()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;">✕</button>
+              </div>
+              <div id="ag-tools-list"></div>
+            </div>
+          </div>
+        </div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">Tags</label>
+          <div id="ag-tags-multiselect" style="position:relative;">
+            <div onclick="toggleTagsDropdown()" style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:space-between;background:var(--bg3);min-height:20px;">
+              <span id="ag-tags-display" style="color:var(--text3);flex:1;">Click to add tags</span>
+              <span style="color:var(--text3);font-size:10px;">▼</span>
+            </div>
+            <div id="ag-tags-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px;z-index:200;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.3);">
+              <div style="padding:4px 6px;margin-bottom:4px;border-bottom:1px solid var(--border);display:flex;gap:6px;">
+                <input id="ag-tags-custom" type="text" placeholder="Custom tag + Enter" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--text2);outline:none;" onkeydown="if(event.key==='Enter')addCustomTag()" />
+                <button onclick="addCustomTag()" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:11px;">+</button>
+              </div>
+              <div id="ag-tags-list"></div>
+              <div id="ag-tags-selected" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 6px;margin-top:4px;border-top:1px solid var(--border);"></div>
+            </div>
+          </div>
+        </div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">System Prompt (appended to soul)</label><textarea class="inp" id="ag-sysprompt" placeholder="Additional instructions…" style="resize:vertical;min-height:50px;font-size:12px;"></textarea></div>
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px;">Agent Behaviour / Soul</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px;">
@@ -1839,7 +1896,7 @@ const HTML = `<!DOCTYPE html>
             <button type="button" class="ag-tmpl-btn" data-val="creative" onclick="agSoulTemplate(this)" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:10px;">🎨 Creative</button>
             <button type="button" onclick="document.getElementById('ag-soul').value=''" style="padding:3px 10px;border-radius:14px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:10px;">✕ Clear</button>
           </div>
-          <textarea class="inp" id="ag-soul" placeholder="Leave blank to use the default SOUL.md, or paste / pick a template above…" style="resize:vertical;min-height:80px;font-family:"JetBrains Mono",monospace;font-size:12px;"></textarea>
+          <textarea class="inp" id="ag-soul" placeholder="Leave blank to use the default SOUL.md, or paste / pick a template above…" style="resize:vertical;min-height:70px;font-family:JetBrains Mono,monospace;font-size:12px;"></textarea>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px;">
@@ -4744,17 +4801,20 @@ async function skillBulkDelete() {
   const names = Array.from(selectedSkills).join(', ');
   const ok = await confirmAction('Bulk Delete', 'Delete ' + selectedSkills.size + ' skill(s): ' + names + '?', 'Delete All');
   if (!ok) return;
-  let deleted = 0;
-  for (const name of selectedSkills) {
-    try {
-      const r = await fetch(BASE + '/api/skills?name=' + encodeURIComponent(name), { method: 'DELETE' });
-      if (r.ok) deleted++;
-    } catch(e) { /* continue */ }
+  try {
+    const r = await fetch(BASE + '/api/skills', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ names: Array.from(selectedSkills) }),
+    });
+    const data = await r.json();
+    selectedSkills.clear();
+    updateSkillBulkBar();
+    toast('Deleted ' + (data.deleted || 0) + ' skill(s)' + (data.errors?.length ? ', ' + data.errors.length + ' failed' : ''), data.deleted > 0 ? 'success' : 'error');
+    loadSkills();
+  } catch(e) {
+    alert('Bulk delete failed: ' + e.message);
   }
-  selectedSkills.clear();
-  updateSkillBulkBar();
-  toast('Deleted ' + deleted + ' skill(s)', deleted > 0 ? 'success' : 'error');
-  loadSkills();
 }
 
 function updateSkillBulkBar() {
@@ -7690,9 +7750,13 @@ async function loadAgents() {
       var cardBorder = a.id === currentAgentId ? 'border-color:rgba(99,102,241,0.3);' : '';
       ac.push('<div class="card" style="' + cardBorder + '"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;"><div style="flex:1;min-width:0;">');
       ac.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">');
+      var icon = a.icon || '🤖';
+      ac.push('<span style="font-size:18px;">' + icon + '</span>');
       ac.push('<span style="font-size:14px;font-weight:600;">' + esc(a.name) + '</span>');
+      if (a.version) ac.push('<span style="color:var(--text3);font-size:10px;font-family:monospace;">v' + esc(a.version) + '</span>');
       ac.push('<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);font-size:10px;">' + esc(a.id) + '</span>');
-      if (a.id === currentAgentId) ac.push('<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">● active</span>');
+      if (a.category) ac.push('<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--accent2);font-size:10px;">' + esc(a.category) + '</span>');
+      if (a.id === currentAgentId) ac.push('<span class="badge" style="background:rgba(34,197,94,0.15);color:#4ade80;font-size:10px;">● active</span>');
       ac.push('</div>');
       if (a.description) ac.push('<p style="font-size:12px;color:var(--text2);margin-bottom:6px;">' + esc(a.description) + '</p>');
       ac.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">');
@@ -7711,10 +7775,11 @@ async function loadAgents() {
       ac.push('</div>');
       if (a.systemPrompt) ac.push('<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.systemPrompt) + '</div>');
       var wsDir = wsMap[a.id] || '';
-      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:"JetBrains Mono",monospace;">' + esc(wsDir) + '</div>');
+      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;">' + esc(wsDir) + '</div>');
       ac.push('</div><div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">');
       if (a.id !== currentAgentId) ac.push('<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent(\\'' + a.id + '\\')">Activate</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
+      ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="cloneAgentUI(\\'' + a.id + '\\')">Clone</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="showPage(\\'sessions\\');var f=document.getElementById(\\'sess-agent-filter\\');if(f){f.value=\\'' + a.id + '\\';loadSessionsList();}">Sessions</button>');
       if (a.id !== 'default') ac.push('<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent(\\'' + a.id + '\\')">✕</button>');
       ac.push('</div></div></div>');
@@ -7822,15 +7887,28 @@ function showNewAgentForm() {
   document.getElementById('agent-modal-title').textContent = 'Create Agent';
   document.getElementById('agent-submit-btn').textContent = 'Create Agent';
   document.getElementById('ag-edit-id').value = '';
-  ['ag-name','ag-desc','ag-sysprompt','ag-tools','ag-tags','ag-soul'].forEach(id => document.getElementById(id).value = '');
+  ['ag-name','ag-desc','ag-sysprompt','ag-soul'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ag-icon').value = '🤖';
+  document.getElementById('ag-category').value = '';
+  document.getElementById('ag-version').value = '';
+  document.getElementById('ag-temp').value = '';
+  document.getElementById('ag-maxturns').value = '';
   const modelSel = document.getElementById('ag-model');
   const modelText = document.getElementById('ag-model-text');
   if (modelSel) { modelSel.innerHTML = '<option value="">Default for provider</option>'; modelSel.style.display = 'none'; }
   if (modelText) { modelText.value = ''; modelText.style.display = ''; }
-  document.getElementById('ag-temp').value = '';
   document.getElementById('ag-status').textContent = '';
+  // Reset tools multi-select
+  window._agToolsSelected = {};
+  document.getElementById('ag-tools-display').textContent = 'All tools (click to select)';
+  // Reset tags multi-select
+  window._agTagsSelected = [];
+  document.getElementById('ag-tags-display').textContent = 'Click to add tags';
+  document.getElementById('ag-tags-selected').innerHTML = '';
   document.getElementById('new-agent-modal').style.display = 'flex';
   loadAgentModalProviders('');
+  loadToolsList();
+  loadTagsList();
 }
 
 async function editAgent(id) {
@@ -7842,39 +7920,284 @@ async function editAgent(id) {
   document.getElementById('ag-edit-id').value = a.id;
   document.getElementById('ag-name').value = a.name || '';
   document.getElementById('ag-desc').value = a.description || '';
+  document.getElementById('ag-icon').value = a.icon || '🤖';
+  document.getElementById('ag-category').value = a.category || '';
+  document.getElementById('ag-version').value = a.version || '';
   document.getElementById('ag-temp').value = a.temperature != null ? a.temperature : '';
+  document.getElementById('ag-maxturns').value = a.maxTurns != null ? a.maxTurns : '';
   document.getElementById('ag-sysprompt').value = a.systemPrompt || '';
-  document.getElementById('ag-tools').value = (a.tools || []).join(', ');
-  document.getElementById('ag-tags').value = (a.tags || []).join(', ');
   document.getElementById('ag-soul').value = a.soul || '';
   document.getElementById('ag-status').textContent = '';
+  // Set tools multi-select
+  window._agToolsSelected = {};
+  if (a.tools && a.tools.length) {
+    for (var ti = 0; ti < a.tools.length; ti++) window._agToolsSelected[a.tools[ti]] = true;
+    var toolCount = a.tools.length;
+    document.getElementById('ag-tools-display').textContent = toolCount + ' tool(s) selected';
+  } else {
+    document.getElementById('ag-tools-display').textContent = 'All tools (click to select)';
+  }
+  // Set tags multi-select
+  window._agTagsSelected = a.tags || [];
+  updateTagsDisplay();
   document.getElementById('new-agent-modal').style.display = 'flex';
   await loadAgentModalProviders(a.provider || '');
   if (a.model) await onAgentProviderChange(a.model);
+  loadToolsList();
+  loadTagsList();
 }
 
 function hideAgentModal() {
   document.getElementById('new-agent-modal').style.display = 'none';
 }
 
+// ── Tools Multi-Select ─────────────────────────────────────
+var _agToolGroups = {};
+
+async function loadToolsList() {
+  try {
+    var names = await fetch(BASE + '/api/tools/list').then(function(r) { return r.json(); }).catch(function() { return []; });
+    if (!Array.isArray(names) || !names.length) return;
+    // Build grouped list (by prefix)
+    var groups = {};
+    for (var i = 0; i < names.length; i++) {
+      var n = names[i];
+      var prefix = n.indexOf('_') > 0 ? n.split('_')[0] : 'other';
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push(n);
+    }
+    _agToolGroups = groups;
+    renderToolsList('');
+  } catch(e) { /* ignore */ }
+}
+
+function renderToolsList(filter) {
+  var el = document.getElementById('ag-tools-list');
+  if (!el) return;
+  var html = '';
+  var groups = _agToolGroups;
+  var groupKeys = Object.keys(groups).sort();
+  var selected = window._agToolsSelected || {};
+  for (var gi = 0; gi < groupKeys.length; gi++) {
+    var g = groupKeys[gi];
+    var tools = groups[g].sort();
+    if (filter) tools = tools.filter(function(t) { return t.indexOf(filter) >= 0; });
+    if (!tools.length) continue;
+    html += '<div style="font-size:10px;color:var(--text3);padding:2px 6px;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + esc(g) + '</div>';
+    for (var ti = 0; ti < tools.length; ti++) {
+      var t = tools[ti];
+      var checked = selected[t] ? 'checked' : '';
+      html += '<label style="display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:11px;color:var(--text2);hover:background:var(--bg3);">'
+        + '<input type="checkbox" value="' + esc(t) + '" ' + checked + ' onchange="onToolCheck(this)" style="accent-color:var(--accent);" />'
+        + esc(t) + '</label>';
+    }
+  }
+  if (!html) html = '<div style="padding:6px;color:var(--text3);font-size:11px;">No tools found</div>';
+  el.innerHTML = html;
+}
+
+function filterToolsList() {
+  var filter = document.getElementById('ag-tools-filter').value.toLowerCase();
+  renderToolsList(filter);
+}
+
+function onToolCheck(cb) {
+  if (!window._agToolsSelected) window._agToolsSelected = {};
+  if (cb.checked) {
+    window._agToolsSelected[cb.value] = true;
+  } else {
+    delete window._agToolsSelected[cb.value];
+  }
+  var count = Object.keys(window._agToolsSelected).length;
+  document.getElementById('ag-tools-display').textContent = count > 0 ? count + ' tool(s) selected' : 'All tools (click to select)';
+}
+
+function clearToolsSelection() {
+  window._agToolsSelected = {};
+  document.getElementById('ag-tools-display').textContent = 'All tools (click to select)';
+  renderToolsList('');
+  document.getElementById('ag-tools-filter').value = '';
+}
+
+function toggleToolsDropdown() {
+  var dd = document.getElementById('ag-tools-dropdown');
+  var isVisible = dd.style.display !== 'none';
+  dd.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) document.getElementById('ag-tools-filter').focus();
+}
+
+// ── Tags Multi-Select ──────────────────────────────────────
+var AG_TAG_SUGGESTIONS = [
+  'coding', 'research', 'writing', 'debugging', 'testing',
+  'devops', 'data', 'design', 'security', 'analysis',
+  'planning', 'review', 'documentation', 'learning', 'creative',
+  'automation', 'monitoring', 'compliance', 'frontend', 'backend',
+];
+
+function loadTagsList() {
+  var el = document.getElementById('ag-tags-list');
+  if (!el) return;
+  var selected = window._agTagsSelected || [];
+  var html = '';
+  for (var i = 0; i < AG_TAG_SUGGESTIONS.length; i++) {
+    var tag = AG_TAG_SUGGESTIONS[i];
+    var isChecked = selected.indexOf(tag) >= 0;
+    html += '<label style="display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:11px;color:var(--text2);">'
+      + '<input type="checkbox" value="' + esc(tag) + '" ' + (isChecked ? 'checked' : '') + ' onchange="onTagCheck(this)" style="accent-color:var(--accent);" />'
+      + esc(tag) + '</label>';
+  }
+  el.innerHTML = html;
+}
+
+function onTagCheck(cb) {
+  if (!window._agTagsSelected) window._agTagsSelected = [];
+  var idx = window._agTagsSelected.indexOf(cb.value);
+  if (cb.checked && idx < 0) {
+    window._agTagsSelected.push(cb.value);
+  } else if (!cb.checked && idx >= 0) {
+    window._agTagsSelected.splice(idx, 1);
+  }
+  updateTagsDisplay();
+}
+
+function addCustomTag() {
+  var inp = document.getElementById('ag-tags-custom');
+  var tag = inp.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  if (!tag) return;
+  if (!window._agTagsSelected) window._agTagsSelected = [];
+  if (window._agTagsSelected.indexOf(tag) < 0) {
+    window._agTagsSelected.push(tag);
+    updateTagsDisplay();
+    loadTagsList();
+  }
+  inp.value = '';
+}
+
+function updateTagsDisplay() {
+  var tags = window._agTagsSelected || [];
+  var display = document.getElementById('ag-tags-display');
+  var container = document.getElementById('ag-tags-selected');
+  if (tags.length === 0) {
+    display.textContent = 'Click to add tags';
+    container.innerHTML = '';
+    return;
+  }
+  display.textContent = tags.length + ' tag(s) selected';
+  container.innerHTML = tags.map(function(t) {
+    return '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;background:rgba(99,102,241,0.12);color:var(--accent2);font-size:10px;">'
+      + esc(t) + '<span onclick="removeTag(\\'' + esc(t) + '\\')" style="cursor:pointer;opacity:0.6;">✕</span></span>';
+  }).join('');
+}
+
+function removeTag(tag) {
+  if (!window._agTagsSelected) return;
+  var idx = window._agTagsSelected.indexOf(tag);
+  if (idx >= 0) window._agTagsSelected.splice(idx, 1);
+  updateTagsDisplay();
+  loadTagsList();
+}
+
+function toggleTagsDropdown() {
+  var dd = document.getElementById('ag-tags-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── Icon Picker ────────────────────────────────────────────
+var AGENT_ICONS = ['🤖','🧠','⚡','🚀','💡','🎯','🔬','🎨','📊','🛡️','🔧','⚙️','💻','🌐','📝','🎓','🧪','🏗️','🔄','🎮','📱','🖥️','☁️','🐳','🧩','🔍','📈','🤝','🎤','📡'];
+
+function toggleIconPicker() {
+  var picker = document.getElementById('ag-icon-picker');
+  if (picker.style.display === 'flex') {
+    picker.style.display = 'none';
+    return;
+  }
+  if (picker.children.length <= 1) {
+    for (var i = 0; i < AGENT_ICONS.length; i++) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = AGENT_ICONS[i];
+      btn.style.cssText = 'width:36px;height:36px;font-size:18px;border:none;border-radius:6px;cursor:pointer;background:var(--bg3);display:flex;align-items:center;justify-content:center;';
+      btn.onmouseover = function() { this.style.background = 'var(--accent)'; };
+      btn.onmouseout = function() { this.style.background = 'var(--bg3)'; };
+      btn.onclick = function() {
+        document.getElementById('ag-icon').value = this.textContent;
+        picker.style.display = 'none';
+      };
+      picker.appendChild(btn);
+    }
+  }
+  picker.style.display = 'flex';
+}
+
+// Close icon picker and tool/tag dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+  var picker = document.getElementById('ag-icon-picker');
+  var iconInput = document.getElementById('ag-icon');
+  if (picker && iconInput && picker.style.display === 'flex' && !picker.contains(e.target) && e.target !== iconInput) {
+    picker.style.display = 'none';
+  }
+  var toolsDD = document.getElementById('ag-tools-dropdown');
+  var toolsTrigger = document.getElementById('ag-tools-multiselect');
+  if (toolsDD && toolsTrigger && toolsDD.style.display !== 'none' && !toolsDD.contains(e.target) && !toolsTrigger.contains(e.target)) {
+    toolsDD.style.display = 'none';
+  }
+  var tagsDD = document.getElementById('ag-tags-dropdown');
+  var tagsTrigger = document.getElementById('ag-tags-multiselect');
+  if (tagsDD && tagsTrigger && tagsDD.style.display !== 'none' && !tagsDD.contains(e.target) && !tagsTrigger.contains(e.target)) {
+    tagsDD.style.display = 'none';
+  }
+});
+
+// ── Agent Clone ────────────────────────────────────────────
+async function cloneAgentUI(id) {
+  var newName = prompt('Enter a name for the cloned agent:');
+  if (!newName || !newName.trim()) return;
+  try {
+    var res = await fetch(BASE + '/api/agents/' + encodeURIComponent(id) + '/clone', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    if (res.ok) {
+      var agent = await res.json();
+      toast('Cloned as "' + agent.name + '"', 'success');
+      loadAgents();
+    } else {
+      var data = await res.json();
+      toast(data.error || 'Clone failed', 'error');
+    }
+  } catch(e) {
+    toast('Clone failed: ' + e.message, 'error');
+  }
+}
+
 async function submitAgentForm() {
   const name = document.getElementById('ag-name').value.trim();
   if (!name) { document.getElementById('ag-status').textContent = 'Name is required.'; return; }
   const editId = document.getElementById('ag-edit-id').value;
-  const tools = document.getElementById('ag-tools').value.trim();
-  const tags = document.getElementById('ag-tags').value.trim();
   const temp = document.getElementById('ag-temp').value.trim();
+  const maxTurns = document.getElementById('ag-maxturns').value.trim();
+  // Collect tools from multi-select (empty obj = all tools)
+  var toolsArr = undefined;
+  var toolKeys = Object.keys(window._agToolsSelected || {});
+  if (toolKeys.length > 0) toolsArr = toolKeys;
+  // Collect tags from multi-select
+  var tagsArr = (window._agTagsSelected || []).length > 0 ? window._agTagsSelected : undefined;
   const body = {
     name,
     description: document.getElementById('ag-desc').value.trim() || undefined,
+    icon: document.getElementById('ag-icon').value || undefined,
+    category: document.getElementById('ag-category').value || undefined,
+    version: document.getElementById('ag-version').value.trim() || undefined,
     provider: document.getElementById('ag-provider').value || undefined,
     model: (document.getElementById('ag-model').style.display !== 'none'
       ? document.getElementById('ag-model').value
       : document.getElementById('ag-model-text').value.trim()) || undefined,
     temperature: temp ? Number(temp) : undefined,
+    maxTurns: maxTurns ? Number(maxTurns) : undefined,
     systemPrompt: document.getElementById('ag-sysprompt').value.trim() || undefined,
-    tools: tools ? tools.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-    tags: tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+    tools: toolsArr,
+    tags: tagsArr,
     soul: document.getElementById('ag-soul').value.trim() || undefined,
   };
 
