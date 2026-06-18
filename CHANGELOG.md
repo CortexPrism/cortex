@@ -200,6 +200,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Page extension framework: dynamic tab injection for Settings, Memory, Agents, Code Runner,
     Policies
 
+- **Web UI coverage — Phase 4** — Connected all 10 orphaned API endpoints to the UI:
+  - Skills Export/Merge/Dependencies/Health — Export button, Merge file upload, Dependencies prompt,
+    health detail display
+  - Workspace History — Editor History tab with file path/agent/timestamp table
+  - QM/MQM Config — Quartermaster Config button with guidance
+  - Voice Providers — Voice page provider browser showing STT/TTS providers
+  - Webhook Test-Fire — Automation Test button for webhook endpoints
+  - Git Diff Viewer — VCS Diff button opens agent-specific git diff in popup
+  - Cross-page extension triggers for Skills, Editor, Quartermaster, Voice, Automation, VCS
+
 ### Security
 
 - All sensitive data access now requires LLM supervisor review or human approval
