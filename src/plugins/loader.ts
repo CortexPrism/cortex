@@ -190,3 +190,16 @@ export async function loadAllPlugins(
 export function getLoadedTools(): Tool[] {
   return [..._loaded.values()].flatMap((p) => p.tools);
 }
+
+/** Returns a summary of each loaded plugin and the tool names it provides. */
+export function getLoadedPluginSummaries(): Array<{
+  name: string;
+  description: string | null;
+  toolNames: string[];
+}> {
+  return [..._loaded.values()].map((p) => ({
+    name: p.row.name,
+    description: p.row.description ?? null,
+    toolNames: p.tools.map((t) => t.definition.name),
+  }));
+}

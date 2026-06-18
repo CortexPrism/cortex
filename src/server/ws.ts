@@ -422,6 +422,26 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       let effectiveSystemPrompt = systemPrompt;
       effectiveSystemPrompt +=
         '\n\n## Environment\ncode_exec runs in an isolated Docker sandbox with NO access to host files or the workspace. Use file_read/file_write/file_list for all file operations. shell runs locally and CAN access files.';
+
+      // Inject a loaded-plugin manifest so the LLM can connect user requests like
+      // "test the chain-of-thought plugin" directly to the plugin's tools rather
+      // than searching the filesystem for plugin source files.
+      {
+        const { getLoadedPluginSummaries } = await import('../plugins/loader.ts');
+        const pluginSummaries = getLoadedPluginSummaries();
+        if (pluginSummaries.length > 0) {
+          const lines = pluginSummaries.map((p) => {
+            const toolList = p.toolNames.map((n) => `\`${n}\``).join(', ');
+            return `- **${p.name}**${
+              p.description ? ` — ${p.description}` : ''
+            }: tools ${toolList}`;
+          });
+          effectiveSystemPrompt +=
+            `\n\n## Active Plugins\nThe following plugins are loaded and ready. When a user asks to use, test, or demonstrate a plugin by name, call its tools directly — do NOT search the filesystem for plugin source files.\n${
+              lines.join('\n')
+            }`;
+        }
+      }
       if (files?.length) {
         const fileNames = files.map((f) => f.filename.replace(/[^a-zA-Z0-9._-]/g, '_')).join(', ');
         effectiveSystemPrompt +=
