@@ -2845,6 +2845,8 @@ let currentPage = 'chat';
 let currentReasoningData = '';
 let reasoningPanelOpen = false;
 let sessionNamed = false;
+const subAgentContainers = {}; // sub-agent ID -> DOM element
+const subAgentChunks = {}; // sub-agent ID -> accumulated text
 
 // ── Toast notifications ─────────────────────────
 function toast(message, type = 'info', duration = 3000) {
@@ -3131,6 +3133,108 @@ function toggleReasoningPanel() {
   }
 }
 
+// ── Sub-Agent Display ──────────────────────────────────────────
+function createSubAgentContainer(id, task, type) {
+  const existing = document.getElementById('sa-' + id);
+  if (existing) return existing;
+
+  const outer = document.createElement('div');
+  outer.id = 'sa-' + id;
+  outer.style.cssText = 'margin:8px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg2);';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none;background:var(--bg3);border-bottom:1px solid var(--border);';
+  header.innerHTML = '<span style="flex-shrink:0;width:16px;height:16px;border:2px solid var(--accent2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;"></span>' +
+    '<span style="font-size:12px;font-weight:600;color:var(--accent2);text-transform:uppercase;letter-spacing:0.04em;">' + esc(type || 'general') + '</span>' +
+    '<span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(task.slice(0, 80)) + '</span>' +
+    '<span style="font-size:10px;color:var(--text3);">▶</span>';
+  header.onclick = () => {
+    const body = document.getElementById('sa-body-' + id);
+    const expanded = body.style.display !== 'none';
+    body.style.display = expanded ? 'none' : 'block';
+    header.lastChild.textContent = expanded ? '▶' : '▼';
+  };
+
+  const body = document.createElement('div');
+  body.id = 'sa-body-' + id;
+  body.style.cssText = 'padding:10px 14px;max-height:400px;overflow-y:auto;font-size:13px;line-height:1.5;color:var(--text2);white-space:pre-wrap;word-break:break-word;display:none;';
+
+  outer.appendChild(header);
+  outer.appendChild(body);
+
+  subAgentContainers[id] = outer;
+  subAgentChunks[id] = '';
+
+  // Insert right before the chat input or at end of chat log
+  const chatLog = document.getElementById('chat-log');
+  chatLog.appendChild(outer);
+
+  // Scroll to show the sub-agent
+  requestAnimationFrame(() => scrollChat());
+
+  return { outer, body, header };
+}
+
+function updateSubAgentContent(id, delta) {
+  const container = subAgentContainers[id];
+  if (!container) return;
+
+  const body = document.getElementById('sa-body-' + id);
+  if (!body) return;
+
+  subAgentChunks[id] += delta;
+  body.textContent = subAgentChunks[id];
+  body.scrollTop = body.scrollHeight;
+}
+
+function finalizeSubAgent(id, result, success, error) {
+  const container = subAgentContainers[id];
+  if (!container) return;
+
+  const header = container.querySelector('div');
+  if (!header) return;
+
+  const spinner = header.querySelector('span:first-child');
+  if (spinner) {
+    if (success) {
+      spinner.style.cssText = 'flex-shrink:0;width:16px;height:16px;border-radius:50%;display:inline-block;background:#22c55e;border:2px solid #22c55e;animation:none;';
+    } else {
+      spinner.style.cssText = 'flex-shrink:0;width:16px;height:16px;border-radius:50%;display:inline-block;background:#ef4444;border:2px solid #ef4444;animation:none;';
+      spinner.title = error || 'Sub-agent failed';
+    }
+  }
+
+  const body = document.getElementById('sa-body-' + id);
+  if (body) {
+    const finalContent = subAgentChunks[id] || result || '';
+    body.textContent = finalContent;
+  }
+
+  // Auto-expand on completion
+  header.click();
+  header.click();
+
+  // Add completion badge
+  const badge = document.createElement('span');
+  badge.style.cssText = 'font-size:9px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px;';
+  if (success) {
+    badge.style.background = 'rgba(34,197,94,0.2)';
+    badge.style.color = '#22c55e';
+    badge.textContent = 'DONE';
+  } else {
+    badge.style.background = 'rgba(239,68,68,0.2)';
+    badge.style.color = '#ef4444';
+    badge.textContent = 'FAILED';
+  }
+  header.appendChild(badge);
+
+  // Clean up tracking after a delay
+  setTimeout(() => {
+    delete subAgentContainers[id];
+    delete subAgentChunks[id];
+  }, 5000);
+}
+
 // ── WebSocket ───────────────────────────────────────────────
 function connect() {
   ws = new WebSocket(WS_URL);
@@ -3215,10 +3319,19 @@ function connect() {
            renderReasoningPanel(document.getElementById('reasoning-panel'));
          }
          break;
-       case 'done':
-         document.getElementById('thinking-bar').style.display = 'none';
-         agentBubble = null;
-         appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
+       case 'sub_agent_start':
+          createSubAgentContainer(msg.id, msg.task, msg.subAgentType);
+          break;
+       case 'sub_agent_chunk':
+          updateSubAgentContent(msg.id, msg.delta);
+          break;
+       case 'sub_agent_end':
+          finalizeSubAgent(msg.id, msg.result, msg.success, msg.error);
+          break;
+        case 'done':
+          document.getElementById('thinking-bar').style.display = 'none';
+          agentBubble = null;
+          appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
          saveSession();
          if (currentPage === 'lens') loadLens();
          loadAgentPanel();

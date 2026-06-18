@@ -58,10 +58,17 @@ export interface Tool {
   execute(args: Record<string, unknown>, context: ToolContext): Promise<ToolCallResult>;
 }
 
+export type ToolProgressEvent =
+  | { type: 'sub_agent_start'; id: string; task: string; subAgentType?: string }
+  | { type: 'sub_agent_chunk'; id: string; delta: string }
+  | { type: 'sub_agent_end'; id: string; result: string; success: boolean; error?: string };
+
 export interface ToolContext {
   sessionId: string;
   workingDir: string;
   agentId: string;
   workspaceDir: string;
   approvalGate?: (tool: string, command: string) => Promise<boolean>;
+  /** Stream real-time tool execution progress events to the client */
+  onProgress?: (event: ToolProgressEvent) => void;
 }

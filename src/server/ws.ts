@@ -320,6 +320,15 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         Deno.mkdir(workspaceDir, { recursive: true }),
       ]);
 
+      // Create a tool progress forwarder that sends sub-agent events to the client
+      const subAgentProgressHandler = (event: import('../tools/types.ts').ToolProgressEvent) => {
+        try {
+          send(ws, event);
+        } catch {
+          // client may have disconnected
+        }
+      };
+
       let fileNote = '';
       let extractionWarnings = 0;
       if (files?.length) {
@@ -548,6 +557,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           workingDir,
           agentId: agent.id,
           workspaceDir,
+          onProgress: subAgentProgressHandler,
         },
         embedder,
         enableReflection: true,
