@@ -2616,6 +2616,19 @@ async function restoreSession() {
 }
 
 // ── Reasoning Panel ──────────────────────────────────────────
+function renderReasoningPanel(panel) {
+  if (!panel) return;
+  let content = currentReasoningData || '';
+  // Extract content from <thinking> or <think> XML tags if present
+  const tagMatch = content.match(/<(?:thinking|think)>([\s\S]*?)<\/(?:thinking|think)>/i);
+  if (tagMatch) content = tagMatch[1].trim();
+  // Fall back to stripping any remaining tags
+  if (!content) content = currentReasoningData.replace(/<[^>]+>/g, '').trim();
+  panel.innerHTML = content
+    ? '<div style="opacity:0.7;font-size:10px;color:var(--accent2);margin-bottom:6px;letter-spacing:0.05em;">REASONING</div>' + md(content)
+    : '<span style="color:var(--text3);font-size:12px;">(No reasoning data yet)</span>';
+}
+
 function toggleReasoningPanel() {
   reasoningPanelOpen = !reasoningPanelOpen;
   const chatArea = document.getElementById('chat-area');
@@ -2629,14 +2642,7 @@ function toggleReasoningPanel() {
       panel.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:JetBrains Mono,monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;';
       chatArea.appendChild(panel);
     }
-    // Extract thinking content from XML tags
-    let thinkingContent = currentReasoningData || '';
-    const re = new RegExp('<thinking>([\\s\\S]*?)</thinking>');
-    const thinkingMatch = thinkingContent.match(re);
-    if (thinkingMatch) {
-      thinkingContent = thinkingMatch[1].trim();
-    }
-    panel.textContent = thinkingContent || '(No reasoning data)';
+    renderReasoningPanel(panel);
     panel.style.display = 'block';
     const btn = document.getElementById('reasoning-toggle');
     if (btn) btn.style.background = 'rgba(6,182,212,0.2)';
@@ -2695,10 +2701,30 @@ function connect() {
          break;
       case 'chunk':
          agentRaw += msg.delta;
-          if (agentBubble) {
-            agentBubble.innerHTML = md(agentRaw);
-            requestAnimationFrame(() => scrollChat());
-          }
+         // If the accumulated text contains a <think> block, extract it into the
+         // reasoning panel and show only the post-thinking response in the bubble.
+         {
+           const thinkMatch = agentRaw.match(/^([\s\S]*?)<(?:think|thinking)>([\s\S]*?)<\/(?:think|thinking)>([\s\S]*)$/i);
+           if (thinkMatch) {
+             const thinkContent = thinkMatch[2].trim();
+             const afterThink = (thinkMatch[1] + thinkMatch[3]).trim();
+             if (thinkContent && thinkContent !== currentReasoningData) {
+               currentReasoningData = thinkContent;
+               const rBtn = document.getElementById('reasoning-toggle');
+               if (rBtn) rBtn.style.display = 'inline-block';
+               if (reasoningPanelOpen) renderReasoningPanel(document.getElementById('reasoning-panel'));
+             }
+             if (agentBubble) {
+               agentBubble.innerHTML = afterThink ? md(afterThink) : '<span style="opacity:0.4;font-size:12px;">Thinking…</span>';
+               requestAnimationFrame(() => scrollChat());
+             }
+           } else if (agentBubble) {
+             // No complete <think> block yet — render as-is but strip any partial opening tag
+             const display = agentRaw.replace(/^\s*<(?:think|thinking)>\s*/i, '');
+             agentBubble.innerHTML = md(display || agentRaw);
+             requestAnimationFrame(() => scrollChat());
+           }
+         }
          break;
        case 'reasoning':
          // Show reasoning toggle button when we have reasoning data
@@ -2706,6 +2732,10 @@ function connect() {
          if (reasoningBtnToggle) reasoningBtnToggle.style.display = 'inline-block';
          // Store reasoning for later display
          currentReasoningData = msg.content;
+         // Live-update the panel if it is already open
+         if (reasoningPanelOpen) {
+           renderReasoningPanel(document.getElementById('reasoning-panel'));
+         }
          break;
        case 'done':
          document.getElementById('thinking-bar').style.display = 'none';

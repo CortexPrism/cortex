@@ -11,8 +11,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Changed
 
-- **Extensions page** — Redesigned Installed and Discover tabs from list layout to responsive
-  card grid with colored icon headers, expandable readme support, and richer metadata display.
+- **Extensions page** — Redesigned Installed and Discover tabs from list layout to responsive card
+  grid with colored icon headers, expandable readme support, and richer metadata display.
 
 ## [0.35.2] — 2026-06-17
 

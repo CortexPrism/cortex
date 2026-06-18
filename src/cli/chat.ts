@@ -36,6 +36,7 @@ import { tavilySearchTool } from '../tools/builtin/web/tavily_search.ts';
 import { serpapiSearchTool } from '../tools/builtin/web/serpapi_search.ts';
 import { firecrawlTool } from '../tools/builtin/web/firecrawl.ts';
 import { computerTool } from '../tools/builtin/computer.ts';
+import { mcpAgentTool } from '../tools/builtin/mcp_agent.ts';
 import { fileCopyTool, fileMoveTool } from '../tools/builtin/workspace/index.ts';
 import {
   formatSkillsAsAvailableList,
@@ -220,6 +221,7 @@ export const chatCommand = new Command()
         serpapi_search: serpapiSearchTool,
         firecrawl: firecrawlTool,
         computer: computerTool,
+        mcp_agent: mcpAgentTool,
       };
       const allowedTools = agent.tools?.length ? agent.tools : Object.keys(allTools);
       for (const name of allowedTools) {
