@@ -557,6 +557,21 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           workingDir,
           agentId: agent.id,
           workspaceDir,
+          approvalGate: async (tool: string, command: string, sampleData?: string) => {
+            return await requestWebUIApproval(
+              ws,
+              {
+                tool,
+                query: command,
+                requestReason: command,
+                sessionId: sessionId ?? 'unknown',
+                agentId: agent.id,
+                dataClassification: 'sensitive',
+                sampleData,
+              },
+              command,
+            );
+          },
           onProgress: subAgentProgressHandler,
         },
         embedder,

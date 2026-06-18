@@ -7399,7 +7399,7 @@ function clearToolForm() {
 async function checkUpdatesNow() {
   toast('Checking for updates...', 'info');
   try {
-    const res = await fetch(BASE + '/api/updates/check', { method: 'POST' });
+    const res = await fetch(BASE + '/api/update/check', { method: 'POST' });
     if (res.ok) {
       const data = await res.json();
       if (data.updateAvailable) {
@@ -7408,10 +7408,10 @@ async function checkUpdatesNow() {
         toast('You are running the latest version', 'success');
       }
     } else {
-      toast('Update checking not yet implemented in this build', 'info');
+      toast('Update check failed', 'error');
     }
   } catch (e) {
-    toast('Update checking not yet implemented in this build', 'info');
+    toast('Update check failed', 'error');
   }
 }
 
@@ -12214,6 +12214,7 @@ async function loadComputerScreenshots() {
   try {
     var data = await fetch(BASE + '/api/computer/screenshots').then(r => r.json()).catch(function() { return {screenshots:[]}; });
     var shots = data.screenshots || [];
+    window._computerScreenshots = shots;
     if (!shots.length) { el.innerHTML = '<div class="empty">No screenshots captured</div>'; return; }
     el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">' +
       shots.map(function(s, i) {
@@ -12224,16 +12225,44 @@ async function loadComputerScreenshots() {
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
 }
 function showComputerScreenshot(idx) {
-  // modal with full-size
+  var shots = window._computerScreenshots || [];
+  var shot = shots[idx];
+  if (!shot) return;
+  var modal = document.getElementById('computer-screenshot-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'computer-screenshot-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:99999;padding:24px;';
+    modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="max-width:min(96vw,1400px);max-height:92vh;background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45);">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);">' +
+    '<div>' + esc(shot.name || 'Screenshot') + '</div>' +
+    '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="document.getElementById(\'computer-screenshot-modal\').remove()">Close</button></div>' +
+    '<div style="max-height:calc(92vh - 48px);overflow:auto;background:#000;">' +
+    '<img src="data:image/png;base64,' + shot.data + '" style="display:block;max-width:100%;height:auto;margin:0 auto;" />' +
+    '</div></div>';
 }
 async function loadComputerActions() {
   var el = document.getElementById('comp-content');
-  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
-    '<thead><tr style="border-bottom:1px solid var(--border);">' +
-    '<th style="padding:4px 0;color:var(--text3);text-align:left;">Timestamp</th>' +
-    '<th style="padding:4px 0;color:var(--text3);text-align:left;">Action</th>' +
-    '<th style="padding:4px 0;color:var(--text3);text-align:left;">Result</th></tr></thead><tbody>' +
-    '<tr><td style="padding:8px 0;color:var(--text3);" colspan="3">No actions recorded</td></tr></tbody></table>';
+  el.innerHTML = '<div class="widget-loading">Loading actions…</div>';
+  try {
+    var data = await fetch(BASE + '/api/computer/actions').then(r => r.json()).catch(function() { return []; });
+    var actions = Array.isArray(data) ? data : (data.actions || []);
+    if (!actions.length) { el.innerHTML = '<div class="empty">No actions recorded</div>'; return; }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Timestamp</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Action</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Result</th></tr></thead><tbody>' +
+      actions.map(function(a) {
+        return '<tr style="border-bottom:1px solid var(--border);vertical-align:top;">' +
+          '<td style="padding:8px 0;color:var(--text3);white-space:nowrap;">' + timeAgo(a.started_at || a.timestamp || '') + '</td>' +
+          '<td style="padding:8px 0;color:var(--text2);">' + esc(a.action || a.name || 'computer') + '</td>' +
+          '<td style="padding:8px 0;color:var(--text2);">' + esc(a.summary || a.error || 'ok') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
 }
 async function loadComputerConfig() {
   try {

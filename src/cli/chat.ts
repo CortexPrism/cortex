@@ -198,11 +198,15 @@ export const chatCommand = new Command()
         console.error(dim(`  Plugin load warning: ${(e as Error).message}`));
       });
 
-      const approvalGate = async (_tool: string, command: string): Promise<boolean> => {
+      const approvalGate = async (
+        tool: string,
+        command: string,
+        sampleData?: string,
+      ): Promise<boolean> => {
         await Deno.stdout.write(
           new TextEncoder().encode(
-            `\n  ${yellow('⚠')}  Shell command requires approval:\n  ${
-              bold(command)
+            `\n  ${yellow('⚠')}  ${tool} action requires approval:\n  ${bold(command)}${
+              sampleData ? `\n  Sample: ${sampleData}` : ''
             }\n  Allow? [y/N] `,
           ),
         );

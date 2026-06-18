@@ -18,6 +18,7 @@ import type { AgentConfig, ProviderKind } from '../config/config.ts';
 import { buildSystemPrompt } from '../agent/soul.ts';
 import { ToolRegistry } from '../tools/registry.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
+import { requestHumanApproval } from '../security/approval.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { closeSession, createSession } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
@@ -162,6 +163,20 @@ async function main(): Promise<void> {
         workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(
           config.config.agentId ?? config.subAgentType ?? agentConfig.id ?? 'default',
         ),
+        approvalGate: async (tool: string, command: string, sampleData?: string) => {
+          return await requestHumanApproval(
+            {
+              tool,
+              query: command,
+              requestReason: command,
+              sessionId,
+              agentId: config.config.agentId ?? agentConfig.id ?? 'default',
+              dataClassification: 'sensitive',
+              sampleData,
+            },
+            command,
+          );
+        },
       },
       embedder,
     });

@@ -166,6 +166,7 @@ export interface MemoryHit {
   text: string;
   score: number;
   created_at: string;
+  sessionId?: string | null;
   entities?: string[];
   topics?: string[];
   tags?: string[];
@@ -181,12 +182,15 @@ function sanitizeFtsQuery(query: string): string {
 export async function searchEpisodic(
   query: string,
   limit = 5,
+  sessionId?: string,
 ): Promise<MemoryHit[]> {
   const db = await getMemoryDb();
+  const sessionClause = sessionId ? ' AND em.session_id = ?' : '';
   const rows = await db.all<{
     id: string;
     summary: string;
     created_at: string;
+    session_id: string | null;
     rank: number;
     entities: string | null;
     topics: string | null;
@@ -194,13 +198,14 @@ export async function searchEpisodic(
     access_count: number | null;
   }>(
     `SELECT em.id, em.summary, em.created_at, em.entities, em.topics,
-            fts.rank, em.decay_score, em.access_count
-     FROM episodic_fts fts
-     JOIN episodic_memory em ON fts.rowid = em.rowid
-      WHERE episodic_fts MATCH ?
-      ORDER BY fts.rank
-      LIMIT ?`,
-    [sanitizeFtsQuery(query), limit],
+            em.session_id, fts.rank, em.decay_score, em.access_count
+      FROM episodic_fts fts
+      JOIN episodic_memory em ON fts.rowid = em.rowid
+       WHERE episodic_fts MATCH ?
+       ${sessionClause}
+       ORDER BY fts.rank
+       LIMIT ?`,
+    sessionId ? [sanitizeFtsQuery(query), sessionId, limit] : [sanitizeFtsQuery(query), limit],
   );
   return rows.map((r) => ({
     id: r.id,
@@ -208,6 +213,7 @@ export async function searchEpisodic(
     text: r.summary,
     score: Math.max(0, 1 + (r.rank ?? -1)),
     created_at: r.created_at,
+    sessionId: r.session_id,
     entities: safeJsonParse(r.entities),
     topics: safeJsonParse(r.topics),
     decayScore: r.decay_score ?? undefined,
@@ -256,16 +262,19 @@ export async function searchByVector(
   queryVec: EmbeddingVector,
   type: 'episodic' | 'semantic',
   limit = 5,
+  sessionId?: string,
 ): Promise<MemoryHit[]> {
   const db = await getMemoryDb();
   const table = type === 'episodic' ? 'episodic_memory' : 'semantic_memory';
   const textCol = type === 'episodic' ? 'summary' : 'content';
+  const sessionClause = type === 'episodic' && sessionId ? ' AND session_id = ?' : '';
 
   const rows = await db.all<{
     id: string;
     text: string;
     embedding: Uint8Array | null;
     created_at: string;
+    session_id: string | null;
     decay_score: number;
     entities?: string | null;
     topics?: string | null;
@@ -276,15 +285,17 @@ export async function searchByVector(
     `SELECT id, ${textCol} as text, embedding, created_at, COALESCE(decay_score, 1.0) as decay_score,
             ${
       type === 'episodic'
-        ? 'entities, topics, NULL as tags, NULL as category'
+        ? 'session_id, entities, topics, NULL as tags, NULL as category'
         : 'NULL as entities, NULL as topics, tags, category'
     },
             access_count
      FROM ${table}
      WHERE embedding IS NOT NULL
        AND COALESCE(decay_score, 1.0) > 0.01
-     ORDER BY COALESCE(decay_score, 1.0) * (1.0 / (1.0 + (julianday('now') - julianday(created_at)) / 30.0)) DESC
-     LIMIT 500`,
+       ${sessionClause}
+      ORDER BY COALESCE(decay_score, 1.0) * (1.0 / (1.0 + (julianday('now') - julianday(created_at)) / 30.0)) DESC
+      LIMIT 500`,
+    type === 'episodic' && sessionId ? [sessionId] : [],
   );
 
   const scored = rows
@@ -304,6 +315,7 @@ export async function searchByVector(
     text: r.text,
     score: r.score,
     created_at: r.created_at,
+    sessionId: type === 'episodic' ? r.session_id : undefined,
     entities: type === 'episodic' ? safeJsonParse(r.entities as string | null) : undefined,
     topics: type === 'episodic' ? safeJsonParse(r.topics as string | null) : undefined,
     tags: type === 'semantic' ? safeJsonParse(r.tags as string | null) : undefined,
@@ -333,14 +345,20 @@ export function decayScore(createdAt: string, halfLifeDays: number): number {
 export async function retrieve(
   query: string,
   embedder: EmbeddingProvider | null,
-  opts: { limit?: number; episodicHalfLife?: number; semanticHalfLife?: number } = {},
+  opts: {
+    limit?: number;
+    episodicHalfLife?: number;
+    semanticHalfLife?: number;
+    sessionId?: string;
+  } = {},
 ): Promise<MemoryHit[]> {
   const limit = opts.limit ?? 6;
   const episodicHL = opts.episodicHalfLife ?? 14;
   const semanticHL = opts.semanticHalfLife ?? 30;
+  const sessionId = opts.sessionId;
 
   const [kwEp, kwSem] = await Promise.all([
-    searchEpisodic(query, limit * 2).catch(() => [] as MemoryHit[]),
+    searchEpisodic(query, limit * 2, sessionId).catch(() => [] as MemoryHit[]),
     searchSemantic(query, limit * 2).catch(() => [] as MemoryHit[]),
   ]);
 
@@ -351,7 +369,7 @@ export async function retrieve(
     try {
       const qVec = await embedder.embed(query);
       [vecEp, vecSem] = await Promise.all([
-        searchByVector(qVec, 'episodic', limit).catch(() => []),
+        searchByVector(qVec, 'episodic', limit, sessionId).catch(() => []),
         searchByVector(qVec, 'semantic', limit).catch(() => []),
       ]);
     } catch {
@@ -395,8 +413,11 @@ export async function retrieve(
   }
 
   const ranked = merged.sort((a, b) => b.score - a.score).slice(0, limit);
+  const scoped = sessionId
+    ? ranked.filter((h) => h.sessionId === sessionId || h.sessionId == null)
+    : ranked;
 
-  recordBatchAccess(ranked.map((h) => ({ id: h.id, type: h.type }))).catch(() => {});
+  recordBatchAccess(scoped.map((h) => ({ id: h.id, type: h.type }))).catch(() => {});
 
-  return ranked;
+  return scoped;
 }

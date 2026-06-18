@@ -19,6 +19,7 @@ import { buildSystemPrompt } from '../agent/soul.ts';
 import { ToolRegistry } from '../tools/registry.ts';
 import type { Tool } from '../tools/types.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
+import { requestHumanApproval } from '../security/approval.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { createSession } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
@@ -124,7 +125,25 @@ async function main(): Promise<void> {
             stream: false,
             reasoningEffort,
             registry,
-            toolContext: { workingDir: Deno.cwd() },
+            toolContext: {
+              workingDir: Deno.cwd(),
+              agentId: agent.id,
+              workspaceDir: Deno.cwd(),
+              approvalGate: async (tool: string, command: string, sampleData?: string) => {
+                return await requestHumanApproval(
+                  {
+                    tool,
+                    query: command,
+                    requestReason: command,
+                    sessionId,
+                    agentId: agent.id,
+                    dataClassification: 'sensitive',
+                    sampleData,
+                  },
+                  command,
+                );
+              },
+            },
             embedder,
           });
 
