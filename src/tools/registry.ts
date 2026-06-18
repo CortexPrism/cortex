@@ -16,6 +16,7 @@ import { dashboardManageTool } from './builtin/dashboard_manage.ts';
 import { memoryNoteTool } from './builtin/memory_note.ts';
 import { memorySearchTool } from './builtin/memory_search.ts';
 import { dbQueryTool } from './builtin/db_query.ts';
+import { browserTool } from './builtin/browser.ts';
 import { speakTool } from './builtin/speak.ts';
 import { listenTool } from './builtin/listen.ts';
 import { shellTool } from './builtin/shell.ts';
@@ -148,6 +149,7 @@ export async function registerAllBuiltins(
     code_exec: codeExecTool,
     shell: shellTool,
     computer: computerTool,
+    browser: browserTool,
   };
 
   // ═════════════════════════════════════════════════════════

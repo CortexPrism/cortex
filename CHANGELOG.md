@@ -52,6 +52,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Special escalation for lens.db (audit logs) to human approval
   - Context-aware supervision with audit trails
 
+- **browser tool** — Headless browser automation with security supervision:
+  - Actions: navigate, click, type, screenshot, snapshot, evaluate, wait, close
+  - Playwright-powered Chromium automation (lazy-loaded singleton)
+  - Screenshot capture as base64 PNG with sensitivity classification
+  - Accessibility snapshot (structured tree) for content analysis
+  - JavaScript evaluation with supervisor approval (arbitrary code execution)
+  - Click/type interaction for form automation and testing
+  - Configurable timeout (default: 30s) and async page context management
+  - Base64-encoded image output for LLM-friendly usage
+
 - **Human approval flows**:
   - CLI: Color-coded prompts with y/n/details options
   - Web UI: Modal with request details, supervisor reasoning, sample data
