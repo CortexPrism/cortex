@@ -4135,7 +4135,7 @@ async function loadMemoryOverview() {
         '<input class="inp" id="memory-note" placeholder="Append a note to MEMORY.md…" style="flex:1;" />' +
         '<button class="btn btn-ghost" onclick="appendMemoryNote()">+ Add Note</button>' +
       '</div>' +
-      '<textarea id="soul-raw-memory-text" style="width:100%;min-height:320px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>' +
+      '<textarea id="soul-raw-memory-text" style="width:100%;min-height:320px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;color:var(--text);font-family:\\'JetBrains Mono\\',monospace;font-size:12px;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;"></textarea>' +
       '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;">' +
         '<button class="btn btn-primary" onclick="saveMemoryMd()">Save MEMORY.md</button>' +
         '<span id="mem-persist-status" style="font-size:11px;color:var(--text3);align-self:center;"></span>' +
@@ -4428,7 +4428,7 @@ function renderJobCard(job) {
     '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(statusLabel) + '</span>',
     '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">' + esc(job.kind ?? 'once') + '</span>',
     '</div>',
-    '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+    '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
       esc(job.command || 'No command configured') +
     '</div>',
     '</div>',
@@ -4483,8 +4483,8 @@ function renderJobRuns(runs) {
 
   el.innerHTML = runs.map((run) => {
     const c = JOB_COLORS[run.status] ?? '#6b7280';
-    const stdout = run.stdout ? '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">stdout</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text2);">' + esc(run.stdout) + '</pre></div>' : '';
-    const stderr = run.stderr ? '<div><div style="font-size:10px;color:#f87171;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">stderr</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#fca5a5;">' + esc(run.stderr) + '</pre></div>' : '';
+    const stdout = run.stdout ? '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">stdout</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;color:var(--text2);">' + esc(run.stdout) + '</pre></div>' : '';
+    const stderr = run.stderr ? '<div><div style="font-size:10px;color:#f87171;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">stderr</div><pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;color:#fca5a5;">' + esc(run.stderr) + '</pre></div>' : '';
     return '<div class="card" style="padding:12px 14px;background:rgba(255,255,255,0.03);border-color:var(--border);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
@@ -4492,7 +4492,7 @@ function renderJobRuns(runs) {
           '<span style="font-size:11px;color:var(--text3);">' + esc(fmtJobTime(run.started_at)) + '</span>' +
           '<span style="font-size:11px;color:var(--text3);">' + esc(run.duration_ms != null ? String(run.duration_ms) + ' ms' : '—') + '</span>' +
         '</div>' +
-        '<span style="font-size:11px;color:var(--text3);font-family:\'JetBrains Mono\',monospace;">' + esc(run.runner || 'scheduler') + '</span>' +
+        '<span style="font-size:11px;color:var(--text3);font-family:\\'JetBrains Mono\\',monospace;">' + esc(run.runner || 'scheduler') + '</span>' +
       '</div>' +
       (run.message ? '<div style="font-size:11px;color:#f87171;margin-bottom:8px;">' + esc(run.message) + '</div>' : '') +
       stdout +
@@ -5286,7 +5286,7 @@ function renderSkillCard(s) {
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
         // Name (read-only for inline edits - use designer for rename)
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span style="font-size:13px;font-weight:600;font-family:\'JetBrains Mono\',monospace;">' + esc(s.name) + '</span>' +
+          '<span style="font-size:13px;font-weight:600;font-family:\\'JetBrains Mono\\',monospace;">' + esc(s.name) + '</span>' +
           originBadge +
           '<span style="font-size:10px;color:var(--accent2);margin-left:auto;">Editing...</span>' +
         '</div>' +
@@ -5340,7 +5340,7 @@ function renderSkillCard(s) {
       // Header row
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:4px;">' +
         '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
-          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:\'JetBrains Mono\',monospace;">' + esc(s.name) + '</span>' +
+          '<span style="font-size:15px;font-weight:600;color:var(--text);font-family:\\'JetBrains Mono\\',monospace;">' + esc(s.name) + '</span>' +
           originBadge +
           lifecycleBadge +
           trustBadge +
@@ -5361,7 +5361,7 @@ function renderSkillCard(s) {
       // Description + content preview
       '<p style="font-size:12px;color:var(--text2);margin:0 0 6px 0;line-height:1.4;">' + esc(descTrunc) + ((s.description ?? '').length > 80 ? '…' : '') + '</p>' +
       // Content snippet
-      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:\'JetBrains Mono\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
+      (contentPreview && !descPreview ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-family:\\'JetBrains Mono\\',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(contentPreview) + (s.content && s.content.length > 120 ? '…' : '') + '</div>' : '') +
       // Tags
       (tags.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
         tags.slice(0, 5).map(tag => '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.1);color:var(--accent2);">' + esc(tag) + '</span>').join('') +
@@ -5376,7 +5376,7 @@ function renderSkillCard(s) {
             (steps.length > 4 ? '<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:3px;">+' + (steps.length - 4) + ' steps</span>' : '') +
           '</div>'
         : '') +
-      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:\'JetBrains Mono\',monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
+      (s.trigger_pattern && !steps.length ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Trigger: <span style="color:var(--accent2);font-family:\\'JetBrains Mono\\',monospace;">' + esc(s.trigger_pattern.slice(0, 60)) + '</span></div>' : '') +
       // Expandable indicator
       (needsExpand ? '<div style="display:flex;align-items:center;gap:4px;color:var(--text3);font-size:11px;padding-top:4px;border-top:1px solid var(--border);">' +
         '<span class="skill-expand-chevron" style="display:inline-block;width:12px;height:12px;transition:transform 0.2s;">▶</span>' +
@@ -5386,7 +5386,7 @@ function renderSkillCard(s) {
       (needsExpand ? '<div class="skill-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Lifecycle: <span style="color:' + (lifecycleTextColors[lifecycle] || lifecycleTextColors.candidate) + ';">' + lifecycle + '</span> | Trust: <span style="color:#06b6d4;">Tier ' + trustTier + '/4</span></div>' +
         (s.utility_score !== undefined ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Utility: ' + (s.utility_score ?? 0).toFixed(2) + ' | Freshness: ' + Math.round((s.freshness ?? 0) * 100) + '%</div>' : '') +
-        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:\'JetBrains Mono\',monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
+        (s.source_session ? '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Source: <span style="color:var(--text2);font-family:\\'JetBrains Mono\\',monospace;">' + esc(s.source_session.slice(-12)) + '</span></div>' : '') +
         '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">Created: <span style="color:var(--text2);">' + new Date(s.created_at).toLocaleString() + '</span></div>' +
         (Array.isArray(metadata.prerequisites) && metadata.prerequisites.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Prerequisites: <span style="color:var(--text2);">' + esc(metadata.prerequisites.join(', ')) + '</span></div>' : '') +
         (Array.isArray(metadata.examples) && metadata.examples.length > 0 ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:500;">Examples:</div>' +
@@ -5434,7 +5434,7 @@ function renderSkillListItem(s) {
     '</label>' +
     '<div style="flex:1;min-width:0;">' +
       '<div style="display:flex;align-items:center;gap:6px;">' +
-        '<span style="font-size:13px;font-weight:600;font-family:\'JetBrains Mono\',monospace;">' + esc(s.name) + '</span>' +
+        '<span style="font-size:13px;font-weight:600;font-family:\\'JetBrains Mono\\',monospace;">' + esc(s.name) + '</span>' +
         originBadge +
         lifecycleLabel +
         '<span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((s.description || '').slice(0, 60)) + '</span>' +
@@ -5612,7 +5612,7 @@ function hideSkillModal() {
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Agent:</div>' +
       '<div style="margin-bottom:12px;">' + (request.agentId || '') + '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Tool:</div>' +
-      '<div style="margin-bottom:12px;font-family:\'JetBrains Mono\',monospace;font-size:11px;">' + (request.tool || '') + '</div>' +
+      '<div style="margin-bottom:12px;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;">' + (request.tool || '') + '</div>' +
       '</div>' +
       '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:' + getClassificationColor(request.dataClassification) + ';border:1px solid ' + getClassificationBorder(request.dataClassification) + ';">' +
       '<span>' + icon + '</span>' +
@@ -5620,7 +5620,7 @@ function hideSkillModal() {
       '</div>' +
       '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Query/Search:</div>' +
-      '<div style="margin-bottom:12px;font-family:\'JetBrains Mono\',monospace;font-size:11px;overflow-x:auto;">' + (request.query || '') + '</div>' +
+      '<div style="margin-bottom:12px;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;overflow-x:auto;">' + (request.query || '') + '</div>' +
       '<div style="color:var(--text3);font-weight:600;margin-bottom:6px;">Justification:</div>' +
       '<div style="margin-bottom:12px;">' + (request.requestReason || '(none provided)') + '</div>' +
       '</div>';
@@ -5941,8 +5941,8 @@ async function loadPolicies() {
       <span class="badge" style="min-width:52px;justify-content:center;background:\${isAllow ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};color:\${isAllow ? '#4ade80' : '#f87171'};">\${p.effect}</span>
       <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);min-width:80px;justify-content:center;">\${p.kind}</span>
        \${editingPolicyId === p.id
-           ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:\'JetBrains Mono\',monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
-           : '<code style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
+           ? '<input id="edit-policy-pattern" class="inp" style="flex:1;font-family:\\'JetBrains Mono\\',monospace;font-size:12px;padding:4px 8px;" value="' + escAttr(p.pattern) + '" />'
+           : '<code style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;color:var(--accent2);flex:1;">' + esc(p.pattern) + '</code>'}
       \${editingPolicyId === p.id
         ? '<input id="edit-policy-reason" class="inp" style="max-width:200px;font-size:11px;padding:4px 8px;" value="' + escAttr(p.reason ?? '') + '" placeholder="reason" />'
         : '<span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.reason ?? '') + '</span>'}
@@ -6212,8 +6212,8 @@ async function loadStatus() {
           }).join('')}
           </div>
           \${daemons.some(d => !st.daemons[d.key])
-            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:\'JetBrains Mono\',monospace;">⚠ WARNING: Some daemons offline</div>'
-            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:\'JetBrains Mono\',monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
+            ? '<div style="margin-top:12px;padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;border-radius:4px;font-size:11px;color:#fbbf24;font-family:\\'JetBrains Mono\\',monospace;">⚠ WARNING: Some daemons offline</div>'
+            : '<div style="margin-top:12px;padding:10px 12px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;border-radius:4px;font-size:11px;color:#10b981;font-family:\\'JetBrains Mono\\',monospace;">✓ ALL SYSTEMS OPERATIONAL</div>'}
         </div>
 
         <!-- Resources -->
@@ -6250,7 +6250,7 @@ async function loadStatus() {
               <div style="font-size:14px;font-weight:600;color:var(--accent2);font-family:'JetBrains Mono',monospace;">\${st.platform || 'LINUX'}</div>
             </div>
           </div>
-          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:\'JetBrains Mono\',monospace;">⚠ Resource info unavailable</div>'}
+          \` : '<div style="padding:12px;background:rgba(239,68,68,0.1);border-left:3px solid #ef4444;border-radius:4px;font-size:11px;color:#f87171;font-family:\\'JetBrains Mono\\',monospace;">⚠ Resource info unavailable</div>'}
         </div>
       </div>
 
@@ -6272,7 +6272,7 @@ async function loadStatus() {
               </div>
               <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
             </div>
-          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:\'JetBrains Mono\',monospace;">No recent activity</div>'}
+          \`).join('') : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;font-family:\\'JetBrains Mono\\',monospace;">No recent activity</div>'}
         </div>
     \`;
   } catch(e) {
@@ -8079,7 +8079,7 @@ async function loadAgents() {
       ac.push('</div>');
       if (a.systemPrompt) ac.push('<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.systemPrompt) + '</div>');
       var wsDir = wsMap[a.id] || '';
-      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:\'JetBrains Mono\',monospace;">' + esc(wsDir) + '</div>');
+      if (wsDir) ac.push('<div style="margin-top:4px;font-size:10px;color:var(--text3);font-family:\\'JetBrains Mono\\',monospace;">' + esc(wsDir) + '</div>');
       ac.push('</div><div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;">');
       if (a.id !== currentAgentId) ac.push('<button class="btn btn-primary" style="font-size:12px;padding:4px 12px;" onclick="selectAgent(\\'' + a.id + '\\')">Activate</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
@@ -9511,7 +9511,7 @@ function editorShowEditor(fileName, content) {
   }
 
   const container = document.getElementById('editor-container');
-  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
+  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:\\'JetBrains Mono\\',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
   container.style.cssText = 'flex:1;overflow:hidden;display:flex;';
 
   const mode = editorDetectMode(fileName);
@@ -10071,7 +10071,7 @@ async function loadNodes() {
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">',
         '<div>',
         '<span style="font-weight:600;font-size:14px;">' + esc(n.name) + '</span>',
-        '<span style="font-size:11px;color:var(--text3);margin-left:8px;font-family:\'JetBrains Mono\',monospace;">' + esc(n.id) + '</span>',
+        '<span style="font-size:11px;color:var(--text3);margin-left:8px;font-family:\\'JetBrains Mono\\',monospace;">' + esc(n.id) + '</span>',
         '</div>',
         '<div style="display:flex;gap:8px;align-items:center;">',
         '<span class="badge" style="background:' + tierColor + '20;color:' + tierColor + ';border:1px solid ' + tierColor + '40;">' + tierLabel + '</span>',
@@ -11961,7 +11961,7 @@ function selectWorkflow(id) {
   el.innerHTML = '<div style="padding:20px;width:100%;height:100%;overflow-y:auto;">' +
     '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">' + esc(w.name) + '</h3>' +
     '<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">' + esc(w.description || '') + '</p>' +
-    '<div style="font-size:11px;font-family:\'JetBrains Mono\',monospace;color:var(--text2);background:var(--bg2);padding:12px;border-radius:8px;white-space:pre-wrap;max-height:400px;overflow:auto;">' +
+    '<div style="font-size:11px;font-family:\\'JetBrains Mono\\',monospace;color:var(--text2);background:var(--bg2);padding:12px;border-radius:8px;white-space:pre-wrap;max-height:400px;overflow:auto;">' +
     esc(JSON.stringify(w.definition || w.steps || w, null, 2)) + '</div></div>';
 }
 function showWorkflowCreateModal() {
@@ -12297,7 +12297,7 @@ async function selectMCPConnection(name) {
         return '<div class="card-sm" style="margin-bottom:8px;">' +
           '<div style="font-weight:500;font-size:13px;">' + esc(t.name) + '</div>' +
           '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '') + '</div>' +
-          (t.inputSchema ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:\'JetBrains Mono\',monospace;background:var(--bg2);padding:6px;border-radius:4px;max-height:120px;overflow:auto;">' + esc(JSON.stringify(t.inputSchema, null, 2)) + '</div>' : '') +
+          (t.inputSchema ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;background:var(--bg2);padding:6px;border-radius:4px;max-height:120px;overflow:auto;">' + esc(JSON.stringify(t.inputSchema, null, 2)) + '</div>' : '') +
           '</div>';
       }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load tools</div>'; }
@@ -12709,7 +12709,7 @@ async function loadTools() {
       var reqCount = params.filter(function(p) { return p.required; }).length;
       return '<div class="card" style="display:flex;flex-direction:column;">' +
         '<div style="display:flex;justify-content:space-between;align-items:start;">' +
-        '<div><div style="font-weight:500;font-size:13px;font-family:\'JetBrains Mono\',monospace;">' + esc(t.name) + '</div>' +
+        '<div><div style="font-weight:500;font-size:13px;font-family:\\'JetBrains Mono\\',monospace;">' + esc(t.name) + '</div>' +
         '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '').substring(0, 100) + '</div></div>' +
         '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="toggleTool(\\'' + escAttr(t.name) + '\\')">Toggle</button></div>' +
         '<div style="font-size:10px;color:var(--text3);margin-top:6px;">' +
@@ -13417,7 +13417,7 @@ function vcsShowDiff() {
   fetch(url).then(function(r) { return r.json(); }).then(function(data) {
     if (data.diff) {
       var w = window.open('', '_blank', 'width=800,height=600');
-      w.document.write('<pre style="font-family:\'JetBrains Mono\',monospace;font-size:12px;">' + esc(data.diff) + '</pre>');
+      w.document.write('<pre style="font-family:\\'JetBrains Mono\\',monospace;font-size:12px;">' + esc(data.diff) + '</pre>');
     } else {
       toast('No diff available', 'success');
     }
@@ -13552,8 +13552,8 @@ async function loadMetrics() {
         var shortName = k.split('{')[0];
         var labels = k.indexOf('{') > -1 ? ' <span style="color:var(--text3);font-size:9px;">' + esc(k.slice(k.indexOf('{'))) + '</span>' : '';
         return '<tr style="border-bottom:1px solid var(--border);">' +
-          '<td style="padding:4px 0;font-family:\'JetBrains Mono\',monospace;font-size:10px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(shortName) + labels + '</td>' +
-          '<td style="padding:4px 0;text-align:right;font-family:\'JetBrains Mono\',monospace;color:var(--accent2);">' + gauges[k] + '</td></tr>';
+          '<td style="padding:4px 0;font-family:\\'JetBrains Mono\\',monospace;font-size:10px;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(shortName) + labels + '</td>' +
+          '<td style="padding:4px 0;text-align:right;font-family:\\'JetBrains Mono\\',monospace;color:var(--accent2);">' + gauges[k] + '</td></tr>';
       }).join('') + '</tbody></table>';
     if (cKeys.length) {
       html += '<h3 style="font-size:14px;font-weight:600;margin-bottom:4px;">Counters</h3>' +
@@ -13563,8 +13563,8 @@ async function loadMetrics() {
         '<th style="padding:4px 0;color:var(--text3);text-align:right;">Total</th></tr></thead><tbody>' +
         cKeys.sort().slice(0, 50).map(function(k) {
           return '<tr style="border-bottom:1px solid var(--border);">' +
-            '<td style="padding:4px 0;font-family:\'JetBrains Mono\',monospace;font-size:10px;">' + esc(k) + '</td>' +
-            '<td style="padding:4px 0;text-align:right;font-family:\'JetBrains Mono\',monospace;color:var(--accent2);">' + counters[k] + '</td></tr>';
+            '<td style="padding:4px 0;font-family:\\'JetBrains Mono\\',monospace;font-size:10px;">' + esc(k) + '</td>' +
+            '<td style="padding:4px 0;text-align:right;font-family:\\'JetBrains Mono\\',monospace;color:var(--accent2);">' + counters[k] + '</td></tr>';
         }).join('') + '</tbody></table>';
     }
     html += '<div style="margin-top:8px;font-size:10px;color:var(--text3);">Auto-refresh every 15s</div>';
@@ -13581,7 +13581,7 @@ function extendCPLEditor() {
   div.id = 'pol-cpl-section';
   div.style.cssText = 'margin-top:16px;padding:12px;background:var(--bg2);border-radius:8px;';
   div.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">CPL Policy Editor</h3>' +
-    '<textarea id="pol-cpl-editor" class="inp" rows="8" placeholder="policies:\\n  - name: allow-read\\n    kind: path\\n    pattern: ^/tmp/.*\\n    action: allow" style="font-size:11px;font-family:\'JetBrains Mono\',monospace;width:100%;resize:vertical;"></textarea>' +
+    '<textarea id="pol-cpl-editor" class="inp" rows="8" placeholder="policies:\\n  - name: allow-read\\n    kind: path\\n    pattern: ^/tmp/.*\\n    action: allow" style="font-size:11px;font-family:\\'JetBrains Mono\\',monospace;width:100%;resize:vertical;"></textarea>' +
     '<div style="display:flex;gap:8px;margin-top:8px;">' +
     '<button class="btn btn-primary" onclick="cplValidate()" style="font-size:10px;padding:3px 10px;">Validate</button>' +
     '<button class="btn btn-ghost" onclick="cplImport()" style="font-size:10px;padding:3px 10px;">Import</button></div>' +
@@ -13657,7 +13657,7 @@ function refreshSubAgentProcesses() {
         return;
       }
       el.innerHTML = data.processes.map(function(p) {
-        return '<div style="padding:4px 0;font-size:10px;font-family:\'JetBrains Mono\',monospace;display:flex;gap:8px;">' +
+        return '<div style="padding:4px 0;font-size:10px;font-family:\\'JetBrains Mono\\',monospace;display:flex;gap:8px;">' +
           '<span style="color:var(--accent2);">PID ' + p.pid + '</span>' +
           '<span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.cmd) + '</span></div>';
       }).join('');
