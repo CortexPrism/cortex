@@ -112,6 +112,26 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Web UI: Modal with request details, supervisor reasoning, sample data
   - Async approval via WebSocket with 5-minute timeout
 
+- **image_analyze tool** — Multimodal image analysis via LLM providers:
+  - Supports 18+ providers with vision capabilities (Claude, GPT-4V, Gemini, etc.)
+  - Local file paths, data URLs, and base64-encoded images
+  - Detail level control (low/auto/high) for cost optimization
+  - Automatic MIME type detection from file extensions
+  - File existence validation and size checks
+
+- **schedule tool** — Agent-controlled job scheduling with cron support:
+  - CRUD operations: create, list, cancel, status, due
+  - Cron expression parsing and next-run calculation
+  - Integrates with the existing SQLite-persisted scheduler
+  - Full lifecycle: create → enqueue → run → mark done/failed
+  - Job metadata display including attempts, error history, next run time
+
+- **Enhanced file_diff tool** — Improved unified diff output with lookahead matching:
+  - Proper unified diff format with `---`/`+++` headers and `@@` hunk markers
+  - Configurable output formats: default, unified, side_by_side, minimal
+  - Smart lookahead matching for better hunk alignment
+  - Context line control for surrounding unchanged lines
+
 - **Web UI coverage — Phase 1** — Five new management pages added to the SPA:
   - **Codegraph** — D3.js interactive force-directed graph. Project selector, symbol search with
     live filtering, impact analysis panel, architecture summary, and path tracer with step-by-step
