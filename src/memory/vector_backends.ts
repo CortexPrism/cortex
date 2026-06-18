@@ -1,4 +1,4 @@
-import { loadConfig, type CortexConfig } from '../config/config.ts';
+import { type CortexConfig, loadConfig } from '../config/config.ts';
 import type { EmbeddingVector } from './embeddings.ts';
 
 export interface VectorMemoryRecord {
@@ -77,7 +77,9 @@ function payloadToHit(
     return value.filter((item): item is string => typeof item === 'string');
   };
 
-  const createdAt = typeof payload?.created_at === 'string' ? payload.created_at : new Date().toISOString();
+  const createdAt = typeof payload?.created_at === 'string'
+    ? payload.created_at
+    : new Date().toISOString();
   const text = typeof payload?.text === 'string' ? payload.text : '';
   return {
     id,
@@ -185,7 +187,10 @@ class QdrantVectorStore implements MemoryVectorStore {
 
   async search(opts: VectorStoreOptions): Promise<VectorMemoryHit[]> {
     await this.ensureReady(opts.vector.length);
-    const must: Array<Record<string, unknown>> = [{ key: 'record_type', match: { value: opts.type } }];
+    const must: Array<Record<string, unknown>> = [{
+      key: 'record_type',
+      match: { value: opts.type },
+    }];
     if (opts.type === 'episodic' && opts.sessionId) {
       must.push({ key: 'session_id', match: { value: opts.sessionId } });
     }
@@ -203,7 +208,9 @@ class QdrantVectorStore implements MemoryVectorStore {
           filter: must.length > 0 ? { must } : undefined,
         }),
       },
-    ) as { result?: Array<{ id: string | number; score?: number; payload?: Record<string, unknown> }> };
+    ) as {
+      result?: Array<{ id: string | number; score?: number; payload?: Record<string, unknown> }>;
+    };
 
     return (data.result ?? []).map((item) =>
       payloadToHit(item.payload, String(item.id), opts.type, item.score ?? 0)
@@ -280,7 +287,9 @@ class PineconeVectorStore implements MemoryVectorStore {
         includeMetadata: true,
         filter: {
           record_type: { $eq: opts.type },
-          ...(opts.type === 'episodic' && opts.sessionId ? { session_id: { $eq: opts.sessionId } } : {}),
+          ...(opts.type === 'episodic' && opts.sessionId
+            ? { session_id: { $eq: opts.sessionId } }
+            : {}),
         },
       }),
     }) as { matches?: Array<{ id: string; score?: number; metadata?: Record<string, unknown> }> };
@@ -325,11 +334,15 @@ class ChromaVectorStore implements MemoryVectorStore {
   }
 
   private collectionBase(): string {
-    return `${this.baseUrl}/api/v2/tenants/${encodeURIComponent(this.tenant)}/databases/${encodeURIComponent(this.database)}`;
+    return `${this.baseUrl}/api/v2/tenants/${encodeURIComponent(this.tenant)}/databases/${
+      encodeURIComponent(this.database)
+    }`;
   }
 
   private async listCollections(): Promise<Array<{ id: string; name: string }>> {
-    return await requestJson(`${this.collectionBase()}/collections`, { headers: this.headers() }) as Array<{
+    return await requestJson(`${this.collectionBase()}/collections`, {
+      headers: this.headers(),
+    }) as Array<{
       id: string;
       name: string;
     }>;
@@ -340,7 +353,9 @@ class ChromaVectorStore implements MemoryVectorStore {
     if (this.resolvePromise) return await this.resolvePromise;
 
     this.resolvePromise = (async () => {
-      const existing = await this.listCollections().catch(() => [] as Array<{ id: string; name: string }>);
+      const existing = await this.listCollections().catch(() =>
+        [] as Array<{ id: string; name: string }>
+      );
       const found = existing.find((col) => col.name === this.collection);
       if (found) {
         this.collectionId = found.id;
@@ -358,7 +373,9 @@ class ChromaVectorStore implements MemoryVectorStore {
         return created.id;
       }
 
-      const retry = await this.listCollections().catch(() => [] as Array<{ id: string; name: string }>);
+      const retry = await this.listCollections().catch(() =>
+        [] as Array<{ id: string; name: string }>
+      );
       const retryFound = retry.find((col) => col.name === this.collection);
       if (retryFound) {
         this.collectionId = retryFound.id;
@@ -377,26 +394,32 @@ class ChromaVectorStore implements MemoryVectorStore {
 
   async upsert(record: VectorMemoryRecord): Promise<void> {
     const collectionId = await this.resolveCollectionId();
-    await requestJson(`${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/upsert`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({
-        ids: [record.id],
-        embeddings: [Array.from(record.embedding)],
-        documents: [record.text],
-        metadatas: [payloadFromRecord(record)],
-      }),
-    });
+    await requestJson(
+      `${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/upsert`,
+      {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({
+          ids: [record.id],
+          embeddings: [Array.from(record.embedding)],
+          documents: [record.text],
+          metadatas: [payloadFromRecord(record)],
+        }),
+      },
+    );
   }
 
   async delete(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     const collectionId = await this.resolveCollectionId();
-    await requestJson(`${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/delete`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({ ids }),
-    });
+    await requestJson(
+      `${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/delete`,
+      {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({ ids }),
+      },
+    );
   }
 
   async search(opts: VectorStoreOptions): Promise<VectorMemoryHit[]> {
@@ -404,16 +427,19 @@ class ChromaVectorStore implements MemoryVectorStore {
     const where: Record<string, unknown> = { record_type: opts.type };
     if (opts.type === 'episodic' && opts.sessionId) where.session_id = opts.sessionId;
 
-    const data = await requestJson(`${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/query`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({
-        query_embeddings: [Array.from(opts.vector)],
-        n_results: opts.limit,
-        where,
-        include: ['documents', 'metadatas', 'distances'],
-      }),
-    }) as {
+    const data = await requestJson(
+      `${this.collectionBase()}/collections/${encodeURIComponent(collectionId)}/query`,
+      {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({
+          query_embeddings: [Array.from(opts.vector)],
+          n_results: opts.limit,
+          where,
+          include: ['documents', 'metadatas', 'distances'],
+        }),
+      },
+    ) as {
       ids?: string[][];
       documents?: (string[] | null)[];
       metadatas?: (Record<string, unknown>[] | null)[];

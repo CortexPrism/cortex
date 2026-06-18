@@ -95,9 +95,9 @@ import {
 } from '../agent/manager.ts';
 import {
   deleteService,
-  isServiceManagerActive,
   getRuntimeStatus,
   getService,
+  isServiceManagerActive,
   listServices,
   registerService,
   startService,
@@ -519,7 +519,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const jobRunsMatch = path.match(/^\/api\/jobs\/([^/]+)\/runs$/);
   if (req.method === 'GET' && jobRunsMatch) {
     const limit = Number(url.searchParams.get('limit') ?? 20);
-    const runs = await listJobRuns(jobRunsMatch[1], Number.isFinite(limit) && limit > 0 ? limit : 20);
+    const runs = await listJobRuns(
+      jobRunsMatch[1],
+      Number.isFinite(limit) && limit > 0 ? limit : 20,
+    );
     return json(runs);
   }
 
@@ -3808,7 +3811,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       return json({ ok: true, name, restarted: true });
     }
 
-    if (name === 'supervisor' || name === 'validator' || name === 'executor' || name === 'scheduler') {
+    if (
+      name === 'supervisor' || name === 'validator' || name === 'executor' || name === 'scheduler'
+    ) {
       const { startDaemonCore, stopDaemons } = await import('../cli/daemon.ts');
       await stopDaemons();
       await new Promise((r) => setTimeout(r, 1000));
@@ -4127,7 +4132,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { getMemoryVectorStore } = await import('../memory/vector_backends.ts');
     const store = await getMemoryVectorStore().catch(() => null);
     const current = config.memory?.vectorStore ?? null;
-    const health = store ? await store.health().catch((e) => ({ ok: false, detail: (e as Error).message })) : null;
+    const health = store
+      ? await store.health().catch((e) => ({ ok: false, detail: (e as Error).message }))
+      : null;
     return json({
       current,
       health,

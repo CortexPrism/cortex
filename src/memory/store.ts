@@ -5,7 +5,11 @@ import type { InValue } from 'npm:@libsql/client';
 import { searchEntities, traverseGraph } from './graph.ts';
 import { recordBatchAccess } from './heuristics.ts';
 import { classifyContent, classifyMultiple } from '../security/classification.ts';
-import { getMemoryVectorStore, type VectorMemoryRecord, type VectorMemoryHit } from './vector_backends.ts';
+import {
+  getMemoryVectorStore,
+  type VectorMemoryHit,
+  type VectorMemoryRecord,
+} from './vector_backends.ts';
 
 function memId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -383,18 +387,18 @@ export async function searchByVector(
     .slice(0, limit);
 
   return scored.map((r) => ({
-      id: r.id,
-      type,
-      text: r.text,
-      score: r.score,
-      created_at: r.created_at,
-      sessionId: type === 'episodic' ? r.session_id : undefined,
-      entities: type === 'episodic' ? safeJsonParse(r.entities as string | null) : undefined,
-      topics: type === 'episodic' ? safeJsonParse(r.topics as string | null) : undefined,
-      tags: type === 'semantic' ? safeJsonParse(r.tags as string | null) : undefined,
-      category: type === 'semantic' ? (r.category ?? undefined) : undefined,
-      decayScore: r.decay_score,
-      accessCount: r.access_count ?? undefined,
+    id: r.id,
+    type,
+    text: r.text,
+    score: r.score,
+    created_at: r.created_at,
+    sessionId: type === 'episodic' ? r.session_id : undefined,
+    entities: type === 'episodic' ? safeJsonParse(r.entities as string | null) : undefined,
+    topics: type === 'episodic' ? safeJsonParse(r.topics as string | null) : undefined,
+    tags: type === 'semantic' ? safeJsonParse(r.tags as string | null) : undefined,
+    category: type === 'semantic' ? (r.category ?? undefined) : undefined,
+    decayScore: r.decay_score,
+    accessCount: r.access_count ?? undefined,
   }));
 }
 
