@@ -19,7 +19,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.41.3-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.43.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 
 **CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
@@ -163,7 +163,7 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 - **Built-in HTTP server** — `cortex serve` starts a WebSocket-powered chat UI on port 3000
 - **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Activity, Memory, Jobs, Sessions,
-  Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, Activity
+  Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, A2A Bridge, Memori, AgentLint
 - **File upload** — drag-and-drop or click to attach PDFs, images, and documents in chat
 - **REST API** — full HTTP API for sessions, memory, jobs, git, GitHub, and code execution
 - **Session persistence** — page refresh resumes the active session (full history preserved)
@@ -172,12 +172,22 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 - **Policy validator** — every tool call is evaluated against regex allow/deny rules before
   execution
+- **Dynamic tool permission grant** — per-task permission evaluation with risk profiles and guardrails
+  (readOnly, restrictedPaths, allowedDomains, requireConfirmation)
+- **Tool approval workflow** — structured approval pipeline with auto-approve thresholds, webhook
+  notifications, and 5-minute timeouts
 - **LLM supervisor** — sensitive data access (memory, databases, screenshots) requires approval from
   a fast LLM supervisor model (Gemini 2.0 Flash, GPT-4o Mini) with decision caching and human
   escalation for uncertain cases
 - **Data classification** — automatic sensitivity detection (SECRET/SENSITIVE/NORMAL/PUBLIC) based
   on pattern matching (passwords, API keys, PII, confidential markers); all existing data backfilled
   on first run
+- **DLP Guard** — 22-scanner data loss prevention scanning all agent outputs for sensitive data
+  (API keys, credentials, PII, PHI, PCI); supports monitor/redact/block action levels
+- **AI Guardrails** — pluggable content safety middleware with 5 built-in classifiers: prompt
+  injection (10 patterns), PII leakage, harmful code, excessive length, and shell injection
+- **Session isolation** — multi-tenant data isolation with path-based and environment-variable
+  gating across strict, permissive, and shared modes
 - **Human approval flows** — CLI color-coded prompts and Web UI modal for sensitive access requests,
   with AI supervisor reasoning and sample data preview
 - **Temporary grants** — approved access cached per session to prevent approval fatigue while
@@ -210,6 +220,16 @@ See [docs/computer-use/README.md](docs/computer-use/README.md) for the full guid
 - **Daemon supervisor** — manages validator, executor, and scheduler processes with exponential
   backoff restart
 - **Plugin system** — WASM and Deno module plugins with sandboxed permissions
+- **MCP Gateway** — enterprise MCP server management with rate limiting, health checks, audit logging
+- **A2A Protocol Bridge** — Google Agent2Agent (A2A) v1.0 protocol for cross-framework agent collaboration
+  with JSON-RPC 2.0 server/client, SSE streaming, and tool wrapping
+- **Memori Checkpointing** — persistent agent state serialization and restore for survival across
+  restarts, crashes, and context window resets
+- **Supply chain integrity** — plugin verification with SHA-256 hash checking, signature verification,
+  author reputation scoring, and malware pattern scanning
+- **Dependency guardian** — continuous CVE monitoring, license enforcement, and remediation
+  suggestions across 6 package ecosystems
+- **AgentLint** — automated auditing of agent configs, tools, plugins, and prompts with 33+ checks
 - **Auto-update** — `cortex update` supports source mode and signed binary mode with SHA-256 and
   optional GPG verification
 - **Desktop app** — Tauri-based desktop wrapper (macOS, Windows, Linux)

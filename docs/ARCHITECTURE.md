@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.41.3.
+This document describes the implemented architecture of CortexPrism as of v0.43.0.
 
 ---
 
@@ -25,8 +25,8 @@ CortexPrism is a single-process agentic harness written in TypeScript/Deno. It e
 │          │                                                      │
 │   ┌──────┼──────────────────────────────────────┐              │
 │   │      │         Subsystems                   │              │
-│   │  memory/   tools/   sandbox/   security/    │              │
-│   │  llm/      server/  scheduler/              │              │
+│   │  a2a/ memory/ tools/ sandbox/ security/       │              │
+│   │  mcp-gateway/ memori/ scheduler/              │              │
 │   └──────────────────────────────────────────────┘             │
 │                                                                 │
 │   SQLite databases (WAL mode)                                   │
@@ -675,6 +675,78 @@ vaultGet(name):
   vault_access_log.insert(...)
   return plaintext
 ```
+
+---
+
+## Security Extensions (v0.43.0)
+
+### DLP Guard (`src/security/dlp.ts`)
+
+Data loss prevention pipeline with 22 scanners. Registered as `@cortex/dlp-guard` pipeline hook at `pre-output` and `post-tool` stages. Scans all outputs for API keys, credentials, PII, PHI, PCI data. Uses non-overlapping match deduplication and right-to-left redaction. Lens audit logging for blocked/redacted events.
+
+### AI Guardrails (`src/security/guardrails.ts`)
+
+Pluggable guardrail system with 5 built-in classifiers and `registerClassifier()`/`unregisterClassifier()` API. Registered as pipeline hooks via `createPreMiddleware()`/`createPostMiddleware()`. Per-classifier pass/block/warn results.
+
+### Session Isolation (`src/security/isolation.ts`)
+
+Path and env-var based multi-tenant isolation with three modes. `isPathAllowed()`, `isEnvVarAllowed()`, `isMemoryAccessAllowed()`. Violation recording with 1K ring buffer and lens audit trail.
+
+### Supply Chain Integrity (`src/plugins/supply-chain.ts`)
+
+`verifyPluginIntegrity()` runs before every plugin install. SHA-256 hash, blocked hash list, signature verification, author reputation, malware pattern scanning. Configurable `SupplyChainPolicy`.
+
+### Dependency Guardian (`src/plugins/dependency-guardian.ts`)
+
+`generateGuardianReport()` produces per-project vulnerability summaries across npm, PyPI, Maven, Go, Cargo, NuGet. CVE database, version range matching, risk scoring, blocked license enforcement. Periodic checks every 6 hours.
+
+---
+
+## A2A Protocol Bridge (`src/a2a/`)
+
+Implements Google's Agent2Agent (A2A) v1.0 protocol for cross-framework agent interoperability.
+
+```
+A2A Client (external) → POST /a2a → handleA2ARequest() → Cortex executor
+                                     ↓
+            GET /.well-known/agent-card.json ← Agent Card
+```
+
+- **JSON-RPC 2.0 server** — handles `SendMessage`, `SendStreamingMessage` (SSE), `GetTask`, `ListTasks`, `CancelTask`, `GetAgentCard`, `GetExtendedAgentCard`
+- **A2A client** — `fetchAgentCard`, `sendMessage`, `sendStreamingMessage`, `getTask`, `listTasks`, `cancelTask`
+- **Tool wrapping** — remote A2A agents exposed as Cortex Tool objects
+- **Agent card generation** — Cortex tool definitions mapped to A2A skills
+- **CLI**: `cortex a2a card`, `cortex a2a skills`
+
+---
+
+## MCP Gateway (`src/mcp-gateway/`)
+
+Enterprise MCP server management.
+
+- **Gateway** — token-bucket rate limiter, HTTP health checking, 10K-entry audit log ring buffer, risk assessment
+- **Registry** — CRUD with tag search, health/transport filtering
+- **CLI**: `cortex mcp-gateway status`, `cortex mcp-gateway health`
+- **API**: `GET /api/mcp-gateway/servers`
+
+---
+
+## Memori Checkpointing (`src/memori/`)
+
+Persistent agent state serialization for survival across restarts, crashes, and context resets.
+
+```
+agentTurn() → captureCheckpoint(ctx) → saveCheckpoint(db) → memori_checkpoints table
+restart → loadLatestCheckpoint(db) → restoreCheckpoint() → buildResumePrompt()
+```
+
+- **Data model** — `AgentCheckpoint` with 6 sub-structures (Conversation, Memory, Tools, Reasoning, Workspace, Metadata)
+- **Storage** — SQLite `memori_checkpoints` table with session/turn indexing
+- **Capture** — serializes full agent state from `CaptureContext`
+- **Restore** — rehydrates state with structured resume context
+- **Pruning** — `pruneOldCheckpoints()` keeps last N turns
+- **CLI**: `cortex memori list [sessionId]`, `cortex memori prune <sessionId>`
+- **API**: `GET /api/memori/checkpoints`
 
 ---
 
