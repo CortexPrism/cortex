@@ -36,6 +36,19 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - New `GET /api/metacognition/summary` endpoint returning decision distribution, escalation count, and recent adversarial critiques
   - Metacognition page shows decision distribution bar chart, escalation alerts, and adversarial critique cards with issues
 
+- **Policy-Aware Planner (#57)** — agent plans are now logged and surfaced:
+  - New `src/agent/planner.ts` with `logPlan()`, `checkPlanPolicies()`, and in-memory plan store
+  - Agent loop logs every metacognition assessment as a plan artifact with decision, confidence, and signal breakdown
+  - Plans appear in the Workflows page sidebar above saved workflows, color-coded by decision type
+  - `GET /api/workflows` now returns both workflows and recent plans; `GET /api/workflows/plans` for dedicated query
+
+- **Goal Drift Detector (#60)** — detects when sessions change direction from prior goals:
+  - New `src/agent/drift-detector.ts` with keyword-based drift detection (explicit phrases + Jaccard word divergence)
+  - Agent loop compares each turn against the previous session goal, logs drift events when score ≥ 0.4
+  - Drift events stored in-memory and written to `lens_events`
+  - "Goal Drift" tab added to Workflows page bottom panel showing drift score, previous goal, new input, and timestamp
+  - `GET /api/workflows/drift?sessionId=` endpoint for querying drift events
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed

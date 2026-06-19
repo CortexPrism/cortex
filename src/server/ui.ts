@@ -2474,6 +2474,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="border-top:1px solid var(--border);" id="wf-bottom-tabs">
           <button class="btn btn-ghost active" onclick="switchWorkflowTab('history')" id="wf-tab-history" style="font-size:11px;padding:6px 12px;border-radius:0;">Run History</button>
+          <button class="btn btn-ghost" onclick="switchWorkflowTab('drift')" id="wf-tab-drift" style="font-size:11px;padding:6px 12px;border-radius:0;">Goal Drift</button>
           <button class="btn btn-ghost" onclick="switchWorkflowTab('approvals')" id="wf-tab-approvals" style="font-size:11px;padding:6px 12px;border-radius:0;">Approval Queue</button>
         </div>
         <div style="height:200px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="wf-bottom-panel"></div>
@@ -12210,20 +12211,42 @@ async function loadWorkflows() {
   var el = document.getElementById('wf-list');
   showSkeleton(el, 5, 'card');
   try {
-    wfList = await fetch(BASE + '/api/workflows').then(r => r.json()).catch(function() { return []; });
-    if (!wfList || !wfList.length) {
-      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><p>No workflows</p><p style="font-size:11px;margin-top:4px;">Create a new workflow to get started</p></div>';
-      return;
+    var data = await fetch(BASE + '/api/workflows').then(r => r.json()).catch(function() { return {}; });
+    wfList = data.workflows || [];
+    var plans = data.plans || [];
+
+    var html = '';
+    // Plans section
+    if (plans.length) {
+      html += '<div style="padding:10px 12px;font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Recent Agent Plans</div>';
+      html += plans.map(function(p) {
+        var colors = { direct: '#4ade80', ask_first: '#fbbf24', delegate: '#818cf8', plan_with_rollback: '#22d3ee', parallelize: '#a78bfa' };
+        return '<div class="card-sm" style="margin-bottom:6px;padding:8px 12px;border-left:3px solid ' + (colors[p.decision] || 'var(--border)') + ';">' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="font-weight:500;font-size:11px;color:' + (colors[p.decision] || 'var(--text)') + ';">' + esc(p.decision) + '</span>' +
+          '<span style="font-size:9px;color:var(--text3);">conf ' + (p.confidence != null ? p.confidence.toFixed(2) : '—') + '</span>' +
+          '</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px;">' + esc(p.reason || '').substring(0, 80) + '</div>' +
+          (p.suggestedSubAgents && p.suggestedSubAgents.length ? '<div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;">' + p.suggestedSubAgents.map(function(t) { return '<span class="badge" style="font-size:9px;">' + esc(t) + '</span>'; }).join('') + '</div>' : '') +
+          '</div>';
+      }).join('');
     }
-    el.innerHTML = wfList.map(function(w) {
-      return '<div class="card-sm" style="cursor:pointer;margin-bottom:6px;" onclick="selectWorkflow(\\'' + escAttr(w.id || w.name) + '\\')">' +
-        '<div style="font-weight:500;font-size:13px;">' + esc(w.name) + '</div>' +
-        '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + esc(w.description || '') + '</div>' +
-        '<div style="display:flex;gap:6px;margin-top:6px;">' +
-        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();showWorkflowRunModal(\\'' + escAttr(w.id || w.name) + '\\')">▶ Run</button>' +
-        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();deleteWorkflow(\\'' + escAttr(w.id || w.name) + '\\')">✕ Delete</button>' +
-        '</div></div>';
-    }).join('');
+    // Workflows section
+    html += '<div style="padding:10px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Saved Workflows</div>';
+    if (!wfList || !wfList.length) {
+      html += '<div style="text-align:center;padding:40px;color:var(--text3);"><p>No workflows</p><p style="font-size:11px;margin-top:4px;">Create a new workflow to get started</p></div>';
+    } else {
+      html += wfList.map(function(w) {
+        return '<div class="card-sm" style="cursor:pointer;margin-bottom:6px;" onclick="selectWorkflow(\\'' + escAttr(w.id || w.name) + '\\')">' +
+          '<div style="font-weight:500;font-size:13px;">' + esc(w.name) + '</div>' +
+          '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + esc(w.description || '') + '</div>' +
+          '<div style="display:flex;gap:6px;margin-top:6px;">' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();showWorkflowRunModal(\\'' + escAttr(w.id || w.name) + '\\')">▶ Run</button>' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="event.stopPropagation();deleteWorkflow(\\'' + escAttr(w.id || w.name) + '\\')">✕ Delete</button>' +
+          '</div></div>';
+      }).join('');
+    }
+    el.innerHTML = html;
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
 }
 function selectWorkflow(id) {
@@ -12289,12 +12312,37 @@ async function execWorkflow() {
 }
 function switchWorkflowTab(tab) {
   wfCurrentTab = tab;
-  ['history','approvals'].forEach(function(t) {
+  ['history','drift','approvals'].forEach(function(t) {
     var btn = document.getElementById('wf-tab-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'history') loadWorkflowHistory();
+  else if (tab === 'drift') loadWorkflowDrift();
   else loadWorkflowApprovals();
+}
+async function loadWorkflowDrift() {
+  var el = document.getElementById('wf-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading drift events…</div>';
+  try {
+    var events = await fetch(BASE + '/api/workflows/drift').then(r => r.json()).catch(function() { return []; });
+    if (!events || !events.length) { el.innerHTML = '<div class="empty">No goal drift detected. Drift triggers when a session changes direction from prior goals.</div>'; return; }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Session</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Drift Score</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Previous Goal</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">New Input</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Time</th></tr></thead><tbody>' +
+      events.map(function(e) {
+        var color = e.driftScore > 0.6 ? '#f87171' : e.driftScore > 0.4 ? '#fbbf24' : 'var(--accent2)';
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:4px 0;font-family:monospace;">' + esc((e.sessionId || '').substring(0, 8)) + '</td>' +
+          '<td style="padding:4px 0;color:' + color + ';">' + (e.driftScore != null ? (e.driftScore * 100).toFixed(0) + '%' : '—') + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(e.previousGoal || '—').substring(0, 60) + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(e.currentInput || '—').substring(0, 60) + '</td>' +
+          '<td style="padding:4px 0;color:var(--text3);">' + timeAgo(e.detectedAt) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load drift data</div>'; }
 }
 async function loadWorkflowHistory() {
   var el = document.getElementById('wf-bottom-panel');

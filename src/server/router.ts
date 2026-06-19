@@ -3438,11 +3438,27 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // Phase 1: Workflow API
   // ═══════════════════════════════════════════════════════════════
 
-  // GET /api/workflows
+  // GET /api/workflows — also return recent plans
   if (req.method === 'GET' && path === '/api/workflows') {
     const { listWorkflows } = await import('../workflow/engine.ts');
+    const { listPlans } = await import('../agent/planner.ts');
     const workflows = listWorkflows();
-    return json(workflows);
+    const plans = listPlans(undefined, 10);
+    return json({ workflows, plans });
+  }
+
+  // GET /api/workflows/plans
+  if (req.method === 'GET' && path === '/api/workflows/plans') {
+    const { listPlans } = await import('../agent/planner.ts');
+    const sessionId = url.searchParams.get('sessionId');
+    return json(listPlans(sessionId || undefined));
+  }
+
+  // GET /api/workflows/drift?sessionId=
+  if (req.method === 'GET' && path === '/api/workflows/drift') {
+    const sessionId = url.searchParams.get('sessionId');
+    const { getRecentDrift } = await import('../agent/drift-detector.ts');
+    return json(getRecentDrift(sessionId || undefined, 20));
   }
 
   // POST /api/workflows
