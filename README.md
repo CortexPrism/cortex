@@ -151,7 +151,7 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 | Voice             | speak, listen (STT/TTS agent tools)                                                             |
 | Data & Util       | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils, code_snippet |
 | Environment       | env_manager (get/set variables), schedule (cron-based job scheduling)                           |
-| Sandbox           | environment snapshots, workspace snapshots, dev env as code, bug reproduction studio             |
+| Sandbox           | environment snapshots, workspace snapshots, dev env as code, bug reproduction studio            |
 | Image & Vision    | image_analyze (multimodal image analysis via 18+ LLM providers)                                 |
 | Sub-agents        | spawn typed child agents for parallel and delegated tasks                                       |
 | Skills            | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)              |

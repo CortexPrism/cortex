@@ -3,7 +3,7 @@ import { join, relative } from '@std/path';
 import { getCoreDb } from '../db/client.ts';
 import { PATHS } from '../config/paths.ts';
 import { captureGitState } from './git-capture.ts';
-import type { WorkspaceSnapshot, FileTreeEntry, ToolStateEntry } from './snapshot-types.ts';
+import type { FileTreeEntry, ToolStateEntry, WorkspaceSnapshot } from './snapshot-types.ts';
 
 const SNAPSHOTS_DIR = 'workspace-snapshots';
 const MAX_HASH_SIZE = 10 * 1024 * 1024;
@@ -24,20 +24,24 @@ async function hashFile(filePath: string): Promise<string> {
   try {
     const content = await Deno.readFile(filePath);
     const digest = await crypto.subtle.digest('SHA-256', content);
-    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
   } catch {
     return 'error';
   }
 }
 
-async function scanFileTree(dir: string, baseDir: string, ignorePatterns: string[]): Promise<FileTreeEntry[]> {
+async function scanFileTree(
+  dir: string,
+  baseDir: string,
+  ignorePatterns: string[],
+): Promise<FileTreeEntry[]> {
   const entries: FileTreeEntry[] = [];
   try {
     for await (const entry of Deno.readDir(dir)) {
       const fullPath = join(dir, entry.name);
       const relPath = relative(baseDir, fullPath);
 
-      if (ignorePatterns.some(p => relPath.includes(p) || relPath.startsWith(p))) continue;
+      if (ignorePatterns.some((p) => relPath.includes(p) || relPath.startsWith(p))) continue;
       if (entry.name.startsWith('.git')) continue;
       if (entry.name === '.cortex-env-replication.sh') continue;
       if (entry.name === '.cortex-ws-restore.json') continue;
@@ -107,7 +111,16 @@ export async function captureWorkspaceSnapshot(opts: {
     `INSERT INTO workspace_snapshots (id, name, session_id, agent_id, created_at, file_count, git_branch, tags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET name=excluded.name`,
-    [id, snapshot.name, opts.sessionId, opts.agentId, snapshot.createdAt, fileTree.length, gitState.branch, JSON.stringify(opts.tags ?? [])],
+    [
+      id,
+      snapshot.name,
+      opts.sessionId,
+      opts.agentId,
+      snapshot.createdAt,
+      fileTree.length,
+      gitState.branch,
+      JSON.stringify(opts.tags ?? []),
+    ],
   );
 
   return snapshot;
@@ -132,9 +145,14 @@ export async function listWorkspaceSnapshots(opts: {
   const db = await getCoreDb();
   let rows: Array<Record<string, unknown>>;
   if (opts.sessionId) {
-    rows = await db.all('SELECT id FROM workspace_snapshots WHERE session_id = ? ORDER BY created_at DESC LIMIT ?', [opts.sessionId, opts.limit ?? 50]);
+    rows = await db.all(
+      'SELECT id FROM workspace_snapshots WHERE session_id = ? ORDER BY created_at DESC LIMIT ?',
+      [opts.sessionId, opts.limit ?? 50],
+    );
   } else {
-    rows = await db.all('SELECT id FROM workspace_snapshots ORDER BY created_at DESC LIMIT ?', [opts.limit ?? 50]);
+    rows = await db.all('SELECT id FROM workspace_snapshots ORDER BY created_at DESC LIMIT ?', [
+      opts.limit ?? 50,
+    ]);
   }
 
   for (const row of rows) {
@@ -163,8 +181,8 @@ export async function diffWorkspaceSnapshots(
   const s2 = await getWorkspaceSnapshot(id2);
   if (!s1 || !s2) return null;
 
-  const files1 = new Map(s1.fileTree.map(f => [f.path, f]));
-  const files2 = new Map(s2.fileTree.map(f => [f.path, f]));
+  const files1 = new Map(s1.fileTree.map((f) => [f.path, f]));
+  const files2 = new Map(s2.fileTree.map((f) => [f.path, f]));
 
   const added: string[] = [];
   const removed: string[] = [];
@@ -191,20 +209,26 @@ export async function restoreWorkspaceSnapshot(
   await ensureDir(targetWorkspacePath);
 
   const manifestPath = join(targetWorkspacePath, '.cortex-ws-restore.json');
-  await Deno.writeTextFile(manifestPath, JSON.stringify({
-    snapshotId: snap.id,
-    snapshotName: snap.name,
-    createdAt: snap.createdAt,
-    fileTree: snap.fileTree,
-  }, null, 2));
+  await Deno.writeTextFile(
+    manifestPath,
+    JSON.stringify(
+      {
+        snapshotId: snap.id,
+        snapshotName: snap.name,
+        createdAt: snap.createdAt,
+        fileTree: snap.fileTree,
+      },
+      null,
+      2,
+    ),
+  );
 
-  const largeCount = snap.fileTree.filter(f => f.hash.startsWith('skipped:')).length;
-  const note = largeCount > 0
-    ? ` ${largeCount} large file(s) skipped (hashes not stored).`
-    : '';
+  const largeCount = snap.fileTree.filter((f) => f.hash.startsWith('skipped:')).length;
+  const note = largeCount > 0 ? ` ${largeCount} large file(s) skipped (hashes not stored).` : '';
 
   return {
     ok: true,
-    message: `Workspace snapshot ${snap.name} metadata written to ${targetWorkspacePath}/.cortex-ws-restore.json — ${snap.fileTree.length} file(s) indexed. Full file restoration requires snapshot file content storage, not yet implemented.${note}`,
+    message:
+      `Workspace snapshot ${snap.name} metadata written to ${targetWorkspacePath}/.cortex-ws-restore.json — ${snap.fileTree.length} file(s) indexed. Full file restoration requires snapshot file content storage, not yet implemented.${note}`,
   };
 }
