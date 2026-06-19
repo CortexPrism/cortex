@@ -31,6 +31,8 @@ Write-Host @"
   ╔══════════════════════════════════════╗
   ║       CortexPrism Installer         ║
   ║   Open-Source Agentic Harness       ║
+  ║   24 LLM Providers · 10 Channels    ║
+  ║   Vector Memory · Voice · MCP       ║
   ╚══════════════════════════════════════╝
 
 "@
@@ -50,13 +52,13 @@ if (-not (Get-Command deno -ErrorAction SilentlyContinue)) {
     try {
         iwr https://deno.land/install.ps1 -useb | iex
     } catch {
-        Write-ErrorExit "Deno installation failed. Install manually: https://docs.deno.land/runtime/getting_started/installation"
+        Write-ErrorExit "Deno installation failed. Install manually: https://docs.deno.com/runtime/getting_started/installation"
     }
 
     if (-not (Get-Command deno -ErrorAction SilentlyContinue)) {
         $env:Path = "$BIN_DIR;$env:Path"
         if (-not (Get-Command deno -ErrorAction SilentlyContinue)) {
-            Write-ErrorExit "Deno installation failed. Install manually: https://docs.deno.land/runtime/getting_started/installation"
+            Write-ErrorExit "Deno installation failed. Install manually: https://docs.deno.com/runtime/getting_started/installation"
         }
     }
 }
@@ -122,13 +124,29 @@ Write-Host @"
 
 Quick start:
 
-  cortex setup         . Configure your LLM provider
-  cortex chat           . Start chatting
-  cortex serve          . Start web UI at http://localhost:3000
+  cortex setup         Configure your LLM provider
+  cortex chat          Start chatting
+  cortex serve         Start web UI at http://localhost:3000
+
+What's new in v0.42:
+
+  • 24 LLM providers (add your own too)
+  • 10 channel integrations (Discord, Slack, Telegram, Teams, etc.)
+  • Pluggable memory backends (SQLite, Qdrant, ChromaDB, Pinecone)
+  • Chrome Bridge MCP for browser automation
+  • Voice & speech (STT/TTS via OpenAI, ElevenLabs)
+  • Agent personality system (SOUL.md)
+  • AI-driven personalization questionnaire
+
+Package manager installs:
+
+  winget install CortexPrism.Cortex
+  scoop bucket add cortex https://github.com/CortexPrism/scoop-bucket
+  choco install cortexprism
+  brew install CortexPrism/tap/cortex
 
 Documentation:
   https://cortexprism.io/getting-started
-  https://cortexprism.io/docs/cli
 
 Installed at: $CORTEX_DIR
 Run with:     cortex <command>
