@@ -5,6 +5,46 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.44.1] — 2026-06-19
+
+### Added
+
+- **Code Intelligence (#74, #81, #84, #229, #239, #294, #295)** — full code intelligence suite with polyglot bridge, ownership routing, knowledge graph Q&A, code archeology, and private documentation search:
+
+  - **Cross-Repository Code Search (#74)** — search across all indexed projects via `/api/codegraph/search-all` with language filtering and score-ranked results per project
+
+  - **Code Ownership Router (#81)** — git-blame-based code ownership analysis via `/api/codegraph/ownership`, surfaced in Codegraph as an Ownership panel with per-author line counts and percentage bars
+
+  - **Multi-Language Polyglot Bridge (#84)** — `src/codegraph/polyglot.ts` with AST node normalization across 15+ languages (TypeScript, Python, Go, Rust, Java, C/C++, etc.), cross-language call tracing, FFI/binding detection, and language family grouping
+
+  - **Codebase Archeologist (#229)** — file commit history browser via `/api/codegraph/history`, surfaced in Codegraph as a History panel with configurable commit limit and timestamp-ordered log
+
+  - **Live Codebase Q&A (#239)** — interactive codebase querying via `/api/codegraph/qa` with FTS-backed symbol search and structured citations (name, file, line, signature, language), surfaced in Codegraph as a Q&A panel
+
+  - **Alcove Private Documentation (#294)** — dedicated documentation search and browse page:
+    - New Alcove nav entry and full-page UI with dual-panel search/results + directory browser
+    - `GET /api/alcove/search?q=` — keyword search over markdown, text, and HTML docs in data/docs
+    - `GET /api/alcove/browse?dir=` — directory listing and file enumeration
+    - `GET /api/alcove/doc?file=` — document content reader
+    - `POST /api/alcove/index` — on-demand re-index trigger
+
+  - **Codebase Pilot (#295)** — token-optimized context builder surfaced in Codegraph:
+    - New Pilot panel with token budget slider (500–64000), pruning mode selector (full/signatures/imports), file pattern filter, and import/comment/test-file toggles
+    - `POST /api/codegraph/pilot` — reads indexed project files, applies AST-aware pruning and chunking, returns optimized code chunks with dependency and symbol metadata
+    - New `code_pilot` agent tool wrapping `codebase-pilot.ts` with token budget, pruning, and file-pattern parameters
+
+### Changed
+
+- **Codegraph page** — added 4 new bottom-panel tabs: Ownership, History, Q&A, Pilot (alongside existing Impact, Architecture, Path Tracer)
+- **Tool registry** — `code_pilot` registered as the 60th builtin tool (async import alongside other codegraph tools)
+- **Nav sidebar** — added Alcove nav item (📚) after Codegraph
+
+### Fixed
+
+- **Settings page** — resolved stuck "Loading…" state caused by `initPageEnhancements()` overriding `loadSettings` without calling the original. Removed duplicate function blocks and ensured wrapped loader delegates to original.
+- **Settings navigation** — consolidated dual navigation bars (internal tabs + global sub-nav) into a single global sub-nav with tabs: General, AI & Models, Tools & Integrations, System. Added quick-access cards to Tools, Chrome Bridge, MCP, MCP Gateway, and Vault within the Tools & Integrations tab. Sub-nav syncs active state across all settings-group pages.
+- **Codegraph Q&A onkeydown** — fixed JavaScript syntax error (`Unexpected identifier 'Enter'`) caused by single-quote escaping in `showCodegraphQAPanel` inline handler; changed to `&quot;` HTML entities.
+
 ## [0.44.0] — 2026-06-19
 
 ### Added
@@ -168,13 +208,6 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **PKM Assistant (#219)** — personal knowledge management connectors:
   - `src/pkm-connectors.ts` with Obsidian/Logseq/Notion/Roam connection management
   - `GET /api/pkm`, `POST /api/pkm/connect`, `POST /api/pkm/sync` endpoints
-
-- **UI Pages & Enhancements** — new pages and in-page widgets for all features:
-  - New **Prompt Lab** page with template CRUD, versioning, test run recording, and run history
-  - New **PKM** page with connection management, sync controls, and status indicators
-  - **Settings** page: compressor token-budget slider (#55), learned preferences inspector (#68), sandbox backend availability (#257), A2A protocol status (#251)
-  - **Eval** page: harness preset cards (#186), inline RAG evaluation with hit@1/recall/MRR scoring (#178)
-  - Navigation sidebar items for Prompt Lab and PKM with icon labels
 
 ## [0.43.1] — 2026-06-19
 
