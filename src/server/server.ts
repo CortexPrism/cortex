@@ -79,6 +79,21 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     _log.error(`Failed to load plugins`, { error: (e as Error).message });
   }
 
+  // Initialize A2A executor — wires the agent loop into the A2A JSON-RPC server
+  try {
+    const a2aConfig = _serverConfig.a2a;
+    if (a2aConfig?.enabled !== false) {
+      const { registerA2AExecutor } = await import('../a2a/mod.ts');
+      const { createA2AExecutor } = await import('../a2a/executor.ts');
+      registerA2AExecutor(createA2AExecutor());
+      _log.info('A2A executor registered');
+    } else {
+      _log.info('A2A executor disabled via config');
+    }
+  } catch (e) {
+    _log.warn(`Failed to register A2A executor`, { error: (e as Error).message });
+  }
+
   // Initialize Skill Bus for cross-plugin event orchestration
   try {
     const { initSkillBus } = await import('../agent/skill-bus.ts');
