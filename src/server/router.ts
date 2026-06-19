@@ -3911,6 +3911,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       expiration?: string;
       maxUses?: number;
       tags?: string[];
+      mimeType?: string;
     };
     if (!body.key) return err('key is required', 400);
     if (body.value === undefined) return err('value is required', 400);
@@ -3920,10 +3921,44 @@ export async function handleApi(req: Request): Promise<Response | null> {
         name: body.key,
         service: body.key,
         value: body.value,
-        credentialType: 'api_key',
+        credentialType: body.mimeType ? 'content' : 'api_key',
         allowedAgents: [],
       });
       return json({ ok: true, id }, 201);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // POST /api/vault/content — store multi-modal content
+  if (req.method === 'POST' && path === '/api/vault/content') {
+    const body = await req.json() as {
+      name: string;
+      value: string;
+      mimeType: string;
+      description?: string;
+      tags?: string[];
+      embedding?: number[];
+    };
+    if (!body.name || !body.value) return err('name and value required', 400);
+    const { vaultStore } = await import('../security/vault.ts');
+    const { logEvent } = await import('../db/lens.ts');
+    try {
+      await vaultStore({
+        name: body.name,
+        service: 'vault_content',
+        value: body.value.slice(0, 1_000_000),
+        credentialType: 'content',
+        allowedAgents: [],
+      });
+      logEvent({
+        event_type: 'memory_write',
+        actor: 'vault',
+        action: `store:${body.name}`,
+        started_at: new Date().toISOString(),
+        summary: `Stored ${body.mimeType} content: ${body.name}`,
+      }).catch(() => {});
+      return json({ ok: true, name: body.name }, 201);
     } catch (e) {
       return err((e as Error).message, 500);
     }
