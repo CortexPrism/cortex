@@ -21,7 +21,13 @@ import {
 } from '../memory/graph.ts';
 import { listReflections } from '../agent/reflect.ts';
 import { getMemoryHealth } from '../memory/heuristics.ts';
-import { loadConfig, saveConfig, type EmbeddingConfig, type MemoryConfig, type MemoryVectorStoreConfig } from '../config/config.ts';
+import {
+  type EmbeddingConfig,
+  loadConfig,
+  type MemoryConfig,
+  type MemoryVectorStoreConfig,
+  saveConfig,
+} from '../config/config.ts';
 import { mergeSecurityHeaders } from './security-headers.ts';
 import type { SandboxRuntime } from '../sandbox/executor.ts';
 
@@ -414,17 +420,36 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // ── Daemons ──────────────────────────────────────────────
   if (req.method === 'GET' && path === '/api/daemons/health') {
-    const defs = [{ name: 'validator', sock: VALIDATOR_SOCK }, { name: 'executor', sock: EXECUTOR_SOCK }, { name: 'scheduler', sock: SCHEDULER_SOCK }];
-    const daemons = await Promise.all(defs.map(async d => ({ name: d.name, status: await pingProcess(d.sock) ? 'running' : 'stopped', sock: d.sock })));
+    const defs = [{ name: 'validator', sock: VALIDATOR_SOCK }, {
+      name: 'executor',
+      sock: EXECUTOR_SOCK,
+    }, { name: 'scheduler', sock: SCHEDULER_SOCK }];
+    const daemons = await Promise.all(
+      defs.map(async (d) => ({
+        name: d.name,
+        status: await pingProcess(d.sock) ? 'running' : 'stopped',
+        sock: d.sock,
+      })),
+    );
     return json({ daemons });
   }
   const dmLogs = path.match(/^\/api\/daemons\/(validator|executor|scheduler)\/logs$/);
   if (req.method === 'GET' && dmLogs) {
     try {
-      const cmd = new Deno.Command('tail', { args: ['-n', String(Number(new URL(req.url).searchParams.get('lines') ?? 100)), '/root/.cortex/data/logs/' + dmLogs[1] + '.log'], stdout: 'piped', stderr: 'null' });
+      const cmd = new Deno.Command('tail', {
+        args: [
+          '-n',
+          String(Number(new URL(req.url).searchParams.get('lines') ?? 100)),
+          '/root/.cortex/data/logs/' + dmLogs[1] + '.log',
+        ],
+        stdout: 'piped',
+        stderr: 'null',
+      });
       const out = await cmd.output();
       return json({ lines: new TextDecoder().decode(out.stdout).split('\n').filter(Boolean) });
-    } catch { return json({ lines: [] }); }
+    } catch {
+      return json({ lines: [] });
+    }
   }
   const dmRestart = path.match(/^\/api\/daemons\/(validator|executor|scheduler)\/restart$/);
   if (req.method === 'POST' && dmRestart) return json({ ok: true, restarted: dmRestart[1] });
@@ -1038,13 +1063,23 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/memory/privacy') {
     const config = await loadConfig() as unknown as Record<string, unknown>;
     const mem = (config.memory as Record<string, unknown>) || {};
-    return json({ piiRedaction: mem.piiRedaction !== false, maxRetentionDays: (mem.maxRetentionDays as number) || 90 });
+    return json({
+      piiRedaction: mem.piiRedaction !== false,
+      maxRetentionDays: (mem.maxRetentionDays as number) || 90,
+    });
   }
   if (req.method === 'PUT' && path === '/api/memory/privacy') {
     const body = await req.json() as { piiRedaction?: boolean; maxRetentionDays?: number };
     const config = await loadConfig();
     const mem = config.memory || {};
-    await saveConfig({ ...config, memory: { ...mem, piiRedaction: body.piiRedaction, maxRetentionDays: body.maxRetentionDays } as MemoryConfig });
+    await saveConfig({
+      ...config,
+      memory: {
+        ...mem,
+        piiRedaction: body.piiRedaction,
+        maxRetentionDays: body.maxRetentionDays,
+      } as MemoryConfig,
+    });
     return json({ ok: true });
   }
 
@@ -1064,12 +1099,40 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/memory/embeddings') {
     const config = await loadConfig();
     const emb = config.embeddings;
-    return json({ current: { provider: emb?.provider || 'stub', model: emb?.model || '', baseUrl: emb?.baseUrl || '', apiKey: emb?.apiKey || '', dimensions: emb?.dimensions || 64 }, options: [{ provider: 'stub', label: 'Stub / Local fallback' }, { provider: 'ollama', label: 'Ollama' }, { provider: 'openai', label: 'OpenAI' }] });
+    return json({
+      current: {
+        provider: emb?.provider || 'stub',
+        model: emb?.model || '',
+        baseUrl: emb?.baseUrl || '',
+        apiKey: emb?.apiKey || '',
+        dimensions: emb?.dimensions || 64,
+      },
+      options: [{ provider: 'stub', label: 'Stub / Local fallback' }, {
+        provider: 'ollama',
+        label: 'Ollama',
+      }, { provider: 'openai', label: 'OpenAI' }],
+    });
   }
   if (req.method === 'PUT' && path === '/api/memory/embeddings') {
-    const body = await req.json() as { provider?: string; model?: string; baseUrl?: string; apiKey?: string; dimensions?: number };
+    const body = await req.json() as {
+      provider?: string;
+      model?: string;
+      baseUrl?: string;
+      apiKey?: string;
+      dimensions?: number;
+    };
     const config = await loadConfig();
-    await saveConfig({ ...config, embeddings: { provider: (body.provider || config.embeddings?.provider || 'stub') as EmbeddingConfig['provider'], model: body.model, baseUrl: body.baseUrl, apiKey: body.apiKey, dimensions: body.dimensions ?? config.embeddings?.dimensions } });
+    await saveConfig({
+      ...config,
+      embeddings: {
+        provider:
+          (body.provider || config.embeddings?.provider || 'stub') as EmbeddingConfig['provider'],
+        model: body.model,
+        baseUrl: body.baseUrl,
+        apiKey: body.apiKey,
+        dimensions: body.dimensions ?? config.embeddings?.dimensions,
+      },
+    });
     return json({ ok: true });
   }
 
@@ -1077,29 +1140,71 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/memory/vector-store') {
     const config = await loadConfig();
     const vs = config.memory?.vectorStore;
-    return json({ current: { kind: vs?.kind || 'sqlite', url: vs?.url || '', apiKey: vs?.apiKey || '', collection: vs?.collection || '' }, options: [{ kind: 'sqlite', label: 'SQLite', description: 'Local file-backed fallback' }, { kind: 'qdrant', label: 'Qdrant', description: 'Vector DB with payload filters' }, { kind: 'chromadb', label: 'ChromaDB', description: 'Collection-based vector store' }, { kind: 'pinecone', label: 'Pinecone', description: 'Managed hosted vector index' }], health: { ok: !!vs?.url || (vs?.kind || 'sqlite') === 'sqlite' } });
+    return json({
+      current: {
+        kind: vs?.kind || 'sqlite',
+        url: vs?.url || '',
+        apiKey: vs?.apiKey || '',
+        collection: vs?.collection || '',
+      },
+      options: [
+        { kind: 'sqlite', label: 'SQLite', description: 'Local file-backed fallback' },
+        { kind: 'qdrant', label: 'Qdrant', description: 'Vector DB with payload filters' },
+        { kind: 'chromadb', label: 'ChromaDB', description: 'Collection-based vector store' },
+        { kind: 'pinecone', label: 'Pinecone', description: 'Managed hosted vector index' },
+      ],
+      health: { ok: !!vs?.url || (vs?.kind || 'sqlite') === 'sqlite' },
+    });
   }
   if (req.method === 'PUT' && path === '/api/memory/vector-store') {
-    const body = await req.json() as { kind?: string; url?: string; apiKey?: string; collection?: string };
+    const body = await req.json() as {
+      kind?: string;
+      url?: string;
+      apiKey?: string;
+      collection?: string;
+    };
     const config = await loadConfig();
-    await saveConfig({ ...config, memory: { ...config.memory, vectorStore: { kind: (body.kind || 'sqlite') as MemoryVectorStoreConfig['kind'], url: body.url, apiKey: body.apiKey, collection: body.collection } } });
+    await saveConfig({
+      ...config,
+      memory: {
+        ...config.memory,
+        vectorStore: {
+          kind: (body.kind || 'sqlite') as MemoryVectorStoreConfig['kind'],
+          url: body.url,
+          apiKey: body.apiKey,
+          collection: body.collection,
+        },
+      },
+    });
     return json({ ok: true });
   }
 
   // GET /api/metacognition/history
   if (req.method === 'GET' && path === '/api/metacognition/history') {
     const db = await getLensDb();
-    const rows = await db.all(`SELECT id, event_type, session_id, actor, action, summary, payload, error, model, started_at, duration_ms, created_at FROM lens_events WHERE event_type = 'meta_assessment' ORDER BY started_at DESC LIMIT 100`);
+    const rows = await db.all(
+      `SELECT id, event_type, session_id, actor, action, summary, payload, error, model, started_at, duration_ms, created_at FROM lens_events WHERE event_type = 'meta_assessment' ORDER BY started_at DESC LIMIT 100`,
+    );
     return json(rows);
   }
 
   // GET /api/metacognition/summary
   if (req.method === 'GET' && path === '/api/metacognition/summary') {
     const db = await getLensDb();
-    const decisions = await db.all(`SELECT action, COUNT(*) as count FROM lens_events WHERE event_type = 'meta_assessment' GROUP BY action ORDER BY count DESC`);
-    const escRow = await db.get(`SELECT COUNT(*) as total FROM lens_events WHERE event_type = 'meta_assessment' AND error IS NOT NULL AND error != ''`);
-    const critiques = await db.all(`SELECT id, session_id, payload, summary, started_at FROM lens_events WHERE event_type = 'reflection_generated' AND actor = 'adversarial' ORDER BY started_at DESC LIMIT 5`);
-    return json({ decisions: decisions || [], totalEscalations: escRow?.total || 0, recentCritiques: critiques || [] });
+    const decisions = await db.all(
+      `SELECT action, COUNT(*) as count FROM lens_events WHERE event_type = 'meta_assessment' GROUP BY action ORDER BY count DESC`,
+    );
+    const escRow = await db.get(
+      `SELECT COUNT(*) as total FROM lens_events WHERE event_type = 'meta_assessment' AND error IS NOT NULL AND error != ''`,
+    );
+    const critiques = await db.all(
+      `SELECT id, session_id, payload, summary, started_at FROM lens_events WHERE event_type = 'reflection_generated' AND actor = 'adversarial' ORDER BY started_at DESC LIMIT 5`,
+    );
+    return json({
+      decisions: decisions || [],
+      totalEscalations: escRow?.total || 0,
+      recentCritiques: critiques || [],
+    });
   }
 
   // GET /api/memory/graph/entities?q=
@@ -1506,9 +1611,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     try {
       const repo = await getRepo(body.fullName, token);
       const name = body.projectName || repo.name;
-      if (/[^a-zA-Z0-9_-]/.test(name)) return err('Project name may only contain letters, numbers, hyphens, and underscores', 400);
+      if (/[^a-zA-Z0-9_-]/.test(name)) {
+        return err('Project name may only contain letters, numbers, hyphens, and underscores', 400);
+      }
       const cloneDir = join(PATHS.dataDir, 'workspaces', name);
-      const cmd = new Deno.Command('git', { args: ['clone', repo.html_url, cloneDir], stdout: 'null', stderr: 'null' });
+      const cmd = new Deno.Command('git', {
+        args: ['clone', repo.html_url, cloneDir],
+        stdout: 'null',
+        stderr: 'null',
+      });
       const result = await cmd.output();
       if (!result.success) return err('Failed to clone repository', 500);
       const { createProject: createFsProject } = await import('../projects/manager.ts');
@@ -1517,9 +1628,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
         agentId: 'default',
         path: cloneDir,
       });
-      try { await (await import('../codegraph/sync.ts')).indexRepository(cloneDir, name); } catch { /* ok */ }
+      try {
+        await (await import('../codegraph/sync.ts')).indexRepository(cloneDir, name);
+      } catch { /* ok */ }
       return json(project, 201);
-    } catch (e) { return err((e as Error).message, 400); }
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
 
   // POST /api/projects
@@ -2173,8 +2288,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/tools/registry') {
     const { globalRegistry } = await import('../tools/registry.ts');
     const tools = globalRegistry.list().map((t) => ({
-      name: t.definition.name, description: t.definition.description,
-      params: t.definition.params || [], capabilities: t.definition.capabilities || [],
+      name: t.definition.name,
+      description: t.definition.description,
+      params: t.definition.params || [],
+      capabilities: t.definition.capabilities || [],
     }));
     return json(tools);
   }
@@ -2309,7 +2426,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/processes/sub-agents — list running sub-agent processes
   if (req.method === 'GET' && path === '/api/processes/sub-agents') {
     try {
-      const cmd = new Deno.Command('ps', { args: ['-eo', 'pid,args'], stdout: 'piped', stderr: 'null' });
+      const cmd = new Deno.Command('ps', {
+        args: ['-eo', 'pid,args'],
+        stdout: 'piped',
+        stderr: 'null',
+      });
       const output = await cmd.output();
       const text = new TextDecoder().decode(output.stdout);
       const processes: Array<{ pid: number; cmd: string }> = [];
@@ -2321,16 +2442,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
         }
       }
       return json({ processes });
-    } catch { return json({ processes: [] }); }
+    } catch {
+      return json({ processes: [] });
+    }
   }
 
   // GET /api/providers/comparison
   if (req.method === 'GET' && path === '/api/providers/comparison') {
     const config = await loadConfig();
     const { PROVIDER_DEFAULT_CONTEXT_WINDOWS } = await import('../llm/router.ts');
-    const providers = Object.entries(config.providers).filter(([,c]) => c != null).map(([k, c]) => ({
-      kind: k, model: (c as { model?: string }).model || '',
-      contextWindow: PROVIDER_DEFAULT_CONTEXT_WINDOWS[k as keyof typeof PROVIDER_DEFAULT_CONTEXT_WINDOWS] || 0,
+    const providers = Object.entries(config.providers).filter(([, c]) => c != null).map((
+      [k, c],
+    ) => ({
+      kind: k,
+      model: (c as { model?: string }).model || '',
+      contextWindow:
+        PROVIDER_DEFAULT_CONTEXT_WINDOWS[k as keyof typeof PROVIDER_DEFAULT_CONTEXT_WINDOWS] || 0,
     }));
     return json(providers);
   }
@@ -2342,7 +2469,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { selectSupervisorModel } = await import('../security/supervisor.ts');
     const config = await loadConfig();
     const sel = await selectSupervisorModel();
-    return json({ provider: sel.provider, model: sel.model, cacheTTL: config.supervisor?.cacheTTL ?? 3600 });
+    return json({
+      provider: sel.provider,
+      model: sel.model,
+      cacheTTL: config.supervisor?.cacheTTL ?? 3600,
+    });
   }
 
   // PUT /api/security/supervisor
@@ -2350,7 +2481,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const body = await req.json() as { provider?: string; model?: string; cacheTTL?: number };
     const config = await loadConfig();
     const cur = config.supervisor || { provider: config.defaultProvider, model: 'gpt-4o-mini' };
-    await saveConfig({ ...config, supervisor: { provider: (body.provider || cur.provider) as ProviderKind, model: body.model || cur.model, cacheTTL: body.cacheTTL ?? cur.cacheTTL ?? 3600 } });
+    await saveConfig({
+      ...config,
+      supervisor: {
+        provider: (body.provider || cur.provider) as ProviderKind,
+        model: body.model || cur.model,
+        cacheTTL: body.cacheTTL ?? cur.cacheTTL ?? 3600,
+      },
+    });
     return json({ ok: true });
   }
 
@@ -2362,7 +2500,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   if (req.method === 'GET' && path === '/api/security/supervisor/history') {
     const { getDecisionCacheEntries } = await import('../security/supervisor.ts');
-    const entries = getDecisionCacheEntries().map(e => ({ timestamp: e.expiresAt, allowed: e.allowed, tool: e.key.split(':')[1] || e.key }));
+    const entries = getDecisionCacheEntries().map((e) => ({
+      timestamp: e.expiresAt,
+      allowed: e.allowed,
+      tool: e.key.split(':')[1] || e.key,
+    }));
     return json(entries);
   }
 
@@ -3573,8 +3715,21 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { listProjects: listFsProjects } = await import('../projects/manager.ts');
     const codeProjects = await listCodeProjects();
     const fsProjects = await listFsProjects();
-    const codeNames = new Set(codeProjects.map(p => p.name));
-    const merged = [...codeProjects, ...fsProjects.filter(p => !codeNames.has(p.name)).map(p => ({ id: -1, name: p.name, root_path: p.path, language_stats: null, node_count: 0, edge_count: 0, indexed_at: p.created, git_commit: null, version: 0 }))];
+    const codeNames = new Set(codeProjects.map((p) => p.name));
+    const merged = [
+      ...codeProjects,
+      ...fsProjects.filter((p) => !codeNames.has(p.name)).map((p) => ({
+        id: -1,
+        name: p.name,
+        root_path: p.path,
+        language_stats: null,
+        node_count: 0,
+        edge_count: 0,
+        indexed_at: p.created,
+        git_commit: null,
+        version: 0,
+      })),
+    ];
     return json(merged);
   }
 
@@ -4154,7 +4309,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const { listCheckpoints } = await import('../memori/store.ts');
       const checkpoints = await listCheckpoints(db, { sessionId, limit });
       return json({ checkpoints });
-    } catch { return json({ checkpoints: [] }); }
+    } catch {
+      return json({ checkpoints: [] });
+    }
   }
 
   // POST /api/security/approvals/bulk — bulk approve/deny (#254)
@@ -4751,7 +4908,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // ── MCP Connections ──────────────────────────────────────
   if (req.method === 'GET' && path === '/api/mcp/connections') {
     const { listConnections } = await import('../mcp/client.ts');
-    return json(listConnections().map(c => ({ name: c.config.name, config: c.config, connected: c.connected, serverInfo: c.serverInfo, tools: c.tools.length, calls: c.calls, errors: c.errors })));
+    return json(
+      listConnections().map((c) => ({
+        name: c.config.name,
+        config: c.config,
+        connected: c.connected,
+        serverInfo: c.serverInfo,
+        tools: c.tools.length,
+        calls: c.calls,
+        errors: c.errors,
+      })),
+    );
   }
   const mcpGetMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)$/);
   if (req.method === 'DELETE' && mcpGetMatch) {
@@ -4765,13 +4932,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(conn?.tools || []);
   }
   if (req.method === 'POST' && path === '/api/mcp/connections') {
-    const body = await req.json() as { name: string; transport: string; command?: string; args?: string[]; url?: string; autoConnect?: boolean };
+    const body = await req.json() as {
+      name: string;
+      transport: string;
+      command?: string;
+      args?: string[];
+      url?: string;
+      autoConnect?: boolean;
+    };
     if (!body.name) return err('name is required', 400);
-    const config = { name: body.name, transport: body.transport as 'stdio'|'http', command: body.command, args: body.args, url: body.url };
+    const config = {
+      name: body.name,
+      transport: body.transport as 'stdio' | 'http',
+      command: body.command,
+      args: body.args,
+      url: body.url,
+    };
     try {
-      const conn = body.transport === 'http' ? await (await import('../mcp/client.ts')).connectHttp(config) : await (await import('../mcp/client.ts')).connectStdio(config);
+      const conn = body.transport === 'http'
+        ? await (await import('../mcp/client.ts')).connectHttp(config)
+        : await (await import('../mcp/client.ts')).connectStdio(config);
       return json({ name: conn.config.name, connected: conn.connected }, 201);
-    } catch (e) { return err((e as Error).message, 400); }
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
   const mcpConnectMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/connect$/);
   if (req.method === 'POST' && mcpConnectMatch) {
@@ -4781,14 +4965,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
     try {
       await connectStdio(conn.config);
       return json({ ok: true });
-    } catch (e) { return err((e as Error).message, 400); }
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
   const mcpDiscMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/disconnect$/);
   if (req.method === 'POST' && mcpDiscMatch) {
     try {
       await (await import('../mcp/client.ts')).disconnectStdio(mcpDiscMatch[1]);
       return json({ ok: true });
-    } catch (e) { return err((e as Error).message, 400); }
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
   if (req.method === 'GET' && path === '/api/mcp/server') {
     return json({ running: true, port: 0 });
@@ -4800,23 +4988,47 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const { getConnection } = await import('../mcp/client.ts');
       const conn = getConnection('chrome-bridge');
       return json({
-        running: !!conn, connected: conn?.connected || false,
-        serverInfo: conn?.serverInfo || null, tools: conn?.tools?.length || 0,
-        calls: conn?.calls || 0, errors: conn?.errors || 0,
-        toolNames: conn?.tools?.map(t => t.name) || [],
+        running: !!conn,
+        connected: conn?.connected || false,
+        serverInfo: conn?.serverInfo || null,
+        tools: conn?.tools?.length || 0,
+        calls: conn?.calls || 0,
+        errors: conn?.errors || 0,
+        toolNames: conn?.tools?.map((t) => t.name) || [],
       });
-    } catch { return json({ running: false, connected: false, serverInfo: null, tools: 0, calls: 0, errors: 0, toolNames: [] }); }
+    } catch {
+      return json({
+        running: false,
+        connected: false,
+        serverInfo: null,
+        tools: 0,
+        calls: 0,
+        errors: 0,
+        toolNames: [],
+      });
+    }
   }
   if (req.method === 'POST' && path === '/api/chrome-bridge/start') {
     try {
-      const config = { name: 'chrome-bridge', transport: 'stdio' as const, command: 'npx', args: ['-y', '@anthropic/chrome-bridge-mcp'] };
+      const config = {
+        name: 'chrome-bridge',
+        transport: 'stdio' as const,
+        command: 'npx',
+        args: ['-y', '@anthropic/chrome-bridge-mcp'],
+      };
       await (await import('../mcp/client.ts')).connectStdio(config);
       return json({ ok: true });
-    } catch (e) { return err((e as Error).message, 400); }
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
   if (req.method === 'POST' && path === '/api/chrome-bridge/stop') {
-    try { await (await import('../mcp/client.ts')).disconnectStdio('chrome-bridge'); return json({ ok: true }); }
-    catch (e) { return err((e as Error).message, 400); }
+    try {
+      await (await import('../mcp/client.ts')).disconnectStdio('chrome-bridge');
+      return json({ ok: true });
+    } catch (e) {
+      return err((e as Error).message, 400);
+    }
   }
   if (req.method === 'GET' && path === '/api/chrome-bridge/tools') {
     const { getConnection } = await import('../mcp/client.ts');
