@@ -3,7 +3,7 @@ const MAX_OUTPUT_BYTES = 64 * 1024;
 
 import { buildSandboxCommand as buildSecureSandbox } from './agent-sandbox.ts';
 
-export type SandboxRuntime = 'docker' | 'subprocess' | 'gvisor';
+export type SandboxRuntime = 'docker' | 'subprocess' | 'gvisor' | 'e2b' | 'daytona';
 
 export interface SandboxOptions {
   code: string;

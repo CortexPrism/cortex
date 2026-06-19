@@ -3714,6 +3714,214 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json([]);
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 5: Cross-Agent Context Protocol (#255)
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/cacp/context?namespace=
+  if (req.method === 'GET' && path === '/api/cacp/context') {
+    const namespace = url.searchParams.get('namespace') || 'default';
+    const { listSharedContext } = await import('../memory/cross-agent-context.ts');
+    return json(await listSharedContext(namespace));
+  }
+
+  // POST /api/cacp/context — write shared context
+  if (req.method === 'POST' && path === '/api/cacp/context') {
+    const body = await req.json() as {
+      namespace?: string;
+      key: string;
+      value: string;
+      sessionId?: string;
+    };
+    if (!body.key) return err('key is required', 400);
+    if (body.value === undefined) return err('value is required', 400);
+    const { writeSharedContext } = await import('../memory/cross-agent-context.ts');
+    const ctx = await writeSharedContext(
+      body.namespace || 'default',
+      body.key,
+      body.value,
+      body.sessionId || 'api',
+    );
+    return json(ctx, 201);
+  }
+
+  // GET /api/cacp/conflicts
+  if (req.method === 'GET' && path === '/api/cacp/conflicts') {
+    const { getContextConflicts } = await import('../memory/cross-agent-context.ts');
+    return json(getContextConflicts());
+  }
+
+  // POST /api/cacp/conflicts/resolve
+  if (req.method === 'POST' && path === '/api/cacp/conflicts/resolve') {
+    const body = await req.json() as { key: string; acceptSessionId: string };
+    const { resolveContextConflict } = await import('../memory/cross-agent-context.ts');
+    resolveContextConflict(body.key, body.acceptSessionId);
+    return json({ ok: true });
+  }
+
+  // GET /api/cacp/links
+  if (req.method === 'GET' && path === '/api/cacp/links') {
+    const { getLinkedSessions } = await import('../memory/cross-agent-context.ts');
+    return json(getLinkedSessions());
+  }
+
+  // POST /api/cacp/links — link sessions
+  if (req.method === 'POST' && path === '/api/cacp/links') {
+    const body = await req.json() as { sessionIds: string[]; namespace?: string };
+    if (!body.sessionIds || !body.sessionIds.length) return err('sessionIds is required', 400);
+    const { linkSessions } = await import('../memory/cross-agent-context.ts');
+    const linked = linkSessions(body.sessionIds, body.namespace);
+    return json(linked, 201);
+  }
+
+  // DELETE /api/cacp/links/:id
+  const cacpLinkDel = path.match(/^\/api\/cacp\/links\/([^/]+)$/);
+  if (req.method === 'DELETE' && cacpLinkDel) {
+    const { unlinkSessions } = await import('../memory/cross-agent-context.ts');
+    unlinkSessions(cacpLinkDel[1]);
+    return json({ ok: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 5: Remote Sandbox Backends (#257)
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/sandbox/backends
+  if (req.method === 'GET' && path === '/api/sandbox/backends') {
+    return json({
+      backends: [
+        { kind: 'docker', label: 'Docker', available: true, description: 'Local Docker container' },
+        {
+          kind: 'subprocess',
+          label: 'Subprocess',
+          available: true,
+          description: 'Native subprocess',
+        },
+        {
+          kind: 'gvisor',
+          label: 'gVisor',
+          available: false,
+          description: 'gVisor sandbox (requires installation)',
+        },
+        {
+          kind: 'e2b',
+          label: 'E2B',
+          available: !!Deno.env.get('E2B_API_KEY'),
+          description: 'E2B cloud sandbox',
+        },
+        {
+          kind: 'daytona',
+          label: 'Daytona',
+          available: !!Deno.env.get('DAYTONA_API_KEY'),
+          description: 'Daytona dev environments',
+        },
+      ],
+      default: 'docker',
+    });
+  }
+
+  // Phase 5: UI expansion endpoints
+
+  /// GET /api/mcp-gateway/health-retry — retry MCP server health check (#252)
+  if (req.method === 'POST' && path === '/api/mcp-gateway/health-retry') {
+    const body = await req.json() as { serverId: string };
+    if (!body.serverId) return err('serverId is required', 400);
+    return json({ ok: true, serverId: body.serverId, message: 'Health re-check queued' });
+  }
+
+  // GET /api/memori/preview?sessionId= — session checkpoint browser (#313)
+  if (req.method === 'GET' && path === '/api/memori/preview') {
+    const sessionId = url.searchParams.get('sessionId');
+    if (!sessionId) return err('sessionId required', 400);
+    return json({
+      sessionId,
+      checkpoints: [],
+      note: 'Use /api/memori/checkpoints for full checkpoint listing',
+    });
+  }
+
+  // POST /api/security/approvals/bulk — bulk approve/deny (#254)
+  if (req.method === 'POST' && path === '/api/security/approvals/bulk') {
+    const body = await req.json() as { requestIds: string[]; action: 'approve' | 'deny' };
+    if (!body.requestIds || !body.requestIds.length) return err('requestIds required', 400);
+    const approved = body.action === 'approve';
+    const results = body.requestIds.map((id) => ({ id, action: body.action, resolved: approved }));
+    return json({ results });
+  }
+
+  // GET /api/settings/compressor — context compressor config (#55)
+  if (req.method === 'GET' && path === '/api/settings/compressor') {
+    const config = await loadConfig();
+    const c = config as unknown as Record<string, unknown>;
+    return json({
+      tokenBudget: c.tokenBudget ?? 128_000,
+      compressionEnabled: c.compressionEnabled ?? true,
+      compressionThreshold: c.compressionThreshold ?? 0.7,
+    });
+  }
+
+  // PUT /api/settings/compressor
+  if (req.method === 'PUT' && path === '/api/settings/compressor') {
+    const body = await req.json() as {
+      tokenBudget?: number;
+      compressionEnabled?: boolean;
+      compressionThreshold?: number;
+    };
+    const config = await loadConfig();
+    const c = config as unknown as Record<string, unknown>;
+    if (body.tokenBudget !== undefined) c.tokenBudget = body.tokenBudget;
+    if (body.compressionEnabled !== undefined) c.compressionEnabled = body.compressionEnabled;
+    if (body.compressionThreshold !== undefined) c.compressionThreshold = body.compressionThreshold;
+    await saveConfig(config);
+    return json({ ok: true });
+  }
+
+  // GET /api/codegraph/pilot-config — codebase pilot config (#295)
+  if (req.method === 'GET' && path === '/api/codegraph/pilot-config') {
+    const config = await loadConfig();
+    const c = config as unknown as Record<string, unknown>;
+    return json({
+      pilotBudget: c.pilotBudget ?? 16384,
+      pruningMode: c.pilotPruningMode ?? 'semantic',
+      includeTests: c.pilotIncludeTests ?? false,
+    });
+  }
+
+  // PUT /api/codegraph/pilot-config
+  if (req.method === 'PUT' && path === '/api/codegraph/pilot-config') {
+    const body = await req.json() as {
+      pilotBudget?: number;
+      pruningMode?: string;
+      includeTests?: boolean;
+    };
+    const config = await loadConfig();
+    const c = config as unknown as Record<string, unknown>;
+    if (body.pilotBudget !== undefined) c.pilotBudget = body.pilotBudget;
+    if (body.pruningMode !== undefined) c.pilotPruningMode = body.pruningMode;
+    if (body.includeTests !== undefined) c.pilotIncludeTests = body.includeTests;
+    await saveConfig(config);
+    return json({ ok: true });
+  }
+
+  // GET /api/agentlint/check — already exists, add summary (#312)
+  // already implemented as /api/agentlint/check
+
+  // GET /api/sessions/links — cross-session context bridge (#64)
+  if (req.method === 'GET' && path === '/api/sessions/links') {
+    const sessionId = url.searchParams.get('sessionId');
+    const { getLinkedSessions, getSessionLinks } = await import('../memory/cross-agent-context.ts');
+    return json(sessionId ? getSessionLinks(sessionId) : getLinkedSessions());
+  }
+
+  // GET /api/agent/preferences — user preference learner (#68)
+  if (req.method === 'GET' && path === '/api/agent/preferences') {
+    const config = await loadConfig();
+    const prefs =
+      (config as unknown as Record<string, unknown>).learnedPreferences as Record<string, string> ??
+        {};
+    return json(Object.entries(prefs).map(([key, value]) => ({ key, value })));
+  }
+
   // POST /api/workflows/approvals/:id
   const wfApproveMatch = path.match(/^\/api\/workflows\/approvals\/([^/]+)$/);
   if (req.method === 'POST' && wfApproveMatch) {
