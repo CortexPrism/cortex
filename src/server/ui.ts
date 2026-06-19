@@ -983,9 +983,6 @@ const HTML = `<!DOCTYPE html>
     </button>
 
     <!-- Tier 1-3 New Features -->
-    <button class="nav-item" onclick="showPage('a2a');closeMobileSidebar()" id="nav-a2a">
-      <span class="icon">🔗</span>A2A Bridge
-    </button>
     <button class="nav-item" onclick="showPage('memori');closeMobileSidebar()" id="nav-memori">
       <span class="icon">⏱</span>Memori
     </button>
@@ -2356,20 +2353,6 @@ const HTML = `<!DOCTYPE html>
         <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">Ctrl+Enter</kbd> Approve &nbsp;
         <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">D</kbd> Details
       </div>
-    </div>
-  </div>
-
-  <!-- Page: A2A Bridge -->
-  <div id="page-a2a" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">A2A Protocol Bridge</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Agent-to-Agent — discover and collaborate with external agents</p>
-      </div>
-      <button class="btn btn-ghost" onclick="loadA2APage()" style="font-size:11px;">↻ Refresh</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;" id="a2a-content">
-      <div class="widget-loading">Loading…</div>
     </div>
   </div>
 
@@ -3896,7 +3879,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','a2a','memori','agentlint','pluginpanels'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3958,7 +3941,6 @@ function showPage(name) {
     tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'tools'); },
     'mcp-gateway': () => { loadMcpGatewayPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'mcp-gateway'); },
     metacognition: loadMetacognition,
-    a2a: loadA2APage,
     memori: loadMemoriPage,
     agentlint: loadAgentLintPage,
   };
@@ -4539,10 +4521,10 @@ function renderJobCard(job) {
     '</div>',
     detail ? '<div style="font-size:11px;color:' + (job.last_error ? '#f87171' : 'var(--text3)') + ';background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:8px 10px;border-radius:6px;">' + esc(truncateText(detail, 220)) + '</div>' : '',
     '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">',
-    '<button class="btn btn-ghost" style="font-size:11px;" onclick="triggerJob(' + JSON.stringify(job.id) + ')">Trigger</button>',
-    '<button class="btn btn-ghost" style="font-size:11px;" onclick="openJobDetails(' + JSON.stringify(job.id) + ')">Logs</button>',
-    '<button class="btn btn-ghost" style="font-size:11px;" onclick="cancelJobUI(' + JSON.stringify(job.id) + ')">Cancel</button>',
-    '<button class="btn" style="font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteJobUI(' + JSON.stringify(job.id) + ')">Delete</button>',
+    '<button class="btn btn-ghost" style="font-size:11px;" onclick="triggerJob(\\'' + esc(job.id) + '\\')">Trigger</button>',
+    '<button class="btn btn-ghost" style="font-size:11px;" onclick="openJobDetails(\\'' + esc(job.id) + '\\')">Logs</button>',
+    '<button class="btn btn-ghost" style="font-size:11px;" onclick="cancelJobUI(\\'' + esc(job.id) + '\\')">Cancel</button>',
+    '<button class="btn" style="font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteJobUI(\\'' + esc(job.id) + '\\')">Delete</button>',
     '</div>',
     '</div>',
   ].join('');
@@ -8215,6 +8197,8 @@ async function loadAgents() {
       ac.push('</div></div></div>');
       return ac.join('');
     }).join('');
+
+    loadA2ABridgeSection(el);
   } catch (e) {
     el.innerHTML = \`<p style="color:var(--text3);font-size:13px;">Error loading agents: \${e.message}</p>\`;
   }
@@ -8234,6 +8218,44 @@ async function deleteAgent(id) {
   else {
     const data = await res.json();
     toast(data.error || 'Failed to delete agent', 'error');
+  }
+}
+
+async function loadA2ABridgeSection(parentEl) {
+  parentEl.insertAdjacentHTML('beforeend', '<div id="a2a-bridge-section" style="margin-top:16px;"><div class="card" style="padding:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><h3 style="font-size:13px;font-weight:600;">🔗 A2A Bridge</h3><button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="var s=document.getElementById(\\'a2a-bridge-section\\');if(s)s.remove();loadA2ABridgeSection(document.getElementById(\\'agents-content\\'));">↻</button></div><div id="a2a-bridge-content" style="font-size:12px;color:var(--text2);">Loading…</div></div></div>');
+  var bc = document.getElementById('a2a-bridge-content');
+  if (!bc) return;
+  try {
+    var r = await fetch(BASE + '/api/a2a/agent-card.json');
+    var card = await r.json();
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">';
+    html += '<div style="background:var(--bg3);border-radius:6px;padding:10px;">';
+    html += '<div style="font-size:11px;font-weight:500;">' + esc(card.name || 'CortexPrism') + '</div>';
+    html += '<div class="stat-row"><span>Version</span><span>' + esc(card.version || 'N/A') + '</span></div>';
+    html += '<div class="stat-row"><span>Streaming</span><span>' + (card.capabilities?.streaming ? '✅' : '❌') + '</span></div>';
+    html += '<div class="stat-row"><span>Skills</span><span>' + (card.skills?.length || 0) + '</span></div>';
+    html += '</div>';
+    html += '<div style="background:var(--bg3);border-radius:6px;padding:10px;">';
+    html += '<div style="font-size:11px;font-weight:500;">Interfaces</div>';
+    if (card.interfaces) {
+      card.interfaces.forEach(function(iface) {
+        html += '<div class="stat-row"><span>' + esc(iface.protocol || '') + '</span><span style="font-size:10px;">' + esc(iface.url || '') + '</span></div>';
+      });
+    }
+    html += '</div></div>';
+    if (card.skills && card.skills.length > 0) {
+      html += '<div style="font-size:11px;font-weight:500;margin-bottom:6px;">Skills (' + card.skills.length + ')</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">';
+      card.skills.forEach(function(s) {
+        html += '<div style="background:var(--bg3);border-radius:6px;padding:8px;"><div style="font-size:11px;font-weight:500;">' + esc(s.name || s.id) + '</div><div style="font-size:10px;color:var(--text3);">' + esc(s.description || '') + '</div>';
+        if (s.tags) html += '<div style="margin-top:3px;">' + (s.tags||[]).map(function(t){return '<span class="badge" style="font-size:8px;">'+esc(t)+'</span>'}).join(' ') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    bc.innerHTML = html;
+  } catch(e) {
+    bc.innerHTML = '<span style="color:var(--accent-red);">Failed to load A2A data: ' + esc(String(e)) + '</span>';
   }
 }
 
@@ -14024,44 +14046,6 @@ window.addEventListener('hashchange', () => {
   const page = location.hash.replace('#', '');
   if (page && PAGES.includes(page)) showPage(page);
 });
-
-// ── A2A Bridge Page ──────────────────────────────────────
-async function loadA2APage() {
-  var c = document.getElementById('a2a-content');
-  if (!c) return;
-  c.innerHTML = '<div class="widget-loading">Loading…</div>';
-  try {
-    var r = await fetch('/api/a2a/agent-card.json');
-    var card = await r.json();
-    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
-    html += '<div class="card" style="padding:16px;"><h3 style="font-size:13px;font-weight:600;">Agent Card</h3>';
-    html += '<div class="stat-row"><span>Name</span><span>' + esc(card.name || 'Unknown') + '</span></div>';
-    html += '<div class="stat-row"><span>Version</span><span>' + esc(card.version || 'N/A') + '</span></div>';
-    html += '<div class="stat-row"><span>Streaming</span><span>' + (card.capabilities?.streaming ? '✅' : '❌') + '</span></div>';
-    html += '<div class="stat-row"><span>Skills</span><span>' + (card.skills?.length || 0) + '</span></div>';
-    html += '</div>';
-    html += '<div class="card" style="padding:16px;"><h3 style="font-size:13px;font-weight:600;">Interfaces</h3>';
-    if (card.interfaces) {
-      card.interfaces.forEach(function(iface) {
-        html += '<div class="stat-row"><span>' + esc(iface.protocol || '') + '</span><span style="font-size:10px;">' + esc(iface.url || '') + '</span></div>';
-      });
-    }
-    html += '</div></div>';
-    if (card.skills && card.skills.length > 0) {
-      html += '<div class="card" style="padding:16px;margin-top:12px;"><h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Skills (' + card.skills.length + ')</h3>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">';
-      card.skills.forEach(function(s) {
-        html += '<div style="background:var(--bg3);border-radius:6px;padding:10px;"><div style="font-size:12px;font-weight:500;">' + esc(s.name || s.id) + '</div><div style="font-size:10px;color:var(--text3);">' + esc(s.description || '') + '</div>';
-        if (s.tags) html += '<div style="margin-top:4px;">' + (s.tags||[]).map(function(t){return '<span class="badge" style="font-size:9px;">'+esc(t)+'</span>'}).join(' ') + '</div>';
-        html += '</div>';
-      });
-      html += '</div></div>';
-    }
-    c.innerHTML = html;
-  } catch(e) {
-    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load A2A data: ' + esc(String(e)) + '</div>';
-  }
-}
 
 // ── MCP Gateway Page ────────────────────────────────────
 async function loadMcpGatewayPage() {
