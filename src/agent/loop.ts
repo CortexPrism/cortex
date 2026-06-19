@@ -19,6 +19,8 @@ import { appendToMemoryFile } from './soul.ts';
 import { adversarialReflection, reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
+import { logPlan } from './planner.ts';
+import { detectGoalDrift, getSessionGoal, setSessionGoal } from './drift-detector.ts';
 import { createPipelineContext, runHooksForStage } from '../pipeline/manager.ts';
 import { cleanupSessionState, registerBuiltinHooks } from '../pipeline/builtin.ts';
 import type { AgentState } from '../pipeline/types.ts';
@@ -403,6 +405,26 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         },
       }).catch(() => {});
     });
+  }
+
+  logPlan({
+    sessionId,
+    turnId,
+    decision: metaAssessment.decision,
+    reason: metaAssessment.reason,
+    suggestedPrefix: metaAssessment.suggestedPrefix,
+    suggestedSubAgents: metaAssessment.suggestedSubAgents,
+    confidence: metaAssessment.confidence,
+    signalBreakdown: metaAssessment.signalBreakdown,
+    policyChecked: false,
+    policyViolations: [],
+  });
+
+  const prevGoal = getSessionGoal(sessionId);
+  const drift = detectGoalDrift(sessionId, turnId, effectiveInput, prevGoal);
+  setSessionGoal(sessionId, effectiveInput);
+  if (drift.driftScore >= 0.4) {
+    state.goalDrift = { detected: true, score: drift.driftScore, previousGoal: prevGoal };
   }
 
   const postAssessCtx = createPipelineContext({

@@ -34,6 +34,12 @@ export interface AgentState {
   mqmPredictionMode?: string;
   /** MQM prediction confidence */
   mqmPredictionConfidence?: number;
+  /** Goal drift detection result */
+  goalDrift?: {
+    detected: boolean;
+    score: number;
+    previousGoal?: string;
+  };
 }
 
 export interface PipelineContext {
