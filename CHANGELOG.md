@@ -49,6 +49,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - "Goal Drift" tab added to Workflows page bottom panel showing drift score, previous goal, new input, and timestamp
   - `GET /api/workflows/drift?sessionId=` endpoint for querying drift events
 
+- **Parallel Sub-Agent Dispatcher (#58)** — sub-agent task tracking and live task board:
+  - New `src/agent/sub-agent-tracker.ts` with `trackSubAgentStart()`, `trackSubAgentEnd()`, and `getSubAgentTaskBoard()`
+  - Tracking integrated into `sub_agent.ts` tool at start and all completion paths (success, error, fallthrough)
+  - In-memory tracking of active tasks + rolling recent history (max 100 completed)
+  - "Sub-Agents" tab added to Workflows page: pulsing green dots for active tasks, status badges for completed/failed
+  - Active tasks auto-refresh every 3 seconds when tab is selected
+  - `GET /api/workflows/tasks` endpoint for the task board data
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed

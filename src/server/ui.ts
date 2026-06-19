@@ -2474,6 +2474,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="border-top:1px solid var(--border);" id="wf-bottom-tabs">
           <button class="btn btn-ghost active" onclick="switchWorkflowTab('history')" id="wf-tab-history" style="font-size:11px;padding:6px 12px;border-radius:0;">Run History</button>
+          <button class="btn btn-ghost" onclick="switchWorkflowTab('tasks')" id="wf-tab-tasks" style="font-size:11px;padding:6px 12px;border-radius:0;">Sub-Agents</button>
           <button class="btn btn-ghost" onclick="switchWorkflowTab('drift')" id="wf-tab-drift" style="font-size:11px;padding:6px 12px;border-radius:0;">Goal Drift</button>
           <button class="btn btn-ghost" onclick="switchWorkflowTab('approvals')" id="wf-tab-approvals" style="font-size:11px;padding:6px 12px;border-radius:0;">Approval Queue</button>
         </div>
@@ -12312,13 +12313,60 @@ async function execWorkflow() {
 }
 function switchWorkflowTab(tab) {
   wfCurrentTab = tab;
-  ['history','drift','approvals'].forEach(function(t) {
+  ['history','tasks','drift','approvals'].forEach(function(t) {
     var btn = document.getElementById('wf-tab-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'history') loadWorkflowHistory();
+  else if (tab === 'tasks') loadWorkflowTasks();
   else if (tab === 'drift') loadWorkflowDrift();
   else loadWorkflowApprovals();
+}
+async function loadWorkflowTasks() {
+  var el = document.getElementById('wf-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Loading sub-agent tasks…</div>';
+  try {
+    var data = await fetch(BASE + '/api/workflows/tasks').then(r => r.json()).catch(function() { return { active: [], recent: [] }; });
+    var active = data.active || [];
+    var recent = data.recent || [];
+    var html = '';
+    if (active.length) {
+      html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">Active (' + active.length + ')</div>';
+      html += active.map(function(t) {
+        return '<div style="padding:8px;margin-bottom:4px;border:1px solid rgba(99,102,241,0.2);border-radius:6px;background:rgba(99,102,241,0.04);">' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="width:6px;height:6px;border-radius:50%;background:#4ade80;animation:pulse 1.5s infinite;"></span>' +
+          '<span style="font-size:11px;font-weight:500;">' + (t.subAgentType ? esc(t.subAgentType) : 'sub-agent') + '</span>' +
+          '<span style="font-size:10px;color:var(--text3);">' + timeAgo(t.startedAt) + '</span>' +
+          '</div>' +
+          '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + esc(t.task || '').substring(0, 80) + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    if (recent.length) {
+      html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;margin-top:12px;">Recently Completed</div>';
+      html += recent.map(function(t) {
+        var stColor = t.status === 'completed' ? '#4ade80' : '#f87171';
+        return '<div style="padding:6px;margin-bottom:2px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);">' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="width:6px;height:6px;border-radius:50%;background:' + stColor + ';"></span>' +
+          '<span style="font-size:10px;">' + (t.subAgentType ? esc(t.subAgentType) : 'task') + '</span>' +
+          '<span style="font-size:10px;color:' + stColor + ';">' + esc(t.status) + '</span>' +
+          '<span style="font-size:9px;color:var(--text3);">' + timeAgo(t.startedAt) + '</span>' +
+          '</div>' +
+          '<div style="font-size:9px;color:var(--text2);margin-top:1px;">' + esc(t.task || '').substring(0, 70) + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    if (!active.length && !recent.length) {
+      html = '<div class="empty">No sub-agent tasks yet. Sub-agents spawn when the agent delegates work to specialized processes.</div>';
+    }
+    el.innerHTML = html;
+    // Auto-refresh if there are active tasks
+    if (active.length && wfCurrentTab === 'tasks') {
+      setTimeout(function() { if (wfCurrentTab === 'tasks') loadWorkflowTasks(); }, 3000);
+    }
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
 }
 async function loadWorkflowDrift() {
   var el = document.getElementById('wf-bottom-panel');

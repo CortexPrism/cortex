@@ -2,6 +2,7 @@ import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { spawnSubAgent } from '../../agent/sub-agent.ts';
 import type { ProviderKind } from '../../config/config.ts';
 import { getSubAgentType, type SubAgentType } from '../../agent/sub-agent-types.ts';
+import { trackSubAgentEnd, trackSubAgentStart } from '../../agent/sub-agent-tracker.ts';
 
 export const subAgentTool: Tool = {
   definition: {
@@ -114,6 +115,7 @@ When you need to do multiple independent things at once, make multiple \`sub_age
         subAgentType,
       });
     }
+    trackSubAgentStart(subAgentId, context.sessionId, task, subAgentType);
 
     try {
       const iter = spawnSubAgent({
@@ -152,6 +154,7 @@ When you need to do multiple independent things at once, make multiple \`sub_age
           case 'done': {
             const duration = Date.now() - startTime;
             const result = event.result.response || chunks.join('');
+            trackSubAgentEnd(subAgentId, event.result.success, result);
             if (context.onProgress) {
               context.onProgress({
                 type: 'sub_agent_end',
@@ -168,6 +171,7 @@ When you need to do multiple independent things at once, make multiple \`sub_age
             };
           }
           case 'error':
+            trackSubAgentEnd(subAgentId, false, chunks.join(''), event.error);
             if (context.onProgress) {
               context.onProgress({
                 type: 'sub_agent_end',
@@ -196,6 +200,12 @@ When you need to do multiple independent things at once, make multiple \`sub_age
           error: 'Sub-agent finished without returning a result',
         });
       }
+      trackSubAgentEnd(
+        subAgentId,
+        false,
+        chunks.join(''),
+        'Sub-agent finished without returning a result',
+      );
       return {
         toolName: 'sub_agent',
         success: false,
