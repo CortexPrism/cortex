@@ -986,6 +986,12 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('memori');closeMobileSidebar()" id="nav-memori">
       <span class="icon">⏱</span>Memori
     </button>
+    <button class="nav-item" onclick="showPage('promptlab');closeMobileSidebar()" id="nav-promptlab">
+      <span class="icon">🧪</span>Prompt Lab
+    </button>
+    <button class="nav-item" onclick="showPage('pkm');closeMobileSidebar()" id="nav-pkm">
+      <span class="icon">📚</span>PKM
+    </button>
 
     <!-- Recent pages -->
     <div id="recent-pages-section" style="display:none;">
@@ -2385,6 +2391,67 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px;" id="mcp-gateway-content">
       <div class="widget-loading">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Page: Prompt Lab -->
+  <div id="page-promptlab" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Prompt Lab</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Design, version, and test prompt templates</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="showPromptCreateModal()" style="font-size:12px;padding:5px 14px;">+ New Template</button>
+        <button class="btn btn-ghost" onclick="loadPromptLab()" style="font-size:12px;">Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:300px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);border-bottom:1px solid var(--border);">Templates</div>
+        <div style="flex:1;overflow-y:auto;" id="pl-templates"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:12px;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);" id="pl-editor-title">Select a template</div>
+          <textarea id="pl-editor-text" class="inp" style="width:100%;min-height:180px;font-family:'JetBrains Mono',monospace;font-size:12px;margin-top:8px;resize:vertical;display:none;" placeholder="Prompt content…"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;" id="pl-editor-actions" style="display:none;">
+            <button class="btn btn-primary" onclick="savePromptTemplate()">Save</button>
+            <button class="btn btn-ghost" onclick="testPromptTemplate()">Test Run</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;" id="pl-runs">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;">Recent Runs</div>
+          <div id="pl-runs-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: PKM -->
+  <div id="page-pkm" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">PKM Assistant</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Personal Knowledge Management — sync with Obsidian, Logseq, Notion, Roam</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="showPkmConnectModal()" style="font-size:12px;padding:5px 14px;">+ Connect</button>
+        <button class="btn btn-ghost" onclick="loadPkmPage()" style="font-size:12px;">Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:300px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:10px 12px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);border-bottom:1px solid var(--border);">Connections</div>
+        <div style="flex:1;overflow-y:auto;padding:8px;" id="pkm-connections"></div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;">
+        <div style="text-align:center;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <p>Connect a PKM tool to sync knowledge</p>
+          <p style="font-size:11px;margin-top:4px;">Supports Obsidian, Logseq, Notion, and Roam Research</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -3892,7 +3959,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3934,6 +4001,8 @@ function showPage(name) {
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'settings'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
+    promptlab: loadPromptLab,
+    pkm: loadPkmPage,
     nodes: () => { loadNodes(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'nodes'); },
     quartermaster: () => { loadQuartermaster(); extendQuartermaster(); },
     dashboard: loadDashboard,
@@ -13485,7 +13554,36 @@ async function loadSupervisorHistory() {
   } catch(e) { el.innerHTML = '<div class="empty">No history</div>'; }
 }
 
-// ── Memory Extensions ──
+// ── Prompt Lab functions ───────────────────────────────────────
+var plTemplates = [], plRuns = [], plCurrentId = null;
+function loadPromptLab() { fetch(BASE+"/api/prompts").then(function(r){return r.json()}).then(function(data){ plTemplates=data.templates||[]; plRuns=data.runs||[]; renderPromptTemplates(); renderPromptRuns(); }).catch(function(){}); }
+function renderPromptTemplates() { var el=document.getElementById("pl-templates"); if(!el)return; el.innerHTML=plTemplates.length?plTemplates.map(function(t){ return "<div class=\"card-sm\" style=\"cursor:pointer;margin-bottom:4px;padding:8px 12px;"+(plCurrentId===t.id?"border-left:3px solid var(--accent);":"")+"\" onclick=\"selectPromptTemplate('"+t.id+"')\"><div style=\"font-weight:500;font-size:12px;\">"+esc(t.name)+"</div><div style=\"font-size:10px;color:var(--text3);\">v"+t.version+" · "+(t.tags||[]).join(", ")+"</div></div>" }).join(""):"<div class=\"empty\">No templates yet</div>"; }
+function selectPromptTemplate(id) { plCurrentId=id; var t=plTemplates.find(function(x){return x.id===id}); if(!t)return; document.getElementById("pl-editor-title").textContent=t.name+" (v"+t.version+")"; document.getElementById("pl-editor-text").style.display="block"; document.getElementById("pl-editor-text").value=t.content; document.getElementById("pl-editor-actions").style.display="flex"; renderPromptTemplates(); renderPromptRuns(); }
+function showPromptCreateModal() { var n=prompt("Template name:");if(!n)return;var c=prompt("Prompt content:");if(!c)return;fetch(BASE+"/api/prompts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:n,content:c})}).then(function(r){return r.json()}).then(function(){loadPromptLab()}); }
+function savePromptTemplate() { if(!plCurrentId)return;var c=document.getElementById("pl-editor-text").value;fetch(BASE+"/api/prompts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:plCurrentId,content:c})}).then(function(){toast("Saved","success");loadPromptLab()}); }
+function testPromptTemplate() { if(!plCurrentId)return;var c=document.getElementById("pl-editor-text").value;fetch(BASE+"/api/prompts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:plCurrentId,input:"test",output:c,score:1})}).then(function(){toast("Run recorded","success");loadPromptLab()}); }
+function renderPromptRuns() { var el=document.getElementById("pl-runs-list");if(!el)return;var f=plCurrentId?plRuns.filter(function(r){return r.templateId===plCurrentId}):plRuns;el.innerHTML=f.length?f.map(function(r){return "<div style=\"padding:6px;margin-bottom:4px;border:1px solid var(--border);border-radius:4px;font-size:10px;\"><span style=\"color:var(--text2);\">"+esc(r.model)+"</span> · <span style=\"color:"+(r.score&&r.score>0.5?"#4ade80":"#f87171")+"\">score:"+(r.score!=null?r.score.toFixed(2):"—")+"</span> · <span style=\"color:var(--text3);\">"+timeAgo(r.createdAt)+"</span></div>"}).join(""):"<div style=\"font-size:10px;color:var(--text3);\">No runs yet</div>"; }
+
+// ── PKM functions ───────────────────────────────────────────────
+var pkmConnections = [];
+function loadPkmPage() { fetch(BASE+"/api/pkm").then(function(r){return r.json()}).then(function(data){pkmConnections=data.connections||[];renderPkmConnections()}).catch(function(){}) }
+function renderPkmConnections() { var el=document.getElementById("pkm-connections");if(!el)return;var icons={obsidian:"O",logseq:"L",notion:"N",roam:"R"};el.innerHTML=pkmConnections.length?pkmConnections.map(function(c){return "<div class=\"card-sm\" style=\"margin-bottom:6px;padding:10px 12px;\"><div style=\"display:flex;align-items:center;gap:8px;\"><span style=\"font-size:18px;\">"+(icons[c.kind]||"?")+"</span><div style=\"flex:1;\"><div style=\"font-weight:500;font-size:12px;\">"+esc(c.name)+"</div><div style=\"font-size:10px;color:var(--text3);\">"+esc(c.kind)+" · "+c.fileCount+" files</div></div><span style=\"font-size:10px;color:"+(c.status==="connected"?"#4ade80":"#f87171")+"\">"+esc(c.status)+"</span></div><div style=\"display:flex;gap:6px;margin-top:6px;\"><button class=\"btn btn-ghost\" style=\"font-size:10px;padding:2px 8px;\" onclick=\"syncPkmConnection('"+c.id+"')\">Sync</button><button class=\"btn btn-ghost\" style=\"font-size:10px;padding:2px 8px;color:#f87171;\" onclick=\"disconnectPkm('"+c.id+"')\">x</button></div></div>"}).join(""):"<div class=\"empty\">No PKM connections</div>" }
+function showPkmConnectModal() { var k=prompt("PKM kind (obsidian, logseq, notion, roam):");if(!k)return;var p=prompt("Path:");if(!p)return;fetch(BASE+"/api/pkm/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:k,path:p,name:p.split("/").pop()||p})}).then(function(r){return r.json()}).then(function(){loadPkmPage()}) }
+function syncPkmConnection(id) { fetch(BASE+"/api/pkm/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id})}).then(function(r){return r.json()}).then(function(d){toast("Synced "+(d.fileCount||0)+" files","success");loadPkmPage()}) }
+function disconnectPkm(id) { pkmConnections=pkmConnections.filter(function(c){return c.id!==id});renderPkmConnections();toast("Disconnected","info") }
+
+// ── Page Enhancement Initializers ─────────────────────────────────
+var _enhanced = false;
+function initPageEnhancements() { if(_enhanced)return;_enhanced=true;var os=loadSettings;loadSettings=function(){os();setTimeout(function(){addSettingsCompressor();addSettingsPreferences();addSettingsSandbox();addSettingsA2A()},600)};var oe=loadEvalPage;loadEvalPage=function(){oe();setTimeout(function(){addEvalHarnesses();addEvalRagSection()},600)} }
+function addSettingsCompressor() { var c=document.getElementById("settings-content");if(!c||document.getElementById("s-comp-card"))return;var d=document.createElement("div");d.id="s-comp-card";d.className="card-sm";d.style.cssText="margin-top:16px;padding:14px;";d.innerHTML="<div style=\"font-size:12px;font-weight:600;margin-bottom:8px;\">Context Compressor (#55)</div><div class=\"stat-row\"><span>Token Budget</span><span><input type=\"range\" id=\"comp-budget\" min=\"16000\" max=\"256000\" step=\"8000\" value=\"128000\" oninput=\"document.getElementById('comp-bval').textContent=this.value\" style=\"width:120px;\"> <span id=\"comp-bval\">128000</span></span></div><div class=\"stat-row\"><span>Compression</span><span><input type=\"checkbox\" id=\"comp-enabled\" checked> Enabled</span></div><button class=\"btn btn-ghost\" onclick=\"saveCompressorConfig()\" style=\"font-size:10px;margin-top:8px;\">Save</button>";c.appendChild(d);fetch(BASE+"/api/settings/compressor").then(function(r){return r.json()}).then(function(d2){document.getElementById("comp-budget").value=d2.tokenBudget||128000;document.getElementById("comp-bval").textContent=d2.tokenBudget||128000;document.getElementById("comp-enabled").checked=d2.compressionEnabled!==false}).catch(function(){}) }
+function saveCompressorConfig() { fetch(BASE+"/api/settings/compressor",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({tokenBudget:parseInt(document.getElementById("comp-budget").value),compressionEnabled:document.getElementById("comp-enabled").checked,compressionThreshold:0.7})}).then(function(){toast("Compressor saved","success")}) }
+function addSettingsPreferences() { var c=document.getElementById("settings-content");if(!c||document.getElementById("s-pref-card"))return;var d=document.createElement("div");d.id="s-pref-card";d.className="card-sm";d.style.cssText="margin-top:10px;padding:14px;";d.innerHTML="<div style=\"font-size:12px;font-weight:600;margin-bottom:8px;\">Learned Preferences (#68)</div><div id=\"s-pref-list\"></div>";c.appendChild(d);fetch(BASE+"/api/agent/preferences").then(function(r){return r.json()}).then(function(prefs){document.getElementById("s-pref-list").innerHTML=prefs.length?prefs.map(function(p){return"<div class=\"stat-row\"><span>"+esc(p.key)+"</span><span>"+esc(p.value)+"</span></div>"}).join(""):"<div style=\"font-size:10px;color:var(--text3);\">No learned preferences yet</div>"}).catch(function(){}) }
+function addSettingsSandbox() { var c=document.getElementById("settings-content");if(!c||document.getElementById("s-sbx-card"))return;var d=document.createElement("div");d.id="s-sbx-card";d.className="card-sm";d.style.cssText="margin-top:10px;padding:14px;";d.innerHTML="<div style=\"font-size:12px;font-weight:600;margin-bottom:8px;\">Sandbox Backends (#257)</div><div id=\"s-sbx-list\"></div>";c.appendChild(d);fetch(BASE+"/api/sandbox/backends").then(function(r){return r.json()}).then(function(data){document.getElementById("s-sbx-list").innerHTML=(data.backends||[]).map(function(b){return"<div class=\"stat-row\"><span>"+esc(b.label)+"</span><span style=\"color:"+(b.available?"#4ade80":"#f87171")+"\">"+(b.available?"available":"unavailable")+"</span></div>"}).join("")}).catch(function(){}) }
+function addSettingsA2A() { var c=document.getElementById("settings-content");if(!c||document.getElementById("s-a2a-card"))return;var d=document.createElement("div");d.id="s-a2a-card";d.className="card-sm";d.style.cssText="margin-top:10px;padding:14px;";d.innerHTML="<div style=\"font-size:12px;font-weight:600;margin-bottom:8px;\">A2A Protocol Bridge (#251)</div><div class=\"stat-row\"><span>Status</span><span style=\"color:#4ade80;\">Active</span></div><div class=\"stat-row\"><span>Agent Card</span><span style=\"font-size:10px;\">GET /.well-known/agent-card.json</span></div>";c.appendChild(d) }
+function addEvalHarnesses() { var c=document.querySelector("#page-eval > div:last-of-type");if(!c||document.getElementById("e-harn"))return;var s=document.createElement("div");s.id="e-harn";s.className="card-sm";s.style.cssText="padding:14px;margin-top:12px;";s.innerHTML="<div style=\"font-size:12px;font-weight:600;margin-bottom:8px;\">Eval Harness Presets (#186)</div><div id=\"e-harn-list\"></div>";c.appendChild(s);fetch(BASE+"/api/eval/harnesses").then(function(r){return r.json()}).then(function(data){document.getElementById("e-harn-list").innerHTML=(data.presets||[]).map(function(p){return"<div style=\"padding:8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;\"><div style=\"font-weight:500;font-size:11px;\">"+esc(p.name)+"</div><div style=\"font-size:10px;color:var(--text3);\">"+(p.tasks||[]).join(" · ")+"</div><div style=\"font-size:9px;color:var(--accent2);\">scoring: "+esc(p.scoring)+"</div></div>"}).join("")}).catch(function(){}) }
+function addEvalRagSection() { var c=document.querySelector("#page-eval > div:last-of-type");if(!c||document.getElementById("e-rag"))return;var s=document.createElement("div");s.id="e-rag";s.className="card-sm";s.style.cssText="padding:14px;margin-top:12px;";s.innerHTML="<div style=\"font-size:12px;font-weight:600;margin-bottom:8px;\">RAG Eval (#178)</div><input id=\"rag-q\" class=\"inp\" placeholder=\"Test query...\" style=\"margin-bottom:6px;\"><div style=\"display:flex;gap:8px;\"><input id=\"rag-d\" class=\"inp\" placeholder=\"Retrieved docs\" style=\"flex:1;\"><button class=\"btn btn-ghost\" onclick=\"runRagEval()\">Evaluate</button></div><div id=\"rag-res\" style=\"margin-top:8px;font-size:10px;\"></div>";c.appendChild(s) }
+function runRagEval() { var q=document.getElementById("rag-q").value;var docs=document.getElementById("rag-d").value.split(",").map(function(d){return d.trim()}).filter(Boolean);fetch(BASE+"/api/eval/rag",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q,retrievedDocs:docs})}).then(function(r){return r.json()}).then(function(d){document.getElementById("rag-res").innerHTML="Retrieved: "+d.retrievedCount+" · Hit@1: "+(d.hitAt1?"Yes":"No")+" · Recall: "+(d.recall!=null?d.recall.toFixed(2):"N/A")+" · MRR: "+d.mrr.toFixed(2)}) }
+setTimeout(initPageEnhancements, 1500);
 function extendMemoryPage() {
   if (document.getElementById('mem-tab-privacy')) return;
   // Find the tab bar by searching for existing .mem-tab buttons
@@ -14488,6 +14586,11 @@ function esc(s) {
   }
   renderRecentPages();
 })();
+// ── UI extensions — deferred init ──────────────────────────────
+setTimeout(function() {
+  if (typeof extendObservability === 'function') extendObservability();
+  if (typeof extendMetricsPage === 'function') extendMetricsPage();
+}, 1000);
 </script>
 
 </body>
