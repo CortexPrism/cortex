@@ -5,6 +5,14 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.45.1] — 2026-06-19
+
+### Fixed
+
+- **UI: removed Tailwind CDN from production** — replaced `cdn.tailwindcss.com` script tag with inline CSS (`html { height: 100% }`), removed 3 redundant Tailwind utility class usages (`h-full`, `flex`), and updated CSP headers accordingly
+- **UI: fixed SyntaxError in sandbox/bug-repro JavaScript** — corrected string escaping in 7 onclick handlers from `\''` to `\\''` (template literal double-escape) in sandbox snapshots, workspace snapshots, and bug repro sections; the broken escaping caused `Uncaught SyntaxError: Unexpected string` in the inline SPA
+- **UI: vault credential form accessibility** — wrapped vault credential modal inputs in a `<form>` element with proper button types, added `autocomplete="current-password"` to the password field
+
 ## [0.45.0] — 2026-06-19
 
 ### Added
