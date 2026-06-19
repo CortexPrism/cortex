@@ -361,12 +361,11 @@ initDashboard();
 `;
 
 const HTML = `<!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Cortex</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
@@ -403,6 +402,7 @@ const HTML = `<!DOCTYPE html>
     --text2: #9ca3af;
     --text3: #6b7280;
   }
+  html { height: 100%; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; height: 100vh; overflow: hidden; }
   body::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:0.03; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") repeat; }
@@ -1077,7 +1077,7 @@ const HTML = `<!DOCTYPE html>
 
       <!-- Input bar -->
       <div style="border-top:1px solid var(--border);padding:16px 24px;background:var(--bg2);">
-        <div id="file-preview" style="display:none;max-width:900px;margin:0 auto 8px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);align-items:center;gap:8px;" class="flex"></div>
+        <div id="file-preview" style="display:none;max-width:900px;margin:0 auto 8px;padding:8px 12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);align-items:center;gap:8px;"></div>
         <div style="display:flex;gap:10px;align-items:flex-end;max-width:900px;margin:0 auto;">
           <input type="file" id="file-input" style="display:none;" multiple onchange="handleFileSelect(event)" />
           <button class="btn" onclick="document.getElementById('file-input').click()" style="height:44px;width:44px;padding:0;font-size:18px;" title="Attach files">📎</button>
@@ -1085,7 +1085,7 @@ const HTML = `<!DOCTYPE html>
           <button id="voice-mic-btn" class="btn" onclick="toggleMic()" style="height:44px;width:44px;padding:0;font-size:18px;display:none;" title="Voice input">🎤</button>
           <button class="btn btn-primary" onclick="sendMessage()" style="height:44px;padding:0 18px;white-space:nowrap;">Send ↵</button>
         </div>
-        <div id="thinking-bar" style="display:none;max-width:900px;margin:8px auto 0;gap:6px;align-items:center;" class="flex">
+        <div id="thinking-bar" style="display:none;max-width:900px;margin:8px auto 0;gap:6px;align-items:center;">
           <div style="display:flex;gap:4px;">
             <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
           </div>
@@ -3096,13 +3096,13 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
   <div id="vault-credential-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">
     <div class="card" style="width:480px;max-height:85vh;overflow-y:auto;">
       <h2 id="vault-modal-title" style="font-size:15px;font-weight:600;margin-bottom:16px;">Add Credential</h2>
-      <div style="display:flex;flex-direction:column;gap:10px;">
+      <form onsubmit="event.preventDefault();saveVaultCredential();return false;" style="display:flex;flex-direction:column;gap:10px;">
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Key Name</label>
         <input id="vault-key-input" class="inp" placeholder="OPENAI_API_KEY" style="font-size:12px;"></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Value</label>
         <div style="position:relative;">
-          <input id="vault-value-input" class="inp" type="password" placeholder="sk-…" style="font-size:12px;padding-right:40px;">
-          <button onclick="toggleVaultValueReveal()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;">👁</button>
+          <input id="vault-value-input" class="inp" type="password" placeholder="sk-…" autocomplete="current-password" style="font-size:12px;padding-right:40px;">
+          <button type="button" onclick="toggleVaultValueReveal()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;">👁</button>
         </div></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Expiration</label>
         <select id="vault-expiration" class="inp" style="font-size:12px;">
@@ -3115,11 +3115,11 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
         <input id="vault-max-uses" class="inp" type="number" value="0" min="0" style="font-size:12px;width:120px;"></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Tags</label>
         <input id="vault-tags-input" class="inp" placeholder="api, openai" style="font-size:12px;"></div>
-      </div>
       <div style="display:flex;gap:8px;margin-top:16px;">
-        <button class="btn btn-primary" onclick="saveVaultCredential()">Save</button>
-        <button class="btn btn-ghost" onclick="hideModal('vault-credential-modal')">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-ghost" type="button" onclick="hideModal('vault-credential-modal')">Cancel</button>
       </div>
+      </form>
     </div>
   </div>
 
@@ -15022,9 +15022,9 @@ async function loadSandboxSnapshots() {
         html += '<span class="badge" style="margin-left:8px;font-size:9px;">' + esc(s.runtime) + '</span>';
         html += '</div>';
         html += '<div style="display:flex;gap:4px;">';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="showSnapshotDetail(\'' + esc(s.id) + '\')" title="View details">🔍</button>';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="replicateSnapshot(\'' + esc(s.id) + '\')" title="Replicate">🔄</button>';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteSandboxSnapshot(\'' + esc(s.id) + '\')" title="Delete">🗑</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="showSnapshotDetail(\\'' + esc(s.id) + '\\')" title="View details">🔍</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="replicateSnapshot(\\'' + esc(s.id) + '\\')" title="Replicate">🔄</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteSandboxSnapshot(\\'' + esc(s.id) + '\\')" title="Delete">🗑</button>';
         html += '</div></div>';
         html += '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Session: ' + esc(s.sessionId).slice(0,20) + '… • ' + esc(s.createdAt) + ' • Deps: ' + esc(s.dependencies.language) + ' (' + esc(s.dependencies.managerHint) + ')</div>';
         if (s.tags && s.tags.length) html += '<div style="margin-top:4px;">' + s.tags.map(function(t) { return '<span class="badge" style="font-size:9px;background:var(--bg2);">' + esc(t) + '</span>'; }).join(' ') + '</div>';
@@ -15108,8 +15108,8 @@ async function loadWorkspaceSnapshots() {
         html += '<span style="font-size:10px;color:var(--text3);margin-left:8px;">' + (s.fileTree ? s.fileTree.length : 0) + ' files</span>';
         html += '</div>';
         html += '<div style="display:flex;gap:4px;">';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="restoreWorkspaceSnapshot(\'' + esc(s.id) + '\')" title="Restore">🔄</button>';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteWorkspaceSnapshot(\'' + esc(s.id) + '\')" title="Delete">🗑</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="restoreWorkspaceSnapshot(\\'' + esc(s.id) + '\\')" title="Restore">🔄</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteWorkspaceSnapshot(\\'' + esc(s.id) + '\\')" title="Delete">🗑</button>';
         html += '</div></div>';
         html += '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Session: ' + esc(s.sessionId).slice(0,20) + '… • ' + esc(s.createdAt) + ' • Branch: ' + esc(s.gitState.branch) + (s.gitState.dirty ? ' (dirty)' : '') + '</div>';
         html += '</div>';
@@ -15240,8 +15240,8 @@ async function loadBugReproPane() {
           html += '<pre style="font-size:9px;background:var(--bg2);padding:6px;border-radius:4px;margin-top:4px;max-height:80px;overflow-y:auto;">' + esc((r.result.stdout || '') + (r.result.stderr ? '\\n-- stderr --\\n' + r.result.stderr : '')) + '</pre>';
         }
         html += '<div style="margin-top:8px;display:flex;gap:4px;">';
-        if (r.status === 'queued') html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="runBugRepro(\'' + esc(r.id) + '\')">▶ Run</button>';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteBugRepro(\'' + esc(r.id) + '\')">🗑</button>';
+        if (r.status === 'queued') html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="runBugRepro(\\'' + esc(r.id) + '\\')">▶ Run</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteBugRepro(\\'' + esc(r.id) + '\\')">🗑</button>';
         html += '</div></div>';
       });
       html += '</div>';
