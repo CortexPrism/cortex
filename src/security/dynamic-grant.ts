@@ -40,12 +40,27 @@ export interface TaskScope {
   requiredCapabilities: string[];
 }
 
-const TOOL_RISK_PROFILES: Record<string, { baseRisk: 'low' | 'medium' | 'high' | 'critical'; defaultGuardrails: GuardrailSet }> = {
+const TOOL_RISK_PROFILES: Record<
+  string,
+  { baseRisk: 'low' | 'medium' | 'high' | 'critical'; defaultGuardrails: GuardrailSet }
+> = {
   file_read: { baseRisk: 'low', defaultGuardrails: { readOnly: true } },
-  file_write: { baseRisk: 'medium', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
-  file_edit: { baseRisk: 'medium', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
-  file_delete: { baseRisk: 'high', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
-  file_patch: { baseRisk: 'medium', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
+  file_write: {
+    baseRisk: 'medium',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
+  file_edit: {
+    baseRisk: 'medium',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
+  file_delete: {
+    baseRisk: 'high',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
+  file_patch: {
+    baseRisk: 'medium',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
   shell: { baseRisk: 'high', defaultGuardrails: { maxDurationMs: 30_000 } },
   code_exec: { baseRisk: 'medium', defaultGuardrails: { maxDurationMs: 30_000, maxTokens: 10000 } },
   web_search: { baseRisk: 'low', defaultGuardrails: { allowedDomains: [] } },
@@ -138,7 +153,9 @@ function assessToolRisk(
     return assessRiskLevel(toolName, args);
   }
 
-  if (toolName.startsWith('mcp_') || toolName.startsWith('a2a_') || toolName.startsWith('chrome_')) {
+  if (
+    toolName.startsWith('mcp_') || toolName.startsWith('a2a_') || toolName.startsWith('chrome_')
+  ) {
     return 'medium';
   }
 
@@ -152,9 +169,20 @@ export function isGuardrailSatisfied(
   workingDir: string,
 ): { satisfied: boolean; violation?: string } {
   if (guardrail.readOnly) {
-    const writeTools = ['file_write', 'file_edit', 'file_delete', 'file_patch', 'file_rename', 'shell', 'code_exec'];
+    const writeTools = [
+      'file_write',
+      'file_edit',
+      'file_delete',
+      'file_patch',
+      'file_rename',
+      'shell',
+      'code_exec',
+    ];
     if (writeTools.includes(toolName)) {
-      return { satisfied: false, violation: 'Tool requires write access but guardrail enforces read-only' };
+      return {
+        satisfied: false,
+        violation: 'Tool requires write access but guardrail enforces read-only',
+      };
     }
   }
 

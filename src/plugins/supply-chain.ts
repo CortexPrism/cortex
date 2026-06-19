@@ -170,7 +170,9 @@ export async function verifySupplyChain(
       checks.push({
         name: 'known_hash',
         passed: hashMatch,
-        details: hashMatch ? 'Hash matches known-good hash' : 'Hash does not match any known-good hash',
+        details: hashMatch
+          ? 'Hash matches known-good hash'
+          : 'Hash does not match any known-good hash',
         severity: hashMatch ? 'info' : 'warning',
       });
     } else {
@@ -191,7 +193,9 @@ export async function verifySupplyChain(
     severity: effectivePolicy.requireSignature && !sigResult ? 'error' : 'info',
   });
 
-  if (effectivePolicy.blockedAuthors.length > 0 && effectivePolicy.blockedAuthors.includes(author)) {
+  if (
+    effectivePolicy.blockedAuthors.length > 0 && effectivePolicy.blockedAuthors.includes(author)
+  ) {
     checks.push({
       name: 'author_blocked',
       passed: false,
@@ -200,7 +204,9 @@ export async function verifySupplyChain(
     });
   }
 
-  if (effectivePolicy.allowedAuthors.length > 0 && !effectivePolicy.allowedAuthors.includes(author)) {
+  if (
+    effectivePolicy.allowedAuthors.length > 0 && !effectivePolicy.allowedAuthors.includes(author)
+  ) {
     checks.push({
       name: 'author_allowed',
       passed: false,
@@ -213,7 +219,8 @@ export async function verifySupplyChain(
   checks.push({
     name: 'author_reputation',
     passed: reputation >= effectivePolicy.minimumReputationScore,
-    details: `Author reputation score: ${reputation}/100 (minimum: ${effectivePolicy.minimumReputationScore})`,
+    details:
+      `Author reputation score: ${reputation}/100 (minimum: ${effectivePolicy.minimumReputationScore})`,
     severity: reputation < effectivePolicy.minimumReputationScore ? 'warning' : 'info',
   });
 

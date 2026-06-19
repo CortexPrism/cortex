@@ -26,16 +26,41 @@ export interface CaptureContext {
   messages: Array<{
     role: 'user' | 'assistant' | 'system' | 'tool';
     content: string;
-    toolCalls?: Array<{ toolName: string; args: Record<string, unknown>; result?: string; success?: boolean; durationMs?: number }>;
+    toolCalls?: Array<
+      {
+        toolName: string;
+        args: Record<string, unknown>;
+        result?: string;
+        success?: boolean;
+        durationMs?: number;
+      }
+    >;
   }>;
   currentPrompt: string;
-  toolCallHistory: Array<{ toolName: string; args: Record<string, unknown>; result?: string; success?: boolean; durationMs?: number }>;
+  toolCallHistory: Array<
+    {
+      toolName: string;
+      args: Record<string, unknown>;
+      result?: string;
+      success?: boolean;
+      durationMs?: number;
+    }
+  >;
   episodicEntries?: Array<{ id: string; content: string; importance: number; timestamp: string }>;
   semanticEntries?: Array<{ id: string; content: string; category: string; confidence: number }>;
-  graphEntities?: Array<{ id: string; name: string; type: string; relations: Array<{ target: string; relationType: string }> }>;
+  graphEntities?: Array<
+    {
+      id: string;
+      name: string;
+      type: string;
+      relations: Array<{ target: string; relationType: string }>;
+    }
+  >;
   activeSkills?: string[];
   openFiles?: string[];
-  recentChanges?: Array<{ filePath: string; action: 'create' | 'modify' | 'delete'; timestamp: string }>;
+  recentChanges?: Array<
+    { filePath: string; action: 'create' | 'modify' | 'delete'; timestamp: string }
+  >;
   gitBranch?: string;
   gitHeadCommit?: string;
   currentGoal?: string;
@@ -44,7 +69,9 @@ export interface CaptureContext {
   confidence?: number;
   reflectionNotes?: string[];
   contextWindowRemaining?: number;
-  pendingApprovals?: Array<{ toolName: string; args: Record<string, unknown>; requestedAt: string }>;
+  pendingApprovals?: Array<
+    { toolName: string; args: Record<string, unknown>; requestedAt: string }
+  >;
   tags?: string[];
 }
 

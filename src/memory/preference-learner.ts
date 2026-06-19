@@ -145,7 +145,9 @@ export function buildPreferenceContext(): string {
   const byCategory = new Map<string, string[]>();
   for (const pref of highConf) {
     const existing = byCategory.get(pref.category) ?? [];
-    existing.push(`${pref.key}: ${pref.value} (confidence: ${(pref.confidence * 100).toFixed(0)}%)`);
+    existing.push(
+      `${pref.key}: ${pref.value} (confidence: ${(pref.confidence * 100).toFixed(0)}%)`,
+    );
     byCategory.set(pref.category, existing);
   }
 
@@ -163,7 +165,9 @@ export function buildPreferenceContext(): string {
     lines.push('');
   }
 
-  lines.push('Consider these preferences when generating code, making decisions, or suggesting approaches.');
+  lines.push(
+    'Consider these preferences when generating code, making decisions, or suggesting approaches.',
+  );
   lines.push('');
 
   return lines.join('\n');
@@ -191,7 +195,11 @@ function extractPreferencePatterns(
     observations.push({
       category: 'naming_convention',
       key: 'style',
-      value: lower.includes('camelcase') ? 'camelCase' : lower.includes('snake_case') ? 'snake_case' : 'PascalCase',
+      value: lower.includes('camelcase')
+        ? 'camelCase'
+        : lower.includes('snake_case')
+        ? 'snake_case'
+        : 'PascalCase',
       source: 'correction',
       sessionId: '',
       context: correction,
@@ -227,7 +235,11 @@ function extractPreferencePatterns(
     observations.push({
       category: 'risk_tolerance',
       key: 'level',
-      value: lower.includes('aggressive') ? 'high' : lower.includes('conservative') ? 'low' : 'medium',
+      value: lower.includes('aggressive')
+        ? 'high'
+        : lower.includes('conservative')
+        ? 'low'
+        : 'medium',
       source: 'correction',
       sessionId: '',
       context: correction,

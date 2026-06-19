@@ -5,11 +5,7 @@
  * stored as a JSON blob with indexed fields for efficient querying.
  */
 import type { Db, InValue } from '../db/client.ts';
-import type {
-  AgentCheckpoint,
-  CheckpointFilter,
-  CheckpointSummary,
-} from './types.ts';
+import type { AgentCheckpoint, CheckpointFilter, CheckpointSummary } from './types.ts';
 
 export async function initCheckpointStore(db: Db): Promise<void> {
   await db.exec(`
@@ -135,9 +131,7 @@ export async function listCheckpoints(
     args.push(filter.after);
   }
 
-  const where = conditions.length > 0
-    ? `WHERE ${conditions.join(' AND ')}`
-    : '';
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const limit = filter.limit ?? 50;
 

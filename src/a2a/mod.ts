@@ -2,33 +2,40 @@
  * A2A Protocol Bridge — Barrel exports.
  */
 export type {
-  AgentCard,
+  A2AConfig,
   AgentCapabilities,
+  AgentCard,
   AgentExtension,
   AgentInterface,
   AgentProvider,
   AgentSkill,
   Artifact,
+  FilePart,
   ListTasksRequest,
   ListTasksResponse,
   Message,
   Part,
-  FilePart,
   PushNotificationConfig,
+  RemoteAgentConfig,
+  SecurityScheme,
   SendMessageConfiguration,
   SendMessageRequest,
   StreamResponse,
   Task,
-  TaskStatus,
-  TaskState,
-  TaskStatusUpdateEvent,
   TaskArtifactUpdateEvent,
-  A2AConfig,
-  RemoteAgentConfig,
-  SecurityScheme,
+  TaskState,
+  TaskStatus,
+  TaskStatusUpdateEvent,
 } from './types.ts';
 
-export { fetchAgentCard, sendMessage, sendStreamingMessage, getTask, listTasks, cancelTask } from './client.ts';
-export { handleA2ARequest, registerA2AExecutor, setA2ASkills, getA2AAgentCard } from './server.ts';
+export {
+  cancelTask,
+  fetchAgentCard,
+  getTask,
+  listTasks,
+  sendMessage,
+  sendStreamingMessage,
+} from './client.ts';
+export { getA2AAgentCard, handleA2ARequest, registerA2AExecutor, setA2ASkills } from './server.ts';
 export { createA2AToolWrapper } from './tool-wrapper.ts';
 export { generateAgentCard } from './agent-card.ts';

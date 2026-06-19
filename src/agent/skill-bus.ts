@@ -28,7 +28,12 @@ export interface SkillBinding {
   createdAt: string;
 }
 
-export type SkillActionType = 'invoke_skill' | 'inject_context' | 'emit_event' | 'call_tool' | 'notify';
+export type SkillActionType =
+  | 'invoke_skill'
+  | 'inject_context'
+  | 'emit_event'
+  | 'call_tool'
+  | 'notify';
 
 export interface SkillAction {
   type: SkillActionType;

@@ -8,8 +8,8 @@ import { runMigrations } from '../db/migrate.ts';
 import { writeEpisodic } from '../memory/store.ts';
 import { addPolicy } from '../security/policy.ts';
 import type { PolicyEffect, PolicyKind } from '../security/policy.ts';
-import { importHermes, detectHermesDir } from './import/hermes.ts';
-import { importZeroClaw, detectZeroClawDir } from './import/zeroclaw.ts';
+import { detectHermesDir, importHermes } from './import/hermes.ts';
+import { detectZeroClawDir, importZeroClaw } from './import/zeroclaw.ts';
 import { importJSONLTranscripts } from './import/jsonl.ts';
 
 interface OpenClawMemory {
@@ -113,11 +113,28 @@ async function detectOpenClawDir(): Promise<string | null> {
   return null;
 }
 
-function printSummary(result: { sessions?: number; messages?: number; memories?: number; policies?: number; errors?: number }, prefix = ''): void {
-  if (result.sessions !== undefined) console.log(`    ${cyan('Sessions:')}      ${result.sessions}`);
-  if (result.messages !== undefined) console.log(`    ${cyan('Messages:')}      ${result.messages}`);
-  if (result.memories !== undefined) console.log(`    ${cyan('Memories:')}      ${result.memories}`);
-  if (result.policies !== undefined) console.log(`    ${cyan('Policies:')}      ${result.policies}`);
+function printSummary(
+  result: {
+    sessions?: number;
+    messages?: number;
+    memories?: number;
+    policies?: number;
+    errors?: number;
+  },
+  prefix = '',
+): void {
+  if (result.sessions !== undefined) {
+    console.log(`    ${cyan('Sessions:')}      ${result.sessions}`);
+  }
+  if (result.messages !== undefined) {
+    console.log(`    ${cyan('Messages:')}      ${result.messages}`);
+  }
+  if (result.memories !== undefined) {
+    console.log(`    ${cyan('Memories:')}      ${result.memories}`);
+  }
+  if (result.policies !== undefined) {
+    console.log(`    ${cyan('Policies:')}      ${result.policies}`);
+  }
   if ((result.errors ?? 0) > 0) console.log(`    ${red('Errors:')}        ${result.errors}`);
 }
 

@@ -56,7 +56,9 @@ export function restoreCheckpoint(checkpoint: AgentCheckpoint): RestoredState {
   if (conversation.messages.length > 0) {
     const lastMessages = conversation.messages.slice(-4);
     resumeContextParts.push(
-      `## Recent Context\n${lastMessages.map((m) => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n\n')}`,
+      `## Recent Context\n${
+        lastMessages.map((m) => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n\n')
+      }`,
     );
   }
 

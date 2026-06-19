@@ -509,7 +509,10 @@ class DLPGuardHook implements PipelineHook {
 
       if (!result.allowed) {
         return {
-          abort: { reason: 'sensitive_data', message: 'DLP Guard blocked output containing sensitive data.' },
+          abort: {
+            reason: 'sensitive_data',
+            message: 'DLP Guard blocked output containing sensitive data.',
+          },
         };
       }
 
@@ -546,7 +549,10 @@ class ResponsibleAIHook implements PipelineHook {
         return {
           injectMessages: [{
             role: 'system' as const,
-            content: `[Responsible AI]: ${report.violationCount} potential bias/safety concern(s) detected — ${report.recommendations.slice(0, 2).join('; ')}`,
+            content:
+              `[Responsible AI]: ${report.violationCount} potential bias/safety concern(s) detected — ${
+                report.recommendations.slice(0, 2).join('; ')
+              }`,
           }],
         };
       }

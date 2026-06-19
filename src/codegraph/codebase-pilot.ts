@@ -120,9 +120,7 @@ export function chunkCode(
   }
 
   const signature = extractSignatures(content, language);
-  const body = config.prunePrivateMembers
-    ? stripPrivateMembers(content, language)
-    : content;
+  const body = config.prunePrivateMembers ? stripPrivateMembers(content, language) : content;
 
   chunks.push({
     filePath,
@@ -182,7 +180,8 @@ export function optimizeCodebase(
     budgetRemaining = effectiveConfig.maxTokens - totalTokens;
   }
 
-  const summary = `Optimized ${chunks.length} chunks from ${files.length} files: ${totalTokens} tokens used, ${budgetRemaining} remaining, ${excludedFiles.length} files excluded.`;
+  const summary =
+    `Optimized ${chunks.length} chunks from ${files.length} files: ${totalTokens} tokens used, ${budgetRemaining} remaining, ${excludedFiles.length} files excluded.`;
 
   return {
     chunks,
@@ -231,13 +230,32 @@ export function buildCodePilotPrompt(
 function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   const languageMap: Record<string, string> = {
-    ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
-    py: 'python', rs: 'rust', go: 'go', java: 'java',
-    rb: 'ruby', php: 'php', cs: 'csharp', swift: 'swift',
-    kt: 'kotlin', scala: 'scala', sql: 'sql', sh: 'bash',
-    yaml: 'yaml', yml: 'yaml', json: 'json', xml: 'xml',
-    html: 'html', css: 'css', scss: 'scss', md: 'markdown',
-    toml: 'toml', dockerfile: 'dockerfile',
+    ts: 'typescript',
+    tsx: 'tsx',
+    js: 'javascript',
+    jsx: 'jsx',
+    py: 'python',
+    rs: 'rust',
+    go: 'go',
+    java: 'java',
+    rb: 'ruby',
+    php: 'php',
+    cs: 'csharp',
+    swift: 'swift',
+    kt: 'kotlin',
+    scala: 'scala',
+    sql: 'sql',
+    sh: 'bash',
+    yaml: 'yaml',
+    yml: 'yaml',
+    json: 'json',
+    xml: 'xml',
+    html: 'html',
+    css: 'css',
+    scss: 'scss',
+    md: 'markdown',
+    toml: 'toml',
+    dockerfile: 'dockerfile',
   };
   return languageMap[ext] ?? ext;
 }
@@ -261,7 +279,9 @@ function extractImports(content: string, language: string): string[] {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.startsWith('import ') || trimmed.startsWith('from ') || trimmed.startsWith('require(')) {
+    if (
+      trimmed.startsWith('import ') || trimmed.startsWith('from ') || trimmed.startsWith('require(')
+    ) {
       const match = trimmed.match(/['"]([^'"]+)['"]/);
       if (match) imports.push(match[1]);
     }

@@ -75,8 +75,16 @@ export function isEnvVarAllowed(sessionId: string, envVar: string): boolean {
   if (config.mode === 'shared') return true;
 
   const safeVars = new Set([
-    'PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM', 'TZ',
-    'NODE_ENV', 'DENO_DIR', 'CORTEX_VAULT_KEY',
+    'PATH',
+    'HOME',
+    'USER',
+    'SHELL',
+    'LANG',
+    'TERM',
+    'TZ',
+    'NODE_ENV',
+    'DENO_DIR',
+    'CORTEX_VAULT_KEY',
     ...config.allowedEnvVars,
   ]);
 
@@ -147,9 +155,7 @@ export function getRecentViolations(
   sessionId?: string,
   limit = 50,
 ): IsolationViolation[] {
-  const filtered = sessionId
-    ? violations.filter((v) => v.sessionId === sessionId)
-    : violations;
+  const filtered = sessionId ? violations.filter((v) => v.sessionId === sessionId) : violations;
   return filtered.slice(-limit).reverse();
 }
 

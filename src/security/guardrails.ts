@@ -210,9 +210,17 @@ export async function runGuardrails(
       session_id: context.sessionId,
       actor: 'guardrails',
       action: `guardrail:block:${stage}`,
-      summary: `Guardrail blocked ${stage} with ${checks.filter((c) => c.action === 'block').length} violations`,
+      summary: `Guardrail blocked ${stage} with ${
+        checks.filter((c) => c.action === 'block').length
+      } violations`,
       started_at: new Date().toISOString(),
-      payload: { stage, checks: checks.filter((c) => c.action !== 'pass').map((c) => ({ name: c.name, action: c.action })) },
+      payload: {
+        stage,
+        checks: checks.filter((c) => c.action !== 'pass').map((c) => ({
+          name: c.name,
+          action: c.action,
+        })),
+      },
     }).catch(() => {});
   }
 
@@ -225,14 +233,20 @@ export async function runGuardrails(
 }
 
 export function createPreMiddleware() {
-  return async (text: string, context?: GuardrailContext): Promise<{ allowed: boolean; text: string }> => {
+  return async (
+    text: string,
+    context?: GuardrailContext,
+  ): Promise<{ allowed: boolean; text: string }> => {
     const result = await runGuardrails(text, 'input', context);
     return { allowed: !result.blocked, text };
   };
 }
 
 export function createPostMiddleware() {
-  return async (text: string, context?: GuardrailContext): Promise<{ allowed: boolean; text: string }> => {
+  return async (
+    text: string,
+    context?: GuardrailContext,
+  ): Promise<{ allowed: boolean; text: string }> => {
     const result = await runGuardrails(text, 'output', context);
     return { allowed: !result.blocked, text };
   };

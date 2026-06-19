@@ -1,9 +1,14 @@
 import { exists } from '@std/fs';
-import { createSession, closeSession } from '../../db/sessions.ts';
+import { closeSession, createSession } from '../../db/sessions.ts';
 import { getSessionDb } from '../../db/client.ts';
 import { writeEpisodic } from '../../memory/store.ts';
 import { dim, green, red, yellow } from '@std/fmt/colors';
-import type { ImportResult, ImportOptions, ZeroClawTranscriptEvent, ZeroClawTranscriptHeader } from './types.ts';
+import type {
+  ImportOptions,
+  ImportResult,
+  ZeroClawTranscriptEvent,
+  ZeroClawTranscriptHeader,
+} from './types.ts';
 
 function parseJSONL(content: string): Array<Record<string, unknown>> {
   const lines = content.split('\n').filter((l) => l.trim());
@@ -66,7 +71,9 @@ export async function importJSONLTranscripts(
         );
       } else {
         console.log(
-          dim(`[dry-run] sessions=${fileResult.sessions} messages=${fileResult.messages} memories=${fileResult.memories}`),
+          dim(
+            `[dry-run] sessions=${fileResult.sessions} messages=${fileResult.messages} memories=${fileResult.memories}`,
+          ),
         );
       }
     } catch (e) {
@@ -98,7 +105,9 @@ async function importTranscriptFile(
 
   if (opts?.dryRun) {
     result.sessions = 1;
-    result.messages = records.filter((r) => (r as Partial<ZeroClawTranscriptEvent>).type === 'message').length;
+    result.messages = records.filter((r) =>
+      (r as Partial<ZeroClawTranscriptEvent>).type === 'message'
+    ).length;
     result.memories = records.filter(
       (r) => (r as Partial<ZeroClawTranscriptEvent>).type === 'branch_summary',
     ).length;

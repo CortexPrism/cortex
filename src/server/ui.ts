@@ -13025,14 +13025,16 @@ function extendSettings() {
   };
 }
 function loadSettingsExtensions() {
-  var mainBar = document.querySelector('#page-settings [style*="border-bottom"]');
-  if (!mainBar) return;
+  var settingsContent = document.getElementById('settings-content');
+  if (!settingsContent) return;
+  var mainTabBar = settingsContent.firstElementChild;
+  if (!mainTabBar) return;
   var extBar = document.getElementById('settings-ext-tab-bar');
   if (!extBar) {
     extBar = document.createElement('div');
     extBar.id = 'settings-ext-tab-bar';
     extBar.style.cssText = 'display:none;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;';
-    mainBar.parentNode.insertBefore(extBar, mainBar.nextSibling);
+    mainTabBar.parentNode.insertBefore(extBar, mainTabBar.nextSibling);
   }
   if (!document.getElementById('settings-ext-tab-providers')) {
     var existing = extBar.innerHTML;

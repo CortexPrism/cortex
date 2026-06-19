@@ -4,7 +4,7 @@ import { dim, green, yellow } from '@std/fmt/colors';
 import { resolveHomeDir } from '../../utils/platform.ts';
 import { writeEpisodic, writeSemantic } from '../../memory/store.ts';
 import { importJSONLTranscripts } from './jsonl.ts';
-import type { ImportResult, ImportOptions } from './types.ts';
+import type { ImportOptions, ImportResult } from './types.ts';
 
 export async function importZeroClaw(
   filePath: string,

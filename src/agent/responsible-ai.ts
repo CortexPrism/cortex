@@ -53,9 +53,16 @@ export interface AuditConfig {
 
 const DEFAULT_AUDIT_CONFIG: AuditConfig = {
   enabledCategories: [
-    'bias_demographic', 'bias_gender', 'bias_cultural', 'stereotype',
-    'safety_content', 'safety_code', 'fairness', 'transparency',
-    'accountability', 'privacy',
+    'bias_demographic',
+    'bias_gender',
+    'bias_cultural',
+    'stereotype',
+    'safety_content',
+    'safety_code',
+    'fairness',
+    'transparency',
+    'accountability',
+    'privacy',
   ],
   biasThreshold: 0.7,
   stereotypePatterns: [
@@ -161,7 +168,8 @@ export function auditAgentOutput(
       session_id: context.sessionId,
       actor: 'responsible-ai-auditor',
       action: 'audit',
-      summary: `RAI audit: ${violationCount} violations, ${concernCount} concerns, score ${report.overallScore}`,
+      summary:
+        `RAI audit: ${violationCount} violations, ${concernCount} concerns, score ${report.overallScore}`,
       started_at: report.generatedAt,
       payload: { violations: violationCount, concerns: concernCount, score: report.overallScore },
     }).catch(() => {});
@@ -175,8 +183,14 @@ function checkDemographicBias(output: string, config: AuditConfig): AuditFinding
   const lower = output.toLowerCase();
 
   const demographicTerms = [
-    'race', 'ethnicity', 'age', 'disability', 'religion',
-    'nationality', 'gender', 'sexual orientation',
+    'race',
+    'ethnicity',
+    'age',
+    'disability',
+    'religion',
+    'nationality',
+    'gender',
+    'sexual orientation',
   ];
 
   let mentioned = 0;
@@ -190,9 +204,11 @@ function checkDemographicBias(output: string, config: AuditConfig): AuditFinding
       category: 'bias_demographic',
       severity: 'concern',
       title: 'Multiple demographic references',
-      description: 'Output contains references to multiple demographic categories. Ensure these are necessary and unbiased.',
+      description:
+        'Output contains references to multiple demographic categories. Ensure these are necessary and unbiased.',
       evidence: `Found ${mentioned} demographic category references`,
-      recommendation: 'Review demographic references for relevance and bias. Remove unnecessary demographic assumptions.',
+      recommendation:
+        'Review demographic references for relevance and bias. Remove unnecessary demographic assumptions.',
     });
   } else {
     findings.push({
@@ -222,9 +238,11 @@ function checkGenderBias(output: string, config: AuditConfig): AuditFinding[] {
       category: 'bias_gender',
       severity: 'concern',
       title: 'Exclusively male pronoun usage',
-      description: 'Output uses only male-gendered pronouns. Consider using gender-neutral language ("they", "the user", "the developer").',
+      description:
+        'Output uses only male-gendered pronouns. Consider using gender-neutral language ("they", "the user", "the developer").',
       evidence: `${malePronouns} male pronouns, ${femalePronouns} female pronouns`,
-      recommendation: 'Use gender-neutral language ("they", "the user", "the developer") instead of gendered pronouns.',
+      recommendation:
+        'Use gender-neutral language ("they", "the user", "the developer") instead of gendered pronouns.',
     });
   } else if (femalePronouns > 10 && malePronouns === 0) {
     findings.push({
@@ -232,7 +250,8 @@ function checkGenderBias(output: string, config: AuditConfig): AuditFinding[] {
       category: 'bias_gender',
       severity: 'concern',
       title: 'Exclusively female pronoun usage',
-      description: 'Output uses only female-gendered pronouns. Consider using gender-neutral language.',
+      description:
+        'Output uses only female-gendered pronouns. Consider using gender-neutral language.',
       evidence: `${femalePronouns} female pronouns, ${malePronouns} male pronouns`,
       recommendation: 'Use gender-neutral language instead of gendered pronouns.',
     });
@@ -256,8 +275,14 @@ function checkCulturalBias(output: string, config: AuditConfig): AuditFinding[] 
   const findings: AuditFinding[] = [];
 
   const westernDefaults = [
-    'normal', 'standard', 'typical', 'common', 'usual',
-    'default', 'everyone', 'most people',
+    'normal',
+    'standard',
+    'typical',
+    'common',
+    'usual',
+    'default',
+    'everyone',
+    'most people',
   ];
 
   let defaultCount = 0;
@@ -272,9 +297,11 @@ function checkCulturalBias(output: string, config: AuditConfig): AuditFinding[] 
       category: 'bias_cultural',
       severity: 'concern',
       title: 'Heavy reliance on universal defaults',
-      description: 'Output uses words like "normal" or "standard" extensively, which may reflect cultural defaults.',
+      description:
+        'Output uses words like "normal" or "standard" extensively, which may reflect cultural defaults.',
       evidence: `${defaultCount} instances of universal-default language`,
-      recommendation: 'Consider if "normal" or "standard" reflects a specific cultural perspective. Qualify statements with context.',
+      recommendation:
+        'Consider if "normal" or "standard" reflects a specific cultural perspective. Qualify statements with context.',
     });
   } else {
     findings.push({
@@ -309,7 +336,8 @@ function checkStereotypes(output: string, config: AuditConfig): AuditFinding[] {
       title: `Potential stereotypes detected (${matched} matches)`,
       description: 'Output may contain stereotypical generalizations.',
       evidence: `${matched} stereotype patterns matched`,
-      recommendation: 'Replace generalizations with specific, evidence-based statements. Avoid "all X are Y" framing.',
+      recommendation:
+        'Replace generalizations with specific, evidence-based statements. Avoid "all X are Y" framing.',
     });
   } else {
     findings.push({
@@ -344,7 +372,8 @@ function checkSafetyContent(output: string, config: AuditConfig): AuditFinding[]
       title: 'Unsafe content detected',
       description: 'Output contains potentially dangerous commands or content.',
       evidence: `${matched} safety patterns matched`,
-      recommendation: 'Remove or sanitize dangerous content. If showing examples, clearly mark them as educational and add warnings.',
+      recommendation:
+        'Remove or sanitize dangerous content. If showing examples, clearly mark them as educational and add warnings.',
     });
   } else {
     findings.push({
@@ -364,7 +393,9 @@ function checkSafetyContent(output: string, config: AuditConfig): AuditFinding[]
 function checkSafetyCode(output: string, config: AuditConfig): AuditFinding[] {
   const findings: AuditFinding[] = [];
 
-  if (output.includes('rm -rf') || output.includes('DROP TABLE') || output.includes('DROP DATABASE')) {
+  if (
+    output.includes('rm -rf') || output.includes('DROP TABLE') || output.includes('DROP DATABASE')
+  ) {
     findings.push({
       id: crypto.randomUUID(),
       category: 'safety_code',
@@ -372,7 +403,8 @@ function checkSafetyCode(output: string, config: AuditConfig): AuditFinding[] {
       title: 'Potentially destructive code',
       description: 'Output contains destructive commands (rm -rf, DROP).',
       evidence: 'Destructive operation detected',
-      recommendation: 'Add warnings, use safer alternatives (e.g., move to trash instead of rm -rf), or mark as educational.',
+      recommendation:
+        'Add warnings, use safer alternatives (e.g., move to trash instead of rm -rf), or mark as educational.',
     });
   } else {
     findings.push({
@@ -407,7 +439,8 @@ function checkFairness(output: string, config: AuditConfig): AuditFinding[] {
       title: `Exclusionary language detected (${matched} matches)`,
       description: 'Output contains language that may exclude or diminish certain groups.',
       evidence: `${matched} fairness patterns matched`,
-      recommendation: 'Replace exclusionary language with inclusive alternatives. Focus on capabilities rather than group membership.',
+      recommendation:
+        'Replace exclusionary language with inclusive alternatives. Focus on capabilities rather than group membership.',
     });
   } else {
     findings.push({
@@ -428,7 +461,7 @@ function checkTransparency(output: string, config: AuditConfig): AuditFinding[] 
   const findings: AuditFinding[] = [];
   const lower = output.toLowerCase();
 
-  const transparent = lower.includes('i don\'t know') || lower.includes('i am not sure') ||
+  const transparent = lower.includes("i don't know") || lower.includes('i am not sure') ||
     lower.includes('i cannot') || lower.includes('uncertain') || lower.includes('may be incorrect');
 
   if (transparent) {
@@ -447,9 +480,11 @@ function checkTransparency(output: string, config: AuditConfig): AuditFinding[] 
       category: 'transparency',
       severity: 'concern',
       title: 'No uncertainty acknowledged',
-      description: 'Long output with no acknowledgment of limitations. AI should indicate when it is uncertain.',
+      description:
+        'Long output with no acknowledgment of limitations. AI should indicate when it is uncertain.',
       evidence: 'No uncertainty markers found',
-      recommendation: 'When making assertions without evidence, acknowledge limitations (e.g., "Based on available information...", "I believe...").',
+      recommendation:
+        'When making assertions without evidence, acknowledge limitations (e.g., "Based on available information...", "I believe...").',
     });
   } else {
     findings.push({
@@ -470,7 +505,10 @@ function checkAccountability(output: string, config: AuditConfig): AuditFinding[
   const findings: AuditFinding[] = [];
   const lower = output.toLowerCase();
 
-  if (lower.includes('as an ai') || lower.includes('as a language model') || lower.includes('i am an ai')) {
+  if (
+    lower.includes('as an ai') || lower.includes('as a language model') ||
+    lower.includes('i am an ai')
+  ) {
     findings.push({
       id: crypto.randomUUID(),
       category: 'accountability',
@@ -555,7 +593,9 @@ function computeCategoryScores(findings: AuditFinding[]): Record<string, number>
 }
 
 export function auditBatch(
-  outputs: Array<{ text: string; context?: { sessionId: string; agentId: string; taskDescription: string } }>,
+  outputs: Array<
+    { text: string; context?: { sessionId: string; agentId: string; taskDescription: string } }
+  >,
   config?: AuditConfig,
 ): ResponsibleAIReport[] {
   return outputs.map((o) => auditAgentOutput(o.text, o.context, config));

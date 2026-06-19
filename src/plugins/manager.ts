@@ -43,11 +43,14 @@ class PluginManager {
     });
 
     if (report.status === 'blocked') {
-      throw new Error(`Plugin "${manifest.name}" blocked by supply-chain verification: ${report.summary}`);
+      throw new Error(
+        `Plugin "${manifest.name}" blocked by supply-chain verification: ${report.summary}`,
+      );
     }
 
     if (report.status === 'suspicious') {
-      const warnings = report.checks.filter((c) => c.severity === 'warning').map((c) => c.details).join('; ');
+      const warnings = report.checks.filter((c) => c.severity === 'warning').map((c) => c.details)
+        .join('; ');
       console.warn(`Plugin "${manifest.name}" has supply-chain warnings: ${warnings}`);
     }
 

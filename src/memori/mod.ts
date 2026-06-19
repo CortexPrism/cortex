@@ -4,19 +4,28 @@
 export type {
   AgentCheckpoint,
   CheckpointConversation,
+  CheckpointFilter,
   CheckpointMemory,
   CheckpointMessage,
   CheckpointMetadata,
   CheckpointReasoning,
-  CheckpointTools,
-  CheckpointToolCall,
-  CheckpointWorkspace,
   CheckpointSummary,
-  CheckpointFilter,
+  CheckpointToolCall,
+  CheckpointTools,
+  CheckpointWorkspace,
 } from './types.ts';
 
-export { initCheckpointStore, saveCheckpoint, loadCheckpoint, loadLatestCheckpoint, listCheckpoints, deleteCheckpoint, deleteSessionCheckpoints, pruneOldCheckpoints } from './store.ts';
+export {
+  deleteCheckpoint,
+  deleteSessionCheckpoints,
+  initCheckpointStore,
+  listCheckpoints,
+  loadCheckpoint,
+  loadLatestCheckpoint,
+  pruneOldCheckpoints,
+  saveCheckpoint,
+} from './store.ts';
 export { captureCheckpoint } from './checkpoint.ts';
 export type { CaptureContext } from './checkpoint.ts';
-export { restoreCheckpoint, buildResumePrompt } from './restore.ts';
+export { buildResumePrompt, restoreCheckpoint } from './restore.ts';
 export type { RestoredState } from './restore.ts';
