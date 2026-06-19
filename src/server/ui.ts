@@ -927,6 +927,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('alcove');closeMobileSidebar()" id="nav-alcove">
       <span class="nav-icon">📚</span>Alcove
     </button>
+    <button class="nav-item" onclick="showPage('sandbox');closeMobileSidebar()" id="nav-sandbox">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> Sandbox
+    </button>
 
     <!-- Knowledge & Memory -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Knowledge &amp; Memory <span class="nav-section-toggle">▼</span></div>
@@ -1761,6 +1764,7 @@ const HTML = `<!DOCTYPE html>
         <span id="session-detail-children" style="font-size:11px;display:flex;align-items:center;gap:6px;"></span>
         <button class="btn" style="margin-left:auto;font-size:12px;background:rgba(99,102,241,0.15);color:var(--accent2);" onclick="continueSession(document.getElementById('session-detail-title').textContent)">▶ Continue</button>
         <button class="btn btn-ghost" style="font-size:12px;" onclick="exportSession(document.getElementById('session-detail-title').textContent)">⬇ Export JSON</button>
+        <button class="btn btn-ghost" style="font-size:12px;" onclick="captureSessionWorkspaceSnapshot()">📸 Snapshot</button>
       </div>
       <div id="session-detail-log" style="flex:1;overflow-y:auto;padding:20px 28px;display:flex;flex-direction:column;gap:10px;"></div>
     </div>
@@ -2380,6 +2384,28 @@ const HTML = `<!DOCTYPE html>
     </div>
     <div style="flex:1;overflow-y:auto;padding:16px;" id="memori-content">
       <div class="widget-loading">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Page: Sandbox & Environment -->
+  <div id="page-sandbox" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Sandbox &amp; Environment</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Environment replication, workspace snapshots, dev env as code, and bug reproduction</p>
+      </div>
+    </div>
+    <div id="sandbox-tab-bar" style="display:flex;border-bottom:1px solid var(--border);padding:0 24px;gap:0;">
+      <button class="mem-tab active" onclick="switchSandboxTab('snapshots')" id="sandbox-tab-snapshots">Snapshots</button>
+      <button class="mem-tab" onclick="switchSandboxTab('workspace')" id="sandbox-tab-workspace">Workspace</button>
+      <button class="mem-tab" onclick="switchSandboxTab('devenv')" id="sandbox-tab-devenv">Dev Env</button>
+      <button class="mem-tab" onclick="switchSandboxTab('bugrepro')" id="sandbox-tab-bugrepro">Bug Repro</button>
+    </div>
+    <div id="sandbox-content" style="flex:1;overflow-y:auto;padding:16px 24px;">
+      <div id="sandbox-pane-snapshots" style="display:block;">Loading…</div>
+      <div id="sandbox-pane-workspace" style="display:none;">Loading…</div>
+      <div id="sandbox-pane-devenv" style="display:none;">Loading…</div>
+      <div id="sandbox-pane-bugrepro" style="display:none;">Loading…</div>
     </div>
   </div>
 
@@ -4009,7 +4035,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -4076,6 +4102,7 @@ function showPage(name) {
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
+    sandbox: loadSandboxPage,
     agentlint: loadAgentLintPage,
   };
   if (loaders[name]) loaders[name]();
@@ -6882,6 +6909,19 @@ async function exportSession(id) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = \`cortex-session-\${id}.json\`; a.click();
   toast('Session exported', 'success');
+}
+
+async function captureSessionWorkspaceSnapshot() {
+  var sessionId = document.getElementById('session-detail-title')?.textContent || window._sessionId || '';
+  if (!sessionId) { alert('No session selected'); return; }
+  try {
+    var r = await fetch(BASE + '/api/workspace/snapshots', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Session ' + sessionId.slice(0,8), sessionId: sessionId, agentId: '', workspacePath: '/workspace', tags: ['session'] })
+    });
+    if (r.ok) { toast('Workspace snapshot captured', 'success'); }
+    else { toast('Snapshot failed', 'error'); }
+  } catch(e) { toast('Error: ' + e, 'error'); }
 }
 
 async function archiveSessionAction(id) {
@@ -14937,6 +14977,310 @@ function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Sandbox Page (#79, #230, #232, #240) ─────────────────────────
+
+var currentSandboxTab = 'snapshots';
+
+function switchSandboxTab(name) {
+  currentSandboxTab = name;
+  ['snapshots','workspace','devenv','bugrepro'].forEach(function(t) {
+    document.getElementById('sandbox-pane-' + t).style.display = t === name ? 'block' : 'none';
+    var btn = document.getElementById('sandbox-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === name);
+  });
+  if (name === 'snapshots') loadSandboxSnapshots();
+  else if (name === 'workspace') loadWorkspaceSnapshots();
+  else if (name === 'devenv') loadDevEnvPane();
+  else if (name === 'bugrepro') loadBugReproPane();
+}
+
+function loadSandboxPage() {
+  switchSandboxTab(currentSandboxTab);
+}
+
+// ── #79 Environment Replication: Snapshots tab ──
+
+async function loadSandboxSnapshots() {
+  var c = document.getElementById('sandbox-pane-snapshots');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading snapshots…</div>';
+  try {
+    var data = await fetchJSON(BASE + '/api/sandbox/snapshots?limit=50');
+    var html = '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+    html += '<button class="btn" onclick="captureSandboxSnapshot()">📸 Capture Environment</button>';
+    html += '<button class="btn btn-ghost" onclick="loadSandboxSnapshots()">↻ Refresh</button>';
+    html += '</div>';
+    if (!data.length) {
+      html += '<div class="card" style="padding:24px;text-align:center;color:var(--text3);">No environment snapshots captured yet.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      data.forEach(function(s) {
+        html += '<div class="card" style="padding:12px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div><span style="font-weight:600;font-size:13px;">' + esc(s.name) + '</span>';
+        html += '<span class="badge" style="margin-left:8px;font-size:9px;">' + esc(s.runtime) + '</span>';
+        html += '</div>';
+        html += '<div style="display:flex;gap:4px;">';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="showSnapshotDetail(\'' + esc(s.id) + '\')" title="View details">🔍</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="replicateSnapshot(\'' + esc(s.id) + '\')" title="Replicate">🔄</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteSandboxSnapshot(\'' + esc(s.id) + '\')" title="Delete">🗑</button>';
+        html += '</div></div>';
+        html += '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Session: ' + esc(s.sessionId).slice(0,20) + '… • ' + esc(s.createdAt) + ' • Deps: ' + esc(s.dependencies.language) + ' (' + esc(s.dependencies.managerHint) + ')</div>';
+        if (s.tags && s.tags.length) html += '<div style="margin-top:4px;">' + s.tags.map(function(t) { return '<span class="badge" style="font-size:9px;background:var(--bg2);">' + esc(t) + '</span>'; }).join(' ') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Error: ' + esc(String(e)) + '</div>'; }
+}
+
+async function captureSandboxSnapshot() {
+  var name = prompt('Snapshot name (optional):');
+  var sessionId = window._sessionId || prompt('Session ID:');
+  if (!sessionId) return;
+  try {
+    var r = await fetch(BASE + '/api/sandbox/snapshots', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || undefined, sessionId: sessionId, agentId: '', workspacePath: '/workspace', tags: [] })
+    });
+    if (r.ok) { loadSandboxSnapshots(); } else { alert('Failed: ' + (await r.text())); }
+  } catch(e) { alert('Error: ' + e); }
+}
+
+function showSnapshotDetail(id) {
+  fetchJSON(BASE + '/api/sandbox/snapshots/' + id).then(function(s) {
+    var html = '<div class="card" style="padding:16px;">';
+    html += '<h3>' + esc(s.name) + ' <span class="badge">' + esc(s.runtime) + '</span></h3>';
+    html += '<div style="font-size:11px;color:var(--text3);margin-top:4px;">ID: ' + esc(s.id) + ' • ' + esc(s.createdAt) + '</div>';
+    html += '<h4 style="margin-top:12px;font-size:12px;">Environment Variables</h4>';
+    html += '<pre style="font-size:10px;background:var(--bg2);padding:8px;border-radius:4px;overflow-x:auto;">' + esc(JSON.stringify(s.env, null, 2)) + '</pre>';
+    html += '<h4 style="margin-top:12px;font-size:12px;">Git State</h4>';
+    html += '<div style="font-size:10px;">Branch: ' + esc(s.gitState.branch) + ' • Commit: ' + esc(s.gitState.headCommit).slice(0,8) + ' • Dirty: ' + s.gitState.dirty + '</div>';
+    html += '</div>';
+    var pane = document.getElementById('sandbox-pane-snapshots');
+    pane.innerHTML = '<button class="btn btn-ghost" style="margin-bottom:8px;" onclick="loadSandboxSnapshots()">← Back</button>' + html;
+  });
+}
+
+async function replicateSnapshot(id) {
+  var targetSessionId = prompt('Target session ID:');
+  if (!targetSessionId) return;
+  try {
+    var r = await fetch(BASE + '/api/sandbox/snapshots/' + id + '/replicate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetSessionId: targetSessionId, targetWorkspacePath: '/workspace' })
+    });
+    var result = await r.json();
+    alert(result.message);
+  } catch(e) { alert('Error: ' + e); }
+}
+
+async function deleteSandboxSnapshot(id) {
+  if (!confirm('Delete this snapshot?')) return;
+  try {
+    await fetch(BASE + '/api/sandbox/snapshots/' + id, { method: 'DELETE' });
+    loadSandboxSnapshots();
+  } catch(e) { alert('Error: ' + e); }
+}
+
+// ── #240 Workspace Context Snapshot ──
+
+async function loadWorkspaceSnapshots() {
+  var c = document.getElementById('sandbox-pane-workspace');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading workspace snapshots…</div>';
+  try {
+    var data = await fetchJSON(BASE + '/api/workspace/snapshots?limit=50');
+    var html = '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+    html += '<button class="btn" onclick="captureWorkspaceSnapshot()">📸 Capture Workspace</button>';
+    html += '<button class="btn btn-ghost" onclick="loadWorkspaceSnapshots()">↻ Refresh</button>';
+    html += '</div>';
+    if (!data.length) {
+      html += '<div class="card" style="padding:24px;text-align:center;color:var(--text3);">No workspace snapshots captured yet.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      data.forEach(function(s) {
+        html += '<div class="card" style="padding:12px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<div><span style="font-weight:600;font-size:13px;">' + esc(s.name) + '</span>';
+        html += '<span style="font-size:10px;color:var(--text3);margin-left:8px;">' + (s.fileTree ? s.fileTree.length : 0) + ' files</span>';
+        html += '</div>';
+        html += '<div style="display:flex;gap:4px;">';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="restoreWorkspaceSnapshot(\'' + esc(s.id) + '\')" title="Restore">🔄</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteWorkspaceSnapshot(\'' + esc(s.id) + '\')" title="Delete">🗑</button>';
+        html += '</div></div>';
+        html += '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Session: ' + esc(s.sessionId).slice(0,20) + '… • ' + esc(s.createdAt) + ' • Branch: ' + esc(s.gitState.branch) + (s.gitState.dirty ? ' (dirty)' : '') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Error: ' + esc(String(e)) + '</div>'; }
+}
+
+async function captureWorkspaceSnapshot() {
+  var name = prompt('Snapshot name (optional):');
+  var sessionId = window._sessionId || prompt('Session ID:');
+  if (!sessionId) return;
+  try {
+    var r = await fetch(BASE + '/api/workspace/snapshots', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || undefined, sessionId: sessionId, agentId: '', workspacePath: '/workspace', tags: [] })
+    });
+    if (r.ok) { loadWorkspaceSnapshots(); } else { alert('Failed: ' + (await r.text())); }
+  } catch(e) { alert('Error: ' + e); }
+}
+
+async function restoreWorkspaceSnapshot(id) {
+  var targetPath = prompt('Target workspace path:', '/workspace');
+  if (!targetPath) return;
+  try {
+    var r = await fetch(BASE + '/api/workspace/snapshots/' + id + '/restore', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetWorkspacePath: targetPath })
+    });
+    var result = await r.json();
+    alert(result.message);
+  } catch(e) { alert('Error: ' + e); }
+}
+
+async function deleteWorkspaceSnapshot(id) {
+  if (!confirm('Delete this workspace snapshot?')) return;
+  try {
+    await fetch(BASE + '/api/workspace/snapshots/' + id, { method: 'DELETE' });
+    loadWorkspaceSnapshots();
+  } catch(e) { alert('Error: ' + e); }
+}
+
+// ── #232 Dev Environment as Code ──
+
+async function loadDevEnvPane() {
+  var c = document.getElementById('sandbox-pane-devenv');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading dev env manifests…</div>';
+  try {
+    var data = await fetchJSON(BASE + '/api/sandbox/dev-env/list');
+    var html = '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+    html += '<button class="btn" onclick="generateDevEnv()">📦 Generate Manifest</button>';
+    html += '<button class="btn btn-ghost" onclick="loadDevEnvPane()">↻ Refresh</button>';
+    html += '</div>';
+    if (!data.length) {
+      html += '<div class="card" style="padding:24px;text-align:center;color:var(--text3);">No dev environment manifests yet. Generate one to capture your development environment as code.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      data.forEach(function(m) {
+        html += '<div class="card" style="padding:12px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<span style="font-weight:600;font-size:13px;">' + esc(m.name) + ' <span class="badge" style="font-size:9px;">v' + esc(m.version) + '</span></span>';
+        html += '<span style="font-size:10px;color:var(--text3);">' + esc(m.updatedAt) + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Path: ' + esc(m.workspacePath) + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Error: ' + esc(String(e)) + '</div>'; }
+}
+
+async function generateDevEnv() {
+  var workspacePath = prompt('Workspace path:', '/workspace');
+  if (!workspacePath) return;
+  var name = prompt('Manifest name (optional):', 'cortex-devenv');
+  try {
+    var r = await fetch(BASE + '/api/sandbox/dev-env/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspacePath: workspacePath, name: name || undefined })
+    });
+    if (r.ok) {
+      var manifest = await r.json();
+      var c = document.getElementById('sandbox-pane-devenv');
+      c.innerHTML = '<button class="btn btn-ghost" style="margin-bottom:8px;" onclick="loadDevEnvPane()">← Back</button>' +
+        '<div class="card" style="padding:16px;">' +
+        '<h3>' + esc(manifest.name) + ' <span class="badge">v' + esc(manifest.version) + '</span></h3>' +
+        '<h4 style="margin-top:12px;font-size:12px;">Sandbox Config</h4>' +
+        '<pre style="font-size:10px;background:var(--bg2);padding:8px;border-radius:4px;">' + esc(JSON.stringify(manifest.sandbox, null, 2)) + '</pre>' +
+        '<h4 style="margin-top:12px;font-size:12px;">Dependencies (' + esc(manifest.dependencies.language) + ', ' + esc(manifest.dependencies.manager) + ')</h4>' +
+        '<pre style="font-size:10px;background:var(--bg2);padding:8px;border-radius:4px;">' + esc(JSON.stringify(manifest.dependencies.packages, null, 2)) + '</pre>' +
+        '<h4 style="margin-top:12px;font-size:12px;">Setup Commands</h4>' +
+        '<pre style="font-size:10px;background:var(--bg2);padding:8px;border-radius:4px;">' + esc(manifest.workspace.setupCommands.join('\\n')) + '</pre>' +
+        '</div>';
+    } else { alert('Failed: ' + (await r.text())); }
+  } catch(e) { alert('Error: ' + e); }
+}
+
+// ── #230 Bug Reproduction Studio ──
+
+async function loadBugReproPane() {
+  var c = document.getElementById('sandbox-pane-bugrepro');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading bug repro runs…</div>';
+  try {
+    var data = await fetchJSON(BASE + '/api/sandbox/bug-repro?limit=50');
+    var html = '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+    html += '<button class="btn" onclick="createBugRepro()">🐛 New Bug Repro</button>';
+    html += '<button class="btn btn-ghost" onclick="loadBugReproPane()">↻ Refresh</button>';
+    html += '</div>';
+    if (!data.length) {
+      html += '<div class="card" style="padding:24px;text-align:center;color:var(--text3);">No bug reproduction runs yet. Create one to reproduce and validate bug fixes.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      data.forEach(function(r) {
+        var statusColor = r.status === 'passed' ? 'var(--accent-green)' : r.status === 'failed' ? 'var(--accent-red)' : r.status === 'running' ? 'var(--accent-amber)' : 'var(--text3)';
+        html += '<div class="card" style="padding:12px;border-left:3px solid ' + statusColor + ';">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+        html += '<span style="font-weight:600;font-size:13px;">' + esc(r.issueTitle) + '</span>';
+        html += '<span class="badge" style="background:' + statusColor + ';color:#000;font-size:9px;">' + esc(r.status) + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Language: ' + esc(r.language) + ' • Runtime: ' + esc(r.runtime) + ' • Rounds: ' + r.rounds + ' • ' + esc(r.createdAt) + '</div>';
+        if (r.result) {
+          html += '<div style="margin-top:8px;font-size:10px;"><span style="color:var(--text2);">Exit: ' + r.result.exitCode + ' • ' + r.result.durationMs + 'ms</span></div>';
+          html += '<pre style="font-size:9px;background:var(--bg2);padding:6px;border-radius:4px;margin-top:4px;max-height:80px;overflow-y:auto;">' + esc((r.result.stdout || '') + (r.result.stderr ? '\\n-- stderr --\\n' + r.result.stderr : '')) + '</pre>';
+        }
+        html += '<div style="margin-top:8px;display:flex;gap:4px;">';
+        if (r.status === 'queued') html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="runBugRepro(\'' + esc(r.id) + '\')">▶ Run</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick="deleteBugRepro(\'' + esc(r.id) + '\')">🗑</button>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Error: ' + esc(String(e)) + '</div>'; }
+}
+
+async function createBugRepro() {
+  var title = prompt('Issue title:');
+  if (!title) return;
+  var lang = prompt('Language (python, javascript, bash, etc.):', 'python');
+  var code = prompt('Code to reproduce:');
+  if (!code) return;
+  try {
+    var r = await fetch(BASE + '/api/sandbox/bug-repro', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issueTitle: title, language: lang || 'python', code: code })
+    });
+    if (r.ok) { loadBugReproPane(); } else { alert('Failed: ' + (await r.text())); }
+  } catch(e) { alert('Error: ' + e); }
+}
+
+async function runBugRepro(id) {
+  try {
+    var r = await fetch(BASE + '/api/sandbox/bug-repro/' + id + '/run', { method: 'POST' });
+    if (r.ok) { loadBugReproPane(); } else { alert('Failed: ' + (await r.text())); }
+  } catch(e) { alert('Error: ' + e); }
+}
+
+async function deleteBugRepro(id) {
+  if (!confirm('Delete this bug repro?')) return;
+  try {
+    await fetch(BASE + '/api/sandbox/bug-repro/' + id, { method: 'DELETE' });
+    loadBugReproPane();
+  } catch(e) { alert('Error: ' + e); }
+}
+
+// ── End Sandbox Page ──────────────────────────────────────────
 
 // Restore page from hash, then localStorage, then default
 (function restorePage() {

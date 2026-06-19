@@ -295,6 +295,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '033_plugins_verification_report.sql',
       label: 'plugins.db (verification report)',
     },
+    {
+      db: coreDb,
+      sqlFile: '034_sandbox_snapshots.sql',
+      label: 'cortex.db (sandbox snapshots)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

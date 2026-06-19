@@ -5,6 +5,81 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.45.0] — 2026-06-19
+
+### Added
+
+- **Sandbox & Environment (#79, #230, #232, #240)** — full sandbox and environment management suite with environment replication, workspace snapshots, dev environment as code, and bug reproduction studio:
+
+  - **Environment Replication Debugger (#79)** — capture and replay development environments:
+    - `POST /api/sandbox/snapshots` — capture environment snapshot (env vars, dependencies, git state, sandbox config) to JSON + DB
+    - `GET /api/sandbox/snapshots` — list snapshots with optional session filter and sensitive-key masking
+    - `GET /api/sandbox/snapshots/:id` — single snapshot detail with masked env values
+    - `POST /api/sandbox/snapshots/:id/replicate` — replicate snapshot to target workspace (writes commented `.cortex-env-replication.sh`)
+    - `GET /api/sandbox/snapshots/compare?id1=&id2=` — diff two snapshots (env vars + dependencies)
+    - `DELETE /api/sandbox/snapshots/:id` — delete snapshot (file + DB row)
+    - Env key validation (`/^[A-Za-z_][A-Za-z0-9_]*$/`) and value length limit (1024 chars)
+    - Sensitive env value masking for keys matching `API_KEY|TOKEN|SECRET|PASSWORD|AUTH|CREDENTIAL|PRIVATE_KEY|ACCESS_KEY`
+    - Shell-injection-safe env var replication (fully escaped `$`, backtick, `!`, `\`)
+
+  - **Workspace Context Snapshot (#240)** — point-in-time workspace state capture:
+    - `POST /api/workspace/snapshots` — capture file tree with SHA-256 hashes, git state, memory context, tool state
+    - `GET /api/workspace/snapshots` — list snapshots with session filter
+    - `GET /api/workspace/snapshots/:id` — single snapshot with full file tree
+    - `POST /api/workspace/snapshots/:id/restore` — write restore manifest (`.cortex-ws-restore.json`)
+    - `GET /api/workspace/snapshots/diff?id1=&id2=` — diff file trees (added/removed/modified)
+    - `DELETE /api/workspace/snapshots/:id` — delete snapshot
+    - Files >10 MB skipped with `skipped:too-large:<size>` placeholder hash
+    - Excludes `.git`, `node_modules`, `__pycache__`, `.DS_Store` from scans
+    - Workspace Snapshot button in Sessions detail view
+
+  - **Dev Environment as Code (#232)** — serialize environment config into versioned manifests:
+    - `POST /api/sandbox/dev-env/generate` — auto-detect language, dependencies, setup commands; generate `DevEnvManifest`
+    - `GET /api/sandbox/dev-env/manifest?workspacePath=` — load existing `cortex-devenv.json`
+    - `PUT /api/sandbox/dev-env/manifest` — save/update manifest with validation
+    - `GET /api/sandbox/dev-env/list` — list all stored manifests
+    - Auto-detection of JavaScript (npm/yarn/pnpm/bun), Python (pip), Rust (cargo), Go, Ruby (bundler)
+    - Unique default names via SHA-256 hash of workspace path to prevent cross-workspace collisions
+
+  - **Bug Reproduction Studio (#230)** — reproduce issues as sandbox test runs:
+    - `POST /api/sandbox/bug-repro` — create bug repro run from issue title, description, language, and code
+    - `GET /api/sandbox/bug-repro` — list runs with optional status/session filters
+    - `GET /api/sandbox/bug-repro/:id` — single run detail with result
+    - `POST /api/sandbox/bug-repro/:id/run` — execute repro in sandbox (docker/subprocess)
+    - `DELETE /api/sandbox/bug-repro/:id` — delete run
+    - Status lifecycle: `queued` → `running` → `passed` | `failed` | `error`
+    - Error handling wraps `runInSandbox` with try/catch for runtime failures
+
+  - **Shared utility modules**:
+    - `src/sandbox/git-capture.ts` — unified git state capture (branch, HEAD, porcelain status) used by both replication and workspace snapshot modules
+    - `src/sandbox/dependency-detect.ts` — unified dependency detection shared between replication and dev-env-code modules
+    - `src/sandbox/snapshot-types.ts` — shared TypeScript interfaces for all four subsystems
+
+- **Sandbox page** — new dedicated page with 4 tabs:
+  - **Snapshots tab** — list, capture, view detail, replicate, delete environment snapshots
+  - **Workspace tab** — list, capture, restore, delete workspace snapshots
+  - **Dev Env tab** — list and generate dev environment manifests
+  - **Bug Repro tab** — list, create, run, delete bug reproduction runs
+  - Nav entry (🖥 icon) in the Code & Development sidebar section
+  - Session-level Snapshot button in the Sessions detail view
+
+- **Database migration #034** — four new tables in `cortex.db`:
+  - `sandbox_snapshots` (id, name, session_id, agent_id, created_at, runtime, workspace_path, tags)
+  - `workspace_snapshots` (id, name, session_id, agent_id, created_at, file_count, git_branch, tags)
+  - `dev_env_manifests` (name PK, version, workspace_path, manifest_json, updated_at)
+  - `bug_repro_runs` (id, issue_title, issue_description, language, runtime, status, code, test_code, stdout, stderr, exit_code, duration_ms, passed, fixed_code, rounds, created_at, session_id, tags)
+  - Indexes on `session_id`, `created_at DESC`, `status` for all query patterns
+
+- **API endpoint** — `GET /api/sandbox/config` — returns available runtime, docker/gVisor availability, timeout/memory limits, and supported languages (was previously referenced by UI but unimplemented)
+
+- **Path validation** — all 6 sandbox endpoints that accept workspace paths now validate against `..` traversal and scope to `PATHS.workspacesDir` / `PATHS.dataDir`
+
+### Security
+
+- Shell-injection hardened: env var keys validated, values fully escaped in generated replication scripts, exports commented-out by default
+- Path traversal prevented: user-controlled workspace paths validated and scoped to allowed directories
+- Sensitive env var values masked in API responses (key pattern matching)
+
 ## [0.44.1] — 2026-06-19
 
 ### Added

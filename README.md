@@ -151,6 +151,7 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 | Voice             | speak, listen (STT/TTS agent tools)                                                             |
 | Data & Util       | memory_note, memory_search, db_query, structured_extract, json_query, regex_utils, code_snippet |
 | Environment       | env_manager (get/set variables), schedule (cron-based job scheduling)                           |
+| Sandbox           | environment snapshots, workspace snapshots, dev env as code, bug reproduction studio             |
 | Image & Vision    | image_analyze (multimodal image analysis via 18+ LLM providers)                                 |
 | Sub-agents        | spawn typed child agents for parallel and delegated tasks                                       |
 | Skills            | load_skill, skill_read, skill_write (create/update/delete/merge/promote/deprecate)              |
@@ -163,7 +164,8 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 - **Built-in HTTP server** — `cortex serve` starts a WebSocket-powered chat UI on port 3000
 - **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Activity, Memory, Jobs, Sessions,
-  Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, A2A Bridge, Memori, AgentLint
+  Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, A2A Bridge, Memori, AgentLint,
+  Sandbox
 - **File upload** — drag-and-drop or click to attach PDFs, images, and documents in chat
 - **REST API** — full HTTP API for sessions, memory, jobs, git, GitHub, and code execution
 - **Session persistence** — page refresh resumes the active session (full history preserved)
@@ -880,6 +882,27 @@ PUT    /api/sandbox/config
 GET    /api/sandbox/images
 POST   /api/sandbox/images/pull
 DELETE /api/sandbox/images/:id
+GET    /api/sandbox/snapshots
+POST   /api/sandbox/snapshots
+GET    /api/sandbox/snapshots/:id
+DELETE /api/sandbox/snapshots/:id
+POST   /api/sandbox/snapshots/:id/replicate
+GET    /api/sandbox/snapshots/compare
+GET    /api/workspace/snapshots
+POST   /api/workspace/snapshots
+GET    /api/workspace/snapshots/:id
+DELETE /api/workspace/snapshots/:id
+POST   /api/workspace/snapshots/:id/restore
+GET    /api/workspace/snapshots/diff
+POST   /api/sandbox/dev-env/generate
+GET    /api/sandbox/dev-env/manifest
+PUT    /api/sandbox/dev-env/manifest
+GET    /api/sandbox/dev-env/list
+GET    /api/sandbox/bug-repro
+POST   /api/sandbox/bug-repro
+GET    /api/sandbox/bug-repro/:id
+DELETE /api/sandbox/bug-repro/:id
+POST   /api/sandbox/bug-repro/:id/run
 GET    /api/security/supervisor
 PUT    /api/security/supervisor
 GET    /api/security/supervisor/cache
