@@ -895,12 +895,6 @@ const HTML = `<!DOCTYPE html>
     <!-- Quick search -->
     <input id="sidebar-search" placeholder="Search pages…" oninput="filterNav(this.value)" aria-label="Search navigation pages" />
 
-    <!-- Recent pages -->
-    <div id="recent-pages-section" style="display:none;">
-      <div class="nav-section">Recent</div>
-      <div id="recent-pages-list"></div>
-    </div>
-
     <!-- Chat & Sessions -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">Chat &amp; Sessions <span class="nav-section-toggle">▼</span></div>
     <button class="nav-item active" onclick="showPage('dashboard');closeMobileSidebar()" id="nav-dashboard">
@@ -987,6 +981,12 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('quartermaster');closeMobileSidebar()" id="nav-quartermaster">
       <span class="icon">🧠</span>Quartermaster
     </button>
+
+    <!-- Recent pages -->
+    <div id="recent-pages-section" style="display:none;">
+      <div class="nav-section">Recent</div>
+      <div id="recent-pages-list"></div>
+    </div>
 
     <!-- Plugin Panels (dynamic) -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
