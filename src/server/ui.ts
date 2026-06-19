@@ -7353,13 +7353,44 @@ async function loadSettings() {
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  var tabs = ['general', 'providers', 'tools', 'system', 'metrics'];
+  var tabs = ['general', 'providers', 'tools', 'system'];
   tabs.forEach(function(t) {
     var tabBtn = document.getElementById('settings-tab-' + t);
-    var pane = t === 'metrics' ? document.getElementById('metrics-content') : document.getElementById('settings-pane-' + t);
+    var pane = document.getElementById('settings-pane-' + t);
     if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
   });
+  var extContent = document.getElementById('settings-ext-content');
+  if (extContent) extContent.style.display = 'none';
+  var metricsEl = document.getElementById('metrics-content');
+  if (metricsEl) metricsEl.style.display = 'none';
+  ['providers','router','supervisor'].forEach(function(t) {
+    var b = document.getElementById('settings-ext-tab-' + t);
+    if (b) b.classList.remove('active');
+  });
+  var mt = document.getElementById('settings-tab-metrics');
+  if (mt) mt.classList.remove('active');
+  var extBar = document.getElementById('settings-ext-tab-bar');
+  if (extBar) {
+    if (tabName === 'providers') {
+      extBar.style.display = 'flex';
+      document.getElementById('settings-ext-tab-providers').style.display = '';
+      document.getElementById('settings-ext-tab-router').style.display = '';
+      document.getElementById('settings-ext-tab-supervisor').style.display = '';
+      if (mt) mt.style.display = 'none';
+    } else if (tabName === 'system') {
+      extBar.style.display = 'flex';
+      var pt = document.getElementById('settings-ext-tab-providers');
+      if (pt) pt.style.display = 'none';
+      var rt = document.getElementById('settings-ext-tab-router');
+      if (rt) rt.style.display = 'none';
+      var st = document.getElementById('settings-ext-tab-supervisor');
+      if (st) st.style.display = 'none';
+      if (mt) mt.style.display = '';
+    } else {
+      extBar.style.display = 'none';
+    }
+  }
   if (tabName === 'general') refreshSecuritySection();
   if (tabName === 'tools') loadToolConfigs();
 }
@@ -12923,27 +12954,56 @@ function extendSettings() {
   };
 }
 function loadSettingsExtensions() {
-  var tabs = document.querySelector('#page-settings [style*="border-bottom"]');
-  if (!tabs) return;
-  // Add extra tab buttons if not already present
-  if (!document.getElementById('settings-tab-providers')) {
-    tabs.innerHTML += '<button class="btn btn-ghost" onclick="switchSettingsExtTab(this,\\'providers\\')" id="settings-tab-providers" style="font-size:11px;padding:4px 10px;">Providers</button>' +
-      '<button class="btn btn-ghost" onclick="switchSettingsExtTab(this,\\'router\\')" id="settings-tab-router" style="font-size:11px;padding:4px 10px;">Router</button>' +
-      '<button class="btn btn-ghost" onclick="switchSettingsExtTab(this,\\'supervisor\\')" id="settings-tab-supervisor" style="font-size:11px;padding:4px 10px;">Supervisor</button>';
-    // Add content containers
-    var container = document.querySelector('#page-settings > div:last-of-type') || document.getElementById('page-settings');
+  var mainBar = document.querySelector('#page-settings [style*="border-bottom"]');
+  if (!mainBar) return;
+  var extBar = document.getElementById('settings-ext-tab-bar');
+  if (!extBar) {
+    extBar = document.createElement('div');
+    extBar.id = 'settings-ext-tab-bar';
+    extBar.style.cssText = 'display:none;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;';
+    mainBar.parentNode.insertBefore(extBar, mainBar.nextSibling);
+  }
+  if (!document.getElementById('settings-ext-tab-providers')) {
+    var existing = extBar.innerHTML;
+    extBar.innerHTML = '<button class="mem-tab" onclick="switchSettingsExtTab(this,\\'providers\\')" id="settings-ext-tab-providers">Providers</button>' +
+      '<button class="mem-tab" onclick="switchSettingsExtTab(this,\\'router\\')" id="settings-ext-tab-router">Router</button>' +
+      '<button class="mem-tab" onclick="switchSettingsExtTab(this,\\'supervisor\\')" id="settings-ext-tab-supervisor">Supervisor</button>' + existing;
+  }
+  if (!document.getElementById('settings-ext-content')) {
+    var settingsContent = document.getElementById('settings-content');
     var extDiv = document.createElement('div');
     extDiv.id = 'settings-ext-content';
     extDiv.style.cssText = 'padding:16px;display:none;';
-    container.appendChild(extDiv);
+    if (settingsContent) settingsContent.appendChild(extDiv);
   }
 }
 function switchSettingsExtTab(btn, tab) {
+  settingsActiveTab = 'ext-' + tab;
   var el = document.getElementById('settings-ext-content');
-  ['providers','router','supervisor'].forEach(function(t) {
+  if (!el) return;
+  var panels = document.querySelectorAll('#settings-content > div[id^="settings-pane-"]');
+  panels.forEach(function(p) { p.style.display = 'none'; });
+  var metricsEl = document.getElementById('metrics-content');
+  if (metricsEl) metricsEl.style.display = 'none';
+  var mainTabs = ['general', 'providers', 'tools', 'system'];
+  mainTabs.forEach(function(t) {
     var b = document.getElementById('settings-tab-' + t);
+    if (b) b.classList.remove('active');
+  });
+  ['providers','router','supervisor'].forEach(function(t) {
+    var b = document.getElementById('settings-ext-tab-' + t);
     if (b) b.classList.toggle('active', t === tab);
   });
+  var mt = document.getElementById('settings-tab-metrics');
+  if (mt) mt.classList.remove('active');
+  var extBar = document.getElementById('settings-ext-tab-bar');
+  if (extBar) {
+    extBar.style.display = 'flex';
+    document.getElementById('settings-ext-tab-providers').style.display = '';
+    document.getElementById('settings-ext-tab-router').style.display = '';
+    document.getElementById('settings-ext-tab-supervisor').style.display = '';
+    if (mt) mt.style.display = 'none';
+  }
   el.style.display = 'block';
   if (tab === 'providers') loadProviderComparison();
   else if (tab === 'router') loadRouterDashboard();
@@ -13637,30 +13697,46 @@ function openLangfuseTrace() {
 }
 
 // ── Prometheus Metrics Dashboard ──
-var metricsTabAdded = false;
 function extendMetricsPage() {
-  if (metricsTabAdded) return;
-  var nav = document.getElementById('nav-section-system');
-  if (!nav) { setTimeout(extendMetricsPage, 500); return; }
-  // Add metrics nav item in System section
-  var sysSection = document.querySelector('#page-settings');
-  if (!sysSection) return;
-  // Add tab to Settings
-  var tabs = document.querySelector('#page-settings [style*="display:flex;gap"]');
-  if (tabs && !document.getElementById('settings-tab-metrics')) {
-    tabs.innerHTML += '<button class="mem-tab" onclick="switchMetricsTab()" id="settings-tab-metrics">Metrics</button>';
-    metricsTabAdded = true;
+  if (document.getElementById('settings-tab-metrics')) return;
+  var extBar = document.getElementById('settings-ext-tab-bar');
+  if (!extBar) {
+    var mainBar = document.querySelector('#page-settings [style*="border-bottom"]');
+    if (!mainBar) { setTimeout(extendMetricsPage, 500); return; }
+    extBar = document.createElement('div');
+    extBar.id = 'settings-ext-tab-bar';
+    extBar.style.cssText = 'display:none;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;';
+    mainBar.parentNode.insertBefore(extBar, mainBar.nextSibling);
   }
+  extBar.innerHTML += '<button class="mem-tab" onclick="switchMetricsTab()" id="settings-tab-metrics">Metrics</button>';
 }
 function switchMetricsTab() {
   settingsActiveTab = 'metrics';
-  var tabs = ['general', 'providers', 'tools', 'system', 'metrics'];
-  tabs.forEach(function(t) {
+  ['general', 'providers', 'tools', 'system'].forEach(function(t) {
     var tabBtn = document.getElementById('settings-tab-' + t);
-    var pane = t === 'metrics' ? document.getElementById('metrics-content') : document.getElementById('settings-pane-' + t);
-    if (tabBtn) tabBtn.classList.toggle('active', t === 'metrics');
-    if (pane) pane.style.display = t === 'metrics' ? 'block' : 'none';
+    var pane = document.getElementById('settings-pane-' + t);
+    if (tabBtn) tabBtn.classList.remove('active');
+    if (pane) pane.style.display = 'none';
   });
+  var extContent = document.getElementById('settings-ext-content');
+  if (extContent) extContent.style.display = 'none';
+  ['providers','router','supervisor'].forEach(function(t) {
+    var b = document.getElementById('settings-ext-tab-' + t);
+    if (b) b.classList.remove('active');
+  });
+  var mt = document.getElementById('settings-tab-metrics');
+  if (mt) mt.classList.add('active');
+  var extBar = document.getElementById('settings-ext-tab-bar');
+  if (extBar) {
+    extBar.style.display = 'flex';
+    var pt = document.getElementById('settings-ext-tab-providers');
+    if (pt) pt.style.display = 'none';
+    var rt = document.getElementById('settings-ext-tab-router');
+    if (rt) rt.style.display = 'none';
+    var st = document.getElementById('settings-ext-tab-supervisor');
+    if (st) st.style.display = 'none';
+    if (mt) mt.style.display = '';
+  }
   var container = document.getElementById('metrics-content');
   if (!container) {
     container = document.createElement('div');
