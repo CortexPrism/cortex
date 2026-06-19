@@ -169,6 +169,13 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - `src/pkm-connectors.ts` with Obsidian/Logseq/Notion/Roam connection management
   - `GET /api/pkm`, `POST /api/pkm/connect`, `POST /api/pkm/sync` endpoints
 
+- **UI Pages & Enhancements** — new pages and in-page widgets for all features:
+  - New **Prompt Lab** page with template CRUD, versioning, test run recording, and run history
+  - New **PKM** page with connection management, sync controls, and status indicators
+  - **Settings** page: compressor token-budget slider (#55), learned preferences inspector (#68), sandbox backend availability (#257), A2A protocol status (#251)
+  - **Eval** page: harness preset cards (#186), inline RAG evaluation with hit@1/recall/MRR scoring (#178)
+  - Navigation sidebar items for Prompt Lab and PKM with icon labels
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
