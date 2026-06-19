@@ -88,23 +88,31 @@ The Lens timeline is visible in the Web UI and queryable via the REST API.
 ### Dynamic Tool Permission & Approval Workflow
 
 Tool permissions are evaluated per-task rather than statically at install time:
-- **Risk profiles** for 13 tool categories with default guardrails (readOnly, restrictedPaths, allowedDomains, maxDurationMs, requireConfirmation)
+
+- **Risk profiles** for 13 tool categories with default guardrails (readOnly, restrictedPaths,
+  allowedDomains, maxDurationMs, requireConfirmation)
 - **Four decision levels**: `granted`, `granted_with_guardrails`, `denied`, `requires_approval`
-- **Structured approval pipeline** with auto-approve thresholds, webhook notifications, promise-based resolution, and automatic expiry (5-minute default timeout)
+- **Structured approval pipeline** with auto-approve thresholds, webhook notifications,
+  promise-based resolution, and automatic expiry (5-minute default timeout)
 - Temporary grants are cached per-session for previously approved tools
 
 ### Data Loss Prevention (DLP) Guard
 
 All agent outputs and tool results are scanned by a 22-scanner DLP pipeline:
-- **Credential detection**: AWS keys, GitHub tokens, OpenAI/Anthropic/Google API keys, JWTs, private keys (RSA/EC/DSA), PEM certificates, database connection strings
+
+- **Credential detection**: AWS keys, GitHub tokens, OpenAI/Anthropic/Google API keys, JWTs, private
+  keys (RSA/EC/DSA), PEM certificates, database connection strings
 - **PII detection**: credit cards, SSNs, emails, IP addresses
-- **Three action levels**: `monitor` (log only), `redact` (replace with placeholders), `block` (reject the output)
+- **Three action levels**: `monitor` (log only), `redact` (replace with placeholders), `block`
+  (reject the output)
 - Registered as a `pre-output` and `post-tool` pipeline hook, run on every agent turn
 
 ### AI Guardrails & Content Safety
 
 Pluggable content safety middleware with 5 built-in classifiers:
-- **Prompt injection** — 10 detection patterns (ignore-previous-instructions, jailbreak DAN/STAN, system override)
+
+- **Prompt injection** — 10 detection patterns (ignore-previous-instructions, jailbreak DAN/STAN,
+  system override)
 - **PII leakage** — output-side PII detection
 - **Harmful code** — destructive commands (rm -rf /, DROP DATABASE, eval)
 - **Excessive length** — alerts on inputs >100K characters
@@ -114,7 +122,9 @@ Pluggable content safety middleware with 5 built-in classifiers:
 ### Session Isolation
 
 Multi-tenant data isolation between Cortex sessions:
-- **Three modes**: `strict` (no cross-project access), `permissive` (path-only isolation), `shared` (no restrictions)
+
+- **Three modes**: `strict` (no cross-project access), `permissive` (path-only isolation), `shared`
+  (no restrictions)
 - Path-based isolation with workspace root enforcement and allowlist overrides
 - Environment variable filtering with safe-var allowlist
 - Cross-session memory access control with shared-session whitelist
@@ -123,6 +133,7 @@ Multi-tenant data isolation between Cortex sessions:
 ### Supply Chain Integrity
 
 Before any plugin or dependency is loaded:
+
 - SHA-256 hash verification against known-good hashes per `package@version`
 - Blocked hash list for known-malicious content
 - Digital signature verification
@@ -134,6 +145,7 @@ Before any plugin or dependency is loaded:
 ### Dependency Guardian
 
 Continuous monitoring across 6 ecosystems (npm, PyPI, Maven, Go, Cargo, NuGet):
+
 - CVE database with severity-scored vulnerability records
 - Version range matching for affected-versions parsing
 - Blocked license enforcement (GPL-3.0, AGPL-3.0, BUSL-1.1, SSPL-1.0)
