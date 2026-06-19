@@ -72,6 +72,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - New `POST /api/vault/content` endpoint for embedding, images, files, and text with a 1MB value limit
   - Content entries logged to `lens_events` with `memory_write` event type for auditability
 
+- **Cross-Repository Code Search (#74)** — `GET /api/codegraph/search-all` cross-repo symbol search, Codegraph page "All repos" button
+
+- **Multi-Language Polyglot Bridge (#84)** — `ftsSearchNodes()` language filter, `getLanguages()`, Codegraph page language dropdown
+
+- **Code Ownership Router (#81)** — `GET /api/codegraph/ownership?file=` git blame attribution with author ranking
+
+- **Codebase Archeologist (#229)** — `GET /api/codegraph/history?file=` git log commit viewer
+
+- **Live Codebase Q&A (#239)** — `GET /api/codegraph/qa?q=&project=` symbol citations with file/line/signature provenance
+
+- **Alcove Private Documentation (#294)** — `GET /api/alcove/search?q=` semantic search over .cortex/data/docs/
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
