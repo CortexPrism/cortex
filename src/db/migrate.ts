@@ -285,6 +285,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '031_job_runs.sql',
       label: 'cortex.db (job runs)',
     },
+    {
+      db: coreDb,
+      sqlFile: '032_memori_checkpoints.sql',
+      label: 'cortex.db (memori checkpoints)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

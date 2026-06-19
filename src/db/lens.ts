@@ -53,7 +53,16 @@ export type EventType =
   | 'mqm_observation'
   | 'mqm_weight_updated'
   | 'mqm_pattern_learned'
-  | 'mqm_mode_changed';
+  | 'mqm_mode_changed'
+  | 'dynamic_grant'
+  | 'approval_requested'
+  | 'approval_decision'
+  | 'dlp_blocked'
+  | 'dlp_redacted'
+  | 'guardrail_blocked'
+  | 'isolation_violation'
+  | 'supply_chain_verification'
+  | 'guardian_report';
 
 export interface LensEvent {
   id: string;
