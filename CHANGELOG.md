@@ -7,6 +7,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-system import system** (`src/cli/import/`) — new shared import module supporting three external agent systems:
+  - **Hermes import** (`cortex import hermes`) — parses Hermes JSONL exports with session/message records and ShareGPT `conversations[]` format. Groups records by `session_id`, writes messages into per-session databases, imports system prompts and model info as episodic memory. Auto-detects `~/.hermes/`.
+  - **ZeroClaw import** (`cortex import zeroclaw`) — handles JSONL event-sourced transcripts and `MEMORY_SNAPSHOT.md`/`MEMORY.md` memory snapshot files. Transcript events are written as session messages; `branch_summary`/`compaction` events become episodic memory; memory snapshots become semantic memory. Auto-detects `~/.zeroclaw/`.
+  - **JSONL transcript import** (`cortex import transcripts`) — shared parser for OpenClaw/ZeroClaw lineage JSONL format with tree-structured events.
+  - **API import routing** (`POST /api/import`) — the HTTP API now dispatches to the correct import module based on `type` parameter (`hermes`, `zeroclaw`, `transcripts`, `openclaw`, `auto`), returning structured results with session/message/memory/policy/error counts.
+
 ## [0.42.0] — 2026-06-18
 
 ### Fixed

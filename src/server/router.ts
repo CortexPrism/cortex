@@ -3903,14 +3903,68 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/import
   if (req.method === 'POST' && path === '/api/import') {
     const body = await req.json() as { file?: string; type?: string; dryRun?: boolean };
+    const importType = body.type ?? 'auto';
+
     if (body.dryRun) {
       return json({ preview: { sessions: 0, configs: 0, memories: 0 }, dryRun: true });
     }
-    const imported = { sessions: 0, configs: 0, memories: 0 };
+
+    const { importHermes } = await import('../cli/import/hermes.ts');
+    const { importZeroClaw } = await import('../cli/import/zeroclaw.ts');
+    const { importJSONLTranscripts } = await import('../cli/import/jsonl.ts');
+    const { importOpenClaw } = await import('../cli/openclaw-migrate.ts');
+
+    let imported = { sessions: 0, messages: 0, memories: 0, policies: 0, errors: 0 };
+
+    if (!body.file) {
+      return json({ ok: false, error: 'No file path provided' });
+    }
+
+    try {
+      switch (importType) {
+        case 'hermes':
+          imported = await importHermes(body.file);
+          break;
+        case 'zeroclaw':
+          imported = await importZeroClaw(body.file);
+          break;
+        case 'transcripts':
+          imported = await importJSONLTranscripts(body.file);
+          break;
+        case 'openclaw':
+        case 'files': {
+          const fileStat = await Deno.stat(body.file);
+          if (fileStat.isDirectory) {
+            await importOpenClaw(body.file);
+            imported = { sessions: 0, messages: 0, memories: 0, policies: 0, errors: 0 };
+          }
+          break;
+        }
+        case 'auto':
+        default: {
+          const fileStat = await Deno.stat(body.file).catch(() => null);
+          if (!fileStat) {
+            return json({ ok: false, error: `Cannot read file: ${body.file}` });
+          }
+          if (fileStat.isDirectory) {
+            imported = await importZeroClaw(body.file);
+          } else if (body.file.endsWith('.jsonl')) {
+            imported = await importJSONLTranscripts(body.file);
+          } else if (body.file.endsWith('.json')) {
+            imported = { sessions: 0, messages: 0, memories: 0, policies: 0, errors: 0 };
+          } else {
+            return json({ ok: false, error: `Unknown file format: ${body.file}` });
+          }
+        }
+      }
+    } catch (e) {
+      return json({ ok: false, error: (e as Error).message });
+    }
+
     const record = {
       id: `imp_${Date.now().toString(36)}`,
       source: body.file ?? 'unknown',
-      type: body.type ?? 'unknown',
+      type: importType,
       imported,
       createdAt: new Date().toISOString(),
     };

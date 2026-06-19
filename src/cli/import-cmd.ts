@@ -8,6 +8,9 @@ import { runMigrations } from '../db/migrate.ts';
 import { writeEpisodic } from '../memory/store.ts';
 import { addPolicy } from '../security/policy.ts';
 import type { PolicyEffect, PolicyKind } from '../security/policy.ts';
+import { importHermes, detectHermesDir } from './import/hermes.ts';
+import { importZeroClaw, detectZeroClawDir } from './import/zeroclaw.ts';
+import { importJSONLTranscripts } from './import/jsonl.ts';
 
 interface OpenClawMemory {
   id?: string;
@@ -110,9 +113,17 @@ async function detectOpenClawDir(): Promise<string | null> {
   return null;
 }
 
+function printSummary(result: { sessions?: number; messages?: number; memories?: number; policies?: number; errors?: number }, prefix = ''): void {
+  if (result.sessions !== undefined) console.log(`    ${cyan('Sessions:')}      ${result.sessions}`);
+  if (result.messages !== undefined) console.log(`    ${cyan('Messages:')}      ${result.messages}`);
+  if (result.memories !== undefined) console.log(`    ${cyan('Memories:')}      ${result.memories}`);
+  if (result.policies !== undefined) console.log(`    ${cyan('Policies:')}      ${result.policies}`);
+  if ((result.errors ?? 0) > 0) console.log(`    ${red('Errors:')}        ${result.errors}`);
+}
+
 export const importCommand = new Command()
   .name('import')
-  .description('Import data from OpenClaw or a Cortex export file')
+  .description('Import data from OpenClaw, Hermes, ZeroClaw, or a Cortex export file')
   .command(
     'openclaw',
     new Command()
@@ -231,5 +242,92 @@ export const importCommand = new Command()
         await runMigrations();
         const src = sourcePath || join(resolveHomeDir(), '.openclaw');
         await importOpenClaw(src, { dryRun: opts.dryRun });
+      }),
+  )
+  .command(
+    'hermes',
+    new Command()
+      .description('Import sessions and messages from a Hermes JSONL export')
+      .arguments('[path:string]')
+      .option('--dry-run', 'Preview what would be imported without writing')
+      .action(async (opts: { dryRun?: boolean }, sourcePath?: string) => {
+        await runMigrations();
+
+        let source = sourcePath;
+        if (!source) {
+          const detected = await detectHermesDir();
+          if (!detected) {
+            console.log(red('  No Hermes export found.'));
+            console.log(dim('  Pass a path: cortex import hermes <path-to-export.jsonl>'));
+            return;
+          }
+          source = detected;
+          console.log(dim(`  Auto-detected: ${source}`));
+        }
+
+        console.log(bold(`\n  Hermes Import${opts.dryRun ? dim(' (dry-run)') : ''}`));
+        console.log(dim('  ' + '─'.repeat(50)));
+
+        const result = await importHermes(source, { dryRun: opts.dryRun });
+
+        if (!opts.dryRun) {
+          console.log(bold(`\n  Import complete:`));
+          printSummary(result);
+        }
+        console.log('');
+      }),
+  )
+  .command(
+    'zeroclaw',
+    new Command()
+      .description('Import sessions, transcripts, and memory snapshot from ZeroClaw')
+      .arguments('[path:string]')
+      .option('--dry-run', 'Preview what would be imported without writing')
+      .action(async (opts: { dryRun?: boolean }, sourcePath?: string) => {
+        await runMigrations();
+
+        let source = sourcePath;
+        if (!source) {
+          const detected = await detectZeroClawDir();
+          if (!detected) {
+            console.log(red('  No ZeroClaw export found.'));
+            console.log(dim('  Pass a path: cortex import zeroclaw <path-to-transcripts>'));
+            return;
+          }
+          source = detected;
+          console.log(dim(`  Auto-detected: ${source}`));
+        }
+
+        console.log(bold(`\n  ZeroClaw Import${opts.dryRun ? dim(' (dry-run)') : ''}`));
+        console.log(dim('  ' + '─'.repeat(50)));
+
+        const result = await importZeroClaw(source, { dryRun: opts.dryRun });
+
+        if (!opts.dryRun) {
+          console.log(bold(`\n  Import complete:`));
+          printSummary(result);
+        }
+        console.log('');
+      }),
+  )
+  .command(
+    'transcripts',
+    new Command()
+      .description('Import JSONL transcript files (OpenClaw/ZeroClaw format)')
+      .arguments('<path:string>')
+      .option('--dry-run', 'Preview what would be imported without writing')
+      .action(async (opts: { dryRun?: boolean }, sourcePath: string) => {
+        await runMigrations();
+
+        console.log(bold(`\n  JSONL Transcript Import${opts.dryRun ? dim(' (dry-run)') : ''}`));
+        console.log(dim('  ' + '─'.repeat(50)));
+
+        const result = await importJSONLTranscripts(sourcePath, opts);
+
+        if (!opts.dryRun) {
+          console.log(bold(`\n  Import complete:`));
+          printSummary(result);
+        }
+        console.log('');
       }),
   );

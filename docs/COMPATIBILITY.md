@@ -88,6 +88,29 @@ Code signing is required for distribution outside of developer mode.
 5. **Code signing**: Desktop app bundles are unsigned by default — requires manual approval on macOS and Windows.
 6. **IPC sockets on Windows**: The daemon process supervisor uses Unix domain sockets for IPC. On Windows, set the `CORTEX_SOCKET_DIR` environment variable to a writeable directory (defaults to `%TEMP%\cortex`). Unix socket support requires Windows 10 build 17063 or later.
 
+## Import Compatibility
+
+CortexPrism can import data from the following external agent systems:
+
+| System | CLI Command | File Formats | What Gets Imported |
+|--------|-------------|--------------|-------------------|
+| **Hermes** | `cortex import hermes [path]` | JSONL (flat records, message arrays, ShareGPT `conversations[]`) | Sessions with messages, system prompts, model metadata as episodic memory |
+| **ZeroClaw** | `cortex import zeroclaw [path]` | JSONL event-sourced transcripts, `MEMORY_SNAPSHOT.md`, `MEMORY.md` | Sessions with messages, branch summaries/compactions as episodic memory, memory snapshots as semantic memory |
+| **OpenClaw** | `cortex import openclaw [path]`<br>`cortex import files [path]` | JSON export (`memories[]`, `conversations[]`, `policies[]`), artifact files (SOUL.md, USER.md, MEMORY.md, AGENTS.md, TOOLS.md) | Memories, conversations, policies, identity/memory artifact files |
+| **Generic JSONL** | `cortex import transcripts <path>` | JSONL (event-sourced, tree-structured) | Sessions with messages, branch summaries/compactions as episodic memory |
+
+All import commands support `--dry-run` for preview without writing data.
+
+### Common Artifact Files
+
+All four systems share a convention of Markdown identity files stored in their config directory. CortexPrism recognizes and stores these in `~/.cortex/`:
+
+- `SOUL.md` — agent personality and core instructions
+- `USER.md` — user profile and preferences
+- `MEMORY.md` / `MEMORY_SNAPSHOT.md` — persistent memory content
+- `AGENTS.md` — agent definitions
+- `TOOLS.md` — tool configurations
+
 ## Minimum Requirements
 
 | Platform | Version |
