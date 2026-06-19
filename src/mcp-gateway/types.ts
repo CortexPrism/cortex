@@ -27,7 +27,7 @@ export interface RateLimitConfig {
 
 export interface HealthCheckResult {
   serverId: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   latencyMs: number;
   error?: string;
   toolCount: number;

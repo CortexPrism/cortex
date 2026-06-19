@@ -457,11 +457,20 @@ export async function handleApi(req: Request): Promise<Response | null> {
     path === '/.well-known/agent-card.json' ||
     path === '/.well-known/a2a-agent-card.json'
   )) {
-    const { getA2AAgentCard } = await import('../a2a/server.ts');
+    const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.host}`;
     const card = getA2AAgentCard(baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent');
     return json(card);
+  }
+
+  // POST /a2a — A2A JSON-RPC 2.0 gateway (public for agent-to-agent interop)
+  if (req.method === 'POST' && (path === '/a2a' || path === '/api/a2a')) {
+    const { handleA2ARequest } = await import('../a2a/mod.ts');
+    const body = await req.json() as Record<string, unknown>;
+    const url = new URL(req.url);
+    const baseUrl = `${url.protocol}//${url.host}`;
+    return handleA2ARequest(body, baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent');
   }
 
   // ── Auth middleware: all remaining /api/* routes require auth ──
@@ -3667,20 +3676,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/a2a/agent-card.json
   if (req.method === 'GET' && path === '/api/a2a/agent-card.json') {
-    const { getA2AAgentCard } = await import('../a2a/server.ts');
+    const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.host}`;
     const card = getA2AAgentCard(baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent with file operations, shell execution, web search, code intelligence, and multi-agent orchestration.');
     return json(card);
-  }
-
-  // POST /a2a — A2A JSON-RPC endpoint
-  if (req.method === 'POST' && (path === '/a2a' || path === '/api/a2a')) {
-    const { handleA2ARequest } = await import('../a2a/server.ts');
-    const body = await req.json() as Record<string, unknown>;
-    const url = new URL(req.url);
-    const baseUrl = `${url.protocol}//${url.host}`;
-    return handleA2ARequest(body, baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent');
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3689,7 +3689,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/mcp-gateway/servers
   if (req.method === 'GET' && path === '/api/mcp-gateway/servers') {
-    const { listServers, getHealthyServers, getDegradedServers } = await import('../mcp-gateway/registry.ts');
+    const { listServers, getHealthyServers, getDegradedServers } = await import('../mcp-gateway/mod.ts');
     const servers = listServers();
     return json({
       servers: servers.map((s) => ({
@@ -3709,12 +3709,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/memori/checkpoints
   if (req.method === 'GET' && path === '/api/memori/checkpoints') {
     const { getCoreDb } = await import('../db/client.ts');
-    const { listCheckpoints } = await import('../memori/store.ts');
+    const { listCheckpoints, initCheckpointStore } = await import('../memori/mod.ts');
     const url = new URL(req.url);
     const sessionId = url.searchParams.get('sessionId') ?? undefined;
     const limit = parseInt(url.searchParams.get('limit') ?? '20');
     const db = await getCoreDb();
-    await (await import('../memori/store.ts')).initCheckpointStore(db);
+    await initCheckpointStore(db);
     const checkpoints = await listCheckpoints(db, { sessionId, limit });
     return json({ checkpoints });
   }

@@ -79,6 +79,22 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     _log.error(`Failed to load plugins`, { error: (e as Error).message });
   }
 
+  // Initialize Skill Bus for cross-plugin event orchestration
+  try {
+    const { initSkillBus } = await import('../agent/skill-bus.ts');
+    initSkillBus();
+    _log.info('Skill Bus initialized');
+  } catch (e) {
+    _log.warn(`Failed to initialize Skill Bus`, { error: (e as Error).message });
+  }
+
+  // Start dependency guardian periodic check (every 6 hours)
+  setInterval(() => {
+    import('../plugins/dependency-guardian.ts').then(({ checkAllProjects }) => {
+      checkAllProjects().catch(() => {});
+    }).catch(() => {});
+  }, 6 * 60 * 60 * 1000);
+
   ensureDaemons().catch(() => {});
   startAutoServices().catch(() => {});
   schedulePluginUpdateChecks();

@@ -43,6 +43,10 @@ import { restartCommand, startCommand } from './cli/start.ts';
 import { voiceCommand } from './cli/voice-cmd.ts';
 import { logCommand } from './cli/log-cmd.ts';
 import { chromeBridgeCommand } from './cli/chrome_bridge.ts';
+import { a2aCommand } from './cli/a2a-cmd.ts';
+import { memoriCommand } from './cli/memori-cmd.ts';
+import { agentlintCommand } from './cli/agentlint-cmd.ts';
+import { mcpGatewayCommand } from './cli/mcp-gateway-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -127,6 +131,10 @@ const program = new Command()
   .command('restart', restartCommand)
   .command('voice', voiceCommand)
   .command('log', logCommand)
-  .command('chrome-bridge', chromeBridgeCommand);
+  .command('chrome-bridge', chromeBridgeCommand)
+  .command('a2a', a2aCommand)
+  .command('memori', memoriCommand)
+  .command('agentlint', agentlintCommand)
+  .command('mcp-gateway', mcpGatewayCommand);
 
 await program.parse(Deno.args);
