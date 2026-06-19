@@ -120,6 +120,26 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **PAL CLI Orchestrator (#311)** — `POST /api/pal/cli` returns recommended model for CLI commands
 
+- **Cross-Agent Context Protocol (#255)** — shared memory namespace for multi-agent collaboration:
+  - `src/memory/cross-agent-context.ts` with `writeSharedContext`, `readSharedContext`, `listSharedContext`
+  - Conflict detection with version vectors and conflict resolution API
+  - Session linking/unlinking with `linkSessions` / `getLinkedSessions`
+  - `GET/POST /api/cacp/context`, `GET /api/cacp/conflicts`, `POST /api/cacp/links` endpoints
+
+- **Remote Sandbox Backends (#257)** — E2B and Daytona added to sandbox runtime types:
+  - `SandboxRuntime` extended with `'e2b'` and `'daytona'` backend types
+  - `GET /api/sandbox/backends` returns available backends with availability based on API key env vars
+  - Docker and subprocess remain default backends; gVisor, E2B, Daytona as opt-in
+
+- **UI Expansion Endpoints** — new endpoints for existing features:
+  - `POST /api/mcp-gateway/health-retry` — MCP server health re-check (#252)
+  - `GET /api/memori/preview` — session checkpoint browser (#313)
+  - `POST /api/security/approvals/bulk` — bulk approve/deny (#254)
+  - `GET/PUT /api/settings/compressor` — context compressor config (#55)
+  - `GET/PUT /api/codegraph/pilot-config` — codebase pilot token budget (#295)
+  - `GET /api/sessions/links` — cross-session context bridge (#64)
+  - `GET /api/agent/preferences` — user preference learner data (#68)
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
