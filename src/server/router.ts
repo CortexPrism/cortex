@@ -3009,9 +3009,33 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/onboarding/channels
   if (req.method === 'POST' && path === '/api/onboarding/channels') {
-    const body = await req.json() as { channels: string[] };
+    const body = await req.json() as { channels: string[]; credentials?: Record<string, Record<string, string>> };
     const config = await loadConfig();
-    config.providers ??= {} as CortexConfig['providers'];
+    if (!config.plugins) config.plugins = {};
+    config.plugins['channels'] = {
+      enabled: body.channels,
+      ...(body.credentials ? { credentials: body.credentials } : {}),
+    };
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/advanced
+  if (req.method === 'POST' && path === '/api/onboarding/advanced') {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    if (body.embeddings) {
+      config.embeddings = body.embeddings as CortexConfig['embeddings'];
+    }
+    if (body.vectorStore) {
+      config.memory = { ...config.memory, vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V } ? V : never };
+    }
+    if (body.chromeBridge) {
+      config.chromeBridge = body.chromeBridge as CortexConfig['chromeBridge'];
+    }
+    if (body.voice) {
+      config.voice = body.voice as CortexConfig['voice'];
+    }
     await saveConfig(config);
     return json({ success: true });
   }
@@ -3040,7 +3064,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     cfg.onboarding = {
       completed: true,
       completedAt: new Date().toISOString(),
-      version: '1.0',
+      version: '2.0',
       skippedSteps: [],
     };
     await saveConfig(config);

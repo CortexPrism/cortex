@@ -1,6 +1,6 @@
-import { Confirm, Input, Secret, Select } from '@cliffy/prompt';
+import { Checkbox, Confirm, Input, Secret, Select } from '@cliffy/prompt';
 import { bold, cyan, dim, green, yellow } from '@std/fmt/colors';
-import type { CortexConfig, ProviderKind } from '../config/config.ts';
+import type { CortexConfig, EmbeddingConfig, MemoryVectorStoreConfig, ProviderKind } from '../config/config.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { PATHS } from '../config/paths.ts';
@@ -22,6 +22,8 @@ import {
   saveUserProfile,
 } from './onboarding/personalization.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
+
+const LABEL_WIDTH = 36;
 
 async function writeSoul(content: string): Promise<void> {
   const dir = PATHS.configDir;
@@ -62,7 +64,101 @@ const PROVIDER_LABELS: Record<string, { label: string; defaultModel: string }> =
   cohere: { label: 'Cohere', defaultModel: 'command-r-plus' },
   kilo: { label: 'Kilo (AI Gateway)', defaultModel: 'kilo/sonnet' },
   ollama: { label: 'Ollama (local / self-hosted)', defaultModel: 'llama3.2' },
+  cerebras: { label: 'Cerebras', defaultModel: 'llama-3.3-70b' },
+  fireworks: { label: 'Fireworks AI', defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct' },
+  perplexity: { label: 'Perplexity', defaultModel: 'sonar-pro' },
+  nvidia: { label: 'NVIDIA NIM', defaultModel: 'meta/llama-3.3-70b-instruct' },
+  moonshot: { label: 'Moonshot', defaultModel: 'moonshot-v1-8k' },
+  novita: { label: 'Novita AI', defaultModel: 'meta-llama/llama-3.1-8b-instruct' },
+  lmstudio: { label: 'LM Studio (local)', defaultModel: 'local-model' },
+  litellm: { label: 'LiteLLM (proxy)', defaultModel: 'gpt-4o' },
+  huggingface: { label: 'Hugging Face', defaultModel: 'meta-llama/Llama-3.3-70B-Instruct' },
+  alibaba: { label: 'Alibaba (Qwen)', defaultModel: 'qwen-max' },
+  venice: { label: 'Venice AI', defaultModel: 'dolphin-2.9.2-qwen2-72b' },
 };
+
+const CHANNEL_OPTIONS: Array<{ name: string; value: string }> = [
+  { name: 'Web UI — Dashboard on port 3000', value: 'web' },
+  { name: 'Discord — Agent on your server', value: 'discord' },
+  { name: 'Slack — Team collaboration', value: 'slack' },
+  { name: 'Telegram — Instant messaging', value: 'telegram' },
+  { name: 'Microsoft Teams — Enterprise chat', value: 'teams' },
+  { name: 'Mattermost — Self-hosted messaging', value: 'mattermost' },
+  { name: 'Rocket.Chat — Open-source chat', value: 'rocketchat' },
+  { name: 'WhatsApp — Business messaging', value: 'whatsapp' },
+  { name: 'Google Chat — Workspace integration', value: 'google-chat' },
+  { name: 'Lark — All-in-one collaboration', value: 'lark' },
+];
+
+interface ChannelCredentials {
+  token?: string;
+  webhookUrl?: string;
+  botToken?: string;
+  appId?: string;
+  appSecret?: string;
+  tenantId?: string;
+  verifyToken?: string;
+}
+
+async function promptChannelCredentials(
+  channel: string,
+  savedCredentials: Map<string, ChannelCredentials>,
+): Promise<Map<string, ChannelCredentials>> {
+  const creds: ChannelCredentials = {};
+  switch (channel) {
+    case 'discord':
+      creds.token = await Secret.prompt('Discord bot token:');
+      savedCredentials.set('discord', creds);
+      successBadge('Discord configured');
+      break;
+    case 'slack':
+      creds.botToken = await Secret.prompt('Slack bot token (xoxb-...):');
+      creds.appSecret = await Secret.prompt('Slack signing secret:');
+      savedCredentials.set('slack', creds);
+      successBadge('Slack configured');
+      break;
+    case 'telegram':
+      creds.token = await Secret.prompt('Telegram bot token (from @BotFather):');
+      savedCredentials.set('telegram', creds);
+      successBadge('Telegram configured');
+      break;
+    case 'teams':
+      creds.appId = await Input.prompt('Microsoft Teams app ID:');
+      creds.appSecret = await Secret.prompt('Microsoft Teams app secret:');
+      creds.tenantId = await Input.prompt({ message: 'Microsoft Teams tenant ID:', default: 'common' });
+      savedCredentials.set('teams', creds);
+      successBadge('Teams configured');
+      break;
+    case 'mattermost':
+      creds.token = await Secret.prompt('Mattermost personal access token:');
+      savedCredentials.set('mattermost', creds);
+      infoBadge('Set MATTERMOST_URL env var to your Mattermost server URL');
+      break;
+    case 'rocketchat':
+      creds.token = await Secret.prompt('Rocket.Chat personal access token:');
+      savedCredentials.set('rocketchat', creds);
+      infoBadge('Set ROCKETCHAT_URL env var to your Rocket.Chat server URL');
+      break;
+    case 'whatsapp':
+      creds.token = await Secret.prompt('WhatsApp API token:');
+      savedCredentials.set('whatsapp', creds);
+      successBadge('WhatsApp configured');
+      break;
+    case 'google-chat':
+      creds.token = await Secret.prompt('Google Chat webhook URL:');
+      savedCredentials.set('google-chat', creds);
+      successBadge('Google Chat configured');
+      break;
+    case 'lark':
+      creds.appId = await Input.prompt('Lark app ID:');
+      creds.appSecret = await Secret.prompt('Lark app secret:');
+      creds.verifyToken = await Secret.prompt('Lark verification token:');
+      savedCredentials.set('lark', creds);
+      successBadge('Lark configured');
+      break;
+  }
+  return savedCredentials;
+}
 
 export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig> {
   if (!Deno.stdin.isTerminal()) {
@@ -75,7 +171,6 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   const useColors = !Deno.noColor;
   const noAnim = Deno.env.get('CORTEX_NO_ANIMATIONS') === '1';
 
-  // Mode selection: CLI or Web
   if (!noAnim) {
     const useWeb = await Confirm.prompt({
       message: 'Complete setup in your web browser instead?',
@@ -98,13 +193,12 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   console.log('');
   const updated: CortexConfig = { ...config };
 
-  // Step 1: Provider selection
   if (noAnim) {
     console.log(bold(cyan('  ⚡ Welcome to Cortex!')));
-    console.log(dim("  Let's get your agent up and running. This takes about 2 minutes.\n"));
-    console.log(bold('  Step 1/4: Model Provider'));
+    console.log(dim("  Let's get your agent up and running. This takes about 3 minutes.\n"));
+    console.log(bold('  Step 1/5: Model Provider'));
   } else {
-    stepHeader(1, 5, 'Model Provider');
+    stepHeader(1, 7, 'Model Provider');
   }
 
   const providerOptions = Object.entries(PROVIDER_LABELS).map(([value, { label }]) => ({
@@ -132,12 +226,23 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
         message: 'Ollama base URL:',
         default: 'http://localhost:11434',
       });
+      await testConnection(providerChoice as ProviderKind, defaultModel, apiKey, baseUrl);
     } else if (providerChoice === 'bedrock') {
       apiKey = await Secret.prompt('AWS Access Key ID:');
       secretKey = await Secret.prompt('AWS Secret Access Key:');
       baseUrl = await Input.prompt({
         message: 'AWS Region:',
         default: 'us-east-1',
+      });
+    } else if (providerChoice === 'lmstudio') {
+      baseUrl = await Input.prompt({
+        message: 'LM Studio base URL:',
+        default: 'http://localhost:1234',
+      });
+    } else if (providerChoice === 'litellm') {
+      baseUrl = await Input.prompt({
+        message: 'LiteLLM proxy base URL:',
+        default: 'http://localhost:4000',
       });
     } else {
       apiKey = await Secret.prompt(
@@ -172,8 +277,8 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
       ...(secretKey && { secretKey }),
     };
 
-    // Step 1b: AI Personalization (only if connected)
-    stepHeader(2, 5, 'AI Personalization (Optional)');
+    // AI Personalization (optional)
+    stepHeader(2, 7, 'AI Personalization (Optional)');
 
     const doAI = await Confirm.prompt({
       message: 'Answer a few questions to personalize your experience? (3-4 quick questions)',
@@ -211,12 +316,8 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     }
   }
 
-  // Step 2/3: Personality (step 2 if provider skipped, step 3 otherwise)
-  if (providerChoice === 'skip') {
-    stepHeader(2, 5, 'Agent Personality');
-  } else {
-    stepHeader(3, 5, 'Agent Personality');
-  }
+  // Personality
+  stepHeader(providerChoice === 'skip' ? 2 : 3, 7, 'Agent Personality');
 
   const personality = await Select.prompt<string>({
     message: 'Pick a vibe for your agent:',
@@ -240,28 +341,146 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     infoBadge('Write your own SOUL.md with `cortex soul edit`');
   }
 
-  // Channels (step 3 if provider skipped, step 4 otherwise)
-  stepHeader(providerChoice === 'skip' ? 3 : 4, 5, 'Channels');
-  const channelChoice = await Select.prompt<string>({
-    message: 'How do you want to talk to Cortex?',
-    options: [
-      { name: 'CLI only — Fastest setup', value: 'cli' },
-      { name: 'CLI + Web UI — Dashboard on port 3000', value: 'cli+web' },
-      { name: 'CLI + Discord — Agent on your server', value: 'cli+discord' },
-      { name: 'All of the above — Full setup', value: 'all' },
-    ],
+  // Channels — multi-select with credential prompts
+  stepHeader(providerChoice === 'skip' ? 3 : 4, 7, 'Channels & Integrations');
+
+  const selectedChannels = await Checkbox.prompt({
+    message: 'Select channels to enable (space to toggle, enter to confirm):',
+    options: CHANNEL_OPTIONS,
+    minOptions: 1,
+    maxOptions: 10,
   });
 
-  if (channelChoice === 'cli+discord' || channelChoice === 'all') {
-    const token = await Secret.prompt('Discord bot token:');
-    successBadge('Discord configured. Run `cortex discord start` to activate.');
-    updated.providers ??= {} as CortexConfig['providers'];
-  } else if (channelChoice === 'cli+web' || channelChoice === 'all') {
-    successBadge('Web UI will be available on port 3000.');
+  if (selectedChannels.length === 0) {
+    infoBadge('No channels selected. Use `cortex channels` later to configure.');
   }
 
-  // Telemetry (step 4 if provider skipped, step 5 otherwise)
-  stepHeader(providerChoice === 'skip' ? 4 : 5, 5, 'Usage Data');
+  const channelCredentials = new Map<string, ChannelCredentials>();
+
+  for (const channel of selectedChannels) {
+    if (channel === 'web') {
+      successBadge('Web UI will be available on port 3000');
+    } else {
+      await promptChannelCredentials(channel, channelCredentials);
+    }
+  }
+
+  // Advanced: Embeddings + Vector Store + Chrome Bridge + Voice
+  stepHeader(providerChoice === 'skip' ? 4 : 5, 7, 'Advanced Features (Optional)');
+
+  const configureAdvanced = await Confirm.prompt({
+    message: 'Configure embeddings, vector store, Chrome Bridge, and voice?',
+    default: false,
+  });
+
+  if (configureAdvanced) {
+    // Embeddings
+    const embeddingsChoice = await Select.prompt<string>({
+      message: 'Embedding provider for memory:',
+      options: [
+        { name: 'OpenAI (text-embedding-3-small) — Best quality', value: 'openai' },
+        { name: 'Ollama (local) — Free, private', value: 'ollama' },
+        { name: 'Stub — Minimal memory (default)', value: 'stub' },
+      ],
+    });
+
+    if (embeddingsChoice !== 'stub') {
+      const embedConfig: EmbeddingConfig = { provider: embeddingsChoice as EmbeddingConfig['provider'] };
+      if (embeddingsChoice === 'openai') {
+        embedConfig.apiKey = await Secret.prompt('OpenAI API key for embeddings (or leave blank to reuse provider key):');
+        embedConfig.model = await Input.prompt({ message: 'Embedding model:', default: 'text-embedding-3-small' });
+      } else if (embeddingsChoice === 'ollama') {
+        embedConfig.baseUrl = await Input.prompt({ message: 'Ollama base URL for embeddings:', default: 'http://localhost:11434' });
+        embedConfig.model = await Input.prompt({ message: 'Embedding model:', default: 'nomic-embed-text' });
+      }
+      updated.embeddings = embedConfig;
+      successBadge(`Embeddings: ${embeddingsChoice}`);
+    }
+
+    // Vector Store
+    const vectorChoice = await Select.prompt<string>({
+      message: 'Vector store backend:',
+      options: [
+        { name: 'SQLite (built-in) — No setup required', value: 'sqlite' },
+        { name: 'Qdrant — Self-hosted or cloud', value: 'qdrant' },
+        { name: 'ChromaDB — Open-source', value: 'chromadb' },
+        { name: 'Pinecone — Managed cloud', value: 'pinecone' },
+      ],
+    });
+
+    if (vectorChoice !== 'sqlite') {
+      const vecConfig: MemoryVectorStoreConfig = { kind: vectorChoice as MemoryVectorStoreConfig['kind'] };
+      vecConfig.url = await Input.prompt({ message: `${vectorChoice} URL:`, default: vectorChoice === 'qdrant' ? 'http://localhost:6333' : 'http://localhost:8000' });
+      vecConfig.apiKey = await Secret.prompt(`${vectorChoice} API key (if required):`);
+      vecConfig.collection = await Input.prompt({ message: `${vectorChoice} collection name:`, default: 'cortex' });
+      updated.memory = { ...updated.memory, vectorStore: vecConfig };
+      successBadge(`Vector store: ${vectorChoice}`);
+    } else {
+      updated.memory = { ...updated.memory, vectorStore: { kind: 'sqlite' } as MemoryVectorStoreConfig };
+      infoBadge('Vector store: SQLite (built-in)');
+    }
+
+    // Chrome Bridge
+    const useChrome = await Confirm.prompt({
+      message: 'Enable Chrome Bridge (browser automation via MCP)?',
+      default: false,
+    });
+
+    if (useChrome) {
+      const nodePath = await Input.prompt({ message: 'Node.js path:', default: 'node' });
+      const serverPath = await Input.prompt({ message: 'Chrome Bridge server script path:', default: '' });
+      updated.chromeBridge = {
+        enabled: true,
+        nodePath,
+        serverPath,
+        port: 9222,
+        autoStart: true,
+        autoRegisterTools: true,
+        toolPrefix: 'chrome',
+      };
+      successBadge('Chrome Bridge configured');
+    }
+
+    // Voice / Speech
+    const useVoice = await Confirm.prompt({
+      message: 'Enable voice/speech features (STT/TTS)?',
+      default: false,
+    });
+
+    if (useVoice) {
+      const sttChoice = await Select.prompt<string>({
+        message: 'Speech-to-text provider:',
+        options: [
+          { name: 'OpenAI Whisper', value: 'openai' as const },
+        ],
+      });
+      const ttsChoice = await Select.prompt<string>({
+        message: 'Text-to-speech provider:',
+        options: [
+          { name: 'OpenAI TTS', value: 'openai' as const },
+          { name: 'ElevenLabs', value: 'elevenlabs' as const },
+        ],
+      });
+      const elevenLabsKey = ttsChoice === 'elevenlabs'
+        ? await Secret.prompt('ElevenLabs API key:')
+        : undefined;
+      updated.voice = {
+        enabled: true,
+        sttProvider: sttChoice as 'openai',
+        ttsProvider: ttsChoice as 'openai' | 'elevenlabs',
+        sttModel: 'whisper-1',
+        ttsModel: ttsChoice === 'elevenlabs' ? 'eleven_multilingual_v2' : 'tts-1',
+        defaultVoice: 'alloy',
+        autoTTS: false,
+        language: 'en',
+        elevenLabsApiKey: elevenLabsKey,
+      };
+      successBadge('Voice features configured');
+    }
+  }
+
+  // Telemetry
+  stepHeader(providerChoice === 'skip' ? 5 : 6, 7, 'Usage Data');
   const telemetry = await Confirm.prompt({
     message: 'Share anonymous usage data to help improve Cortex?',
     default: false,
@@ -280,18 +499,16 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
   updated.agent ??= { name: 'cortex', maxTurns: 25, streamOutput: true };
 
-  // Mark onboarding complete
   const cfg = updated as unknown as Record<string, unknown>;
   cfg.onboarding = {
     completed: true,
     completedAt: new Date().toISOString(),
-    version: '1.0',
+    version: '2.0',
     skippedSteps: [],
   };
 
   await saveConfig(updated);
 
-  // Completion
   console.log('');
   console.log(green(bold('  ✅ Cortex is ready!')));
   console.log('');
@@ -315,12 +532,11 @@ async function handleWebOnboarding(config: CortexConfig): Promise<CortexConfig> 
   console.log(green('  ✓ Web server started on http://localhost:3000/onboarding'));
   console.log(dim('  Complete setup in your browser, then return here.\n'));
 
-  // Save partial configuration
   const updated = { ...config };
   const cfg = updated as unknown as Record<string, unknown>;
   cfg.onboarding = {
     completed: false,
-    version: '1.0',
+    version: '2.0',
     skippedSteps: [],
     currentMode: 'web',
     startedAt: new Date().toISOString(),

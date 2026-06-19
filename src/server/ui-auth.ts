@@ -128,6 +128,12 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
   .typing-dot:nth-child(2) { animation-delay: 0.2s; }
   .typing-dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-8px)} }
+  .chk { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .chk:hover { background: rgba(255,255,255,0.04); }
+  .chk input { accent-color: #6366f1; width: 18px; height: 18px; cursor: pointer; }
+  .creds-box { background: #18181f; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 16px; margin-top: 8px; display: none; }
+  .toggle-label { cursor: pointer; user-select: none; }
+  .inline-flex { display: inline-flex; align-items: center; }
 </style>
 </head>
 <body>
@@ -146,7 +152,7 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
   <div id="step-welcome" class="fade-in" style="text-align: center;">
     <div class="card" style="margin-bottom: 20px;">
       <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Welcome to Cortex</h2>
-      <p style="color: #9090a8; font-size: 14px; line-height: 1.6;">Your AI operating system. This quick setup will configure your LLM provider, personalize your experience, and get you up and running in about 2 minutes.</p>
+      <p style="color: #9090a8; font-size: 14px; line-height: 1.6;">Your AI operating system. This quick setup will configure your LLM provider, personalize your experience, and get you up and running in about 3 minutes.</p>
     </div>
     <button class="btn btn-primary" onclick="showStep(1)" style="width: 100%;">Get Started</button>
     <p style="color: #55556a; font-size: 12px; margin-top: 12px;">Prefer the command line? Run <code style="color: #818cf8;">cortex setup</code> in your terminal.</p>
@@ -155,7 +161,7 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
   <!-- Step 1: Password Setup -->
   <div id="step-password" style="display: none;">
     <div class="fade-in">
-      <div class="step-num">Step 1/6</div>
+      <div class="step-num">Step 1/8</div>
       <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Secure Your Cortex</h2>
       <div class="card">
         <form onsubmit="setupPassword(event)">
@@ -175,7 +181,7 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
   <!-- Step 2: Provider Setup -->
   <div id="step-provider" style="display: none;">
     <div class="fade-in">
-      <div class="step-num">Step 2/6</div>
+      <div class="step-num">Step 2/8</div>
       <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Choose Your LLM Provider</h2>
       <div class="card">
         <form onsubmit="setupProvider(event)">
@@ -189,10 +195,26 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
               <option value="groq">Groq</option>
               <option value="deepseek">DeepSeek</option>
               <option value="openrouter">OpenRouter</option>
+              <option value="xai">xAI (Grok)</option>
+              <option value="together">Together AI</option>
               <option value="ollama">Ollama (local)</option>
               <option value="bedrock">AWS Bedrock</option>
+              <option value="cohere">Cohere</option>
+              <option value="kilo">Kilo (AI Gateway)</option>
+              <option value="cerebras">Cerebras</option>
+              <option value="fireworks">Fireworks AI</option>
+              <option value="perplexity">Perplexity</option>
+              <option value="nvidia">NVIDIA NIM</option>
+              <option value="moonshot">Moonshot</option>
+              <option value="novita">Novita AI</option>
+              <option value="lmstudio">LM Studio (local)</option>
+              <option value="litellm">LiteLLM (proxy)</option>
+              <option value="huggingface">Hugging Face</option>
+              <option value="alibaba">Alibaba (Qwen)</option>
+              <option value="venice">Venice AI</option>
             </select>
             <input class="inp" type="password" id="provider-key" placeholder="API Key" style="margin-bottom: 8px;" />
+            <input class="inp" type="text" id="provider-baseurl" placeholder="Base URL (optional)" style="margin-bottom: 8px;" />
             <input class="inp" type="text" id="provider-model" placeholder="Model name" value="claude-sonnet-4-5" />
           </div>
           <div id="provider-status" style="font-size: 13px; margin-bottom: 12px;"></div>
@@ -208,7 +230,7 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
   <!-- Step 3: AI Personalization -->
   <div id="step-ai" style="display: none;">
     <div class="fade-in">
-      <div class="step-num">Step 3/6</div>
+      <div class="step-num">Step 3/8</div>
       <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Getting to Know You</h2>
       <p style="color: #9090a8; font-size: 13px; margin-bottom: 16px;">Help me personalize your experience (optional)</p>
       <div class="card" style="min-height: 200px; display: flex; flex-direction: column;">
@@ -232,11 +254,11 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
   <!-- Step 4: Personality -->
   <div id="step-personality" style="display: none;">
     <div class="fade-in">
-      <div class="step-num">Step 4/6</div>
+      <div class="step-num">Step 4/8</div>
       <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Agent Personality</h2>
       <div class="card">
         <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-          <button class="btn personality-btn" data-value="professional" onclick="selectPersonality(this)" style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;">
+          <button class="personality-btn" data-value="professional" onclick="selectPersonality(this)" style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); padding: 16px; border-radius: 10px; text-align: left; cursor: pointer;">
             <div style="font-weight: 600; font-size: 14px;">Professional</div>
             <div style="color: #9090a8; font-size: 12px; margin-top: 4px;">Concise, precise, business-ready</div>
           </button>
@@ -270,10 +292,121 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Step 5: Telemetry -->
+  <!-- Step 5: Channels -->
+  <div id="step-channels" style="display: none;">
+    <div class="fade-in">
+      <div class="step-num">Step 5/8</div>
+      <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 12px;">Channels & Integrations</h2>
+      <p style="color: #9090a8; font-size: 13px; margin-bottom: 16px;">Select channels to enable and configure (optional)</p>
+      <div class="card" id="channels-card">
+        <div id="channels-list">
+          <label class="chk"><input type="checkbox" value="web" onchange="toggleChannelCreds(this)"> Web UI — Dashboard on port 3000</label>
+          <label class="chk"><input type="checkbox" value="discord" onchange="toggleChannelCreds(this)"> Discord — Agent on your server</label>
+          <div class="creds-box" id="creds-discord">
+            <input class="inp" type="password" placeholder="Discord bot token" style="margin-bottom: 8px;" />
+          </div>
+          <label class="chk"><input type="checkbox" value="slack" onchange="toggleChannelCreds(this)"> Slack — Team collaboration</label>
+          <div class="creds-box" id="creds-slack">
+            <input class="inp" type="password" placeholder="Slack bot token (xoxb-...)" style="margin-bottom: 4px;" />
+            <input class="inp" type="password" placeholder="Slack signing secret" />
+          </div>
+          <label class="chk"><input type="checkbox" value="telegram" onchange="toggleChannelCreds(this)"> Telegram — Instant messaging</label>
+          <div class="creds-box" id="creds-telegram">
+            <input class="inp" type="password" placeholder="Telegram bot token (from @BotFather)" />
+          </div>
+          <label class="chk"><input type="checkbox" value="teams" onchange="toggleChannelCreds(this)"> Microsoft Teams — Enterprise chat</label>
+          <div class="creds-box" id="creds-teams">
+            <input class="inp" type="text" placeholder="Teams app ID" style="margin-bottom: 4px;" />
+            <input class="inp" type="password" placeholder="Teams app secret" style="margin-bottom: 4px;" />
+            <input class="inp" type="text" placeholder="Tenant ID (default: common)" value="common" />
+          </div>
+          <label class="chk"><input type="checkbox" value="mattermost" onchange="toggleChannelCreds(this)"> Mattermost — Self-hosted messaging</label>
+          <div class="creds-box" id="creds-mattermost">
+            <input class="inp" type="password" placeholder="Personal access token" />
+          </div>
+          <label class="chk"><input type="checkbox" value="rocketchat" onchange="toggleChannelCreds(this)"> Rocket.Chat — Open-source chat</label>
+          <div class="creds-box" id="creds-rocketchat">
+            <input class="inp" type="password" placeholder="Personal access token" />
+          </div>
+          <label class="chk"><input type="checkbox" value="whatsapp" onchange="toggleChannelCreds(this)"> WhatsApp — Business messaging</label>
+          <div class="creds-box" id="creds-whatsapp">
+            <input class="inp" type="password" placeholder="WhatsApp API token" />
+          </div>
+          <label class="chk"><input type="checkbox" value="google-chat" onchange="toggleChannelCreds(this)"> Google Chat — Workspace integration</label>
+          <div class="creds-box" id="creds-google-chat">
+            <input class="inp" type="password" placeholder="Webhook URL" />
+          </div>
+          <label class="chk"><input type="checkbox" value="lark" onchange="toggleChannelCreds(this)"> Lark — All-in-one collaboration</label>
+          <div class="creds-box" id="creds-lark">
+            <input class="inp" type="text" placeholder="Lark app ID" style="margin-bottom: 4px;" />
+            <input class="inp" type="password" placeholder="Lark app secret" style="margin-bottom: 4px;" />
+            <input class="inp" type="password" placeholder="Lark verification token" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="setupChannels()" style="width: 100%; margin-top: 16px;">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 6: Advanced Features -->
+  <div id="step-advanced" style="display: none;">
+    <div class="fade-in">
+      <div class="step-num">Step 6/8</div>
+      <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Advanced Features (Optional)</h2>
+      <div class="card">
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block;">Embedding provider for memory</label>
+          <select class="inp" id="embedding-provider" onchange="updateEmbeddingFields()" style="margin-bottom: 8px;">
+            <option value="stub">Stub — Minimal memory (default)</option>
+            <option value="openai">OpenAI — Best quality</option>
+            <option value="ollama">Ollama — Free, private</option>
+          </select>
+          <div id="embedding-fields" style="display: none;">
+            <input class="inp" type="password" id="embedding-key" placeholder="API key (leave blank for provider key)" style="margin-bottom: 4px;" />
+            <input class="inp" type="text" id="embedding-model" placeholder="Model" value="text-embedding-3-small" style="margin-bottom: 4px;" />
+            <input class="inp" type="text" id="embedding-url" placeholder="Base URL" style="display: none;" />
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block;">Vector store backend</label>
+          <select class="inp" id="vector-store" onchange="updateVectorFields()" style="margin-bottom: 8px;">
+            <option value="sqlite">SQLite — Built-in, no setup</option>
+            <option value="qdrant">Qdrant — Self-hosted or cloud</option>
+            <option value="chromadb">ChromaDB — Open-source</option>
+            <option value="pinecone">Pinecone — Managed cloud</option>
+          </select>
+          <div id="vector-fields" style="display: none;">
+            <input class="inp" type="text" id="vector-url" placeholder="Service URL" value="http://localhost:6333" style="margin-bottom: 4px;" />
+            <input class="inp" type="password" id="vector-key" placeholder="API key (if required)" style="margin-bottom: 4px;" />
+            <input class="inp" type="text" id="vector-collection" placeholder="Collection name" value="cortex" />
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label class="chk" style="padding-left: 0;"><input type="checkbox" id="chrome-bridge" onchange="toggleChromeBridge()"> Chrome Bridge (browser automation via MCP)</label>
+          <div id="chrome-fields" style="display: none; margin-top: 8px;">
+            <input class="inp" type="text" id="chrome-node" placeholder="Node.js path" value="node" style="margin-bottom: 4px;" />
+            <input class="inp" type="text" id="chrome-server" placeholder="Chrome Bridge server script path" />
+          </div>
+        </div>
+        <div>
+          <label class="chk" style="padding-left: 0;"><input type="checkbox" id="voice-toggle" onchange="toggleVoice()"> Voice / Speech (STT/TTS)</label>
+          <div id="voice-fields" style="display: none; margin-top: 8px;">
+            <select class="inp" id="tts-provider" style="margin-bottom: 4px;">
+              <option value="openai">TTS: OpenAI TTS</option>
+              <option value="elevenlabs">TTS: ElevenLabs</option>
+            </select>
+            <input class="inp" type="password" id="elevenlabs-key" placeholder="ElevenLabs API key" style="display: none;" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="setupAdvanced()" style="width: 100%; margin-top: 20px;">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 7: Telemetry -->
   <div id="step-telemetry" style="display: none;">
     <div class="fade-in">
-      <div class="step-num">Step 4/6</div>
+      <div class="step-num">Step 7/8</div>
       <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Usage Data</h2>
       <div class="card">
         <p style="color: #9090a8; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">Help improve Cortex by sharing anonymous usage data? This includes error reports and feature usage statistics.</p>
@@ -285,7 +418,7 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Step 6: Complete -->
+  <!-- Step 8: Complete -->
   <div id="step-complete" style="display: none;">
     <div class="fade-in" style="text-align: center;">
       <div class="card">
@@ -301,9 +434,9 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
 <script>
 const BASE = window.location.origin;
 let currentStep = 0;
-let onboardingData = { password: null, provider: null, personality: null, telemetry: false };
+let onboardingData = { password: null, provider: null, personality: null, telemetry: false, channels: [], advanced: {} };
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 8;
 
 function updateProgress() {
   const pct = ((currentStep) / TOTAL_STEPS) * 100;
@@ -311,7 +444,7 @@ function updateProgress() {
 }
 
 function showAllNone() {
-  ['welcome','password','provider','ai','personality','telemetry','complete'].forEach(id => {
+  ['welcome','password','provider','ai','personality','channels','advanced','telemetry','complete'].forEach(id => {
     document.getElementById('step-' + id).style.display = 'none';
   });
 }
@@ -319,7 +452,7 @@ function showAllNone() {
 function showStep(n) {
   currentStep = n;
   showAllNone();
-  const names = ['welcome','password','provider','ai','personality','telemetry','complete'];
+  const names = ['welcome','password','provider','ai','personality','channels','advanced','telemetry','complete'];
   document.getElementById('step-' + names[n]).style.display = 'block';
   updateProgress();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -354,7 +487,6 @@ async function setupPassword(e) {
       body: JSON.stringify({ password: p1 }),
     });
     if (res.ok) {
-      const data = await res.json();
       onboardingData.password = true;
       showStep(2);
     } else {
@@ -375,12 +507,22 @@ function updateProviderForm() {
   const defaults = {
     anthropic: 'claude-sonnet-4-5', openai: 'gpt-4o', google: 'gemini-2.0-flash',
     mistral: 'mistral-large-latest', groq: 'llama-3.3-70b-versatile',
-    deepseek: 'deepseek-chat', openrouter: 'openai/gpt-4o',
-    ollama: 'llama3.2', bedrock: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
+    deepseek: 'deepseek-chat', openrouter: 'openai/gpt-4o', xai: 'grok-2-latest',
+    together: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ollama: 'llama3.2',
+    bedrock: 'anthropic.claude-3-5-sonnet-20240620-v1:0', cohere: 'command-r-plus',
+    kilo: 'kilo/sonnet', cerebras: 'llama-3.3-70b',
+    fireworks: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+    perplexity: 'sonar-pro', nvidia: 'meta/llama-3.3-70b-instruct',
+    moonshot: 'moonshot-v1-8k', novita: 'meta-llama/llama-3.1-8b-instruct',
+    lmstudio: 'local-model', litellm: 'gpt-4o',
+    huggingface: 'meta-llama/Llama-3.3-70B-Instruct', alibaba: 'qwen-max',
+    venice: 'dolphin-2.9.2-qwen2-72b',
   };
   document.getElementById('provider-model').value = defaults[kind] || '';
   const keyField = document.getElementById('provider-key');
-  keyField.style.display = kind === 'ollama' ? 'none' : 'block';
+  const baseUrlField = document.getElementById('provider-baseurl');
+  keyField.style.display = (kind === 'ollama' || kind === 'lmstudio') ? 'none' : 'block';
+  baseUrlField.style.display = (kind === 'ollama' || kind === 'lmstudio' || kind === 'litellm' || kind === 'bedrock') ? 'block' : 'none';
 }
 
 async function testProvider() {
@@ -396,7 +538,11 @@ async function testProvider() {
   try {
     const res = await fetch(BASE + '/api/onboarding/provider', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, model, apiKey: document.getElementById('provider-key').value || undefined }),
+      body: JSON.stringify({
+        kind, model,
+        apiKey: document.getElementById('provider-key').value || undefined,
+        baseUrl: document.getElementById('provider-baseurl').value || undefined,
+      }),
     });
     const data = await res.json();
     if (data.connected) {
@@ -422,7 +568,11 @@ async function setupProvider(e) {
   if (!kind) return;
   await fetch(BASE + '/api/onboarding/provider', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind, model, apiKey: document.getElementById('provider-key').value || undefined }),
+    body: JSON.stringify({
+      kind, model,
+      apiKey: document.getElementById('provider-key').value || undefined,
+      baseUrl: document.getElementById('provider-baseurl').value || undefined,
+    }),
   });
   onboardingData.provider = { kind, model };
   showStep(3);
@@ -536,6 +686,140 @@ async function submitPersonality() {
   showStep(5);
 }
 
+// ── Channels ────────────────────────────────────
+function toggleChannelCreds(checkbox) {
+  const val = checkbox.value;
+  const box = document.getElementById('creds-' + val);
+  if (box) {
+    box.style.display = checkbox.checked ? 'block' : 'none';
+  }
+}
+
+async function setupChannels() {
+  const checked = document.querySelectorAll('#channels-list input[type="checkbox"]:checked');
+  const channels = [];
+  const credentials = {};
+  checked.forEach(cb => {
+    const val = cb.value;
+    channels.push(val);
+    if (val !== 'web') {
+      const box = document.getElementById('creds-' + val);
+      if (box) {
+        const inputs = box.querySelectorAll('input');
+        const creds = {};
+        inputs.forEach(inp => {
+          if (inp.value) creds[inp.placeholder || 'token'] = inp.value;
+        });
+        if (Object.keys(creds).length > 0) credentials[val] = creds;
+      }
+    }
+  });
+  onboardingData.channels = channels;
+  await fetch(BASE + '/api/onboarding/channels', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channels, credentials }),
+  });
+  showStep(6);
+}
+
+// ── Advanced Features ────────────────────────────
+function updateEmbeddingFields() {
+  const prov = document.getElementById('embedding-provider').value;
+  const fields = document.getElementById('embedding-fields');
+  const urlField = document.getElementById('embedding-url');
+  const keyField = document.getElementById('embedding-key');
+  const modelField = document.getElementById('embedding-model');
+  fields.style.display = prov === 'stub' ? 'none' : 'block';
+  urlField.style.display = prov === 'ollama' ? 'block' : 'none';
+  keyField.style.display = prov === 'openai' ? 'block' : 'none';
+  modelField.value = prov === 'openai' ? 'text-embedding-3-small' : prov === 'ollama' ? 'nomic-embed-text' : '';
+  modelField.style.display = prov === 'stub' ? 'none' : 'block';
+}
+
+function updateVectorFields() {
+  const vs = document.getElementById('vector-store').value;
+  const fields = document.getElementById('vector-fields');
+  fields.style.display = vs === 'sqlite' ? 'none' : 'block';
+  if (vs === 'qdrant') document.getElementById('vector-url').value = 'http://localhost:6333';
+  else if (vs === 'chromadb') document.getElementById('vector-url').value = 'http://localhost:8000';
+  else if (vs === 'pinecone') document.getElementById('vector-url').value = '';
+}
+
+function toggleChromeBridge() {
+  document.getElementById('chrome-fields').style.display =
+    document.getElementById('chrome-bridge').checked ? 'block' : 'none';
+}
+
+function toggleVoice() {
+  document.getElementById('voice-fields').style.display =
+    document.getElementById('voice-toggle').checked ? 'block' : 'none';
+}
+
+document.getElementById('tts-provider').addEventListener('change', function() {
+  document.getElementById('elevenlabs-key').style.display =
+    this.value === 'elevenlabs' ? 'block' : 'none';
+});
+
+async function setupAdvanced() {
+  const advanced = {};
+
+  const embedProv = document.getElementById('embedding-provider').value;
+  if (embedProv !== 'stub') {
+    advanced.embeddings = {
+      provider: embedProv,
+      model: document.getElementById('embedding-model').value || undefined,
+      apiKey: document.getElementById('embedding-key').value || undefined,
+      baseUrl: document.getElementById('embedding-url').value || undefined,
+    };
+  }
+
+  const vsKind = document.getElementById('vector-store').value;
+  if (vsKind !== 'sqlite') {
+    advanced.vectorStore = {
+      kind: vsKind,
+      url: document.getElementById('vector-url').value || undefined,
+      apiKey: document.getElementById('vector-key').value || undefined,
+      collection: document.getElementById('vector-collection').value || 'cortex',
+    };
+  } else {
+    advanced.vectorStore = { kind: 'sqlite' };
+  }
+
+  if (document.getElementById('chrome-bridge').checked) {
+    advanced.chromeBridge = {
+      enabled: true,
+      nodePath: document.getElementById('chrome-node').value || 'node',
+      serverPath: document.getElementById('chrome-server').value || '',
+      port: 9222,
+      autoStart: true,
+      autoRegisterTools: true,
+      toolPrefix: 'chrome',
+    };
+  }
+
+  if (document.getElementById('voice-toggle').checked) {
+    const tts = document.getElementById('tts-provider').value;
+    advanced.voice = {
+      enabled: true,
+      sttProvider: 'openai',
+      ttsProvider: tts,
+      sttModel: 'whisper-1',
+      ttsModel: tts === 'elevenlabs' ? 'eleven_multilingual_v2' : 'tts-1',
+      defaultVoice: 'alloy',
+      autoTTS: false,
+      language: 'en',
+      elevenLabsApiKey: document.getElementById('elevenlabs-key').value || undefined,
+    };
+  }
+
+  onboardingData.advanced = advanced;
+  await fetch(BASE + '/api/onboarding/advanced', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(advanced),
+  });
+  showStep(7);
+}
+
 // ── Telemetry ───────────────────────────────────
 async function setTelemetry(enabled) {
   await fetch(BASE + '/api/onboarding/telemetry', {
@@ -543,7 +827,7 @@ async function setTelemetry(enabled) {
     body: JSON.stringify({ enabled }),
   });
   onboardingData.telemetry = enabled;
-  showStep(6);
+  showStep(8);
 }
 
 // ── Complete ────────────────────────────────────
