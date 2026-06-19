@@ -84,6 +84,20 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Alcove Private Documentation (#294)** — `GET /api/alcove/search?q=` semantic search over .cortex/data/docs/
 
+- **LLM Vulnerability Scanner (#136)** — `POST /api/security/scan` detects prompt injection, data leaks, destructive commands, XSS, and SQL injection in prompts/outputs
+
+- **Credentials Hygiene Monitor (#142)** — `GET /api/security/hygiene` checks vault for duplicate names, namespace conventions, and total count warnings
+
+- **Zero-Trust Policy Generator (#274)** — `GET /api/security/policies/generate-allowlist` generates path/domain allow-lists from enabled policy rules
+
+- **Environment Replication Debugger (#79)** — `GET /api/sandbox/snapshot` captures OS, Deno version, and environment variables
+
+- **Bug Reproduction Studio (#230)** — `POST /api/sandbox/reproduce` generates reproduction manifests with steps, sandbox config, and environment
+
+- **Dev Environment as Code (#232)** — `GET /api/sandbox/env-as-code` serializes sandbox config, providers, and web auth
+
+- **Workspace Context Snapshot (#240)** — `GET /api/sandbox/workspace-snapshot` captures file tree, sizes, session list, and git branch
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
