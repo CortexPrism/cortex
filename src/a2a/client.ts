@@ -29,8 +29,8 @@ export async function fetchAgentCard(endpoint: string, signal?: AbortSignal): Pr
 }
 
 function getRpcEndpoint(card: AgentCard): string {
-  const iface = card.interfaces.find((i) => i.protocol === 'json-rpc')
-    ?? card.interfaces[0];
+  const iface = card.interfaces.find((i) => i.protocol === 'json-rpc') ??
+    card.interfaces[0];
   if (!iface) throw new Error(`No compatible interface found on agent ${card.name}`);
   return iface.url;
 }
@@ -84,7 +84,13 @@ export async function sendMessage(
   timeout?: number,
 ): Promise<Task> {
   const endpoint = getRpcEndpoint(card);
-  return jsonRpcCall(endpoint, 'SendMessage', request as unknown as Record<string, unknown>, authToken, timeout) as Promise<Task>;
+  return jsonRpcCall(
+    endpoint,
+    'SendMessage',
+    request as unknown as Record<string, unknown>,
+    authToken,
+    timeout,
+  ) as Promise<Task>;
 }
 
 export async function sendStreamingMessage(
@@ -200,7 +206,13 @@ export async function listTasks(
   timeout?: number,
 ): Promise<ListTasksResponse> {
   const endpoint = getRpcEndpoint(card);
-  return jsonRpcCall(endpoint, 'ListTasks', request as unknown as Record<string, unknown>, authToken, timeout) as Promise<ListTasksResponse>;
+  return jsonRpcCall(
+    endpoint,
+    'ListTasks',
+    request as unknown as Record<string, unknown>,
+    authToken,
+    timeout,
+  ) as Promise<ListTasksResponse>;
 }
 
 export async function cancelTask(

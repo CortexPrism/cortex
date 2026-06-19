@@ -36,7 +36,9 @@ memoriCommand
       const time = new Date(cp.timestamp).toLocaleString();
       console.log(`  ${cyan(`Turn ${cp.turnNumber}`)} — ${time}`);
       console.log(`    Session: ${cp.sessionId}`);
-      console.log(`    Messages: ${cp.messageCount} | Tool calls: ${cp.toolCallCount} | Tokens: ${cp.tokensUsed}`);
+      console.log(
+        `    Messages: ${cp.messageCount} | Tool calls: ${cp.toolCallCount} | Tokens: ${cp.tokensUsed}`,
+      );
       if (cp.goalSnapshot) console.log(`    Goal: ${cp.goalSnapshot}`);
       console.log('');
     }

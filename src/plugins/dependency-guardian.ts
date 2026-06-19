@@ -100,13 +100,9 @@ export function checkDependency(
     return versions.some((range) => isAffectedVersion(dep.version, range));
   });
 
-  const outdated = dep.latestVersion
-    ? compareVersions(dep.version, dep.latestVersion) < 0
-    : false;
+  const outdated = dep.latestVersion ? compareVersions(dep.version, dep.latestVersion) < 0 : false;
 
-  const licenseIssue = dep.license
-    ? blockedLicenses.has(dep.license)
-    : false;
+  const licenseIssue = dep.license ? blockedLicenses.has(dep.license) : false;
 
   return { vulnerabilities: cves, outdated, licenseIssue };
 }
@@ -156,7 +152,8 @@ export async function generateGuardianReport(
     session_id: '',
     actor: 'dependency-guardian',
     action: `report:${projectId}`,
-    summary: `Guardian report: ${vulnerabilitiesFound} vulns, ${criticalVulnerabilities} critical, ${outdatedDependencies} outdated`,
+    summary:
+      `Guardian report: ${vulnerabilitiesFound} vulns, ${criticalVulnerabilities} critical, ${outdatedDependencies} outdated`,
     started_at: report.generatedAt,
     payload: {
       projectId,
@@ -214,10 +211,18 @@ function calculateRiskScore(
   let score = 0;
   for (const vuln of vulnerabilities) {
     switch (vuln.severity) {
-      case 'critical': score += 40; break;
-      case 'high': score += 25; break;
-      case 'medium': score += 10; break;
-      case 'low': score += 3; break;
+      case 'critical':
+        score += 40;
+        break;
+      case 'high':
+        score += 25;
+        break;
+      case 'medium':
+        score += 10;
+        break;
+      case 'low':
+        score += 3;
+        break;
     }
   }
   if (outdated) score += 10;

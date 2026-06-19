@@ -79,7 +79,8 @@ async function retrieveRelevantSessions(
         sessionId: session.id,
         agentId: session.agent_id,
         projectRoot: (session as Record<string, unknown>).project_root as string ?? projectRoot,
-        taskDescription: (session as Record<string, unknown>).task_summary as string ?? session.name,
+        taskDescription: (session as Record<string, unknown>).task_summary as string ??
+          session.name,
         keyDecisions: [],
         recentErrors: [],
         activeFiles: (session as Record<string, unknown>).active_files as string[] ?? [],

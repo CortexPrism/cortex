@@ -2,24 +2,30 @@
  * MCP Gateway & Registry — Barrel exports.
  */
 export type {
+  ApprovalRequest,
+  AuditLogEntry,
+  GatewayConfig,
+  HealthCheckResult,
   McpServerEntry,
   RateLimitConfig,
-  HealthCheckResult,
-  AuditLogEntry,
-  ApprovalRequest,
-  GatewayConfig,
 } from './types.ts';
 
-export { createRateLimiter, healthCheck, logAudit, getAuditLogs, assessRiskLevel } from './gateway.ts';
 export {
-  registerServer,
-  getServer,
-  listServers,
+  assessRiskLevel,
+  createRateLimiter,
+  getAuditLogs,
+  healthCheck,
+  logAudit,
+} from './gateway.ts';
+export {
   findServersByTag,
-  updateServer,
-  removeServer,
-  getServerCount,
-  getHealthyServers,
   getDegradedServers,
+  getHealthyServers,
+  getServer,
+  getServerCount,
   getServersByTransport,
+  listServers,
+  registerServer,
+  removeServer,
+  updateServer,
 } from './registry.ts';

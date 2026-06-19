@@ -1,6 +1,11 @@
 import { Checkbox, Confirm, Input, Secret, Select } from '@cliffy/prompt';
 import { bold, cyan, dim, green, yellow } from '@std/fmt/colors';
-import type { CortexConfig, EmbeddingConfig, MemoryVectorStoreConfig, ProviderKind } from '../config/config.ts';
+import type {
+  CortexConfig,
+  EmbeddingConfig,
+  MemoryVectorStoreConfig,
+  ProviderKind,
+} from '../config/config.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { PATHS } from '../config/paths.ts';
@@ -65,7 +70,10 @@ const PROVIDER_LABELS: Record<string, { label: string; defaultModel: string }> =
   kilo: { label: 'Kilo (AI Gateway)', defaultModel: 'kilo/sonnet' },
   ollama: { label: 'Ollama (local / self-hosted)', defaultModel: 'llama3.2' },
   cerebras: { label: 'Cerebras', defaultModel: 'llama-3.3-70b' },
-  fireworks: { label: 'Fireworks AI', defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct' },
+  fireworks: {
+    label: 'Fireworks AI',
+    defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+  },
   perplexity: { label: 'Perplexity', defaultModel: 'sonar-pro' },
   nvidia: { label: 'NVIDIA NIM', defaultModel: 'meta/llama-3.3-70b-instruct' },
   moonshot: { label: 'Moonshot', defaultModel: 'moonshot-v1-8k' },
@@ -125,7 +133,10 @@ async function promptChannelCredentials(
     case 'teams':
       creds.appId = await Input.prompt('Microsoft Teams app ID:');
       creds.appSecret = await Secret.prompt('Microsoft Teams app secret:');
-      creds.tenantId = await Input.prompt({ message: 'Microsoft Teams tenant ID:', default: 'common' });
+      creds.tenantId = await Input.prompt({
+        message: 'Microsoft Teams tenant ID:',
+        default: 'common',
+      });
       savedCredentials.set('teams', creds);
       successBadge('Teams configured');
       break;
@@ -385,13 +396,26 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     });
 
     if (embeddingsChoice !== 'stub') {
-      const embedConfig: EmbeddingConfig = { provider: embeddingsChoice as EmbeddingConfig['provider'] };
+      const embedConfig: EmbeddingConfig = {
+        provider: embeddingsChoice as EmbeddingConfig['provider'],
+      };
       if (embeddingsChoice === 'openai') {
-        embedConfig.apiKey = await Secret.prompt('OpenAI API key for embeddings (or leave blank to reuse provider key):');
-        embedConfig.model = await Input.prompt({ message: 'Embedding model:', default: 'text-embedding-3-small' });
+        embedConfig.apiKey = await Secret.prompt(
+          'OpenAI API key for embeddings (or leave blank to reuse provider key):',
+        );
+        embedConfig.model = await Input.prompt({
+          message: 'Embedding model:',
+          default: 'text-embedding-3-small',
+        });
       } else if (embeddingsChoice === 'ollama') {
-        embedConfig.baseUrl = await Input.prompt({ message: 'Ollama base URL for embeddings:', default: 'http://localhost:11434' });
-        embedConfig.model = await Input.prompt({ message: 'Embedding model:', default: 'nomic-embed-text' });
+        embedConfig.baseUrl = await Input.prompt({
+          message: 'Ollama base URL for embeddings:',
+          default: 'http://localhost:11434',
+        });
+        embedConfig.model = await Input.prompt({
+          message: 'Embedding model:',
+          default: 'nomic-embed-text',
+        });
       }
       updated.embeddings = embedConfig;
       successBadge(`Embeddings: ${embeddingsChoice}`);
@@ -409,14 +433,25 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     });
 
     if (vectorChoice !== 'sqlite') {
-      const vecConfig: MemoryVectorStoreConfig = { kind: vectorChoice as MemoryVectorStoreConfig['kind'] };
-      vecConfig.url = await Input.prompt({ message: `${vectorChoice} URL:`, default: vectorChoice === 'qdrant' ? 'http://localhost:6333' : 'http://localhost:8000' });
+      const vecConfig: MemoryVectorStoreConfig = {
+        kind: vectorChoice as MemoryVectorStoreConfig['kind'],
+      };
+      vecConfig.url = await Input.prompt({
+        message: `${vectorChoice} URL:`,
+        default: vectorChoice === 'qdrant' ? 'http://localhost:6333' : 'http://localhost:8000',
+      });
       vecConfig.apiKey = await Secret.prompt(`${vectorChoice} API key (if required):`);
-      vecConfig.collection = await Input.prompt({ message: `${vectorChoice} collection name:`, default: 'cortex' });
+      vecConfig.collection = await Input.prompt({
+        message: `${vectorChoice} collection name:`,
+        default: 'cortex',
+      });
       updated.memory = { ...updated.memory, vectorStore: vecConfig };
       successBadge(`Vector store: ${vectorChoice}`);
     } else {
-      updated.memory = { ...updated.memory, vectorStore: { kind: 'sqlite' } as MemoryVectorStoreConfig };
+      updated.memory = {
+        ...updated.memory,
+        vectorStore: { kind: 'sqlite' } as MemoryVectorStoreConfig,
+      };
       infoBadge('Vector store: SQLite (built-in)');
     }
 
@@ -428,7 +463,10 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
     if (useChrome) {
       const nodePath = await Input.prompt({ message: 'Node.js path:', default: 'node' });
-      const serverPath = await Input.prompt({ message: 'Chrome Bridge server script path:', default: '' });
+      const serverPath = await Input.prompt({
+        message: 'Chrome Bridge server script path:',
+        default: '',
+      });
       updated.chromeBridge = {
         enabled: true,
         nodePath,

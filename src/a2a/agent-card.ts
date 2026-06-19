@@ -1,7 +1,7 @@
 /**
  * A2A Agent Card Generator — Builds Agent Cards for Cortex agents.
  */
-import type { AgentCard, AgentSkill, AgentInterface } from './types.ts';
+import type { AgentCard, AgentInterface, AgentSkill } from './types.ts';
 import type { Tool } from '../tools/types.ts';
 
 export function generateAgentCard(
@@ -51,7 +51,10 @@ function generateToolExamples(toolName: string, _description: string): string[] 
     file_edit: ['Rename this function', 'Update the import paths'],
     shell: ['Run npm install', 'Execute the test suite'],
     code_exec: ['Write a Python script that sorts a list', 'Generate a SQL query'],
-    web_search: ['Search for the latest React documentation', 'Find best practices for error handling'],
+    web_search: [
+      'Search for the latest React documentation',
+      'Find best practices for error handling',
+    ],
     web_fetch: ['Fetch the content from this documentation page', 'Get the API reference'],
     sub_agent: ['Delegate research task to a specialized agent', 'Spawn agent for parallel work'],
     github_pr_create: ['Create a PR for this branch', 'Open a pull request with the changes'],

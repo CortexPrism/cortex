@@ -290,7 +290,9 @@ function formatApprovalMessage(request: ApprovalRequest): string {
   }
 
   if (request.args && Object.keys(request.args).length > 0) {
-    lines.push(`**Args:** \`\`\`json\n${JSON.stringify(request.args, null, 2).slice(0, 500)}\n\`\`\``);
+    lines.push(
+      `**Args:** \`\`\`json\n${JSON.stringify(request.args, null, 2).slice(0, 500)}\n\`\`\``,
+    );
   }
 
   lines.push(

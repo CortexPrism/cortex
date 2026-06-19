@@ -453,10 +453,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
 
   // ── A2A Agent Card (public well-known) ──
-  if (req.method === 'GET' && (
-    path === '/.well-known/agent-card.json' ||
-    path === '/.well-known/a2a-agent-card.json'
-  )) {
+  if (
+    req.method === 'GET' && (
+      path === '/.well-known/agent-card.json' ||
+      path === '/.well-known/a2a-agent-card.json'
+    )
+  ) {
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.host}`;
@@ -3030,7 +3032,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/onboarding/channels
   if (req.method === 'POST' && path === '/api/onboarding/channels') {
-    const body = await req.json() as { channels: string[]; credentials?: Record<string, Record<string, string>> };
+    const body = await req.json() as {
+      channels: string[];
+      credentials?: Record<string, Record<string, string>>;
+    };
     const config = await loadConfig();
     if (!config.plugins) config.plugins = {};
     config.plugins['channels'] = {
@@ -3049,7 +3054,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
       config.embeddings = body.embeddings as CortexConfig['embeddings'];
     }
     if (body.vectorStore) {
-      config.memory = { ...config.memory, vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V } ? V : never };
+      config.memory = {
+        ...config.memory,
+        vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V } ? V
+          : never,
+      };
     }
     if (body.chromeBridge) {
       config.chromeBridge = body.chromeBridge as CortexConfig['chromeBridge'];
@@ -3679,7 +3688,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.host}`;
-    const card = getA2AAgentCard(baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent with file operations, shell execution, web search, code intelligence, and multi-agent orchestration.');
+    const card = getA2AAgentCard(
+      baseUrl,
+      'CortexPrism',
+      'CortexPrism AI Coding Agent with file operations, shell execution, web search, code intelligence, and multi-agent orchestration.',
+    );
     return json(card);
   }
 
@@ -3689,12 +3702,19 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/mcp-gateway/servers
   if (req.method === 'GET' && path === '/api/mcp-gateway/servers') {
-    const { listServers, getHealthyServers, getDegradedServers } = await import('../mcp-gateway/mod.ts');
+    const { listServers, getHealthyServers, getDegradedServers } = await import(
+      '../mcp-gateway/mod.ts'
+    );
     const servers = listServers();
     return json({
       servers: servers.map((s) => ({
-        id: s.id, name: s.name, endpoint: s.endpoint, transport: s.transport,
-        status: s.status, toolCount: s.toolCount, lastHealthCheck: s.lastHealthCheck,
+        id: s.id,
+        name: s.name,
+        endpoint: s.endpoint,
+        transport: s.transport,
+        status: s.status,
+        toolCount: s.toolCount,
+        lastHealthCheck: s.lastHealthCheck,
         tags: s.tags,
       })),
       healthy: getHealthyServers().length,
@@ -3726,13 +3746,25 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/agentlint/check
   if (req.method === 'POST' && path === '/api/agentlint/check') {
     const body = await req.json().catch(() => ({})) as {
-      agentConfig?: { name: string; description: string; systemPrompt: string; tools: string[]; maxTurns: number; provider: string; model: string };
+      agentConfig?: {
+        name: string;
+        description: string;
+        systemPrompt: string;
+        tools: string[];
+        maxTurns: number;
+        provider: string;
+        model: string;
+      };
     };
     const { lintAgentConfig } = await import('../agent/agentlint.ts');
     const config = body.agentConfig ?? {
-      name: 'Default Agent', description: '', systemPrompt: 'You are a helpful AI coding assistant.',
+      name: 'Default Agent',
+      description: '',
+      systemPrompt: 'You are a helpful AI coding assistant.',
       tools: ['file_read', 'file_write', 'shell', 'web_search'],
-      maxTurns: 8, provider: 'openai', model: 'gpt-4o',
+      maxTurns: 8,
+      provider: 'openai',
+      model: 'gpt-4o',
     };
     const report = lintAgentConfig(config);
     return json({ report });
@@ -3742,10 +3774,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/agentlint/check') {
     const { lintAgentConfig } = await import('../agent/agentlint.ts');
     const config = {
-      name: 'Default Agent', description: 'Default CortexPrism agent',
+      name: 'Default Agent',
+      description: 'Default CortexPrism agent',
       systemPrompt: 'You are a helpful AI coding assistant.',
       tools: ['file_read', 'file_write', 'shell', 'web_search', 'code_exec'],
-      maxTurns: 8, provider: 'openai', model: 'gpt-4o',
+      maxTurns: 8,
+      provider: 'openai',
+      model: 'gpt-4o',
     };
     const report = lintAgentConfig(config);
     return json({ report });

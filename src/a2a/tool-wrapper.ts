@@ -35,39 +35,48 @@ export function createA2AToolWrapper(
       ],
       capabilities: ['network:fetch'],
     },
-    execute: async (args: Record<string, unknown>, _context: ToolContext): Promise<ToolCallResult> => {
+    execute: async (
+      args: Record<string, unknown>,
+      _context: ToolContext,
+    ): Promise<ToolCallResult> => {
       const start = Date.now();
 
       try {
         if (!cachedCard) {
           cachedCard = config.agentCardUrl
             ? await fetchWithTimeout(config.agentCardUrl, config.timeout)
-                .then((r) => {
-                  if (!r.ok) throw new Error(`Failed to fetch agent card: HTTP ${r.status}`);
-                  return r.json() as Promise<AgentCard>;
-                })
+              .then((r) => {
+                if (!r.ok) throw new Error(`Failed to fetch agent card: HTTP ${r.status}`);
+                return r.json() as Promise<AgentCard>;
+              })
             : await fetchAgentCard(config.endpoint);
         }
 
         const card = cachedCard;
         if (!card) throw new Error('Failed to load agent card');
-        const task: Task = await sendMessage(card, {
-          message: {
-            messageId: crypto.randomUUID(),
-            role: 'user',
-            parts: [{ text: args.message as string }],
-            metadata: args.contextId
-              ? { contextId: args.contextId as string }
-              : undefined,
+        const task: Task = await sendMessage(
+          card,
+          {
+            message: {
+              messageId: crypto.randomUUID(),
+              role: 'user',
+              parts: [{ text: args.message as string }],
+              metadata: args.contextId ? { contextId: args.contextId as string } : undefined,
+            },
           },
-        }, config.authToken, config.timeout);
+          config.authToken,
+          config.timeout,
+        );
 
         const output = task.artifacts?.flatMap((a) =>
           a.parts.filter((p) => p.text).map((p) => p.text)
         ).join('\n') ?? task.status.message?.parts
-          .filter((p) => p.text)
+          .filter((p) =>
+            p.text
+          )
           .map((p) => p.text)
-          .join('\n') ?? `Task ${task.id}: ${task.status.state}`;
+          .join('\n') ??
+          `Task ${task.id}: ${task.status.state}`;
 
         return {
           toolName: `a2a_${agentName}`,

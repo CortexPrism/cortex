@@ -114,9 +114,7 @@ export function getAuditLogs(
   serverId?: string,
   limit = 100,
 ): AuditLogEntry[] {
-  const filtered = serverId
-    ? auditLog.filter((e) => e.serverId === serverId)
-    : auditLog;
+  const filtered = serverId ? auditLog.filter((e) => e.serverId === serverId) : auditLog;
   return filtered.slice(-limit).reverse();
 }
 
@@ -125,11 +123,18 @@ export function assessRiskLevel(
   args: Record<string, unknown>,
 ): 'low' | 'medium' | 'high' | 'critical' {
   const highRiskPatterns = [
-    /rm\s+-rf/, /DROP\s+TABLE/, /DELETE\s+FROM/, /format/i,
-    /shutdown/i, /kill/i, /terminate/i,
+    /rm\s+-rf/,
+    /DROP\s+TABLE/,
+    /DELETE\s+FROM/,
+    /format/i,
+    /shutdown/i,
+    /kill/i,
+    /terminate/i,
   ];
   const criticalPatterns = [
-    /DROP\s+DATABASE/, /rm\s+-rf\s+\//, /TRUNCATE/i,
+    /DROP\s+DATABASE/,
+    /rm\s+-rf\s+\//,
+    /TRUNCATE/i,
   ];
 
   const serialized = JSON.stringify({ toolName, args }).toLowerCase();

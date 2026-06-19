@@ -1,9 +1,9 @@
 import { exists } from '@std/fs';
-import { createSession, closeSession } from '../../db/sessions.ts';
+import { closeSession, createSession } from '../../db/sessions.ts';
 import { getSessionDb } from '../../db/client.ts';
 import { writeEpisodic } from '../../memory/store.ts';
 import { dim, green, red, yellow } from '@std/fmt/colors';
-import type { ImportResult, ImportOptions } from './types.ts';
+import type { ImportOptions, ImportResult } from './types.ts';
 
 interface HermesMessage {
   role: string;
@@ -81,7 +81,9 @@ export async function importHermes(
           ),
         );
       } else {
-        console.log(dim(`[dry-run] sessions=${fileResult.sessions} messages=${fileResult.messages}`));
+        console.log(
+          dim(`[dry-run] sessions=${fileResult.sessions} messages=${fileResult.messages}`),
+        );
       }
     } catch (e) {
       console.log(red(`✗  ${(e as Error).message}`));
@@ -186,7 +188,9 @@ async function importHermesFile(
               msg.content,
               msg.tool_calls ?? null,
               msg.token_count ?? null,
-              msg.timestamp ? new Date(msg.timestamp * 1000).toISOString() : new Date().toISOString(),
+              msg.timestamp
+                ? new Date(msg.timestamp * 1000).toISOString()
+                : new Date().toISOString(),
             ],
           );
           result.messages++;

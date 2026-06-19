@@ -60,9 +60,15 @@ agentlintCommand
   });
 
 function printLintReport(report: {
-  errorCount: number; warningCount: number; infoCount: number;
-  passCount: number; totalChecks: number; passed: boolean;
-  issues: Array<{ severity: string; category: string; message: string; source: string; suggestion?: string }>;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+  passCount: number;
+  totalChecks: number;
+  passed: boolean;
+  issues: Array<
+    { severity: string; category: string; message: string; source: string; suggestion?: string }
+  >;
 }): void {
   console.log(`Total checks: ${report.totalChecks}`);
   console.log(`  ${green(`Passed: ${report.passCount}`)}`);
@@ -79,7 +85,9 @@ function printLintReport(report: {
   console.log(bold('Issues:'));
   for (const issue of report.issues) {
     const color = issue.severity === 'error' ? red : issue.severity === 'warning' ? yellow : cyan;
-    console.log(`  ${color(`[${issue.severity.toUpperCase()}]`)} ${issue.category}: ${issue.message}`);
+    console.log(
+      `  ${color(`[${issue.severity.toUpperCase()}]`)} ${issue.category}: ${issue.message}`,
+    );
     console.log(`    Source: ${issue.source}`);
     if (issue.suggestion) console.log(`    ${green('Fix:')} ${issue.suggestion}`);
     console.log('');

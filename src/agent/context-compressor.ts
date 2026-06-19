@@ -195,8 +195,8 @@ export function analyzeMessage(content: string, role: string): {
     /\b(?:error|failed|failure|exception|crash|bug|broken|invalid|timeout)\b/i.test(lower) ||
     /error:/i.test(content);
 
-  const containsTodo =
-    /\b(?:todo|fixme|hack|workaround|pending|remaining|still need|not yet)\b/i.test(lower);
+  const containsTodo = /\b(?:todo|fixme|hack|workaround|pending|remaining|still need|not yet)\b/i
+    .test(lower);
 
   const toolCalls = extractToolCalls(content);
 

@@ -74,7 +74,14 @@ export interface ZeroClawTranscriptHeader {
 export interface ZeroClawTranscriptEvent {
   id: string;
   parentId?: string;
-  type: 'message' | 'custom_message' | 'custom' | 'compaction' | 'branch_summary' | 'model_change' | 'thinking_level_change';
+  type:
+    | 'message'
+    | 'custom_message'
+    | 'custom'
+    | 'compaction'
+    | 'branch_summary'
+    | 'model_change'
+    | 'thinking_level_change';
   role?: string;
   content?: string;
   timestamp?: string;

@@ -20,7 +20,11 @@ a2aCommand
   .description('Display the Cortex agent card')
   .action(async () => {
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
-    const card = getA2AAgentCard('http://localhost:4220', 'CortexPrism', 'CortexPrism AI Coding Agent');
+    const card = getA2AAgentCard(
+      'http://localhost:4220',
+      'CortexPrism',
+      'CortexPrism AI Coding Agent',
+    );
     console.log(JSON.stringify(card, null, 2));
   });
 
@@ -29,7 +33,11 @@ a2aCommand
   .description('List registered agent skills')
   .action(async () => {
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
-    const card = getA2AAgentCard('http://localhost:4220', 'CortexPrism', 'CortexPrism AI Coding Agent');
+    const card = getA2AAgentCard(
+      'http://localhost:4220',
+      'CortexPrism',
+      'CortexPrism AI Coding Agent',
+    );
     console.log(bold('\nA2A Agent Skills'));
     console.log('');
     for (const skill of card.skills) {

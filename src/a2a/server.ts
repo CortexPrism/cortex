@@ -6,14 +6,14 @@
  */
 import type {
   AgentCard,
-  AgentSkill,
   AgentInterface,
+  AgentSkill,
+  Message,
+  Part,
   SendMessageRequest,
   Task,
   TaskState,
   TaskStatus,
-  Message,
-  Part,
 } from './types.ts';
 
 const MAX_TASKS = 1000;
@@ -22,12 +22,21 @@ const TASK_TTL_MS = 3600_000;
 const IDLE_CLEANUP_INTERVAL_MS = 300_000;
 
 interface CortexExecution {
-  execute: (message: string, history?: string) => Promise<{ response: string; tokensIn: number; tokensOut: number }>;
+  execute: (
+    message: string,
+    history?: string,
+  ) => Promise<{ response: string; tokensIn: number; tokensOut: number }>;
 }
 
 let agentCard: AgentCard | null = null;
-const activeTasks = new Map<string, { status: TaskStatus; history: Message[]; artifacts: Array<{ parts: Part[] }>; createdAt: number }>();
-const taskContexts = new Map<string, { messages: Array<{ role: 'user' | 'agent'; content: string }>; createdAt: number }>();
+const activeTasks = new Map<
+  string,
+  { status: TaskStatus; history: Message[]; artifacts: Array<{ parts: Part[] }>; createdAt: number }
+>();
+const taskContexts = new Map<
+  string,
+  { messages: Array<{ role: 'user' | 'agent'; content: string }>; createdAt: number }
+>();
 let cortexExecutor: CortexExecution | null = null;
 let defaultSkills: AgentSkill[] = [];
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
@@ -52,7 +61,9 @@ function evictOldest(map: Map<string, unknown>, maxSize: number): void {
   for (const key of toDelete) map.delete(key);
 }
 
-function validateA2ARequest(body: unknown): { method: string; params: Record<string, unknown>; id: string | number } {
+function validateA2ARequest(
+  body: unknown,
+): { method: string; params: Record<string, unknown>; id: string | number } {
   if (!body || typeof body !== 'object') {
     throw new Error('Invalid request: body must be a JSON object');
   }
@@ -239,7 +250,9 @@ export async function handleA2ARequest(
 
       case 'ListTasks':
         result = {
-          tasks: Array.from(activeTasks.entries()).map(([taskId]) => rebuildTask(taskId)).filter(Boolean),
+          tasks: Array.from(activeTasks.entries()).map(([taskId]) => rebuildTask(taskId)).filter(
+            Boolean,
+          ),
         };
         break;
 
@@ -256,13 +269,16 @@ export async function handleA2ARequest(
         return jsonRpcError(id, -32601, `Method not found: ${method}`);
     }
 
-    return new Response(JSON.stringify({
-      jsonrpc: '2.0',
-      result,
-      id,
-    }), {
-      headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
-    });
+    return new Response(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        result,
+        id,
+      }),
+      {
+        headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
+      },
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return jsonRpcError(id, -32000, message);
@@ -433,12 +449,15 @@ function handleStreamingMessage(req: SendMessageRequest, rpcId: string | number)
 }
 
 function jsonRpcError(id: unknown, code: number, message: string): Response {
-  return new Response(JSON.stringify({
-    jsonrpc: '2.0',
-    error: { code, message },
-    id,
-  }), {
-    status: code === -32601 ? 404 : 500,
-    headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
-  });
+  return new Response(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      error: { code, message },
+      id,
+    }),
+    {
+      status: code === -32601 ? 404 : 500,
+      headers: { 'Content-Type': 'application/json', 'A2A-Version': '1.0' },
+    },
+  );
 }
