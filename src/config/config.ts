@@ -421,6 +421,8 @@ export interface CortexConfig {
   computerUse?: ComputerUseConfig;
   /** Chrome Bridge MCP server integration configuration */
   chromeBridge?: ChromeBridgeConfig;
+  /** A2A (Agent-to-Agent) protocol configuration */
+  a2a?: import('../a2a/types.ts').A2AConfig;
   /** Server-level security configuration */
   server?: ServerConfig;
 }
