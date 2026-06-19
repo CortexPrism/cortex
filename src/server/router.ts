@@ -23,6 +23,7 @@ import { listReflections } from '../agent/reflect.ts';
 import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { mergeSecurityHeaders } from './security-headers.ts';
+import type { SandboxRuntime } from '../sandbox/executor.ts';
 
 const authRateLimit = new Map<string, { count: number; until: number }>();
 const AUTH_RATE_LIMIT_WINDOW = 60_000;
@@ -4209,6 +4210,275 @@ export async function handleApi(req: Request): Promise<Response | null> {
     } catch (e) {
       return err((e as Error).message, 400);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Category 6: Sandbox & Environment
+  // ═══════════════════════════════════════════════════════════════
+
+  const validateSandboxPath = async (inputPath: string, fieldName: string): Promise<string | null> => {
+    if (!inputPath || inputPath.includes('..')) return `Invalid ${fieldName}: path traversal not allowed`;
+    const { normalize, resolve } = await import('@std/path');
+    const { PATHS } = await import('../config/paths.ts');
+    const normalized = normalize(resolve(inputPath));
+    const roots = [normalize(resolve(PATHS.workspacesDir)), normalize(resolve(PATHS.dataDir))];
+    const within = roots.some(r => normalized === r || (normalized.startsWith(r + '/') || normalized.startsWith(r + '\\')));
+    if (!within) return `Invalid ${fieldName}: path must be within workspaces or data directory`;
+    return null;
+  };
+
+  // ── #79 Environment Replication Debugger ──
+
+  // POST /api/sandbox/snapshots — capture environment snapshot
+  if (req.method === 'POST' && path === '/api/sandbox/snapshots') {
+    const body = await req.json() as {
+      name?: string; sessionId: string; agentId: string;
+      workspacePath: string; runtime?: string; env?: Record<string, string>; tags?: string[];
+    };
+    if (!body.sessionId) return err('sessionId required', 400);
+    if (!body.workspacePath) return err('workspacePath required', 400);
+    const pathErr = await validateSandboxPath(body.workspacePath, 'workspacePath');
+    if (pathErr) return err(pathErr, 400);
+    const { captureEnvironmentSnapshot } = await import('../sandbox/replication.ts');
+    return json(await captureEnvironmentSnapshot({
+      name: body.name, sessionId: body.sessionId, agentId: body.agentId ?? '',
+      workspacePath: body.workspacePath, runtime: body.runtime as SandboxRuntime,
+      env: body.env, tags: body.tags,
+    }), 201);
+  }
+
+  // GET /api/sandbox/snapshots — list environment snapshots
+  if (req.method === 'GET' && path === '/api/sandbox/snapshots') {
+    const sessionId = url.searchParams.get('sessionId') ?? undefined;
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const { listEnvironmentSnapshots } = await import('../sandbox/replication.ts');
+    return json(await listEnvironmentSnapshots({ sessionId, limit }));
+  }
+
+  // GET /api/sandbox/snapshots/:id — get single snapshot
+  const envSnapMatch = path.match(/^\/api\/sandbox\/snapshots\/([^/]+)$/);
+  if (req.method === 'GET' && envSnapMatch && !path.includes('/compare') && !path.includes('/replicate')) {
+    const { getEnvironmentSnapshot } = await import('../sandbox/replication.ts');
+    const snap = await getEnvironmentSnapshot(envSnapMatch[1]);
+    if (!snap) return notFound('Snapshot not found');
+    const { maskSensitiveEnv } = await import('../sandbox/replication.ts');
+    snap.env = maskSensitiveEnv(snap.env);
+    return json(snap);
+  }
+
+  // DELETE /api/sandbox/snapshots/:id
+  if (req.method === 'DELETE' && envSnapMatch) {
+    const { deleteEnvironmentSnapshot } = await import('../sandbox/replication.ts');
+    const ok = await deleteEnvironmentSnapshot(envSnapMatch[1]);
+    if (!ok) return notFound('Snapshot not found');
+    return json({ ok: true });
+  }
+
+  // POST /api/sandbox/snapshots/:id/replicate
+  const envReplMatch = path.match(/^\/api\/sandbox\/snapshots\/([^/]+)\/replicate$/);
+  if (req.method === 'POST' && envReplMatch) {
+    const body = await req.json() as { targetSessionId: string; targetWorkspacePath: string };
+    if (!body.targetSessionId) return err('targetSessionId required', 400);
+    if (!body.targetWorkspacePath) return err('targetWorkspacePath required', 400);
+    const pathErr = await validateSandboxPath(body.targetWorkspacePath, 'targetWorkspacePath');
+    if (pathErr) return err(pathErr, 400);
+    const { replicateEnvironment } = await import('../sandbox/replication.ts');
+    return json(await replicateEnvironment(envReplMatch[1], body.targetSessionId, body.targetWorkspacePath));
+  }
+
+  // GET /api/sandbox/snapshots/compare?id1=...&id2=...
+  if (req.method === 'GET' && path === '/api/sandbox/snapshots/compare') {
+    const id1 = url.searchParams.get('id1');
+    const id2 = url.searchParams.get('id2');
+    if (!id1 || !id2) return err('id1 and id2 required', 400);
+    const { compareSnapshots } = await import('../sandbox/replication.ts');
+    const result = await compareSnapshots(id1, id2);
+    if (!result) return notFound('One or both snapshots not found');
+    return json(result);
+  }
+
+  // ── #240 Workspace Context Snapshot ──
+
+  // POST /api/workspace/snapshots — capture workspace snapshot
+  if (req.method === 'POST' && path === '/api/workspace/snapshots') {
+    const body = await req.json() as {
+      name?: string; sessionId: string; agentId: string;
+      workspacePath: string; memoryContext?: string[]; toolState?: Array<Record<string, unknown>>; tags?: string[];
+    };
+    if (!body.sessionId) return err('sessionId required', 400);
+    if (!body.workspacePath) return err('workspacePath required', 400);
+    const pathErrW = await validateSandboxPath(body.workspacePath, 'workspacePath');
+    if (pathErrW) return err(pathErrW, 400);
+    const { captureWorkspaceSnapshot } = await import('../sandbox/workspace-snapshot.ts');
+    return json(await captureWorkspaceSnapshot({
+      name: body.name, sessionId: body.sessionId, agentId: body.agentId ?? '',
+      workspacePath: body.workspacePath, memoryContext: body.memoryContext,
+      toolState: body.toolState as any, tags: body.tags,
+    }), 201);
+  }
+
+  // GET /api/workspace/snapshots — list workspace snapshots
+  if (req.method === 'GET' && path === '/api/workspace/snapshots') {
+    const sessionId = url.searchParams.get('sessionId') ?? undefined;
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const { listWorkspaceSnapshots } = await import('../sandbox/workspace-snapshot.ts');
+    return json(await listWorkspaceSnapshots({ sessionId, limit }));
+  }
+
+  // GET /api/workspace/snapshots/:id — get single workspace snapshot
+  const wsSnapMatch = path.match(/^\/api\/workspace\/snapshots\/([^/]+)$/);
+  if (req.method === 'GET' && wsSnapMatch && !path.includes('/diff') && !path.includes('/restore')) {
+    const { getWorkspaceSnapshot } = await import('../sandbox/workspace-snapshot.ts');
+    const snap = await getWorkspaceSnapshot(wsSnapMatch[1]);
+    if (!snap) return notFound('Workspace snapshot not found');
+    return json(snap);
+  }
+
+  // DELETE /api/workspace/snapshots/:id
+  if (req.method === 'DELETE' && wsSnapMatch) {
+    const { deleteWorkspaceSnapshot } = await import('../sandbox/workspace-snapshot.ts');
+    const ok = await deleteWorkspaceSnapshot(wsSnapMatch[1]);
+    if (!ok) return notFound('Workspace snapshot not found');
+    return json({ ok: true });
+  }
+
+  // POST /api/workspace/snapshots/:id/restore
+  const wsRestMatch = path.match(/^\/api\/workspace\/snapshots\/([^/]+)\/restore$/);
+  if (req.method === 'POST' && wsRestMatch) {
+    const body = await req.json() as { targetWorkspacePath: string };
+    if (!body.targetWorkspacePath) return err('targetWorkspacePath required', 400);
+    const pathErrR = await validateSandboxPath(body.targetWorkspacePath, 'targetWorkspacePath');
+    if (pathErrR) return err(pathErrR, 400);
+    const { restoreWorkspaceSnapshot } = await import('../sandbox/workspace-snapshot.ts');
+    return json(await restoreWorkspaceSnapshot(wsRestMatch[1], body.targetWorkspacePath));
+  }
+
+  // GET /api/workspace/snapshots/diff?id1=...&id2=...
+  if (req.method === 'GET' && path === '/api/workspace/snapshots/diff') {
+    const id1 = url.searchParams.get('id1');
+    const id2 = url.searchParams.get('id2');
+    if (!id1 || !id2) return err('id1 and id2 required', 400);
+    const { diffWorkspaceSnapshots } = await import('../sandbox/workspace-snapshot.ts');
+    const result = await diffWorkspaceSnapshots(id1, id2);
+    if (!result) return notFound('One or both snapshots not found');
+    return json(result);
+  }
+
+  // ── #232 Dev Environment as Code ──
+
+  // POST /api/sandbox/dev-env/generate — generate dev env manifest
+  if (req.method === 'POST' && path === '/api/sandbox/dev-env/generate') {
+    const body = await req.json() as { workspacePath: string; name?: string; runtime?: string };
+    if (!body.workspacePath) return err('workspacePath required', 400);
+    const pathErrD = await validateSandboxPath(body.workspacePath, 'workspacePath');
+    if (pathErrD) return err(pathErrD, 400);
+    const { generateDevEnvManifest } = await import('../sandbox/dev-env-code.ts');
+    return json(await generateDevEnvManifest({
+      workspacePath: body.workspacePath, name: body.name,
+      runtime: body.runtime as SandboxRuntime,
+    }), 201);
+  }
+
+  // GET /api/sandbox/dev-env/manifest?workspacePath=...
+  if (req.method === 'GET' && path === '/api/sandbox/dev-env/manifest') {
+    const wp = url.searchParams.get('workspacePath');
+    if (!wp) return err('workspacePath required', 400);
+    const pathErrM = await validateSandboxPath(wp, 'workspacePath');
+    if (pathErrM) return err(pathErrM, 400);
+    const { loadDevEnvManifest } = await import('../sandbox/dev-env-code.ts');
+    const manifest = await loadDevEnvManifest(wp);
+    if (!manifest) return notFound('No manifest found');
+    return json(manifest);
+  }
+
+  // PUT /api/sandbox/dev-env/manifest — save/update dev env manifest
+  if (req.method === 'PUT' && path === '/api/sandbox/dev-env/manifest') {
+    const body = await req.json() as { workspacePath: string; manifest: Record<string, unknown> };
+    if (!body.workspacePath) return err('workspacePath required', 400);
+    const pathErrP = await validateSandboxPath(body.workspacePath, 'workspacePath');
+    if (pathErrP) return err(pathErrP, 400);
+    if (!body.manifest) return err('manifest required', 400);
+    const { saveDevEnvManifest, validateDevEnvManifest } = await import('../sandbox/dev-env-code.ts');
+    const validation = validateDevEnvManifest(body.manifest);
+    if (!validation.valid) return err(`Invalid manifest: ${validation.errors.join(', ')}`, 400);
+    return json(await saveDevEnvManifest(body.workspacePath, body.manifest as any));
+  }
+
+  // GET /api/sandbox/dev-env/list
+  if (req.method === 'GET' && path === '/api/sandbox/dev-env/list') {
+    const { listDevEnvManifests } = await import('../sandbox/dev-env-code.ts');
+    return json(await listDevEnvManifests());
+  }
+
+  // ── #230 Bug Reproduction Studio ──
+
+  // POST /api/sandbox/bug-repro — create bug repro run
+  if (req.method === 'POST' && path === '/api/sandbox/bug-repro') {
+    const body = await req.json() as {
+      issueTitle: string; issueDescription?: string; language: string;
+      code: string; testCode?: string; runtime?: string; sessionId?: string; tags?: string[];
+    };
+    if (!body.issueTitle) return err('issueTitle required', 400);
+    if (!body.language) return err('language required', 400);
+    if (!body.code) return err('code required', 400);
+    const { createBugRepro } = await import('../sandbox/bug-repro.ts');
+    return json(await createBugRepro({
+      issueTitle: body.issueTitle, issueDescription: body.issueDescription ?? '',
+      language: body.language, code: body.code, testCode: body.testCode,
+      runtime: body.runtime as SandboxRuntime, sessionId: body.sessionId, tags: body.tags,
+    }), 201);
+  }
+
+  // GET /api/sandbox/bug-repro — list bug repro runs
+  if (req.method === 'GET' && path === '/api/sandbox/bug-repro') {
+    const status = url.searchParams.get('status') ?? undefined;
+    const sessionId = url.searchParams.get('sessionId') ?? undefined;
+    const limit = Number(url.searchParams.get('limit') ?? 50);
+    const { listBugRepros } = await import('../sandbox/bug-repro.ts');
+    return json(await listBugRepros({ limit, status, sessionId }));
+  }
+
+  // GET /api/sandbox/bug-repro/:id — get single bug repro
+  const bugMatch = path.match(/^\/api\/sandbox\/bug-repro\/([^/]+)$/);
+  if (req.method === 'GET' && bugMatch) {
+    const { getBugRepro } = await import('../sandbox/bug-repro.ts');
+    const run = await getBugRepro(bugMatch[1]);
+    if (!run) return notFound('Bug repro not found');
+    return json(run);
+  }
+
+  // POST /api/sandbox/bug-repro/:id/run — execute bug repro
+  const bugRunMatch = path.match(/^\/api\/sandbox\/bug-repro\/([^/]+)\/run$/);
+  if (req.method === 'POST' && bugRunMatch) {
+    const { executeBugRepro } = await import('../sandbox/bug-repro.ts');
+    const run = await executeBugRepro(bugRunMatch[1]);
+    if (!run) return notFound('Bug repro not found');
+    return json(run);
+  }
+
+  // DELETE /api/sandbox/bug-repro/:id
+  if (req.method === 'DELETE' && bugMatch) {
+    const { deleteBugRepro } = await import('../sandbox/bug-repro.ts');
+    const ok = await deleteBugRepro(bugMatch[1]);
+    if (!ok) return notFound('Bug repro not found');
+    return json({ ok: true });
+  }
+
+  // GET /api/sandbox/config — sandbox configuration (#79/257 UI support)
+  if (req.method === 'GET' && path === '/api/sandbox/config') {
+    const { getAvailableRuntime, isDockerAvailable, isGVisorAvailable } = await import('../sandbox/executor.ts');
+    const runtime = await getAvailableRuntime();
+    const dockerOk = await isDockerAvailable();
+    const gvisorOk = await isGVisorAvailable();
+    return json({
+      runtime,
+      dockerAvailable: dockerOk,
+      gvisorAvailable: gvisorOk,
+      timeoutMs: 30_000,
+      memoryLimitMb: 256,
+      cpuLimit: 0.5,
+      supportedLanguages: ['python', 'javascript', 'typescript', 'bash', 'ruby', 'go', 'rust'],
+    });
   }
 
   return null;

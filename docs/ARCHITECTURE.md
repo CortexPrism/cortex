@@ -480,8 +480,11 @@ interface Tool {
 
 ## Sandbox (`src/sandbox/`)
 
-### Docker Runtime
+The sandbox subsystem provides isolated code execution, environment replication, workspace snapshots, and bug reproduction capabilities.
 
+### Code Execution
+
+**Docker Runtime:**
 ```bash
 docker run --rm \
   --network=none \
@@ -494,10 +497,9 @@ docker run --rm \
 
 Timeout: 30 seconds. Max output: 64KB.
 
-Subprocess fallback triggered when `docker info` fails.
+Subprocess fallback triggered when `docker info` fails. gVisor support via `--runtime=runsc` when available.
 
-### Auto-Fix Loop
-
+**Auto-Fix Loop:**
 ```
 runInSandbox(code)
   → exit != 0?
@@ -505,6 +507,60 @@ runInSandbox(code)
      → extract code from LLM response
      → runInSandbox(fixedCode)
      → repeat up to maxRounds (default 4)
+```
+
+### Environment Replication (#79)
+
+`src/sandbox/replication.ts` — captures the complete development environment state:
+
+- **Snapshot capture** — env vars (validated keys, length-limited values), dependency manifests (auto-detected from package.json, requirements.txt, Cargo.toml, go.mod, Gemfile), git state (branch, HEAD, porcelain status), and sandbox config
+- **Dual persistence** — JSON files in `~/.cortex/data/sandbox-snapshots/` + metadata in `cortex.db.sandbox_snapshots`
+- **Replication** — writes a commented `.cortex-env-replication.sh` shell script to the target workspace; all env values are fully escaped (`$`, `` ` ``, `!`, `\`) for shell safety
+- **Comparison** — diffs two snapshots showing added/removed/changed env vars and packages
+- **Sensitive masking** — API responses mask values for keys matching API_KEY|TOKEN|SECRET|PASSWORD patterns
+
+### Workspace Context Snapshot (#240)
+
+`src/sandbox/workspace-snapshot.ts` — point-in-time workspace state capture:
+
+- **File tree scanning** — recursive directory walk with SHA-256 hashing (files >10 MB skipped)
+- **Git state capture** — shared via `src/sandbox/git-capture.ts` (per-command error isolation)
+- **Dual persistence** — JSON files in `~/.cortex/data/workspace-snapshots/` + `cortex.db.workspace_snapshots`
+- **Restore** — writes a `.cortex-ws-restore.json` manifest with full file tree metadata
+
+### Dev Environment as Code (#232)
+
+`src/sandbox/dev-env-code.ts` — serializes environment into versioned manifests:
+
+- **Auto-generation** — detects language (JS/Python/Rust/Go/Ruby), package manager (npm/yarn/pnpm/bun/pip/cargo/bundler), and setup commands
+- **Manifest format** — `cortex-devenv.json` with sandbox config, env vars, dependencies, workspace files, and setup commands
+- **Validation** — structural validation of name, version, sandbox config, and dependencies sections
+- **Unique naming** — default names include SHA-256 hash of workspace path to prevent cross-workspace collisions
+- **Dependency detection** — shared via `src/sandbox/dependency-detect.ts` (used by replication too)
+
+### Bug Reproduction Studio (#230)
+
+`src/sandbox/bug-repro.ts` — reproduces issues as sandbox test runs:
+
+- **Create run** — accepts issue title, description, language, and code; persists to `cortex.db.bug_repro_runs`
+- **Execute** — runs code in sandbox (docker/subprocess), records stdout/stderr/exit code/duration
+- **Status lifecycle** — `queued` → `running` → `passed` | `failed` (with try/catch `error` for runtime failures)
+- **Persistence** — all results stored in `bug_repro_runs` table with status filtering and deletion
+
+### Module Map
+
+```
+src/sandbox/
+├── executor.ts            # Core execution engine (Docker/subprocess/gVisor)
+├── agent-sandbox.ts       # Docker CLI args builder for agent workspace sandboxes
+├── autofix.ts             # LLM auto-debug loop (up to 4 fix rounds)
+├── replication.ts         # Environment snapshots: capture, replicate, compare
+├── workspace-snapshot.ts  # Workspace snapshots: file tree, git state, restore manifest
+├── dev-env-code.ts        # Dev env manifests: generate, validate, save, load
+├── bug-repro.ts           # Bug reproduction: create, execute, list results
+├── git-capture.ts         # Shared git state capture (branch, HEAD, porcelain status)
+├── dependency-detect.ts   # Shared dependency detection (JS/Python/Rust/Go/Ruby)
+└── snapshot-types.ts      # TypeScript interfaces for all snapshot/manifest/run types
 ```
 
 ---
