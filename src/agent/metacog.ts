@@ -13,12 +13,11 @@ export interface MetaAssessment {
   reason: string;
   suggestedPrefix?: string;
   requiresClarification?: string;
-  /** Suggested sub-agent types when decision is 'delegate' or 'parallelize' */
   suggestedSubAgents?: SubAgentType[];
-  /** Numeric confidence in the assessment (0-1) */
   confidence?: number;
-  /** Breakdown of signal scores that led to this decision */
   signalBreakdown?: Record<string, number>;
+  escalated?: boolean;
+  escalationReason?: string;
 }
 
 interface TaskSignals {
@@ -423,6 +422,35 @@ function determineDecision(signals: TaskSignals): {
 export function assessTask(message: string): MetaAssessment {
   const signals = analyseTask(message);
   const result = determineDecision(signals);
+
+  const CONFIDENCE_ESCALATION_THRESHOLD = 0.35;
+
+  if (
+    result.confidence < CONFIDENCE_ESCALATION_THRESHOLD &&
+    result.decision === 'direct' &&
+    !signals.isAmbiguous
+  ) {
+    return {
+      decision: 'ask_first',
+      reason: `Confidence too low (${
+        result.confidence.toFixed(2)
+      }) for direct execution — escalating to clarification`,
+      requiresClarification:
+        'I want to make sure I get this right. Could you provide a bit more detail or confirm the scope?',
+      confidence: result.confidence,
+      signalBreakdown: {
+        code: signals.codeScore,
+        research: signals.researchScore,
+        explore: signals.exploreScore,
+        planning: signals.planningScore,
+        wordCount: signals.wordCount,
+      },
+      escalated: true,
+      escalationReason: `Auto-escalated from direct (confidence ${
+        result.confidence.toFixed(2)
+      } < ${CONFIDENCE_ESCALATION_THRESHOLD})`,
+    };
+  }
 
   return {
     ...result,

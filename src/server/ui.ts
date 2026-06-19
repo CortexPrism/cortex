@@ -2698,6 +2698,10 @@ const HTML = `<!DOCTYPE html>
           <div style="max-height:200px;overflow-y:auto;font-size:11px;" id="mc-history"><div class="empty">No assessment history</div></div>
         </div>
       </div>
+      <div style="margin-top:16px;" class="card">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">Adversarial Critiques</h3>
+        <div style="max-height:200px;overflow-y:auto;font-size:11px;" id="mc-critiques"><div class="empty">No critiques yet. Critiques appear when the adversarial reflection pass runs on agent responses.</div></div>
+      </div>
     </div>
   </div>
 
@@ -13130,7 +13134,7 @@ async function toggleTool(name) {
 }
 
 // ── Metacognition Page ──
-function loadMetacognition() { loadMetacognitionHistory(); }
+function loadMetacognition() { loadMetacognitionHistory(); loadMetacognitionSummary(); }
 function testMetacognition() {
   var input = document.getElementById('mc-test-input').value.trim();
   if (!input) return;
@@ -13142,16 +13146,58 @@ function testMetacognition() {
   el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><span>Decision:</span><span style="font-weight:500;color:' + (colors[decision] || '') + '">' + decision + '</span></div>' +
     '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Signals: ' + Object.entries(signals).filter(function(e) { return e[1]; }).map(function(e) { return e[0]; }).join(', ') || 'none' + '</div>';
 }
+var mcDecisionColors = { direct: '#4ade80', ask_first: '#fbbf24', delegate: '#818cf8', plan_with_rollback: '#22d3ee', parallelize: '#a78bfa', escalated: '#f87171' };
+async function loadMetacognitionSummary() {
+  try {
+    var data = await fetch(BASE + '/api/metacognition/summary').then(r => r.json()).catch(() => null);
+    if (!data) return;
+    var chartEl = document.getElementById('mc-chart-container');
+    if (chartEl && data.decisions && data.decisions.length) {
+      var max = data.decisions.reduce(function(m, d) { return Math.max(m, d.count); }, 1);
+      chartEl.innerHTML = '<div style="display:flex;align-items:flex-end;gap:12px;height:100%;padding:8px 0;">' +
+        data.decisions.map(function(d) {
+          var h = Math.max(8, Math.round((d.count / max) * 100));
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;">' +
+            '<span style="font-size:10px;font-weight:600;color:' + (mcDecisionColors[d.action] || 'var(--text2)') + ';">' + d.count + '</span>' +
+            '<div style="width:100%;height:' + h + 'px;background:' + (mcDecisionColors[d.action] || 'var(--accent)') + ';border-radius:4px 4px 0 0;min-height:8px;" title="' + esc(d.action) + ': ' + d.count + '"></div>' +
+            '<span style="font-size:9px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + esc(d.action) + '</span></div>';
+        }).join('') + '</div>';
+    }
+    if (data.totalEscalations > 0) {
+      var card = document.querySelector('#page-metacognition .card:last-of-type');
+      if (card) {
+        card.innerHTML += '<div style="margin-top:12px;padding:10px;border:1px solid rgba(248,113,113,0.2);border-radius:6px;background:rgba(248,113,113,0.05);">' +
+          '<span style="font-size:11px;font-weight:600;color:#f87171;">⚠ ' + data.totalEscalations + ' task(s) escalated</span>' +
+          '<span style="font-size:10px;color:var(--text3);margin-left:8px;">due to low confidence</span></div>';
+      }
+    }
+    var critiquesEl = document.getElementById('mc-critiques');
+    if (critiquesEl && data.recentCritiques && data.recentCritiques.length) {
+      critiquesEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Adversarial Critiques</div>' +
+        data.recentCritiques.map(function(c) {
+          var payload = {};
+          try { payload = typeof c.payload === 'string' ? JSON.parse(c.payload) : (c.payload || {}); } catch(e) {}
+          return '<div style="padding:8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);">' +
+            '<div style="font-size:10px;color:var(--text3);line-height:1.4;">' + esc(payload.summary || c.summary || 'No critique summary').substring(0, 120) + '</div>' +
+            (payload.issues && payload.issues.length ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">' + payload.issues.slice(0, 3).map(function(i) { return '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(248,113,113,0.1);color:#f87171;">' + esc(i).substring(0, 60) + '</span>'; }).join('') + '</div>' : '') +
+            '</div>';
+        }).join('');
+    }
+  } catch(e) {}
+}
 async function loadMetacognitionHistory() {
   var el = document.getElementById('mc-history');
   try {
     var history = await fetch(BASE + '/api/metacognition/history').then(r => r.json()).catch(function() { return []; });
     if (!history || !history.length) { el.innerHTML = '<div class="empty">No assessment history</div>'; return; }
     el.innerHTML = (Array.isArray(history) ? history : []).map(function(h) {
-      return '<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:10px;">' +
-        '<span style="color:var(--accent);">' + esc(h.decision || '') + '</span> ' +
-        '<span style="color:var(--text2);">' + esc(h.reason || h.task || '').substring(0, 50) + '</span> ' +
-        '<span style="color:var(--text3);">' + timeAgo(h.timestamp) + '</span></div>';
+      var isEscalation = h.event_type === 'escalation';
+      var bgColor = isEscalation ? 'rgba(248,113,113,0.06)' : 'transparent';
+      return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:10px;background:' + bgColor + ';padding-left:4px;border-radius:2px;">' +
+        (isEscalation ? '<span style="color:#f87171;font-weight:600;">⚡ escalated</span> ' : '') +
+        '<span style="color:' + (mcDecisionColors[h.action] || 'var(--accent)') + ';">' + esc(h.action || '') + '</span> ' +
+        '<span style="color:var(--text2);">' + esc(h.reason || h.summary || '').substring(0, 60) + '</span> ' +
+        '<span style="color:var(--text3);">' + timeAgo(h.started_at || h.timestamp) + '</span></div>';
     }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
 }

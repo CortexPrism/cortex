@@ -24,6 +24,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Bindings rendered as cards with skill name, event type, enabled/disabled state, action type, priority, and conditions
   - Recent event log showing event type, fired binding count, pass/fail breakdown, and local timestamps
 
+- **Adversarial Self-Critique (#52)** — second-pass adversarial reflection runs alongside normal reflection:
+  - New `adversarialReflection()` function in `reflect.ts` with a skeptical/critical system prompt that actively looks for missed edge cases and risks
+  - Agent loop runs adversarial reflection immediately after normal reflection when `enableReflection` is enabled
+  - Adversarial results stored in reflection_memory with category `adversarial`
+
+- **Confidence Task Escalator (#53)** — low-confidence assessments auto-escalate to clarification:
+  - Confidence threshold (0.35) in `metacog.ts` — if `assessTask()` produces a `direct` decision with sub-threshold confidence, it escalates to `ask_first` with a clarification prompt
+  - `MetaAssessment` now carries `escalated: boolean` and `escalationReason` fields
+  - Escalation events logged to `lens_events` with type `escalation`, surfaced in Metacognition page history with red ⚡ badge
+  - New `GET /api/metacognition/summary` endpoint returning decision distribution, escalation count, and recent adversarial critiques
+  - Metacognition page shows decision distribution bar chart, escalation alerts, and adversarial critique cards with issues
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
