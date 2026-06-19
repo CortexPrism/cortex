@@ -982,6 +982,14 @@ const HTML = `<!DOCTYPE html>
       <span class="icon">🧠</span>Quartermaster
     </button>
 
+    <!-- Tier 1-3 New Features -->
+    <button class="nav-item" onclick="showPage('a2a');closeMobileSidebar()" id="nav-a2a">
+      <span class="icon">🔗</span>A2A Bridge
+    </button>
+    <button class="nav-item" onclick="showPage('memori');closeMobileSidebar()" id="nav-memori">
+      <span class="icon">⏱</span>Memori
+    </button>
+
     <!-- Recent pages -->
     <div id="recent-pages-section" style="display:none;">
       <div class="nav-section">Recent</div>
@@ -2348,6 +2356,65 @@ const HTML = `<!DOCTYPE html>
         <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">Ctrl+Enter</kbd> Approve &nbsp;
         <kbd style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">D</kbd> Details
       </div>
+    </div>
+  </div>
+
+  <!-- Page: A2A Bridge -->
+  <div id="page-a2a" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">A2A Protocol Bridge</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Agent-to-Agent — discover and collaborate with external agents</p>
+      </div>
+      <button class="btn btn-ghost" onclick="loadA2APage()" style="font-size:11px;">↻ Refresh</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="a2a-content">
+      <div class="widget-loading">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Page: Memori Checkpointing -->
+  <div id="page-memori" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Memori Checkpoints</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Persistent agent state — survive restarts and crashes</p>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="memori-session-filter" class="inp" placeholder="Session ID…" style="font-size:11px;width:200px;" onkeydown="if(event.key==='Enter')loadMemoriPage()">
+        <button class="btn btn-ghost" onclick="loadMemoriPage()" style="font-size:11px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="memori-content">
+      <div class="widget-loading">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Page: MCP Gateway -->
+  <div id="page-mcp-gateway" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">MCP Gateway</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Enterprise MCP server management — health, rate limiting, audit</p>
+      </div>
+      <button class="btn btn-ghost" onclick="loadMcpGatewayPage()" style="font-size:11px;">↻ Refresh</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="mcp-gateway-content">
+      <div class="widget-loading">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Page: AgentLint -->
+  <div id="page-agentlint" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">AgentLint</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Automated auditing — agent configs, tools, plugins, prompts</p>
+      </div>
+      <button class="btn btn-primary" onclick="loadAgentLintPage()" style="font-size:11px;">Run Checks</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="agentlint-content">
+      <div class="widget-loading">Loading…</div>
     </div>
   </div>
 
@@ -3829,7 +3896,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','pluginpanels'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','a2a','memori','agentlint','pluginpanels'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3882,18 +3949,22 @@ function showPage(name) {
     codegraph: loadCodegraphPage,
     workflow: () => { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
     eval: () => { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
-    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'mcp'); },
-    'chrome-bridge': () => { loadChromeBridgePage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'chrome-bridge'); },
-    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'vault'); },
+    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'mcp'); },
+    'chrome-bridge': () => { loadChromeBridgePage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'chrome-bridge'); },
+    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'vault'); },
     computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
     remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
-    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'tools'); },
+    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'tools'); },
+    'mcp-gateway': () => { loadMcpGatewayPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'mcp-gateway'); },
     metacognition: loadMetacognition,
+    a2a: loadA2APage,
+    memori: loadMemoriPage,
+    agentlint: loadAgentLintPage,
   };
   if (loaders[name]) loaders[name]();
   // Hide global subnav for non-tabbed pages
-  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,'chrome-bridge':1,mcp:1,vault:1,remote:1,computer:1};
+  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
 }
 
@@ -13951,6 +14022,157 @@ window.addEventListener('hashchange', () => {
   const page = location.hash.replace('#', '');
   if (page && PAGES.includes(page)) showPage(page);
 });
+
+// ── A2A Bridge Page ──────────────────────────────────────
+async function loadA2APage() {
+  var c = document.getElementById('a2a-content');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading…</div>';
+  try {
+    var r = await fetch('/api/a2a/agent-card.json');
+    var card = await r.json();
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+    html += '<div class="card" style="padding:16px;"><h3 style="font-size:13px;font-weight:600;">Agent Card</h3>';
+    html += '<div class="stat-row"><span>Name</span><span>' + esc(card.name || 'Unknown') + '</span></div>';
+    html += '<div class="stat-row"><span>Version</span><span>' + esc(card.version || 'N/A') + '</span></div>';
+    html += '<div class="stat-row"><span>Streaming</span><span>' + (card.capabilities?.streaming ? '✅' : '❌') + '</span></div>';
+    html += '<div class="stat-row"><span>Skills</span><span>' + (card.skills?.length || 0) + '</span></div>';
+    html += '</div>';
+    html += '<div class="card" style="padding:16px;"><h3 style="font-size:13px;font-weight:600;">Interfaces</h3>';
+    if (card.interfaces) {
+      card.interfaces.forEach(function(iface) {
+        html += '<div class="stat-row"><span>' + esc(iface.protocol || '') + '</span><span style="font-size:10px;">' + esc(iface.url || '') + '</span></div>';
+      });
+    }
+    html += '</div></div>';
+    if (card.skills && card.skills.length > 0) {
+      html += '<div class="card" style="padding:16px;margin-top:12px;"><h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Skills (' + card.skills.length + ')</h3>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">';
+      card.skills.forEach(function(s) {
+        html += '<div style="background:var(--bg3);border-radius:6px;padding:10px;"><div style="font-size:12px;font-weight:500;">' + esc(s.name || s.id) + '</div><div style="font-size:10px;color:var(--text3);">' + esc(s.description || '') + '</div>';
+        if (s.tags) html += '<div style="margin-top:4px;">' + (s.tags||[]).map(function(t){return '<span class="badge" style="font-size:9px;">'+esc(t)+'</span>'}).join(' ') + '</div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load A2A data: ' + esc(String(e)) + '</div>';
+  }
+}
+
+// ── MCP Gateway Page ────────────────────────────────────
+async function loadMcpGatewayPage() {
+  var c = document.getElementById('page-mcp-gateway')?.querySelector('[style*="overflow-y:auto"]');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading MCP Gateway…</div>';
+  try {
+    var r = await fetch('/api/mcp-gateway/servers');
+    var data = await r.json();
+    var servers = data.servers || [];
+    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + servers.length + '</div><div style="font-size:11px;color:var(--text3);">Servers</div></div>';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-green);">' + (data.healthy||0) + '</div><div style="font-size:11px;color:var(--text3);">Healthy</div></div>';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-red);">' + (data.degraded||0) + '</div><div style="font-size:11px;color:var(--text3);">Degraded</div></div>';
+    html += '</div>';
+    html += '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Managed Servers</h3>';
+    if (servers.length === 0) {
+      html += '<div class="empty">No MCP servers managed through the gateway. Add MCP connections in the <a href="#" onclick="showPage(\\'mcp\\')" style="color:var(--accent);">MCP page</a>.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      servers.forEach(function(s) {
+        var statusColor = s.status === 'healthy' ? 'var(--accent-green)' : s.status === 'degraded' ? 'var(--accent-amber)' : 'var(--accent-red)';
+        html += '<div class="card" style="padding:12px;display:flex;align-items:center;justify-content:space-between;">';
+        html += '<div><div style="font-size:12px;font-weight:500;">' + esc(s.name || s.id) + '</div><div style="font-size:10px;color:var(--text3);">' + esc(s.endpoint || '') + ' • ' + (s.toolCount||0) + ' tools</div></div>';
+        html += '<span class="badge" style="background:' + statusColor + ';color:#000;">' + esc(s.status || 'unknown') + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load MCP Gateway: ' + esc(String(e)) + '</div>';
+  }
+}
+
+// ── Memori Page ─────────────────────────────────────────
+async function loadMemoriPage() {
+  var c = document.getElementById('memori-content');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading checkpoints…</div>';
+  try {
+    var sessionFilter = document.getElementById('memori-session-filter')?.value || '';
+    var url = '/api/memori/checkpoints' + (sessionFilter ? '?sessionId=' + encodeURIComponent(sessionFilter) : '?limit=20');
+    var r = await fetch(url);
+    var data = await r.json();
+    var checkpoints = data.checkpoints || [];
+    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + checkpoints.length + '</div><div style="font-size:11px;color:var(--text3);">Checkpoints</div></div>';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + checkpoints.reduce(function(s,c){return s + (c.toolCallCount||0)},0) + '</div><div style="font-size:11px;color:var(--text3);">Tool Calls</div></div>';
+    html += '</div>';
+    if (checkpoints.length === 0) {
+      html += '<div class="empty">No checkpoints found. Sessions automatically checkpoint after each turn.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      checkpoints.forEach(function(cp) {
+        html += '<div class="card" style="padding:12px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+        html += '<div><div style="font-size:12px;font-weight:500;">Turn ' + cp.turnNumber + '</div><div style="font-size:10px;color:var(--text3);">' + esc(cp.sessionId || '') + ' • ' + new Date(cp.timestamp).toLocaleString() + '</div></div>';
+        html += '<span class="badge">' + (cp.tokensUsed||0) + ' tokens</span>';
+        html += '</div>';
+        if (cp.goalSnapshot) html += '<div style="font-size:11px;color:var(--text2);margin-top:6px;">' + esc(cp.goalSnapshot) + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load checkpoints: ' + esc(String(e)) + '</div>';
+  }
+}
+
+// ── AgentLint Page ──────────────────────────────────────
+async function loadAgentLintPage() {
+  var c = document.getElementById('page-agentlint')?.querySelector('[style*="overflow-y:auto"]');
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Running AgentLint checks…</div>';
+  try {
+    var r = await fetch('/api/agentlint/check');
+    var data = await r.json();
+    var report = data.report;
+    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + (report.totalChecks||0) + '</div><div style="font-size:11px;color:var(--text3);">Checks</div></div>';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-green);">' + (report.passCount||0) + '</div><div style="font-size:11px;color:var(--text3);">Passed</div></div>';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-amber);">' + (report.warningCount||0) + '</div><div style="font-size:11px;color:var(--text3);">Warnings</div></div>';
+    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-red);">' + (report.errorCount||0) + '</div><div style="font-size:11px;color:var(--text3);">Errors</div></div>';
+    html += '</div>';
+    if (report.passed) {
+      html += '<div class="card" style="padding:16px;text-align:center;"><span style="color:var(--accent-green);font-size:14px;font-weight:600;">✓ All checks passed</span></div>';
+    } else {
+      html += '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Issues</h3>';
+      var issues = report.issues || [];
+      issues.forEach(function(issue) {
+        var color = issue.severity === 'error' ? 'var(--accent-red)' : issue.severity === 'warning' ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+        html += '<div class="card" style="padding:10px;margin-bottom:6px;border-left:3px solid ' + color + ';">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+        html += '<span class="badge" style="background:' + color + ';color:#000;font-size:9px;">' + esc(issue.severity).toUpperCase() + '</span>';
+        html += '<span style="font-size:11px;color:var(--text2);">' + esc(issue.category) + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:12px;">' + esc(issue.message) + '</div>';
+        if (issue.suggestion) html += '<div style="font-size:10px;color:var(--text2);margin-top:4px;">💡 ' + esc(issue.suggestion) + '</div>';
+        html += '</div>';
+      });
+    }
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to run AgentLint: ' + esc(String(e)) + '</div>';
+  }
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // Restore page from hash, then localStorage, then default
 (function restorePage() {

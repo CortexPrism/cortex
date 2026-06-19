@@ -4,7 +4,7 @@
  * Uses SQLite (libSQL) for checkpoint storage. Each checkpoint is
  * stored as a JSON blob with indexed fields for efficient querying.
  */
-import type { Db } from '../db/client.ts';
+import type { Db, InValue } from '../db/client.ts';
 import type {
   AgentCheckpoint,
   CheckpointFilter,
@@ -116,7 +116,7 @@ export async function listCheckpoints(
   filter: CheckpointFilter,
 ): Promise<CheckpointSummary[]> {
   const conditions: string[] = [];
-  const args: unknown[] = [];
+  const args: InValue[] = [];
 
   if (filter.sessionId) {
     conditions.push('session_id = ?');

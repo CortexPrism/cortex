@@ -56,6 +56,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Responsible AI Auditor** (`src/agent/responsible-ai.ts`, #188) — bias, fairness, and safety auditing for agent outputs with 10 audit categories: demographic bias, gender bias, cultural bias, stereotypes, content safety, code safety, fairness, transparency, accountability, and privacy. `auditAgentOutput()` produces a `ResponsibleAIReport` with per-category severity scoring (pass/concern/violation), overall score (0-1), and actionable recommendations. `auditBatch()` for bulk output analysis. Lens audit logging for any concern or violation findings. Configurable stereotype, safety, and fairness pattern sets.
 
+- **A2A Bridge UI** (`src/server/ui.ts`, `src/server/router.ts`) — new sidebar navigation page with agent card display (name, version, streaming capability, skill count), interface endpoint list, and 3-column skills grid. `GET /api/a2a/agent-card.json` endpoint.
+
+- **MCP Gateway UI** (`src/server/ui.ts`, `src/server/router.ts`) — new Settings sub-tab for enterprise MCP server management. Health dashboard with server count, healthy/degraded breakdown, per-server status badges with tool counts. `GET /api/mcp-gateway/servers` endpoint with aggregated health stats.
+
+- **Memori Checkpointing UI** (`src/server/ui.ts`, `src/server/router.ts`) — new sidebar navigation page for persistent agent checkpoint viewing. Session ID filter, per-session turn listing with timestamp, token count badges, and goal snapshots. `GET /api/memori/checkpoints` endpoint with sessionId and limit query params.
+
+- **AgentLint UI** (`src/server/ui.ts`, `src/server/router.ts`) — new standalone audit page with Run Checks button. Summary cards (total checks, passed, warnings, errors), color-coded issue cards with severity badges and actionable suggestions. `GET|POST /api/agentlint/check` endpoints.
+
+- **New lens event types** (`src/db/lens.ts`) — added 9 event types: `dynamic_grant`, `approval_requested`, `approval_decision`, `dlp_blocked`, `dlp_redacted`, `guardrail_blocked`, `isolation_violation`, `supply_chain_verification`, `guardian_report` to the `EventType` union for Tier 2 security feature audit logging.
+
 - **Multi-system import system** (`src/cli/import/`) — new shared import module supporting three external agent systems:
   - **Hermes import** (`cortex import hermes`) — parses Hermes JSONL exports with session/message records and ShareGPT `conversations[]` format. Groups records by `session_id`, writes messages into per-session databases, imports system prompts and model info as episodic memory. Auto-detects `~/.hermes/`.
   - **ZeroClaw import** (`cortex import zeroclaw`) — handles JSONL event-sourced transcripts and `MEMORY_SNAPSHOT.md`/`MEMORY.md` memory snapshot files. Transcript events are written as session messages; `branch_summary`/`compaction` events become episodic memory; memory snapshots become semantic memory. Auto-detects `~/.zeroclaw/`.
