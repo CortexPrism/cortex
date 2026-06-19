@@ -7,8 +7,8 @@ most recent version.
 
 | Version         | Supported           |
 | --------------- | ------------------- |
-| 0.33.x (latest) | Yes                 |
-| < 0.33          | No — please upgrade |
+| 0.43.x (latest) | Yes                 |
+| < 0.43          | No — please upgrade |
 
 ---
 
@@ -85,6 +85,61 @@ All activity is written to an append-only audit log in `lens.db`:
 
 The Lens timeline is visible in the Web UI and queryable via the REST API.
 
+### Dynamic Tool Permission & Approval Workflow
+
+Tool permissions are evaluated per-task rather than statically at install time:
+- **Risk profiles** for 13 tool categories with default guardrails (readOnly, restrictedPaths, allowedDomains, maxDurationMs, requireConfirmation)
+- **Four decision levels**: `granted`, `granted_with_guardrails`, `denied`, `requires_approval`
+- **Structured approval pipeline** with auto-approve thresholds, webhook notifications, promise-based resolution, and automatic expiry (5-minute default timeout)
+- Temporary grants are cached per-session for previously approved tools
+
+### Data Loss Prevention (DLP) Guard
+
+All agent outputs and tool results are scanned by a 22-scanner DLP pipeline:
+- **Credential detection**: AWS keys, GitHub tokens, OpenAI/Anthropic/Google API keys, JWTs, private keys (RSA/EC/DSA), PEM certificates, database connection strings
+- **PII detection**: credit cards, SSNs, emails, IP addresses
+- **Three action levels**: `monitor` (log only), `redact` (replace with placeholders), `block` (reject the output)
+- Registered as a `pre-output` and `post-tool` pipeline hook, run on every agent turn
+
+### AI Guardrails & Content Safety
+
+Pluggable content safety middleware with 5 built-in classifiers:
+- **Prompt injection** — 10 detection patterns (ignore-previous-instructions, jailbreak DAN/STAN, system override)
+- **PII leakage** — output-side PII detection
+- **Harmful code** — destructive commands (rm -rf /, DROP DATABASE, eval)
+- **Excessive length** — alerts on inputs >100K characters
+- **Shell injection** — command injection patterns (curl|bash, backtick substitution)
+- Custom classifiers can be added via `registerClassifier()` API
+
+### Session Isolation
+
+Multi-tenant data isolation between Cortex sessions:
+- **Three modes**: `strict` (no cross-project access), `permissive` (path-only isolation), `shared` (no restrictions)
+- Path-based isolation with workspace root enforcement and allowlist overrides
+- Environment variable filtering with safe-var allowlist
+- Cross-session memory access control with shared-session whitelist
+- Violation recording with audit trail
+
+### Supply Chain Integrity
+
+Before any plugin or dependency is loaded:
+- SHA-256 hash verification against known-good hashes per `package@version`
+- Blocked hash list for known-malicious content
+- Digital signature verification
+- Author reputation scoring (0-100)
+- Blocked/allowed author lists
+- Malware pattern scanning (eval, child_process, rm -rf /, curl|sh)
+- Configurable `blockSuspicious` mode
+
+### Dependency Guardian
+
+Continuous monitoring across 6 ecosystems (npm, PyPI, Maven, Go, Cargo, NuGet):
+- CVE database with severity-scored vulnerability records
+- Version range matching for affected-versions parsing
+- Blocked license enforcement (GPL-3.0, AGPL-3.0, BUSL-1.1, SSPL-1.0)
+- Automatic remediation suggestions with safe version bump recommendations
+- Periodic health checks every 6 hours
+
 ### Sandbox Isolation
 
 Code execution (`cortex run`, `code_exec` tool) runs inside **ephemeral Docker containers** with:
@@ -110,10 +165,15 @@ the application itself, and it can be skipped by running with `--check` in offli
 - The policy validator operates on **intent strings** — it is a best-effort filter, not a sandboxing
   solution. For high-risk deployments, combine with OS-level sandboxing.
 - LLM outputs are processed as text; prompt injection through untrusted content in files or web
-  pages is a risk. Review tool call approvals carefully when the agent has processed external
-  content.
+  pages is a risk. The DLP Guard and AI Guardrails (prompt injection, harmful code, PII leakage
+  classifiers) provide defense-in-depth, but all guardrails are heuristic-based and may not catch
+  every instance.
+- The supply chain integrity verifier uses SHA-256 hash comparison and pattern matching — it does
+  not perform static analysis or sandboxed execution of plugin code.
 - The subprocess fallback for code execution has no container isolation — use Docker when running
   untrusted code.
+- Session isolation is enforced at the application layer — it is not a kernel-level security
+  boundary. For multi-tenant deployments, combine with OS-level user separation.
 
 ---
 
