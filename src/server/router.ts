@@ -3684,6 +3684,74 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // MCP Gateway API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/mcp-gateway/servers
+  if (req.method === 'GET' && path === '/api/mcp-gateway/servers') {
+    const { listServers, getHealthyServers, getDegradedServers } = await import('../mcp-gateway/registry.ts');
+    const servers = listServers();
+    return json({
+      servers: servers.map((s) => ({
+        id: s.id, name: s.name, endpoint: s.endpoint, transport: s.transport,
+        status: s.status, toolCount: s.toolCount, lastHealthCheck: s.lastHealthCheck,
+        tags: s.tags,
+      })),
+      healthy: getHealthyServers().length,
+      degraded: getDegradedServers().length,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Memori Checkpoint API
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/memori/checkpoints
+  if (req.method === 'GET' && path === '/api/memori/checkpoints') {
+    const { getCoreDb } = await import('../db/client.ts');
+    const { listCheckpoints } = await import('../memori/store.ts');
+    const url = new URL(req.url);
+    const sessionId = url.searchParams.get('sessionId') ?? undefined;
+    const limit = parseInt(url.searchParams.get('limit') ?? '20');
+    const db = await getCoreDb();
+    await (await import('../memori/store.ts')).initCheckpointStore(db);
+    const checkpoints = await listCheckpoints(db, { sessionId, limit });
+    return json({ checkpoints });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AgentLint API
+  // ═══════════════════════════════════════════════════════════════
+
+  // POST /api/agentlint/check
+  if (req.method === 'POST' && path === '/api/agentlint/check') {
+    const body = await req.json().catch(() => ({})) as {
+      agentConfig?: { name: string; description: string; systemPrompt: string; tools: string[]; maxTurns: number; provider: string; model: string };
+    };
+    const { lintAgentConfig } = await import('../agent/agentlint.ts');
+    const config = body.agentConfig ?? {
+      name: 'Default Agent', description: '', systemPrompt: 'You are a helpful AI coding assistant.',
+      tools: ['file_read', 'file_write', 'shell', 'web_search'],
+      maxTurns: 8, provider: 'openai', model: 'gpt-4o',
+    };
+    const report = lintAgentConfig(config);
+    return json({ report });
+  }
+
+  // GET /api/agentlint/check (quick check on default config)
+  if (req.method === 'GET' && path === '/api/agentlint/check') {
+    const { lintAgentConfig } = await import('../agent/agentlint.ts');
+    const config = {
+      name: 'Default Agent', description: 'Default CortexPrism agent',
+      systemPrompt: 'You are a helpful AI coding assistant.',
+      tools: ['file_read', 'file_write', 'shell', 'web_search', 'code_exec'],
+      maxTurns: 8, provider: 'openai', model: 'gpt-4o',
+    };
+    const report = lintAgentConfig(config);
+    return json({ report });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // Phase 1: Vault API
   // ═══════════════════════════════════════════════════════════════
 
