@@ -276,6 +276,7 @@ export async function registerAllBuiltins(
       .default;
     codegraphTools.code_list_projects =
       (await import('./builtin/codegraph/code_list_projects.ts')).default;
+    codegraphTools.code_pilot = (await import('./builtin/codegraph/code_pilot.ts')).default;
   }
 
   // Combine all tools

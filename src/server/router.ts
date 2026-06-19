@@ -3544,6 +3544,56 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
+  // POST /api/codegraph/pilot — Codebase Pilot token optimizer (#295)
+  if (req.method === 'POST' && path === '/api/codegraph/pilot') {
+    const body = await req.json() as {
+      maxTokens?: number;
+      includeImports?: boolean;
+      includeComments?: boolean;
+      includeTestFiles?: boolean;
+      prunePrivateMembers?: boolean;
+      project?: string;
+    };
+    const { optimizeCodebase, createCodePilotConfig } = await import(
+      '../codegraph/codebase-pilot.ts'
+    );
+    const { getProject, searchNodes } = await import('../codegraph/graph.ts');
+    const { exists } = await import('@std/fs');
+    const { join } = await import('@std/path');
+    try {
+      let files: Array<{ path: string; content: string }> = [];
+      if (body.project) {
+        const project = await getProject(body.project);
+        if (!project) return notFound('Project not found');
+        const projectRoot = project.root_path;
+        const nodes = await searchNodes(project.id, { limit: 500 });
+        const uniqueFiles = [
+          ...new Set(nodes.map((n) => n.node.file_path).filter(Boolean) as string[]),
+        ];
+        for (const relPath of uniqueFiles.slice(0, 100)) {
+          const absPath = join(projectRoot, relPath);
+          try {
+            if (await exists(absPath)) {
+              const content = await Deno.readTextFile(absPath);
+              files.push({ path: relPath, content });
+            }
+          } catch { /* skip unreadable */ }
+        }
+      }
+      const config = createCodePilotConfig({
+        maxTokens: body.maxTokens ?? 8000,
+        includeImports: body.includeImports ?? true,
+        includeComments: body.includeComments ?? false,
+        includeTestFiles: body.includeTestFiles ?? false,
+        prunePrivateMembers: body.prunePrivateMembers ?? true,
+      });
+      const optimized = optimizeCodebase(files, config);
+      return json(optimized);
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
   // GET /api/alcove/search?q=
   if (req.method === 'GET' && path === '/api/alcove/search') {
     const q = url.searchParams.get('q');
@@ -3574,6 +3624,65 @@ export async function handleApi(req: Request): Promise<Response | null> {
       }
     } catch { /* skip */ }
     return json({ query: q, results });
+  }
+
+  // GET /api/alcove/browse?dir= — browse docs directory
+  if (req.method === 'GET' && path === '/api/alcove/browse') {
+    const { PATHS } = await import('../config/paths.ts');
+    const { exists } = await import('@std/fs');
+    const { join } = await import('@std/path');
+    const dir = url.searchParams.get('dir');
+    const docsDir = join(PATHS.dataDir, 'docs');
+    try {
+      if (!await exists(docsDir)) return json({ dirs: [], files: [] });
+      const targetDir = dir ? join(docsDir, dir.replace(/\.\./g, '')) : docsDir;
+      if (!await exists(targetDir)) return json({ dirs: [], files: [] });
+      const dirs: string[] = [];
+      const files: string[] = [];
+      for await (const entry of Deno.readDir(targetDir)) {
+        if (entry.isDirectory && !entry.name.startsWith('.')) dirs.push(entry.name);
+        else if (entry.isFile && /\.(md|txt|html)$/i.test(entry.name)) files.push(entry.name);
+      }
+      return json({ dirs: dirs.sort(), files: files.sort() });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
+  // GET /api/alcove/doc?file= — get document content
+  if (req.method === 'GET' && path === '/api/alcove/doc') {
+    const file = url.searchParams.get('file');
+    if (!file) return err('file is required', 400);
+    const { PATHS } = await import('../config/paths.ts');
+    const { join } = await import('@std/path');
+    const docsDir = join(PATHS.dataDir, 'docs');
+    const safeFile = file.replace(/\.\./g, '');
+    const filePath = join(docsDir, safeFile);
+    try {
+      const content = await Deno.readTextFile(filePath);
+      return json({ file: safeFile, content });
+    } catch {
+      return notFound('Document not found');
+    }
+  }
+
+  // POST /api/alcove/index — trigger re-index of docs directory
+  if (req.method === 'POST' && path === '/api/alcove/index') {
+    const { PATHS } = await import('../config/paths.ts');
+    const { exists } = await import('@std/fs');
+    const { join } = await import('@std/path');
+    const docsDir = join(PATHS.dataDir, 'docs');
+    try {
+      let count = 0;
+      if (await exists(docsDir)) {
+        for await (const entry of Deno.readDir(docsDir)) {
+          if (entry.isFile && /\.(md|txt|html)$/i.test(entry.name)) count++;
+        }
+      }
+      return json({ indexed: count, ok: true });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
   }
 
   // POST /api/codegraph/impact

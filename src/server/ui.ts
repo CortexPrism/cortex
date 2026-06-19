@@ -922,7 +922,10 @@ const HTML = `<!DOCTYPE html>
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects
     </button>
     <button class="nav-item" onclick="showPage('codegraph');closeMobileSidebar()" id="nav-codegraph">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Codegraph
+      <span class="nav-icon">🕸</span>Codegraph
+    </button>
+    <button class="nav-item" onclick="showPage('alcove');closeMobileSidebar()" id="nav-alcove">
+      <span class="nav-icon">📚</span>Alcove
     </button>
 
     <!-- Knowledge & Memory -->
@@ -2469,6 +2472,49 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Page: Alcove (#294) — Private Documentation Search -->
+  <div id="page-alcove" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Alcove</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Private documentation search — index and query internal docs</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadAlcovePage()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="width:300px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:12px;border-bottom:1px solid var(--border);">
+          <input id="alcove-search-input" class="inp" placeholder="Search docs…" style="font-size:12px;width:100%;" onkeydown="if(event.key==='Enter')searchAlcove()" />
+          <button class="btn btn-primary" onclick="searchAlcove()" style="margin-top:6px;width:100%;font-size:12px;padding:5px;">Search</button>
+        </div>
+        <div style="padding:8px 12px;font-size:10px;color:var(--text3);border-bottom:1px solid var(--border);">Results</div>
+        <div style="flex:1;overflow-y:auto;padding:8px;" id="alcove-results">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;text-align:center;padding:20px;">
+            <div>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin:0 auto 8px;opacity:0.3;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <p>Search your private documentation</p>
+              <p style="font-size:10px;margin-top:4px;">Index markdown, text, and HTML files from your data/docs directory</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:12px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="alcove-browse-dir" class="inp" style="font-size:12px;flex:1;" onchange="browseAlcoveDir(this.value)"></select>
+            <button class="btn btn-ghost" onclick="loadAlcoveBrowse()" style="font-size:12px;">Browse</button>
+            <button class="btn btn-ghost" onclick="indexAlcove()" style="font-size:12px;" title="Re-index all docs">🔁 Index</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:12px;" id="alcove-browse-content">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">Select a directory or search to get started</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Page: Codegraph -->
   <div id="page-codegraph" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
@@ -2515,6 +2561,10 @@ const HTML = `<!DOCTYPE html>
           <button class="btn btn-ghost active" onclick="switchCodegraphPanel('impact')" id="cg-tab-impact" style="font-size:11px;padding:4px 10px;">Impact</button>
           <button class="btn btn-ghost" onclick="switchCodegraphPanel('architecture')" id="cg-tab-architecture" style="font-size:11px;padding:4px 10px;">Architecture</button>
           <button class="btn btn-ghost" onclick="switchCodegraphPanel('trace')" id="cg-tab-trace" style="font-size:11px;padding:4px 10px;">Path Tracer</button>
+          <button class="btn btn-ghost" onclick="switchCodegraphPanel('ownership')" id="cg-tab-ownership" style="font-size:11px;padding:4px 10px;">Ownership</button>
+          <button class="btn btn-ghost" onclick="switchCodegraphPanel('history')" id="cg-tab-history" style="font-size:11px;padding:4px 10px;">History</button>
+          <button class="btn btn-ghost" onclick="switchCodegraphPanel('qa')" id="cg-tab-qa" style="font-size:11px;padding:4px 10px;">Q&amp;A</button>
+          <button class="btn btn-ghost" onclick="switchCodegraphPanel('pilot')" id="cg-tab-pilot" style="font-size:11px;padding:4px 10px;">Pilot</button>
         </div>
         <div style="height:200px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="cg-bottom-panel"></div>
       </div>
@@ -3959,7 +4009,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -3998,7 +4048,13 @@ function showPage(name) {
   const loaders = {
     lens: loadLens, memory: loadMemoryOverview, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
     skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); }, analytics: loadAnalytics,
-    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); }, settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['vault','Vault']], 'settings'); },
+    sessions: () => { loadSessionAgentFilter(); loadSessionsList(); },
+    settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSettingsSubNav(); },
+    tools: () => { loadTools(); injectSettingsSubNav(); },
+    'chrome-bridge': () => { loadChromeBridgePage(); injectSettingsSubNav(); },
+    mcp: () => { loadMCPPage(); injectSettingsSubNav(); },
+    'mcp-gateway': () => { loadMcpGatewayPage(); injectSettingsSubNav(); },
+    vault: () => { loadVaultPage(); injectSettingsSubNav(); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     promptlab: loadPromptLab,
@@ -4012,23 +4068,19 @@ function showPage(name) {
     vcs: () => { gitRefresh(); extendVCSPage(); },
     agents: () => { loadAgents(); extendSubAgentProcesses(); }, services: () => { loadServices(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'services'); },
     codegraph: loadCodegraphPage,
+    alcove: loadAlcovePage,
     workflow: () => { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
     eval: () => { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
-    mcp: () => { loadMCPPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'mcp'); },
-    'chrome-bridge': () => { loadChromeBridgePage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'chrome-bridge'); },
-    vault: () => { loadVaultPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'vault'); },
     computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
     remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
-    tools: () => { loadTools(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'tools'); },
-    'mcp-gateway': () => { loadMcpGatewayPage(); injectSubNav('settings', 'Settings', [['settings','Settings'],['tools','Tools'],['chrome-bridge','Chrome Bridge'],['mcp','MCP'],['mcp-gateway','MCP Gateway'],['vault','Vault']], 'mcp-gateway'); },
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
     agentlint: loadAgentLintPage,
   };
   if (loaders[name]) loaders[name]();
   // Hide global subnav for non-tabbed pages
-  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,remote:1,computer:1};
+  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
 }
 
@@ -4059,6 +4111,28 @@ function switchSubTab(event, groupId, targetPage) {
     }
   }
   showPage(targetPage);
+}
+
+function injectSettingsSubNav() {
+  var bar = document.getElementById('global-subnav');
+  if (!bar) return;
+  var act = settingsActiveTab || 'general';
+  var tabs = [
+    ['general', 'General'],
+    ['providers', 'AI &amp; Models'],
+    ['tools', 'Tools &amp; Integrations'],
+    ['system', 'System'],
+  ];
+  bar.setAttribute('data-group', 'settings');
+  bar.setAttribute('data-active', act);
+  bar.innerHTML = tabs.map(function(t) {
+    return '<button class="btn btn-ghost' + (t[0] === act ? ' active' : '') + '" onclick="showSettingsTab(\\'' + t[0] + '\\')" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (t[0] === act ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
+  }).join('');
+  bar.style.display = 'flex';
+}
+function showSettingsTab(tab) {
+  if (currentPage !== 'settings') showPage('settings');
+  setTimeout(function() { switchSettingsTab(tab); }, 10);
 }
 
 // ── Skeleton loading utilities ──────────────
@@ -6963,14 +7037,6 @@ async function loadSettings() {
   if (!el) return;
 
   el.innerHTML = \`
-    <!-- Settings Navigation Tabs -->
-    <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;">
-      <button class="mem-tab \${settingsActiveTab === 'general' ? 'active' : ''}" onclick="switchSettingsTab('general')" id="settings-tab-general">General</button>
-      <button class="mem-tab \${settingsActiveTab === 'providers' ? 'active' : ''}" onclick="switchSettingsTab('providers')" id="settings-tab-providers">AI &amp; Models</button>
-      <button class="mem-tab \${settingsActiveTab === 'tools' ? 'active' : ''}" onclick="switchSettingsTab('tools')" id="settings-tab-tools">Tools &amp; Extensions</button>
-      <button class="mem-tab \${settingsActiveTab === 'system' ? 'active' : ''}" onclick="switchSettingsTab('system')" id="settings-tab-system">System</button>
-    </div>
-
     <!-- General Tab -->
     <div id="settings-pane-general" style="display:\${settingsActiveTab === 'general' ? 'block' : 'none'};">
       <div class="card" style="margin-bottom:14px;">
@@ -7216,6 +7282,38 @@ async function loadSettings() {
 
     <!-- Tools & Extensions Tab -->
     <div id="settings-pane-tools" style="display:\${settingsActiveTab === 'tools' ? 'block' : 'none'};">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">
+        <div class="card" style="padding:12px;text-align:center;cursor:pointer;transition:background 0.15s;" onclick="showPage('tools')"
+             onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+          <div style="font-size:20px;margin-bottom:4px;">🔧</div>
+          <div style="font-size:11px;font-weight:500;">Tool Config</div>
+          <div style="font-size:9px;color:var(--text3);">API keys &amp; tools</div>
+        </div>
+        <div class="card" style="padding:12px;text-align:center;cursor:pointer;transition:background 0.15s;" onclick="showPage('chrome-bridge')"
+             onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+          <div style="font-size:20px;margin-bottom:4px;">🌐</div>
+          <div style="font-size:11px;font-weight:500;">Chrome Bridge</div>
+          <div style="font-size:9px;color:var(--text3);">Browser automation</div>
+        </div>
+        <div class="card" style="padding:12px;text-align:center;cursor:pointer;transition:background 0.15s;" onclick="showPage('mcp')"
+             onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+          <div style="font-size:20px;margin-bottom:4px;">🔌</div>
+          <div style="font-size:11px;font-weight:500;">MCP Servers</div>
+          <div style="font-size:9px;color:var(--text3);">Protocol connections</div>
+        </div>
+        <div class="card" style="padding:12px;text-align:center;cursor:pointer;transition:background 0.15s;" onclick="showPage('mcp-gateway')"
+             onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+          <div style="font-size:20px;margin-bottom:4px;">🏛</div>
+          <div style="font-size:11px;font-weight:500;">MCP Gateway</div>
+          <div style="font-size:9px;color:var(--text3);">Rate limit &amp; audit</div>
+        </div>
+        <div class="card" style="padding:12px;text-align:center;cursor:pointer;transition:background 0.15s;" onclick="showPage('vault')"
+             onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+          <div style="font-size:20px;margin-bottom:4px;">🔐</div>
+          <div style="font-size:11px;font-weight:500;">Vault</div>
+          <div style="font-size:9px;color:var(--text3);">Secrets &amp; keys</div>
+        </div>
+      </div>
       <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Voice &amp; TTS Configuration</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -7589,9 +7687,7 @@ function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
   var tabs = ['general', 'providers', 'tools', 'system'];
   tabs.forEach(function(t) {
-    var tabBtn = document.getElementById('settings-tab-' + t);
     var pane = document.getElementById('settings-pane-' + t);
-    if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
   });
   var extContent = document.getElementById('settings-ext-content');
@@ -7627,6 +7723,18 @@ function switchSettingsTab(tabName) {
   }
   if (tabName === 'general') refreshSecuritySection();
   if (tabName === 'tools') loadToolConfigs();
+  // Sync global sub-nav
+  var bar = document.getElementById('global-subnav');
+  if (bar && bar.getAttribute('data-group') === 'settings') {
+    bar.setAttribute('data-active', tabName);
+    bar.querySelectorAll('button').forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.classList.remove('active'); });
+    bar.querySelectorAll('button').forEach(function(b) {
+      if (b.textContent.trim().replace('&amp;','&') === ({general:'General',providers:'AI & Models',tools:'Tools & Integrations',system:'System'})[tabName]) {
+        b.style.borderBottomColor = 'var(--accent)';
+        b.classList.add('active');
+      }
+    });
+  }
 }
 
 async function saveGeneralSettings() {
@@ -12257,13 +12365,17 @@ function highlightCodegraphNode(id) {
 }
 function switchCodegraphPanel(panel) {
   cgCurrentPanel = panel;
-  ['impact','architecture','trace'].forEach(function(p) {
+  ['impact','architecture','trace','ownership','history','qa','pilot'].forEach(function(p) {
     var btn = document.getElementById('cg-tab-' + p);
     if (btn) btn.classList.toggle('active', p === panel);
   });
   if (panel === 'impact') showCodegraphImpactPanel();
   else if (panel === 'architecture') showCodegraphArchitecturePanel();
-  else showCodegraphTraceForm();
+  else if (panel === 'trace') showCodegraphTraceForm();
+  else if (panel === 'ownership') showCodegraphOwnershipPanel();
+  else if (panel === 'history') showCodegraphHistoryPanel();
+  else if (panel === 'qa') showCodegraphQAPanel();
+  else if (panel === 'pilot') showCodegraphPilotPanel();
 }
 async function showCodegraphImpactPanel(file) {
   var el = document.getElementById('cg-bottom-panel');
@@ -12327,6 +12439,177 @@ async function runCodegraphTrace() {
         '</div>';
     }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Trace failed</div>'; }
+}
+
+// ── Codegraph: Ownership Panel (#81) ──
+function showCodegraphOwnershipPanel() {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML =
+    '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Code Ownership</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<input id="cg-ownership-file" class="inp" placeholder="File path (e.g. src/server/router.ts)" style="flex:1;min-width:200px;font-size:12px;">' +
+    '<button class="btn btn-primary" onclick="loadCodegraphOwnership()" style="font-size:12px;padding:6px 14px;">Analyze</button>' +
+    '</div><div id="cg-ownership-results" style="margin-top:8px;"></div>';
+}
+async function loadCodegraphOwnership() {
+  var file = document.getElementById('cg-ownership-file').value.trim();
+  if (!file) return;
+  var el = document.getElementById('cg-ownership-results');
+  el.innerHTML = '<div class="widget-loading">Analyzing ownership via git blame…</div>';
+  var project = cgProject || document.getElementById('cg-project-select').value;
+  try {
+    var url = BASE + '/api/codegraph/ownership?file=' + encodeURIComponent(file);
+    if (project) url += '&project=' + encodeURIComponent(project);
+    var data = await fetch(url).then(r => r.json());
+    if (!data || !data.owners || !data.owners.length) { el.innerHTML = '<div class="empty">No ownership data found</div>'; return; }
+    var total = data.owners.reduce(function(s,o){ return s+o.lines; }, 0);
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">' + esc(data.file) + '</div>' +
+      data.owners.map(function(o) {
+        var pct = Math.round(o.lines / total * 100);
+        return '<div class="list-item" style="padding:6px 8px;">' +
+          '<span class="dot" style="background:' + (pct > 40 ? '#4ade80' : pct > 20 ? '#818cf8' : '#6b7280') + ';"></span>' +
+          '<div style="flex:1;"><div style="font-size:11px;">' + esc(o.name) + '</div>' +
+          '<div style="font-size:9px;color:var(--text3);">' + esc(o.email) + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:4px;">' +
+          '<div style="width:60px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;">' +
+          '<div style="height:100%;width:' + pct + '%;background:var(--accent2);border-radius:2px;"></div></div>' +
+          '<span style="font-size:10px;color:var(--text3);min-width:45px;">' + o.lines + ' lines (' + pct + '%)</span></div></div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load ownership data</div>'; }
+}
+
+// ── Codegraph: History Panel (#229) ──
+function showCodegraphHistoryPanel() {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML =
+    '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">File History</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<input id="cg-history-file" class="inp" placeholder="File path (e.g. src/main.ts)" style="flex:1;min-width:180px;font-size:12px;">' +
+    '<select id="cg-history-limit" class="inp" style="width:80px;font-size:12px;">' +
+    '<option value="10">10</option><option value="25">25</option><option value="50">50</option></select>' +
+    '<button class="btn btn-primary" onclick="loadCodegraphHistory()" style="font-size:12px;padding:6px 14px;">Load</button>' +
+    '</div><div id="cg-history-results" style="margin-top:8px;"></div>';
+}
+async function loadCodegraphHistory() {
+  var file = document.getElementById('cg-history-file').value.trim();
+  var limit = document.getElementById('cg-history-limit').value;
+  if (!file) return;
+  var el = document.getElementById('cg-history-results');
+  el.innerHTML = '<div class="widget-loading">Loading commit history…</div>';
+  try {
+    var data = await fetch(BASE + '/api/codegraph/history?file=' + encodeURIComponent(file) + '&limit=' + limit).then(r => r.json());
+    if (!data || !data.commits || !data.commits.length) { el.innerHTML = '<div class="empty">No commits found</div>'; return; }
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">' + esc(data.file) + ' (' + data.commits.length + ' commits)</div>' +
+      data.commits.map(function(c, i) {
+        return '<div class="list-item" style="padding:6px 8px;border-left:2px solid ' + (i === 0 ? 'var(--accent2)' : 'var(--border)') + ';margin-bottom:2px;">' +
+          '<code style="font-size:10px;color:var(--accent2);min-width:60px;">' + esc(c.hash) + '</code>' +
+          '<span style="font-size:11px;flex:1;">' + esc(c.message) + '</span></div>';
+      }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load history</div>'; }
+}
+
+// ── Codegraph: Q&A Panel (#239) ──
+function showCodegraphQAPanel() {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML =
+    '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Codebase Q&amp;A</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<input id="cg-qa-query" class="inp" placeholder="Ask about the codebase (e.g. how does auth work?)" style="flex:1;min-width:250px;font-size:12px;" onkeydown="if(event.key===&quot;Enter&quot;)runCodegraphQA()">' +
+    '<button class="btn btn-primary" onclick="runCodegraphQA()" style="font-size:12px;padding:6px 14px;">Ask</button>' +
+    '</div><div id="cg-qa-results" style="margin-top:8px;"></div>';
+}
+async function runCodegraphQA() {
+  var q = document.getElementById('cg-qa-query').value.trim();
+  if (!q) return;
+  var el = document.getElementById('cg-qa-results');
+  el.innerHTML = '<div class="widget-loading">Searching codebase…</div>';
+  var project = cgProject || document.getElementById('cg-project-select').value;
+  try {
+    var url = BASE + '/api/codegraph/qa?q=' + encodeURIComponent(q);
+    if (project) url += '&project=' + encodeURIComponent(project);
+    var data = await fetch(url).then(r => r.json());
+    if (!data || !data.citations || !data.citations.length) { el.innerHTML = '<div class="empty">No relevant code found. Try rephrasing your question.</div>'; return; }
+    var h = '<div style="font-size:12px;font-weight:500;color:var(--accent2);margin-bottom:8px;">' + esc(data.summary) + '</div>';
+    h += '<div style="font-size:10px;color:var(--text3);margin-bottom:8px;">' + esc(data.context || '') + '</div>';
+    h += '<div style="font-size:11px;font-weight:500;margin-bottom:4px;">Citations</div>';
+    h += data.citations.map(function(c) {
+      return '<div class="card-sm" style="margin-bottom:4px;padding:6px 8px;border-left:2px solid var(--accent2);">' +
+        '<div style="font-weight:500;font-size:11px;">' + esc(c.name) + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);">' + esc(c.file || '') + (c.line ? ':' + c.line : '') + '</div>' +
+        (c.signature ? '<div style="font-size:9px;color:var(--accent3);margin-top:2px;font-family:monospace;">' + esc(c.signature) + '</div>' : '') +
+        (c.language ? '<span class="badge" style="font-size:9px;margin-top:4px;">' + esc(c.language) + '</span>' : '') +
+        '</div>';
+    }).join('');
+    el.innerHTML = h;
+  } catch(e) { el.innerHTML = '<div class="empty">Q&A search failed</div>'; }
+}
+
+// ── Codegraph: Pilot Panel (#295) ──
+function showCodegraphPilotPanel() {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML =
+    '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Token Pilot — Context Optimizer</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    '<div><label style="font-size:10px;color:var(--text3);">Token Budget</label>' +
+    '<input id="cg-pilot-tokens" class="inp" type="number" value="8000" min="500" max="64000" step="500" style="width:100%;font-size:12px;"></div>' +
+    '<div><label style="font-size:10px;color:var(--text3);">Pruning Mode</label>' +
+    '<select id="cg-pilot-prune" class="inp" style="width:100%;font-size:12px;"><option value="full">Full content</option><option value="prune-private" selected>Prune private members</option><option value="signatures">Signatures only</option><option value="imports">Imports only</option></select></div>' +
+    '<div><label style="font-size:10px;color:var(--text3);">File Pattern (glob)</label>' +
+    '<input id="cg-pilot-files" class="inp" placeholder="e.g. src/**/*.ts" style="width:100%;font-size:12px;"></div>' +
+    '<div><label style="font-size:10px;color:var(--text3);">Exclude Patterns</label>' +
+    '<input id="cg-pilot-exclude" class="inp" value="node_modules,.git,dist,build" style="width:100%;font-size:12px;"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">' +
+    '<label style="font-size:10px;display:flex;align-items:center;gap:4px;color:var(--text3);"><input type="checkbox" id="cg-pilot-imports" checked> Imports</label>' +
+    '<label style="font-size:10px;display:flex;align-items:center;gap:4px;color:var(--text3);"><input type="checkbox" id="cg-pilot-comments"> Comments</label>' +
+    '<label style="font-size:10px;display:flex;align-items:center;gap:4px;color:var(--text3);"><input type="checkbox" id="cg-pilot-tests"> Test files</label>' +
+    '</div>' +
+    '<button class="btn btn-primary" onclick="runCodegraphPilot()" style="margin-top:8px;font-size:12px;padding:6px 14px;">Analyze</button>' +
+    '<div id="cg-pilot-results" style="margin-top:8px;"></div>';
+}
+async function runCodegraphPilot() {
+  var el = document.getElementById('cg-pilot-results');
+  el.innerHTML = '<div class="widget-loading">Optimizing codebase context…</div>';
+  var project = cgProject || '';
+  try {
+    var config = {
+      maxTokens: parseInt(document.getElementById('cg-pilot-tokens').value) || 8000,
+      includeImports: document.getElementById('cg-pilot-imports').checked,
+      includeComments: document.getElementById('cg-pilot-comments').checked,
+      includeTestFiles: document.getElementById('cg-pilot-tests').checked,
+      prunePrivateMembers: document.getElementById('cg-pilot-prune').value === 'prune-private',
+      project: project
+    };
+    var body = JSON.stringify(config);
+    var data = await fetch(BASE + '/api/codegraph/pilot', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: body
+    }).then(r => r.json());
+    if (data.error) { el.innerHTML = '<div class="empty" style="color:var(--accent-red);">' + esc(data.error) + '</div>'; return; }
+    var h = '<div style="font-size:12px;font-weight:500;margin-bottom:6px;">Optimization Results</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">' +
+      '<div class="stat-box"><span class="stat-value">' + (data.totalTokens || 0) + '</span><span class="stat-label">Tokens Used</span></div>' +
+      '<div class="stat-box"><span class="stat-value">' + (data.budgetRemaining || 0) + '</span><span class="stat-label">Tokens Remaining</span></div>' +
+      '<div class="stat-box"><span class="stat-value">' + (data.chunks ? data.chunks.length : 0) + '</span><span class="stat-label">Chunks</span></div></div>';
+    if (data.excludedFiles && data.excludedFiles.length) {
+      h += '<div style="font-size:10px;color:var(--accent-red);margin-bottom:4px;">Excluded ' + data.excludedFiles.length + ' file(s)</div>';
+      h += '<div style="max-height:120px;overflow-y:auto;margin-bottom:8px;">' +
+        data.excludedFiles.slice(0, 10).map(function(f) { return '<div style="font-size:9px;color:var(--text3);">' + esc(f) + '</div>'; }).join('') +
+        (data.excludedFiles.length > 10 ? '<div style="font-size:9px;color:var(--text3);">+ ' + (data.excludedFiles.length - 10) + ' more</div>' : '') +
+        '</div>';
+    }
+    h += '<div style="font-size:10px;color:var(--text3);">' + esc(data.summary || '') + '</div>';
+    if (data.chunks) {
+      h += '<div style="margin-top:8px;max-height:200px;overflow-y:auto;">' +
+        data.chunks.map(function(c) {
+          return '<div class="card-sm" style="margin-bottom:4px;padding:6px 8px;"><div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:10px;font-weight:500;">' + esc(c.filePath || '') + '</span>' +
+            '<span class="badge" style="font-size:9px;">' + esc(c.kind || '') + ' | ' + esc(c.language || '') + ' | ' + (c.tokens || 0) + ' tokens</span></div>' +
+            (c.symbols && c.symbols.length ? '<div style="font-size:9px;color:var(--text3);margin-top:2px;">' + c.symbols.slice(0, 10).map(function(s){return esc(s);}).join(', ') + (c.symbols.length > 10 ? ' +' + (c.symbols.length-10) + ' more' : '') + '</div>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+    }
+    el.innerHTML = h;
+  } catch(e) { el.innerHTML = '<div class="empty">Pilot analysis failed</div>'; }
 }
 
 // ── Workflow Page ──
@@ -13467,11 +13750,6 @@ function switchSettingsExtTab(btn, tab) {
   panels.forEach(function(p) { p.style.display = 'none'; });
   var metricsEl = document.getElementById('metrics-content');
   if (metricsEl) metricsEl.style.display = 'none';
-  var mainTabs = ['general', 'providers', 'tools', 'system'];
-  mainTabs.forEach(function(t) {
-    var b = document.getElementById('settings-tab-' + t);
-    if (b) b.classList.remove('active');
-  });
   ['providers','router','supervisor'].forEach(function(t) {
     var b = document.getElementById('settings-ext-tab-' + t);
     if (b) b.classList.toggle('active', t === tab);
@@ -13574,7 +13852,7 @@ function disconnectPkm(id) { pkmConnections=pkmConnections.filter(function(c){re
 
 // ── Page Enhancement Initializers ─────────────────────────────────
 var _enhanced = false;
-function initPageEnhancements() { if(_enhanced)return;_enhanced=true;var os=loadSettings;loadSettings=function(){setTimeout(function(){addSettingsCompressor();addSettingsPreferences();addSettingsSandbox();addSettingsA2A()},600)};var oe=loadEvalPage;loadEvalPage=function(){setTimeout(function(){addEvalHarnesses();addEvalRagSection()},600)} }
+function initPageEnhancements() { if(_enhanced)return;_enhanced=true;var os=loadSettings;loadSettings=function(){os();setTimeout(function(){addSettingsCompressor();addSettingsPreferences();addSettingsSandbox();addSettingsA2A()},600)};var oe=loadEvalPage;loadEvalPage=function(){oe();setTimeout(function(){addEvalHarnesses();addEvalRagSection()},600)} }
 function addSettingsCompressor() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-comp-card'))return;var d=document.createElement('div');d.id='s-comp-card';d.className='card-sm';d.style.cssText='margin-top:16px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Context Compressor (#55)</div><div class="stat-row"><span>Token Budget</span><span><input type="range" id="comp-budget" min="16000" max="256000" step="8000" value="128000" oninput="document.getElementById(\\'comp-bval\\').textContent=this.value" style="width:120px;"> <span id="comp-bval">128000</span></span></div><div class="stat-row"><span>Compression</span><span><input type="checkbox" id="comp-enabled" checked> Enabled</span></div><button class="btn btn-ghost" onclick="saveCompressorConfig()" style="font-size:10px;margin-top:8px;">Save</button>';c.appendChild(d);fetch(BASE+'/api/settings/compressor').then(function(r){return r.json()}).then(function(d2){document.getElementById('comp-budget').value=d2.tokenBudget||128000;document.getElementById('comp-bval').textContent=d2.tokenBudget||128000;document.getElementById('comp-enabled').checked=d2.compressionEnabled!==false}).catch(function(){}) }
 function saveCompressorConfig() { fetch(BASE+'/api/settings/compressor',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tokenBudget:parseInt(document.getElementById('comp-budget').value),compressionEnabled:document.getElementById('comp-enabled').checked,compressionThreshold:0.7})}).then(function(){toast('Compressor saved','success')}) }
 function addSettingsPreferences() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-pref-card'))return;var d=document.createElement('div');d.id='s-pref-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Learned Preferences (#68)</div><div id="s-pref-list"></div>';c.appendChild(d);fetch(BASE+'/api/agent/preferences').then(function(r){return r.json()}).then(function(prefs){document.getElementById('s-pref-list').innerHTML=prefs.length?prefs.map(function(p){return'<div class="stat-row"><span>'+esc(p.key)+'</span><span>'+esc(p.value)+'</span></div>'}).join(''):'<div style="font-size:10px;color:var(--text3);">No learned preferences yet</div>'}).catch(function(){}) }
@@ -13584,6 +13862,83 @@ function addEvalHarnesses() { var c=document.querySelector('#page-eval > div:las
 function addEvalRagSection() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-rag'))return;var s=document.createElement('div');s.id='e-rag';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">RAG Eval (#178)</div><input id="rag-q" class="inp" placeholder="Test query..." style="margin-bottom:6px;"><div style="display:flex;gap:8px;"><input id="rag-d" class="inp" placeholder="Retrieved docs" style="flex:1;"><button class="btn btn-ghost" onclick="runRagEval()">Evaluate</button></div><div id="rag-res" style="margin-top:8px;font-size:10px;"></div>';c.appendChild(s) }
 function runRagEval() { var q=document.getElementById('rag-q').value;var docs=document.getElementById('rag-d').value.split(',').map(function(d){return d.trim()}).filter(Boolean);fetch(BASE+'/api/eval/rag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,retrievedDocs:docs})}).then(function(r){return r.json()}).then(function(d){document.getElementById('rag-res').innerHTML='Retrieved: '+d.retrievedCount+' · Hit@1: '+(d.hitAt1?'Yes':'No')+' · Recall: '+(d.recall!=null?d.recall.toFixed(2):'N/A')+' · MRR: '+d.mrr.toFixed(2)}) }
 setTimeout(initPageEnhancements, 1500);
+
+// ── Alcove functions (#294) ─────────────────────────────────────────
+function loadAlcovePage() { loadAlcoveBrowse(); searchAlcove(); }
+async function searchAlcove() {
+  var q = document.getElementById('alcove-search-input').value.trim();
+  var el = document.getElementById('alcove-results');
+  if (!q) { el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">Enter a search query above</div>'; return; }
+  el.innerHTML = '<div class="widget-loading">Searching docs…</div>';
+  try {
+    var data = await fetch(BASE + '/api/alcove/search?q=' + encodeURIComponent(q)).then(r => r.json());
+    if (!data || !data.results || !data.results.length) { el.innerHTML = '<div class="empty">No results for "' + esc(q) + '"</div>'; return; }
+    el.innerHTML = data.results.map(function(r) {
+      return '<div class="card-sm" style="margin-bottom:6px;padding:8px 10px;cursor:pointer;" onclick="showAlcoveDoc(\\'' + escAttr(r.file) + '\\')">' +
+        '<div style="font-size:11px;font-weight:500;color:var(--accent2);margin-bottom:4px;">' + esc(r.file) + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);white-space:pre-wrap;max-height:80px;overflow-y:hidden;">' + esc(r.snippet || '') + '</div>' +
+        '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Search failed</div>'; }
+}
+async function loadAlcoveBrowse() {
+  var sel = document.getElementById('alcove-browse-dir');
+  try {
+    var data = await fetch(BASE + '/api/alcove/browse').then(r => r.json());
+    var dirs = data.dirs || [];
+    sel.innerHTML = '<option value="">All documents</option>' +
+      dirs.map(function(d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('');
+    if (data.files && data.files.length) {
+      renderAlcoveFiles(data.files);
+    }
+  } catch(e) { sel.innerHTML = '<option value="">Error loading</option>'; }
+}
+async function browseAlcoveDir(dir) {
+  try {
+    var url = BASE + '/api/alcove/browse';
+    if (dir) url += '?dir=' + encodeURIComponent(dir);
+    var data = await fetch(url).then(r => r.json());
+    renderAlcoveFiles(data.files || []);
+  } catch(e) {}
+}
+function renderAlcoveFiles(files) {
+  var el = document.getElementById('alcove-browse-content');
+  if (!files.length) { el.innerHTML = '<div class="empty">No documents found</div>'; return; }
+  el.innerHTML = files.map(function(f) {
+    var icon = /\.md$/i.test(f) ? '📝' : /\.html?$/i.test(f) ? '🌐' : /\.txt$/i.test(f) ? '📄' : '📁';
+    return '<div class="list-item" style="padding:8px 10px;cursor:pointer;" onclick="showAlcoveDoc(\\'' + escAttr(f) + '\\')">' +
+      '<span style="font-size:14px;margin-right:8px;">' + icon + '</span>' +
+      '<div style="flex:1;min-width:0;"><div style="font-size:12px;">' + esc(f) + '</div></div>' +
+      '</div>';
+  }).join('');
+}
+async function showAlcoveDoc(file) {
+  var el = document.getElementById('alcove-browse-content');
+  el.innerHTML = '<div class="widget-loading">Loading ' + esc(file) + '…</div>';
+  try {
+    var data = await fetch(BASE + '/api/alcove/doc?file=' + encodeURIComponent(file)).then(r => r.json());
+    document.getElementById('alcove-browse-content').innerHTML =
+      '<div style="padding:8px 0;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">' +
+      '<span style="font-weight:500;font-size:13px;">' + esc(data.file || file) + '</span>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;" onclick="loadAlcoveBrowse()">← Back</button>' +
+      '</div>' +
+      '<div style="font-size:12px;line-height:1.7;color:var(--text2);white-space:pre-wrap;">' + esc(data.content || '') + '</div>' +
+      '</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load document</div>'; }
+}
+async function indexAlcove() {
+  var btn = event.target;
+  btn.textContent = 'Indexing…';
+  btn.disabled = true;
+  try {
+    var data = await fetch(BASE + '/api/alcove/index', { method: 'POST' }).then(r => r.json());
+    toast('Indexed ' + (data.indexed || 0) + ' documents', 'success');
+    loadAlcoveBrowse();
+  } catch(e) { toast('Index failed', 'error'); }
+  btn.textContent = '🔁 Index';
+  btn.disabled = false;
+}
 
 // ── PKM functions ───────────────────────────────────────────────
 var pkmConnections = [];
@@ -13593,18 +13948,6 @@ function showPkmConnectModal() { var k=prompt('PKM kind (obsidian, logseq, notio
 function syncPkmConnection(id) { fetch(BASE+'/api/pkm/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(function(r){return r.json()}).then(function(d){toast('Synced '+(d.fileCount||0)+' files','success');loadPkmPage()}) }
 function disconnectPkm(id) { pkmConnections=pkmConnections.filter(function(c){return c.id!==id});renderPkmConnections();toast('Disconnected','info') }
 
-// ── Page Enhancement Initializers ─────────────────────────────────
-var _enhanced = false;
-function initPageEnhancements() { if(_enhanced)return;_enhanced=true;var os=loadSettings;loadSettings=function(){setTimeout(function(){addSettingsCompressor();addSettingsPreferences();addSettingsSandbox();addSettingsA2A()},600)};var oe=loadEvalPage;loadEvalPage=function(){setTimeout(function(){addEvalHarnesses();addEvalRagSection()},600)} }
-function addSettingsCompressor() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-comp-card'))return;var d=document.createElement('div');d.id='s-comp-card';d.className='card-sm';d.style.cssText='margin-top:16px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Context Compressor (#55)</div><div class="stat-row"><span>Token Budget</span><span><input type="range" id="comp-budget" min="16000" max="256000" step="8000" value="128000" oninput="document.getElementById(\\'comp-bval\\').textContent=this.value" style="width:120px;"> <span id="comp-bval">128000</span></span></div><div class="stat-row"><span>Compression</span><span><input type="checkbox" id="comp-enabled" checked> Enabled</span></div><button class="btn btn-ghost" onclick="saveCompressorConfig()" style="font-size:10px;margin-top:8px;">Save</button>';c.appendChild(d);fetch(BASE+'/api/settings/compressor').then(function(r){return r.json()}).then(function(d2){document.getElementById('comp-budget').value=d2.tokenBudget||128000;document.getElementById('comp-bval').textContent=d2.tokenBudget||128000;document.getElementById('comp-enabled').checked=d2.compressionEnabled!==false}).catch(function(){}) }
-function saveCompressorConfig() { fetch(BASE+'/api/settings/compressor',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tokenBudget:parseInt(document.getElementById('comp-budget').value),compressionEnabled:document.getElementById('comp-enabled').checked,compressionThreshold:0.7})}).then(function(){toast('Compressor saved','success')}) }
-function addSettingsPreferences() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-pref-card'))return;var d=document.createElement('div');d.id='s-pref-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Learned Preferences (#68)</div><div id="s-pref-list"></div>';c.appendChild(d);fetch(BASE+'/api/agent/preferences').then(function(r){return r.json()}).then(function(prefs){document.getElementById('s-pref-list').innerHTML=prefs.length?prefs.map(function(p){return'<div class="stat-row"><span>'+esc(p.key)+'</span><span>'+esc(p.value)+'</span></div>'}).join(''):'<div style="font-size:10px;color:var(--text3);">No learned preferences yet</div>'}).catch(function(){}) }
-function addSettingsSandbox() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-sbx-card'))return;var d=document.createElement('div');d.id='s-sbx-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Sandbox Backends (#257)</div><div id="s-sbx-list"></div>';c.appendChild(d);fetch(BASE+'/api/sandbox/backends').then(function(r){return r.json()}).then(function(data){document.getElementById('s-sbx-list').innerHTML=(data.backends||[]).map(function(b){return'<div class="stat-row"><span>'+esc(b.label)+'</span><span style="color:'+(b.available?'#4ade80':'#f87171')+'">'+(b.available?'available':'unavailable')+'</span></div>'}).join('')}).catch(function(){}) }
-function addSettingsA2A() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-a2a-card'))return;var d=document.createElement('div');d.id='s-a2a-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">A2A Protocol Bridge (#251)</div><div class="stat-row"><span>Status</span><span style="color:#4ade80;">Active</span></div><div class="stat-row"><span>Agent Card</span><span style="font-size:10px;">GET /.well-known/agent-card.json</span></div>';c.appendChild(d) }
-function addEvalHarnesses() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-harn'))return;var s=document.createElement('div');s.id='e-harn';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Eval Harness Presets (#186)</div><div id="e-harn-list"></div>';c.appendChild(s);fetch(BASE+'/api/eval/harnesses').then(function(r){return r.json()}).then(function(data){document.getElementById('e-harn-list').innerHTML=(data.presets||[]).map(function(p){return'<div style="padding:8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;"><div style="font-weight:500;font-size:11px;">'+esc(p.name)+'</div><div style="font-size:10px;color:var(--text3);">'+(p.tasks||[]).join(' · ')+'</div><div style="font-size:9px;color:var(--accent2);">scoring: '+esc(p.scoring)+'</div></div>'}).join('')}).catch(function(){}) }
-function addEvalRagSection() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-rag'))return;var s=document.createElement('div');s.id='e-rag';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">RAG Eval (#178)</div><input id="rag-q" class="inp" placeholder="Test query..." style="margin-bottom:6px;"><div style="display:flex;gap:8px;"><input id="rag-d" class="inp" placeholder="Retrieved docs" style="flex:1;"><button class="btn btn-ghost" onclick="runRagEval()">Evaluate</button></div><div id="rag-res" style="margin-top:8px;font-size:10px;"></div>';c.appendChild(s) }
-function runRagEval() { var q=document.getElementById('rag-q').value;var docs=document.getElementById('rag-d').value.split(',').map(function(d){return d.trim()}).filter(Boolean);fetch(BASE+'/api/eval/rag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,retrievedDocs:docs})}).then(function(r){return r.json()}).then(function(d){document.getElementById('rag-res').innerHTML='Retrieved: '+d.retrievedCount+' · Hit@1: '+(d.hitAt1?'Yes':'No')+' · Recall: '+(d.recall!=null?d.recall.toFixed(2):'N/A')+' · MRR: '+d.mrr.toFixed(2)}) }
-setTimeout(initPageEnhancements, 1500);
 function extendMemoryPage() {
   if (document.getElementById('mem-tab-privacy')) return;
   // Find the tab bar by searching for existing .mem-tab buttons
@@ -14245,9 +14588,7 @@ function extendMetricsPage() {
 function switchMetricsTab() {
   settingsActiveTab = 'metrics';
   ['general', 'providers', 'tools', 'system'].forEach(function(t) {
-    var tabBtn = document.getElementById('settings-tab-' + t);
     var pane = document.getElementById('settings-pane-' + t);
-    if (tabBtn) tabBtn.classList.remove('active');
     if (pane) pane.style.display = 'none';
   });
   var extContent = document.getElementById('settings-ext-content');
