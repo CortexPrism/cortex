@@ -5259,6 +5259,274 @@ export async function handleApi(req: Request): Promise<Response | null> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Security Scanner API (#136, #142, #274)
+  // ═══════════════════════════════════════════════════════════════
+
+  // POST /api/security/scan — LLM vulnerability scan (#136)
+  if (req.method === 'POST' && path === '/api/security/scan') {
+    const body = await req.json() as { prompt?: string; output?: string };
+    const findings: Array<{ type: string; severity: string; description: string }> = [];
+    const prompt = (body.prompt ?? '').toLowerCase();
+    const output = (body.output ?? '').toLowerCase();
+
+    const rules: Array<{ pattern: RegExp; type: string; severity: string; desc: string }> = [
+      {
+        pattern: /ignore.*(previous|all).*(instruction|rule)/i,
+        type: 'prompt_injection',
+        severity: 'critical',
+        desc: 'Attempt to override system instructions',
+      },
+      {
+        pattern: /(system:\s*|\[system\]|<system>)/i,
+        type: 'prompt_injection',
+        severity: 'high',
+        desc: 'System role impersonation attempt',
+      },
+      {
+        pattern: /disregard|disobey|override|bypass|ignore.*system/i,
+        type: 'prompt_injection',
+        severity: 'high',
+        desc: 'Direct instruction override',
+      },
+      {
+        pattern: /\[INST\]|<<SYS>>/i,
+        type: 'prompt_injection',
+        severity: 'high',
+        desc: 'Llama/Claude format injection',
+      },
+      {
+        pattern: /password|secret|token|api[_\s]?key|private[_\s]?key/i,
+        type: 'data_leak',
+        severity: 'critical',
+        desc: 'Potential credential in output',
+      },
+      {
+        pattern: /(DROP\s+TABLE|DELETE\s+FROM|rm\s+-rf|shutdown|format\s+C:)/i,
+        type: 'destructive_command',
+        severity: 'critical',
+        desc: 'Destructive shell command',
+      },
+      {
+        pattern: /\bcurl\b.*\b\|\s*bash\b/i,
+        type: 'unsafe_pattern',
+        severity: 'critical',
+        desc: 'Curl-pipe-bash pattern detected',
+      },
+      {
+        pattern: /eval\s*\(.*user.*input/i,
+        type: 'code_injection',
+        severity: 'high',
+        desc: 'Potential eval with user input',
+      },
+      {
+        pattern: /innerHTML|dangerouslySetInnerHTML|document\.write/i,
+        type: 'xss_vector',
+        severity: 'medium',
+        desc: 'XSS vector in output',
+      },
+      {
+        pattern: /sql\s*=\s*.*\+.*req|sql\s*=\s*.*\$.*_GET/i,
+        type: 'sql_injection',
+        severity: 'critical',
+        desc: 'Potential SQL injection in output',
+      },
+    ];
+
+    for (const rule of rules) {
+      if (rule.pattern.test(prompt + output)) {
+        findings.push({ type: rule.type, severity: rule.severity, description: rule.desc });
+      }
+    }
+
+    return json({ scanned: true, findings, risk: findings.length > 0 ? 'risk_detected' : 'clean' });
+  }
+
+  // GET /api/security/hygiene — credential hygiene check (#142)
+  if (req.method === 'GET' && path === '/api/security/hygiene') {
+    const { vaultList } = await import('../security/vault.ts');
+    const entries = await vaultList();
+    const issues: Array<{ name: string; issue: string; severity: string }> = [];
+    const now = Date.now();
+
+    const seenNames = new Set<string>();
+    for (const entry of entries) {
+      if (seenNames.has(entry.name)) {
+        issues.push({ name: entry.name, issue: 'Duplicate credential name', severity: 'warning' });
+      }
+      seenNames.add(entry.name);
+      if (entry.credential_type === 'api_key' && !entry.name.includes('_')) {
+        issues.push({
+          name: entry.name,
+          issue: 'Consider using namespaced credential names',
+          severity: 'info',
+        });
+      }
+    }
+
+    if (entries.length > 50) {
+      issues.push({
+        name: 'vault',
+        issue: `${entries.length} credentials — consider cleanup`,
+        severity: 'warning',
+      });
+    }
+
+    return json({ checked: entries.length, issues, score: Math.max(0, 100 - issues.length * 10) });
+  }
+
+  // GET /api/security/policies/generate-allowlist — zero-trust from policies (#274)
+  if (req.method === 'GET' && path === '/api/security/policies/generate-allowlist') {
+    const { listPolicies } = await import('../security/policy.ts');
+    const policies = await listPolicies();
+    const allowPaths: string[] = [];
+    const allowDomains: string[] = [];
+
+    for (const p of policies) {
+      if (p.enabled && p.effect === 'allow') {
+        if (p.kind === 'path') allowPaths.push(p.pattern);
+        if (p.kind === 'domain') allowDomains.push(p.pattern);
+      }
+    }
+
+    return json({
+      allowPaths: allowPaths.length > 0 ? allowPaths : ['/api/*', '/ws', '/'],
+      allowDomains: allowDomains.length > 0 ? allowDomains : ['*'],
+      generatedAt: new Date().toISOString(),
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Phase 3: Sandbox API (#79, #230, #232, #240)
+  // ═══════════════════════════════════════════════════════════════
+
+  // GET /api/sandbox/snapshot — environment snapshot (#79)
+  if (req.method === 'GET' && path === '/api/sandbox/snapshot') {
+    const snapshot: Record<string, unknown> = {
+      timestamp: new Date().toISOString(),
+      env: Deno.env.toObject(),
+    };
+
+    try {
+      const cmd = new Deno.Command('deno', { args: ['--version'], stdout: 'piped' });
+      const { stdout } = await cmd.output();
+      snapshot.denoVersion = new TextDecoder().decode(stdout).split('\n')[0].trim();
+    } catch { /* skip */ }
+
+    try {
+      const cmd = new Deno.Command('uname', { args: ['-a'], stdout: 'piped' });
+      const { stdout } = await cmd.output();
+      snapshot.os = new TextDecoder().decode(stdout).trim();
+    } catch { /* skip */ }
+
+    return json(snapshot);
+  }
+
+  // POST /api/sandbox/reproduce — bug reproduction manifest (#230)
+  if (req.method === 'POST' && path === '/api/sandbox/reproduce') {
+    const body = await req.json() as { issue: string; steps?: string[]; context?: string };
+    if (!body.issue) return err('issue is required', 400);
+    return json({
+      manifest: {
+        kind: 'reproduce',
+        issue: body.issue,
+        steps: body.steps ??
+          ['1. Describe the issue', '2. Provide reproduction steps', '3. Include relevant logs'],
+        sandbox: { type: 'docker', image: 'denoland/deno:latest' },
+        environment: await (async () => {
+          const e: Record<string, unknown> = {};
+          try {
+            const cmd = new Deno.Command('deno', { args: ['--version'], stdout: 'piped' });
+            const { stdout } = await cmd.output();
+            e.deno = new TextDecoder().decode(stdout).split('\n')[0].trim();
+          } catch { /* skip */ }
+          return e;
+        })(),
+        context: body.context ?? 'No additional context provided',
+        createdAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  // GET /api/sandbox/env-as-code — serialize environment configuration (#232)
+  if (req.method === 'GET' && path === '/api/sandbox/env-as-code') {
+    const config = await loadConfig();
+    const providerKinds = Object.keys(config.providers ?? {});
+    return json({
+      schema: 'cortex-env-v1',
+      generatedAt: new Date().toISOString(),
+      sandbox: { type: 'docker', image: 'denoland/deno:latest' },
+      providers: providerKinds.map((k) => ({
+        kind: k,
+        hasApiKey: !!(config.providers?.[k as keyof typeof config.providers]?.apiKey),
+        model: config.providers?.[k as keyof typeof config.providers]?.model ?? null,
+      })),
+      webAuth: config.webAuth ?? { requireAuth: false },
+    });
+  }
+
+  // GET /api/sandbox/workspace-snapshot — file tree and state (#240)
+  if (req.method === 'GET' && path === '/api/sandbox/workspace-snapshot') {
+    const { PATHS } = await import('../config/paths.ts');
+    const { join, relative } = await import('@std/path');
+    const workingDir = Deno.cwd();
+    const files: Array<{ path: string; size: number; modified: string }> = [];
+    let totalSize = 0;
+
+    try {
+      const ignoreDirs = new Set([
+        '.git',
+        'node_modules',
+        '.cortex',
+        'target',
+        'dist',
+        'build',
+        '__pycache__',
+      ]);
+      for await (const entry of Deno.readDir(workingDir)) {
+        if (entry.isFile) {
+          try {
+            const stat = await Deno.stat(join(workingDir, entry.name));
+            files.push({
+              path: entry.name,
+              size: stat.size,
+              modified: stat.mtime?.toISOString() ?? '',
+            });
+            totalSize += stat.size;
+          } catch { /* skip */ }
+        }
+      }
+    } catch { /* skip */ }
+
+    const sessions: Array<{ id: string; updated: string }> = [];
+    try {
+      for await (const entry of Deno.readDir(PATHS.sessionsDir)) {
+        if (entry.isDirectory) sessions.push({ id: entry.name, updated: '' });
+      }
+    } catch { /* skip */ }
+
+    return json({
+      workingDir,
+      fileCount: files.length,
+      totalSize,
+      files: files.slice(0, 50),
+      sessions: sessions.slice(0, 10),
+      gitBranch: await (async () => {
+        try {
+          const cmd = new Deno.Command('git', {
+            args: ['rev-parse', '--abbrev-ref', 'HEAD'],
+            stdout: 'piped',
+          });
+          const { stdout } = await cmd.output();
+          return new TextDecoder().decode(stdout).trim();
+        } catch {
+          return null;
+        }
+      })(),
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   return null;
 }
 
