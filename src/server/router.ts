@@ -3461,6 +3461,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(getRecentDrift(sessionId || undefined, 20));
   }
 
+  // GET /api/workflows/tasks — sub-agent task board
+  if (req.method === 'GET' && path === '/api/workflows/tasks') {
+    const { getSubAgentTaskBoard } = await import('../agent/sub-agent-tracker.ts');
+    return json(getSubAgentTaskBoard());
+  }
+
   // POST /api/workflows
   if (req.method === 'POST' && path === '/api/workflows') {
     const body = await req.json() as { name: string; description?: string; definition?: unknown };
