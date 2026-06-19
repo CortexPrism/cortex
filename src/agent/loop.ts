@@ -16,7 +16,7 @@ import type { EmbeddingProvider } from '../memory/embeddings.ts';
 import { injectMemory } from '../memory/inject.ts';
 import { writeEpisodic, writeSemantic } from '../memory/store.ts';
 import { appendToMemoryFile } from './soul.ts';
-import { reflectOnTurn, storeReflection } from './reflect.ts';
+import { adversarialReflection, reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
 import { applyMetaCogPrefix, assessTask } from './metacog.ts';
 import { createPipelineContext, runHooksForStage } from '../pipeline/manager.ts';
@@ -384,6 +384,26 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   });
 
   const metaAssessment = assessTask(effectiveInput);
+
+  if (metaAssessment.escalated) {
+    import('../db/lens.ts').then(({ logEvent }) => {
+      logEvent({
+        event_type: 'escalation',
+        session_id: sessionId,
+        actor: 'metacognition',
+        action: 'confidence_escalation',
+        started_at: new Date().toISOString(),
+        summary: metaAssessment.escalationReason ?? 'Auto-escalated due to low confidence',
+        payload: {
+          fromDecision: 'direct',
+          toDecision: 'ask_first',
+          confidence: metaAssessment.confidence,
+          signalBreakdown: metaAssessment.signalBreakdown,
+          originalReason: metaAssessment.reason,
+        },
+      }).catch(() => {});
+    });
+  }
 
   const postAssessCtx = createPipelineContext({
     stage: 'post-assess',
@@ -1155,7 +1175,6 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
               options.reasoningEffort,
             );
             await storeReflection(sessionId, r);
-            // Feed reflection back into QM so wasCorrect gets resolved
             if (collectedToolCalls.length > 0) {
               const { learn } = await import('../quartermaster/mod.ts');
               learn({
@@ -1165,6 +1184,15 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
                 actualToolCalls: collectedToolCalls.map((t) => t.tool),
               }).catch(() => {});
             }
+
+            const adv = await adversarialReflection(
+              userMessage,
+              response,
+              effectiveProvider,
+              effectiveModel,
+              options.reasoningEffort,
+            );
+            await storeReflection(sessionId, adv, 'adversarial');
           } catch (reflectionErr) {
             _log.warn('Reflection failed', {
               error: (reflectionErr as Error).message,

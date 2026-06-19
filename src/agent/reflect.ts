@@ -21,6 +21,17 @@ const REFLECT_SYSTEM =
 Return ONLY valid JSON matching this schema exactly:
 {"confidence":0.8,"quality":0.9,"issues":[],"patterns":["user asks technical questions"],"summary":"User asked about X, agent explained correctly."}`;
 
+const ADVERSARIAL_SYSTEM =
+  `You are an adversarial code reviewer and critic. Given a user message and an agent response, critically evaluate the agent's work. Be skeptical — assume mistakes unless proven otherwise. Evaluate:
+1. confidence: 0.0-1.0 — how certain should we be about this response? Be conservative.
+2. quality: 0.0-1.0 — how useful/accurate is the response? Be strict.
+3. issues: list of specific problems, risks, missing edge cases, or alternative approaches the agent overlooked (be thorough)
+4. patterns: any concerning patterns or anti-patterns observed
+5. summary: one-sentence critical summary
+
+Return ONLY valid JSON matching this schema exactly:
+{"confidence":0.6,"quality":0.7,"issues":["did not validate inputs","missing error handling"],"patterns":["tends to skip validation"],"summary":"Agent completed the task but missed critical edge cases."}`;
+
 function reflectId(): string {
   return `ref_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -53,6 +64,38 @@ export async function reflectOnTurn(
       issues: [],
       patterns: [],
       summary: 'Reflection failed — using defaults',
+    };
+  }
+}
+
+export async function adversarialReflection(
+  userMessage: string,
+  agentResponse: string,
+  provider: LLMProvider,
+  model: string,
+  reasoningEffort?: string,
+): Promise<ReflectionResult> {
+  const prompt = `User: ${userMessage.slice(0, 400)}\n\nAgent: ${
+    agentResponse.slice(0, 600)
+  }\n\nCritically assess this exchange — look for issues the agent may have missed:`;
+
+  try {
+    const result = await provider.complete({
+      messages: [{ role: 'user', content: prompt }],
+      model,
+      systemPrompt: ADVERSARIAL_SYSTEM,
+      reasoningEffort,
+    });
+
+    const json = result.content.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+    return JSON.parse(json) as ReflectionResult;
+  } catch {
+    return {
+      confidence: 0.3,
+      quality: 0.3,
+      issues: ['Adversarial reflection failed — using conservative defaults'],
+      patterns: [],
+      summary: 'Adversarial critique unavailable',
     };
   }
 }

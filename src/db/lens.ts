@@ -62,7 +62,8 @@ export type EventType =
   | 'guardrail_blocked'
   | 'isolation_violation'
   | 'supply_chain_verification'
-  | 'guardian_report';
+  | 'guardian_report'
+  | 'escalation';
 
 export interface LensEvent {
   id: string;

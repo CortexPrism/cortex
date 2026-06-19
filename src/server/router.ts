@@ -4562,8 +4562,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/metacognition/history') {
     const db = await getLensDb();
     const rows = await db.all(
-      `SELECT * FROM lens_events WHERE event_type IN ('metacognition','reflection','meta_pattern')
-       ORDER BY started_at DESC LIMIT 50`,
+      `SELECT * FROM lens_events WHERE event_type IN ('metacognition','reflection','meta_pattern','escalation')
+       ORDER BY started_at DESC LIMIT 80`,
     );
     return json(rows);
   }
@@ -4574,11 +4574,32 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!sessionId) return err('sessionId required', 400);
     const db = await getLensDb();
     const rows = await db.all(
-      `SELECT * FROM lens_events WHERE session_id = ? AND event_type IN ('metacognition','reflection','meta_pattern')
+      `SELECT * FROM lens_events WHERE session_id = ? AND event_type IN ('metacognition','reflection','meta_pattern','escalation')
        ORDER BY started_at DESC LIMIT 50`,
       [sessionId],
     );
     return json(rows);
+  }
+
+  // GET /api/metacognition/summary
+  if (req.method === 'GET' && path === '/api/metacognition/summary') {
+    const db = await getLensDb();
+    const [decisions, escalations, critiques] = await Promise.all([
+      db.all(
+        `SELECT action, COUNT(*) as count FROM lens_events WHERE event_type = 'metacognition' GROUP BY action ORDER BY count DESC LIMIT 10`,
+      ),
+      db.all(
+        `SELECT COUNT(*) as count FROM lens_events WHERE event_type = 'escalation'`,
+      ),
+      db.all(
+        `SELECT payload, summary, started_at FROM lens_events WHERE event_type = 'reflection' AND (payload LIKE '%adversarial%' OR summary LIKE '%adversarial%') ORDER BY started_at DESC LIMIT 10`,
+      ),
+    ]);
+    return json({
+      decisions: decisions as Array<{ action: string; count: number }>,
+      totalEscalations: (escalations[0] as { count: number } | undefined)?.count ?? 0,
+      recentCritiques: critiques,
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════
