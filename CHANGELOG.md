@@ -5,6 +5,12 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.43.1] — 2026-06-19
+
+### Fixed
+
+- Fixed non-functional Delete/Trigger/Cancel/Logs buttons in the Jobs tab of the Automation page. The `renderJobCard()` function used `JSON.stringify(job.id)` to embed job IDs in onclick handlers, which wrapped IDs in double quotes that conflicted with the HTML attribute quoting, producing broken HTML. Changed to `esc(job.id)` with properly escaped template-literal single quotes.
+
 ## [0.43.0] — 2026-06-19
 
 ### Added
