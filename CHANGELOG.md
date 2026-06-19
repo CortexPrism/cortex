@@ -140,6 +140,35 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - `GET /api/sessions/links` — cross-session context bridge (#64)
   - `GET /api/agent/preferences` — user preference learner data (#68)
 
+- **Glossary & Terminology Manager (#73)** — in-memory term registry with aliases:
+  - `GET /api/glossary` lists terms with category filter; `POST /api/glossary` defines new terms
+
+- **Prompt Engineering Lab (#175)** — prompt workspace with versioning:
+  - `src/prompt-lab.ts` with template CRUD and run recording
+  - `GET /api/prompts` lists templates and runs; `POST /api/prompts` creates templates or records runs
+
+- **Embedding Pipeline Builder (#177)** — pipeline stage configuration:
+  - `GET /api/embeddings/pipeline` returns stage, backend, and chunk configuration
+
+- **RAG Evaluation Framework (#178)** — retrieval quality scoring:
+  - `POST /api/eval/rag` scores retrieval with hit@1, recall, and MRR metrics
+
+- **Multi-Model Cost Optimizer (#180)** — provider comparison and routing:
+  - `GET /api/cost/optimizer` lists configured providers with key status
+
+- **LLM Observability & Tracing (#182)** — trace explorer:
+  - `GET /api/observability/traces` returns OTEL/Langfuse connection status
+
+- **Model Benchmarking Dashboard (#183)** — benchmark suite management:
+  - `GET /api/benchmarks` lists eval suites and comparisons
+
+- **AI Agent Evaluation Harness (#186)** — reusable harness presets:
+  - `GET /api/eval/harnesses` returns code-gen, exploration, QA, and security harness presets
+
+- **PKM Assistant (#219)** — personal knowledge management connectors:
+  - `src/pkm-connectors.ts` with Obsidian/Logseq/Notion/Roam connection management
+  - `GET /api/pkm`, `POST /api/pkm/connect`, `POST /api/pkm/sync` endpoints
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
