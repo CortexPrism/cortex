@@ -19,8 +19,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.43.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.45.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
+[![Discord](https://img.shields.io/discord/1356598356914937927?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wYxbmQeWY3)
 
 **CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
 autonomous agent. It provides persistent memory, a rich tool ecosystem, sandboxed code execution, a
