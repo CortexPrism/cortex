@@ -13,7 +13,12 @@ import { getSessionEvents } from '../db/lens.ts';
 import { getLensDb, type InValue } from '../db/client.ts';
 import { getJob, listJobRuns, listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
-import { searchEntities, traverseGraph } from '../memory/graph.ts';
+import {
+  findDuplicateEntities,
+  mergeEntities,
+  searchEntities,
+  traverseGraph,
+} from '../memory/graph.ts';
 import { listReflections } from '../agent/reflect.ts';
 import { getMemoryHealth } from '../memory/heuristics.ts';
 import { loadConfig, saveConfig } from '../config/config.ts';
@@ -1024,6 +1029,20 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const depth = Number(url.searchParams.get('depth') ?? 2);
     const hits = await traverseGraph(entity, { depth, limit: 30 });
     return json(hits);
+  }
+
+  // GET /api/memory/duplicates
+  if (req.method === 'GET' && path === '/api/memory/duplicates') {
+    const duplicates = await findDuplicateEntities();
+    return json(duplicates);
+  }
+
+  // POST /api/memory/merge
+  if (req.method === 'POST' && path === '/api/memory/merge') {
+    const body = await req.json() as { sourceId: string; targetId: string };
+    if (!body.sourceId || !body.targetId) return err('sourceId and targetId required', 400);
+    await mergeEntities(body.sourceId, body.targetId);
+    return json({ ok: true });
   }
 
   // GET /api/config

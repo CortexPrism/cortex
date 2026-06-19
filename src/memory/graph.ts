@@ -335,3 +335,75 @@ export async function extractAndStoreEntities(text: string, sessionId?: string):
     }).catch(() => {});
   }
 }
+
+export interface DuplicateGroup {
+  name: string;
+  entities: Array<{ id: string; type: string; description: string | null }>;
+  similarity: number;
+}
+
+export async function findDuplicateEntities(): Promise<DuplicateGroup[]> {
+  const db = await getMemoryDb();
+  const entities = await db.all<
+    { id: string; name: string; type: string; description: string | null }
+  >(
+    `SELECT id, name, type, description FROM graph_entities ORDER BY name ASC`,
+  );
+
+  const groups: DuplicateGroup[] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < entities.length; i++) {
+    if (seen.has(entities[i].id)) continue;
+    const group: DuplicateGroup = {
+      name: entities[i].name,
+      entities: [{
+        id: entities[i].id,
+        type: entities[i].type,
+        description: entities[i].description,
+      }],
+      similarity: 0,
+    };
+
+    for (let j = i + 1; j < entities.length; j++) {
+      const a = entities[i].name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const b = entities[j].name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (a === b || (a.length > 3 && b.length > 3 && (a.includes(b) || b.includes(a)))) {
+        group.entities.push({
+          id: entities[j].id,
+          type: entities[j].type,
+          description: entities[j].description,
+        });
+        seen.add(entities[j].id);
+      }
+    }
+
+    if (group.entities.length > 1) {
+      group.similarity = 0.8;
+      groups.push(group);
+      seen.add(entities[i].id);
+    }
+  }
+
+  return groups;
+}
+
+export async function mergeEntities(sourceId: string, targetId: string): Promise<number> {
+  const db = await getMemoryDb();
+
+  await db.run(
+    `UPDATE graph_relations SET source_id = ? WHERE source_id = ?`,
+    [targetId, sourceId],
+  );
+  await db.run(
+    `UPDATE graph_relations SET target_id = ? WHERE target_id = ?`,
+    [targetId, sourceId],
+  );
+  await db.run(`DELETE FROM graph_relations WHERE source_id = ? OR target_id = ?`, [
+    sourceId,
+    sourceId,
+  ]);
+  await db.run(`DELETE FROM graph_entities WHERE id = ?`, [sourceId]);
+
+  return 1;
+}

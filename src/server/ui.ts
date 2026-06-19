@@ -4169,12 +4169,23 @@ async function loadMemoryOverview() {
     '</button>'; }).join('');
 
     var healthHtml = h ? '<div class="card-sm">' +
-      '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#fbbf24;">Memory Health</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+        '<div style="font-size:12px;font-weight:600;color:' + (h.healthScore >= 80 ? '#4ade80' : h.healthScore >= 50 ? '#fbbf24' : '#f87171') + ';">Memory Health (' + h.healthScore + '%)</div>' +
+      '</div>' +
+      '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:10px;">' +
+        '<div style="width:' + h.healthScore + '%;height:100%;border-radius:2px;background:' + (h.healthScore >= 80 ? '#4ade80' : h.healthScore >= 50 ? '#fbbf24' : '#f87171') + ';"></div>' +
+      '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px;">' +
         '<div><div style="color:var(--text3);">Episodic</div><div>' + (h.episodic && typeof h.episodic.total !== 'undefined' ? h.episodic.total : '—') + '</div></div>' +
         '<div><div style="color:var(--text3);">Semantic</div><div>' + (h.semantic && typeof h.semantic.total !== 'undefined' ? h.semantic.total : '—') + '</div></div>' +
         '<div><div style="color:var(--text3);">Graph</div><div>' + (h.graph && typeof h.graph.entities !== 'undefined' ? h.graph.entities : '—') + '</div></div>' +
       '</div>' +
+      (h.warnings && h.warnings.length ? '<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">' +
+        h.warnings.map(function(w) {
+          var sevColor = w.severity === 'critical' ? '#f87171' : w.severity === 'warning' ? '#fbbf24' : 'var(--accent2)';
+          return '<div style="font-size:10px;color:' + sevColor + ';padding:4px 8px;border-radius:4px;background:rgba(255,255,255,0.03);">' +
+            (w.severity === 'critical' ? '• ' : '◦ ') + esc(w.message) + '</div>';
+        }).join('') + '</div>' : '') +
     '</div>' : '';
 
     var refHtml = Array.isArray(refs) && refs.length ? refs.slice(0, 5).map(function(r) { return '<div class="card-sm">' +
