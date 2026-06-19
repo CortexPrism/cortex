@@ -1,17 +1,34 @@
 import type { GitSnapshot } from './snapshot-types.ts';
 
 export async function captureGitState(workspacePath: string): Promise<GitSnapshot> {
-  const result: GitSnapshot = { branch: '', headCommit: '', dirty: false, changedFiles: [], untrackedFiles: [] };
+  const result: GitSnapshot = {
+    branch: '',
+    headCommit: '',
+    dirty: false,
+    changedFiles: [],
+    untrackedFiles: [],
+  };
   try {
-    const branchOut = new TextDecoder().decode((await new Deno.Command('git', { args: ['rev-parse', '--abbrev-ref', 'HEAD'], cwd: workspacePath }).output()).stdout).trim();
+    const branchOut = new TextDecoder().decode(
+      (await new Deno.Command('git', {
+        args: ['rev-parse', '--abbrev-ref', 'HEAD'],
+        cwd: workspacePath,
+      }).output()).stdout,
+    ).trim();
     result.branch = branchOut;
   } catch { /* not a git repo */ }
   try {
-    const headOut = new TextDecoder().decode((await new Deno.Command('git', { args: ['rev-parse', 'HEAD'], cwd: workspacePath }).output()).stdout).trim();
+    const headOut = new TextDecoder().decode(
+      (await new Deno.Command('git', { args: ['rev-parse', 'HEAD'], cwd: workspacePath }).output())
+        .stdout,
+    ).trim();
     result.headCommit = headOut;
   } catch { /* not a git repo */ }
   try {
-    const statusOut = new TextDecoder().decode((await new Deno.Command('git', { args: ['status', '--porcelain'], cwd: workspacePath }).output()).stdout);
+    const statusOut = new TextDecoder().decode(
+      (await new Deno.Command('git', { args: ['status', '--porcelain'], cwd: workspacePath })
+        .output()).stdout,
+    );
     const lines = statusOut.trim().split('\n').filter(Boolean);
     for (const line of lines) {
       if (line.startsWith('??')) {

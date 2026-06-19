@@ -9,7 +9,8 @@ import type { SandboxRuntime } from './executor.ts';
 
 const SNAPSHOTS_DIR = 'sandbox-snapshots';
 const MAX_ENV_VALUE_LENGTH = 1024;
-const SENSITIVE_KEY_PATTERN = /^(?:.*(?:API_KEY|TOKEN|SECRET|PASSWORD|AUTH|CREDENTIAL|PRIVATE_KEY|ACCESS_KEY).*)$/i;
+const SENSITIVE_KEY_PATTERN =
+  /^(?:.*(?:API_KEY|TOKEN|SECRET|PASSWORD|AUTH|CREDENTIAL|PRIVATE_KEY|ACCESS_KEY).*)$/i;
 
 function snapshotDir(): string {
   return join(PATHS.dataDir, SNAPSHOTS_DIR);
@@ -104,7 +105,16 @@ export async function captureEnvironmentSnapshot(opts: {
     `INSERT INTO sandbox_snapshots (id, name, session_id, agent_id, created_at, runtime, workspace_path, tags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET name=excluded.name`,
-    [id, snapshot.name, opts.sessionId, opts.agentId, snapshot.createdAt, snapshot.runtime, opts.workspacePath, JSON.stringify(opts.tags ?? [])],
+    [
+      id,
+      snapshot.name,
+      opts.sessionId,
+      opts.agentId,
+      snapshot.createdAt,
+      snapshot.runtime,
+      opts.workspacePath,
+      JSON.stringify(opts.tags ?? []),
+    ],
   );
 
   return snapshot;
@@ -129,9 +139,14 @@ export async function listEnvironmentSnapshots(opts: {
   const db = await getCoreDb();
   let rows: Array<Record<string, unknown>>;
   if (opts.sessionId) {
-    rows = await db.all('SELECT id FROM sandbox_snapshots WHERE session_id = ? ORDER BY created_at DESC LIMIT ?', [opts.sessionId, opts.limit ?? 50]);
+    rows = await db.all(
+      'SELECT id FROM sandbox_snapshots WHERE session_id = ? ORDER BY created_at DESC LIMIT ?',
+      [opts.sessionId, opts.limit ?? 50],
+    );
   } else {
-    rows = await db.all('SELECT id FROM sandbox_snapshots ORDER BY created_at DESC LIMIT ?', [opts.limit ?? 50]);
+    rows = await db.all('SELECT id FROM sandbox_snapshots ORDER BY created_at DESC LIMIT ?', [
+      opts.limit ?? 50,
+    ]);
   }
 
   for (const row of rows) {
@@ -174,11 +189,16 @@ export async function compareSnapshots(
     else if (s1.env[key] !== s2.env[key]) changed.push(`env:${key}`);
   }
 
-  const allPkgs = new Set([...Object.keys(s1.dependencies.packages), ...Object.keys(s2.dependencies.packages)]);
+  const allPkgs = new Set([
+    ...Object.keys(s1.dependencies.packages),
+    ...Object.keys(s2.dependencies.packages),
+  ]);
   for (const pkg of allPkgs) {
     if (!(pkg in s1.dependencies.packages)) added.push(`dep:${pkg}`);
     else if (!(pkg in s2.dependencies.packages)) removed.push(`dep:${pkg}`);
-    else if (s1.dependencies.packages[pkg] !== s2.dependencies.packages[pkg]) changed.push(`dep:${pkg}`);
+    else if (s1.dependencies.packages[pkg] !== s2.dependencies.packages[pkg]) {
+      changed.push(`dep:${pkg}`);
+    }
   }
 
   return { added, removed, changed };
@@ -213,12 +233,20 @@ export async function replicateEnvironment(
   }
 
   lines.push('');
-  lines.push('# Dependencies (' + snap.dependencies.language + ', ' + snap.dependencies.managerHint + '):');
+  lines.push(
+    '# Dependencies (' + snap.dependencies.language + ', ' + snap.dependencies.managerHint + '):',
+  );
   for (const [pkg, ver] of Object.entries(snap.dependencies.packages)) {
     lines.push('#   ' + pkg + ' @ ' + ver);
   }
 
-  await Deno.writeTextFile(join(targetWorkspacePath, '.cortex-env-replication.sh'), lines.join('\n'));
+  await Deno.writeTextFile(
+    join(targetWorkspacePath, '.cortex-env-replication.sh'),
+    lines.join('\n'),
+  );
 
-  return { ok: true, message: `Environment replicated from snapshot ${snap.name} to ${targetWorkspacePath}` };
+  return {
+    ok: true,
+    message: `Environment replicated from snapshot ${snap.name} to ${targetWorkspacePath}`,
+  };
 }

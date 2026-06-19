@@ -4216,13 +4216,20 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // Category 6: Sandbox & Environment
   // ═══════════════════════════════════════════════════════════════
 
-  const validateSandboxPath = async (inputPath: string, fieldName: string): Promise<string | null> => {
-    if (!inputPath || inputPath.includes('..')) return `Invalid ${fieldName}: path traversal not allowed`;
+  const validateSandboxPath = async (
+    inputPath: string,
+    fieldName: string,
+  ): Promise<string | null> => {
+    if (!inputPath || inputPath.includes('..')) {
+      return `Invalid ${fieldName}: path traversal not allowed`;
+    }
     const { normalize, resolve } = await import('@std/path');
     const { PATHS } = await import('../config/paths.ts');
     const normalized = normalize(resolve(inputPath));
     const roots = [normalize(resolve(PATHS.workspacesDir)), normalize(resolve(PATHS.dataDir))];
-    const within = roots.some(r => normalized === r || (normalized.startsWith(r + '/') || normalized.startsWith(r + '\\')));
+    const within = roots.some((r) =>
+      normalized === r || (normalized.startsWith(r + '/') || normalized.startsWith(r + '\\'))
+    );
     if (!within) return `Invalid ${fieldName}: path must be within workspaces or data directory`;
     return null;
   };
@@ -4232,19 +4239,31 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/sandbox/snapshots — capture environment snapshot
   if (req.method === 'POST' && path === '/api/sandbox/snapshots') {
     const body = await req.json() as {
-      name?: string; sessionId: string; agentId: string;
-      workspacePath: string; runtime?: string; env?: Record<string, string>; tags?: string[];
+      name?: string;
+      sessionId: string;
+      agentId: string;
+      workspacePath: string;
+      runtime?: string;
+      env?: Record<string, string>;
+      tags?: string[];
     };
     if (!body.sessionId) return err('sessionId required', 400);
     if (!body.workspacePath) return err('workspacePath required', 400);
     const pathErr = await validateSandboxPath(body.workspacePath, 'workspacePath');
     if (pathErr) return err(pathErr, 400);
     const { captureEnvironmentSnapshot } = await import('../sandbox/replication.ts');
-    return json(await captureEnvironmentSnapshot({
-      name: body.name, sessionId: body.sessionId, agentId: body.agentId ?? '',
-      workspacePath: body.workspacePath, runtime: body.runtime as SandboxRuntime,
-      env: body.env, tags: body.tags,
-    }), 201);
+    return json(
+      await captureEnvironmentSnapshot({
+        name: body.name,
+        sessionId: body.sessionId,
+        agentId: body.agentId ?? '',
+        workspacePath: body.workspacePath,
+        runtime: body.runtime as SandboxRuntime,
+        env: body.env,
+        tags: body.tags,
+      }),
+      201,
+    );
   }
 
   // GET /api/sandbox/snapshots — list environment snapshots
@@ -4257,7 +4276,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/sandbox/snapshots/:id — get single snapshot
   const envSnapMatch = path.match(/^\/api\/sandbox\/snapshots\/([^/]+)$/);
-  if (req.method === 'GET' && envSnapMatch && !path.includes('/compare') && !path.includes('/replicate')) {
+  if (
+    req.method === 'GET' && envSnapMatch && !path.includes('/compare') &&
+    !path.includes('/replicate')
+  ) {
     const { getEnvironmentSnapshot } = await import('../sandbox/replication.ts');
     const snap = await getEnvironmentSnapshot(envSnapMatch[1]);
     if (!snap) return notFound('Snapshot not found');
@@ -4283,7 +4305,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const pathErr = await validateSandboxPath(body.targetWorkspacePath, 'targetWorkspacePath');
     if (pathErr) return err(pathErr, 400);
     const { replicateEnvironment } = await import('../sandbox/replication.ts');
-    return json(await replicateEnvironment(envReplMatch[1], body.targetSessionId, body.targetWorkspacePath));
+    return json(
+      await replicateEnvironment(envReplMatch[1], body.targetSessionId, body.targetWorkspacePath),
+    );
   }
 
   // GET /api/sandbox/snapshots/compare?id1=...&id2=...
@@ -4302,19 +4326,31 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/workspace/snapshots — capture workspace snapshot
   if (req.method === 'POST' && path === '/api/workspace/snapshots') {
     const body = await req.json() as {
-      name?: string; sessionId: string; agentId: string;
-      workspacePath: string; memoryContext?: string[]; toolState?: Array<Record<string, unknown>>; tags?: string[];
+      name?: string;
+      sessionId: string;
+      agentId: string;
+      workspacePath: string;
+      memoryContext?: string[];
+      toolState?: Array<Record<string, unknown>>;
+      tags?: string[];
     };
     if (!body.sessionId) return err('sessionId required', 400);
     if (!body.workspacePath) return err('workspacePath required', 400);
     const pathErrW = await validateSandboxPath(body.workspacePath, 'workspacePath');
     if (pathErrW) return err(pathErrW, 400);
     const { captureWorkspaceSnapshot } = await import('../sandbox/workspace-snapshot.ts');
-    return json(await captureWorkspaceSnapshot({
-      name: body.name, sessionId: body.sessionId, agentId: body.agentId ?? '',
-      workspacePath: body.workspacePath, memoryContext: body.memoryContext,
-      toolState: body.toolState as any, tags: body.tags,
-    }), 201);
+    return json(
+      await captureWorkspaceSnapshot({
+        name: body.name,
+        sessionId: body.sessionId,
+        agentId: body.agentId ?? '',
+        workspacePath: body.workspacePath,
+        memoryContext: body.memoryContext,
+        toolState: body.toolState as any,
+        tags: body.tags,
+      }),
+      201,
+    );
   }
 
   // GET /api/workspace/snapshots — list workspace snapshots
@@ -4327,7 +4363,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/workspace/snapshots/:id — get single workspace snapshot
   const wsSnapMatch = path.match(/^\/api\/workspace\/snapshots\/([^/]+)$/);
-  if (req.method === 'GET' && wsSnapMatch && !path.includes('/diff') && !path.includes('/restore')) {
+  if (
+    req.method === 'GET' && wsSnapMatch && !path.includes('/diff') && !path.includes('/restore')
+  ) {
     const { getWorkspaceSnapshot } = await import('../sandbox/workspace-snapshot.ts');
     const snap = await getWorkspaceSnapshot(wsSnapMatch[1]);
     if (!snap) return notFound('Workspace snapshot not found');
@@ -4373,10 +4411,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const pathErrD = await validateSandboxPath(body.workspacePath, 'workspacePath');
     if (pathErrD) return err(pathErrD, 400);
     const { generateDevEnvManifest } = await import('../sandbox/dev-env-code.ts');
-    return json(await generateDevEnvManifest({
-      workspacePath: body.workspacePath, name: body.name,
-      runtime: body.runtime as SandboxRuntime,
-    }), 201);
+    return json(
+      await generateDevEnvManifest({
+        workspacePath: body.workspacePath,
+        name: body.name,
+        runtime: body.runtime as SandboxRuntime,
+      }),
+      201,
+    );
   }
 
   // GET /api/sandbox/dev-env/manifest?workspacePath=...
@@ -4398,7 +4440,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const pathErrP = await validateSandboxPath(body.workspacePath, 'workspacePath');
     if (pathErrP) return err(pathErrP, 400);
     if (!body.manifest) return err('manifest required', 400);
-    const { saveDevEnvManifest, validateDevEnvManifest } = await import('../sandbox/dev-env-code.ts');
+    const { saveDevEnvManifest, validateDevEnvManifest } = await import(
+      '../sandbox/dev-env-code.ts'
+    );
     const validation = validateDevEnvManifest(body.manifest);
     if (!validation.valid) return err(`Invalid manifest: ${validation.errors.join(', ')}`, 400);
     return json(await saveDevEnvManifest(body.workspacePath, body.manifest as any));
@@ -4415,18 +4459,32 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/sandbox/bug-repro — create bug repro run
   if (req.method === 'POST' && path === '/api/sandbox/bug-repro') {
     const body = await req.json() as {
-      issueTitle: string; issueDescription?: string; language: string;
-      code: string; testCode?: string; runtime?: string; sessionId?: string; tags?: string[];
+      issueTitle: string;
+      issueDescription?: string;
+      language: string;
+      code: string;
+      testCode?: string;
+      runtime?: string;
+      sessionId?: string;
+      tags?: string[];
     };
     if (!body.issueTitle) return err('issueTitle required', 400);
     if (!body.language) return err('language required', 400);
     if (!body.code) return err('code required', 400);
     const { createBugRepro } = await import('../sandbox/bug-repro.ts');
-    return json(await createBugRepro({
-      issueTitle: body.issueTitle, issueDescription: body.issueDescription ?? '',
-      language: body.language, code: body.code, testCode: body.testCode,
-      runtime: body.runtime as SandboxRuntime, sessionId: body.sessionId, tags: body.tags,
-    }), 201);
+    return json(
+      await createBugRepro({
+        issueTitle: body.issueTitle,
+        issueDescription: body.issueDescription ?? '',
+        language: body.language,
+        code: body.code,
+        testCode: body.testCode,
+        runtime: body.runtime as SandboxRuntime,
+        sessionId: body.sessionId,
+        tags: body.tags,
+      }),
+      201,
+    );
   }
 
   // GET /api/sandbox/bug-repro — list bug repro runs
@@ -4466,7 +4524,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/sandbox/config — sandbox configuration (#79/257 UI support)
   if (req.method === 'GET' && path === '/api/sandbox/config') {
-    const { getAvailableRuntime, isDockerAvailable, isGVisorAvailable } = await import('../sandbox/executor.ts');
+    const { getAvailableRuntime, isDockerAvailable, isGVisorAvailable } = await import(
+      '../sandbox/executor.ts'
+    );
     const runtime = await getAvailableRuntime();
     const dockerOk = await isDockerAvailable();
     const gvisorOk = await isGVisorAvailable();

@@ -8,8 +8,18 @@ export async function detectDependencies(workspacePath: string): Promise<Depende
     const content = await Deno.readTextFile(join(workspacePath, 'package.json'));
     const pkg = JSON.parse(content);
     const deps = Object.assign({}, pkg.dependencies ?? {}, pkg.devDependencies ?? {});
-    const lockFileExists = await existsAny(workspacePath, ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb']);
-    first = { language: 'javascript', packages: deps, lockFileExists, managerHint: await resolveJsManager(workspacePath) };
+    const lockFileExists = await existsAny(workspacePath, [
+      'package-lock.json',
+      'yarn.lock',
+      'pnpm-lock.yaml',
+      'bun.lockb',
+    ]);
+    first = {
+      language: 'javascript',
+      packages: deps,
+      lockFileExists,
+      managerHint: await resolveJsManager(workspacePath),
+    };
   } catch { /* no package.json */ }
 
   try {
@@ -19,7 +29,12 @@ export async function detectDependencies(workspacePath: string): Promise<Depende
       const [name, version] = line.split('==');
       if (name) pkgs[name] = version ?? '*';
     }
-    const manifest = { language: 'python', packages: pkgs, lockFileExists: false, managerHint: 'pip' };
+    const manifest = {
+      language: 'python',
+      packages: pkgs,
+      lockFileExists: false,
+      managerHint: 'pip',
+    };
     if (!first) first = manifest;
   } catch { /* no requirements.txt */ }
 
@@ -31,7 +46,9 @@ export async function detectDependencies(workspacePath: string): Promise<Depende
         const mgr = lang === 'rust' ? 'cargo' : lang === 'go' ? 'go modules' : 'bundler';
         first = { language: lang, packages: {}, lockFileExists: false, managerHint: mgr };
         break;
-      } catch { continue; }
+      } catch {
+        continue;
+      }
     }
   }
 
@@ -39,15 +56,27 @@ export async function detectDependencies(workspacePath: string): Promise<Depende
 }
 
 async function resolveJsManager(wsPath: string): Promise<string> {
-  try { await Deno.stat(join(wsPath, 'pnpm-lock.yaml')); return 'pnpm'; } catch { /* not found */ }
-  try { await Deno.stat(join(wsPath, 'yarn.lock')); return 'yarn'; } catch { /* not found */ }
-  try { await Deno.stat(join(wsPath, 'bun.lockb')); return 'bun'; } catch { /* not found */ }
+  try {
+    await Deno.stat(join(wsPath, 'pnpm-lock.yaml'));
+    return 'pnpm';
+  } catch { /* not found */ }
+  try {
+    await Deno.stat(join(wsPath, 'yarn.lock'));
+    return 'yarn';
+  } catch { /* not found */ }
+  try {
+    await Deno.stat(join(wsPath, 'bun.lockb'));
+    return 'bun';
+  } catch { /* not found */ }
   return 'npm';
 }
 
 async function existsAny(basePath: string, files: string[]): Promise<boolean> {
   for (const f of files) {
-    try { await Deno.stat(join(basePath, f)); return true; } catch { /* not found */ }
+    try {
+      await Deno.stat(join(basePath, f));
+      return true;
+    } catch { /* not found */ }
   }
   return false;
 }

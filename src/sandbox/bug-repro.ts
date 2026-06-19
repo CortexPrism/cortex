@@ -38,7 +38,19 @@ export async function createBugRepro(opts: {
   await db.run(
     `INSERT INTO bug_repro_runs (id, issue_title, issue_description, language, runtime, status, code, test_code, created_at, session_id, tags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, opts.issueTitle, opts.issueDescription, opts.language, run.runtime, 'queued', opts.code, opts.testCode ?? '', run.createdAt, run.sessionId, JSON.stringify(run.tags)],
+    [
+      id,
+      opts.issueTitle,
+      opts.issueDescription,
+      opts.language,
+      run.runtime,
+      'queued',
+      opts.code,
+      opts.testCode ?? '',
+      run.createdAt,
+      run.sessionId,
+      JSON.stringify(run.tags),
+    ],
   );
 
   return run;
@@ -124,13 +136,15 @@ export async function getBugRepro(id: string): Promise<BugReproRun | null> {
     testCode: (row.test_code as string) ?? '',
     runtime: (row.runtime as SandboxRuntime) ?? 'docker',
     status: (row.status as BugReproRun['status']) ?? 'queued',
-    result: row.stdout !== undefined && row.stdout !== null ? {
-      stdout: row.stdout as string,
-      stderr: (row.stderr as string) ?? '',
-      exitCode: (row.exit_code as number) ?? 1,
-      durationMs: (row.duration_ms as number) ?? 0,
-      passed: !!(row.passed as number),
-    } : undefined,
+    result: row.stdout !== undefined && row.stdout !== null
+      ? {
+        stdout: row.stdout as string,
+        stderr: (row.stderr as string) ?? '',
+        exitCode: (row.exit_code as number) ?? 1,
+        durationMs: (row.duration_ms as number) ?? 0,
+        passed: !!(row.passed as number),
+      }
+      : undefined,
     fixedCode: (row.fixed_code as string) ?? undefined,
     rounds: (row.rounds as number) ?? 0,
     createdAt: row.created_at as string,

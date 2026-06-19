@@ -12,7 +12,9 @@ async function generateUniqueName(workspacePath: string, baseName: string): Prom
     const stat = await Deno.stat(workspacePath);
     const hashInput = workspacePath;
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(hashInput));
-    const suffix = Array.from(new Uint8Array(digest)).slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('');
+    const suffix = Array.from(new Uint8Array(digest)).slice(0, 4).map((b) =>
+      b.toString(16).padStart(2, '0')
+    ).join('');
     return `${baseName}-${suffix}`;
   } catch {
     return `${baseName}-${Date.now().toString(36)}`;
@@ -40,7 +42,9 @@ export async function generateDevEnvManifest(opts: {
     }
   } catch { /* ignore */ }
 
-  const uniqueName = opts.name ? opts.name : await generateUniqueName(opts.workspacePath, 'cortex-devenv');
+  const uniqueName = opts.name
+    ? opts.name
+    : await generateUniqueName(opts.workspacePath, 'cortex-devenv');
 
   const manifest: DevEnvManifest = {
     name: uniqueName,
@@ -80,7 +84,9 @@ export function validateDevEnvManifest(manifest: unknown): { valid: boolean; err
   const m = manifest as Record<string, unknown>;
 
   if (!m.name || typeof m.name !== 'string') errors.push('name is required and must be a string');
-  if (!m.version || typeof m.version !== 'string') errors.push('version is required and must be a string');
+  if (!m.version || typeof m.version !== 'string') {
+    errors.push('version is required and must be a string');
+  }
 
   if (!m.sandbox || typeof m.sandbox !== 'object') {
     errors.push('sandbox config is required');
@@ -116,7 +122,13 @@ export async function saveDevEnvManifest(
     `INSERT INTO dev_env_manifests (name, version, workspace_path, manifest_json, updated_at)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(name) DO UPDATE SET version=excluded.version, workspace_path=excluded.workspace_path, manifest_json=excluded.manifest_json, updated_at=excluded.updated_at`,
-    [manifest.name, manifest.version, workspacePath, JSON.stringify(manifest), manifest.meta.updatedAt],
+    [
+      manifest.name,
+      manifest.version,
+      workspacePath,
+      JSON.stringify(manifest),
+      manifest.meta.updatedAt,
+    ],
   );
 
   return { ok: true, path: filePath };
@@ -131,7 +143,11 @@ export async function loadDevEnvManifest(workspacePath: string): Promise<DevEnvM
   }
 }
 
-export async function listDevEnvManifests(): Promise<Array<{ name: string; version: string; workspacePath: string; updatedAt: string }>> {
+export async function listDevEnvManifests(): Promise<
+  Array<{ name: string; version: string; workspacePath: string; updatedAt: string }>
+> {
   const db = await getCoreDb();
-  return await db.all('SELECT name, version, workspace_path AS workspacePath, updated_at AS updatedAt FROM dev_env_manifests ORDER BY updated_at DESC');
+  return await db.all(
+    'SELECT name, version, workspace_path AS workspacePath, updated_at AS updatedAt FROM dev_env_manifests ORDER BY updated_at DESC',
+  );
 }
