@@ -2420,6 +2420,12 @@ const HTML = `<!DOCTYPE html>
       <div style="width:280px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
         <div style="padding:12px;border-bottom:1px solid var(--border);">
           <input id="cg-symbol-search" class="inp" placeholder="Search symbol…" style="font-size:12px;" onkeydown="if(event.key==='Enter')searchCodegraphSymbol()" />
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <select id="cg-language-filter" class="inp" style="font-size:11px;padding:3px 6px;flex:1;" onchange="searchCodegraphSymbol()">
+              <option value="">All languages</option>
+            </select>
+            <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="searchCodegraphCrossRepo()" title="Search across all projects">🌐 All repos</button>
+          </div>
         </div>
         <div style="flex:1;overflow-y:auto;padding:8px;" id="cg-search-results"></div>
       </div>
@@ -12066,9 +12072,44 @@ async function loadCodegraphProject(name) {
     renderCodegraphGraph(data.nodes || [], data.edges || []);
     document.getElementById('cg-empty-state').style.display = 'none';
     switchCodegraphPanel(cgCurrentPanel);
+    loadCodegraphLanguages();
   } catch(e) {
     document.getElementById('cg-graph').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">Failed to load graph</div>';
   }
+}
+async function loadCodegraphLanguages() {
+  var sel = document.getElementById('cg-language-filter');
+  try {
+    var langs = await fetch(BASE + '/api/codegraph/languages?project=' + encodeURIComponent(cgProject || '')).then(r => r.json());
+    sel.innerHTML = '<option value="">All languages</option>' +
+      (Array.isArray(langs) ? langs : []).map(function(l) {
+        return '<option value="' + esc(l) + '">' + esc(l) + '</option>';
+      }).join('');
+  } catch(e) {}
+}
+async function searchCodegraphCrossRepo() {
+  var q = document.getElementById('cg-symbol-search').value.trim();
+  var lang = document.getElementById('cg-language-filter').value;
+  if (!q) return;
+  var el = document.getElementById('cg-search-results');
+  el.innerHTML = '<div class="widget-loading">Searching across all repos…</div>';
+  try {
+    var url = BASE + '/api/codegraph/search-all?q=' + encodeURIComponent(q);
+    if (lang) url += '&language=' + encodeURIComponent(lang);
+    var results = await fetch(url).then(r => r.json());
+    el.innerHTML = '<div style="font-size:11px;color:var(--accent2);margin-bottom:6px;">Cross-repo results (' + results.length + ')</div>' +
+      (results.length ? results.map(function(r) {
+        var node = r.node || {};
+        return '<div class="card-sm" style="cursor:pointer;margin-bottom:4px;padding:6px 8px;">' +
+          '<div style="display:flex;align-items:center;gap:4px;">' +
+          '<span style="font-size:10px;font-weight:500;color:var(--accent2);">' + esc(r.projectName || '') + '</span>' +
+          (node.language ? '<span class="badge" style="font-size:9px;">' + esc(node.language) + '</span>' : '') +
+          '</div>' +
+          '<div style="font-size:10px;font-weight:500;margin-top:2px;">' + esc(node.name || '') + '</div>' +
+          '<div style="font-size:9px;color:var(--text3);">' + esc(node.file_path || '') + '</div>' +
+          '</div>';
+      }).join('') : '<div class="empty">No results</div>');
+  } catch(e) { el.innerHTML = '<div class="empty">Search failed</div>'; }
 }
 function resetCodegraphGraph() {
   document.getElementById('cg-graph').innerHTML = '';
@@ -12123,10 +12164,13 @@ function renderCodegraphLegend() {
 async function searchCodegraphSymbol() {
   var q = document.getElementById('cg-symbol-search').value.trim();
   if (!q || !cgProject) return;
+  var lang = document.getElementById('cg-language-filter').value;
   var el = document.getElementById('cg-search-results');
   el.innerHTML = '<div class="widget-loading">Searching…</div>';
   try {
-    var results = await fetch(BASE + '/api/codegraph/search?q=' + encodeURIComponent(q) + '&project=' + encodeURIComponent(cgProject)).then(r => r.json());
+    var url = BASE + '/api/codegraph/search?q=' + encodeURIComponent(q) + '&project=' + encodeURIComponent(cgProject);
+    if (lang) url += '&language=' + encodeURIComponent(lang);
+    var results = await fetch(url).then(r => r.json());
     if (!results || !results.length) { el.innerHTML = '<div class="empty">No symbols found</div>'; return; }
     el.innerHTML = results.map(function(r) {
       return '<div class="list-item" style="cursor:pointer;padding:6px 8px;border-radius:6px;" onclick="highlightCodegraphNode(\\'' + escAttr(r.id || r.name) + '\\')">' +

@@ -3408,6 +3408,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/codegraph/search') {
     const q = url.searchParams.get('q');
     const project = url.searchParams.get('project');
+    const language = url.searchParams.get('language') || undefined;
     if (!q) return err('Missing q', 400);
     const { ftsSearchNodes, getProject } = await import('../codegraph/graph.ts');
     let projectId = 0;
@@ -3415,8 +3416,164 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const p = await getProject(project);
       if (p) projectId = p.id;
     }
-    const results = await ftsSearchNodes(projectId, q, {});
+    const results = await ftsSearchNodes(projectId, q, { language });
     return json(results);
+  }
+
+  // GET /api/codegraph/search-all — cross-repo search
+  if (req.method === 'GET' && path === '/api/codegraph/search-all') {
+    const q = url.searchParams.get('q');
+    const language = url.searchParams.get('language') || undefined;
+    if (!q) return err('Missing q', 400);
+    const { ftsSearchNodes, listProjects } = await import('../codegraph/graph.ts');
+    const projects = await listProjects();
+    const allResults: Array<unknown> = [];
+    for (const p of projects) {
+      const results = await ftsSearchNodes(p.id, q, { language, limit: 15 });
+      for (const r of results) {
+        allResults.push({ ...r, projectName: p.name });
+      }
+    }
+    allResults.sort((a, b) => {
+      const sa = (a as Record<string, number>).score ?? 0;
+      const sb = (b as Record<string, number>).score ?? 0;
+      return sb - sa;
+    });
+    return json(allResults.slice(0, 30));
+  }
+
+  // GET /api/codegraph/languages?project=
+  if (req.method === 'GET' && path === '/api/codegraph/languages') {
+    const { getProject, getLanguages } = await import('../codegraph/graph.ts');
+    const project = url.searchParams.get('project');
+    if (project) {
+      const p = await getProject(project);
+      if (!p) return notFound('Project not found');
+      return json(await getLanguages(p.id));
+    }
+    const { listProjects } = await import('../codegraph/graph.ts');
+    const projects = await listProjects();
+    const langSet = new Set<string>();
+    for (const p of projects) {
+      const langs = await getLanguages(p.id);
+      for (const l of langs) langSet.add(l);
+    }
+    return json(Array.from(langSet).sort());
+  }
+
+  // GET /api/codegraph/ownership?file=&project=
+  if (req.method === 'GET' && path === '/api/codegraph/ownership') {
+    const file = url.searchParams.get('file');
+    if (!file) return err('file is required', 400);
+    try {
+      const cmd = new Deno.Command('git', {
+        args: ['blame', '--porcelain', '-L', '1,50', file],
+        stderr: 'piped',
+        stdout: 'piped',
+      });
+      const { stdout } = await cmd.output();
+      const text = new TextDecoder().decode(stdout);
+      const owners: Array<{ name: string; email: string; lines: number }> = [];
+      for (const line of text.split('\n')) {
+        const authorMatch = line.match(/^author (.+)$/);
+        const mailMatch = line.match(/^author-mail <(.+)>$/);
+        if (authorMatch && mailMatch) {
+          const existing = owners.find((o) => o.email === mailMatch[1]);
+          if (existing) existing.lines++;
+          else owners.push({ name: authorMatch[1], email: mailMatch[1], lines: 1 });
+        }
+      }
+      return json({ file, owners: owners.sort((a, b) => b.lines - a.lines) });
+    } catch {
+      return json({ file, owners: [] });
+    }
+  }
+
+  // GET /api/codegraph/history?file=&project=&limit=
+  if (req.method === 'GET' && path === '/api/codegraph/history') {
+    const file = url.searchParams.get('file');
+    if (!file) return err('file is required', 400);
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 10, 50);
+    try {
+      const cmd = new Deno.Command('git', {
+        args: ['log', '--oneline', '--no-decorate', '-n', String(limit), '--', file],
+        stderr: 'piped',
+        stdout: 'piped',
+      });
+      const { stdout } = await cmd.output();
+      const text = new TextDecoder().decode(stdout);
+      const commits = text.split('\n').filter(Boolean).map((line) => {
+        const [hash, ...rest] = line.split(' ');
+        return { hash, message: rest.join(' ') };
+      });
+      return json({ file, commits });
+    } catch {
+      return json({ file, commits: [] });
+    }
+  }
+
+  // GET /api/codegraph/qa?q=&project=
+  if (req.method === 'GET' && path === '/api/codegraph/qa') {
+    const q = url.searchParams.get('q');
+    const project = url.searchParams.get('project');
+    if (!q) return err('q is required', 400);
+    const { ftsSearchNodes, getProject } = await import('../codegraph/graph.ts');
+    let projectId = 0;
+    if (project) {
+      const p = await getProject(project);
+      if (p) projectId = p.id;
+    }
+    const results = await ftsSearchNodes(projectId, q, { limit: 8 });
+    const citations = results.map((r) => ({
+      name: r.node.name,
+      file: r.node.file_path,
+      line: r.node.line_start,
+      signature: r.node.signature,
+      language: r.node.language,
+    }));
+    const context = citations
+      .map((c) => `${c.name} in ${c.file ?? 'unknown'} (${c.language ?? 'unknown'})`)
+      .join('\n');
+    return json({
+      query: q,
+      citations,
+      summary: citations.length > 0
+        ? `Found ${citations.length} symbol(s) related to "${q}"`
+        : `No symbols found for "${q}"`,
+      context,
+    });
+  }
+
+  // GET /api/alcove/search?q=
+  if (req.method === 'GET' && path === '/api/alcove/search') {
+    const q = url.searchParams.get('q');
+    if (!q) return err('q is required', 400);
+    const { PATHS } = await import('../config/paths.ts');
+    const { exists } = await import('@std/fs');
+    const { join } = await import('@std/path');
+    const docsDir = join(PATHS.dataDir, 'docs');
+    const results: Array<{ file: string; snippet: string }> = [];
+    try {
+      if (!await exists(docsDir)) return json({ query: q, results: [] });
+      for await (const entry of Deno.readDir(docsDir)) {
+        if (!entry.isFile || !/\.(md|txt|html)$/i.test(entry.name)) continue;
+        try {
+          const content = await Deno.readTextFile(join(docsDir, entry.name));
+          const lines = content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].toLowerCase().includes(q.toLowerCase())) {
+              results.push({
+                file: entry.name,
+                snippet: lines.slice(Math.max(0, i - 1), i + 2).join('\n').slice(0, 300),
+              });
+              if (results.length >= 10) break;
+            }
+          }
+        } catch { /* skip */ }
+        if (results.length >= 10) break;
+      }
+    } catch { /* skip */ }
+    return json({ query: q, results });
   }
 
   // POST /api/codegraph/impact

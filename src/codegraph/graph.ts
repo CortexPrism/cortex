@@ -231,11 +231,12 @@ export async function searchNodes(
 export async function ftsSearchNodes(
   projectId: number,
   query: string,
-  opts: { label?: CodeNodeLabel | CodeNodeLabel[]; limit?: number } = {},
+  opts: { label?: CodeNodeLabel | CodeNodeLabel[]; language?: string; limit?: number } = {},
 ): Promise<SearchResult[]> {
   const db = await getMemoryDb();
   const limit = opts.limit ?? 20;
   const labels = opts.label ? Array.isArray(opts.label) ? opts.label : [opts.label] : [];
+  const hasLanguage = !!opts.language;
 
   let sql = `
     SELECT n.*, rank FROM code_nodes_fts f
@@ -249,6 +250,11 @@ export async function ftsSearchNodes(
     params.push(...labels);
   }
 
+  if (hasLanguage && opts.language) {
+    sql += ` AND n.language = ?`;
+    params.push(opts.language as InValue);
+  }
+
   sql += ` ORDER BY rank LIMIT ?`;
   params.push(limit);
 
@@ -258,6 +264,15 @@ export async function ftsSearchNodes(
     score: -(r.rank ?? 0),
     match_field: 'fts',
   }));
+}
+
+export async function getLanguages(projectId: number): Promise<string[]> {
+  const db = await getMemoryDb();
+  const rows = await db.all<{ language: string }>(
+    `SELECT DISTINCT language FROM code_nodes WHERE project_id = ? AND language IS NOT NULL`,
+    [projectId],
+  );
+  return rows.map((r) => r.language).filter((l) => l.length > 0).sort();
 }
 
 export async function tracePath(
