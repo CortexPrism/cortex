@@ -6,9 +6,7 @@
  * patterns) and pre-loads it. Creates continuity across sessions without
  * manual handoff.
  */
-import { getMemoryDb } from '../db/client.ts';
 import { retrieve } from '../memory/store.ts';
-import { searchEntities, traverseGraph } from '../memory/graph.ts';
 import { listSessions } from '../db/sessions.ts';
 
 export interface SessionContext {

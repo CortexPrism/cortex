@@ -66,6 +66,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **New lens event types** (`src/db/lens.ts`) — added 9 event types: `dynamic_grant`, `approval_requested`, `approval_decision`, `dlp_blocked`, `dlp_redacted`, `guardrail_blocked`, `isolation_violation`, `supply_chain_verification`, `guardian_report` to the `EventType` union for Tier 2 security feature audit logging.
 
+- **CLI commands for new features** (`src/cli/a2a-cmd.ts`, `src/cli/memori-cmd.ts`, `src/cli/agentlint-cmd.ts`, `src/cli/mcp-gateway-cmd.ts`, `src/main.ts`) — `cortex a2a` (card, skills), `cortex memori` (list, prune), `cortex agentlint` (check, config), `cortex mcp-gateway` (status, health). All registered in main.ts command tree.
+
+- **Pipeline hook integration** (`src/pipeline/builtin.ts`) — DLP Guard registered as `@cortex/dlp-guard` hook at `pre-output`/`post-tool` stages. Responsible AI Auditor registered as `@cortex/responsible-ai` hook at `post-output` stage. Both use fire-and-forget patterns and never block the pipeline.
+
+- **Startup integration** (`src/server/server.ts`) — Skill Bus initialized at server start after plugin loading. Dependency Guardian scheduled for periodic checks every 6 hours.
+
+- **Supply chain verification on install** (`src/plugins/manager.ts`) — `verifyPluginIntegrity()` called before every plugin install. Plugins with status `blocked` are rejected. Plugins with `suspicious` status log warnings but proceed.
+
+- **A2A auth fix** (`src/server/router.ts`) — `POST /a2a` JSON-RPC endpoint moved to public section (before auth middleware) for agent-to-agent interop without session cookies.
+
+- **Barrel import fixes** (`src/server/router.ts`, `src/security/dynamic-grant.ts`) — all internal module imports now route through `mod.ts` barrels. Removed 3 unused imports from `context-bridge.ts`.
+
 - **Multi-system import system** (`src/cli/import/`) — new shared import module supporting three external agent systems:
   - **Hermes import** (`cortex import hermes`) — parses Hermes JSONL exports with session/message records and ShareGPT `conversations[]` format. Groups records by `session_id`, writes messages into per-session databases, imports system prompts and model info as episodic memory. Auto-detects `~/.hermes/`.
   - **ZeroClaw import** (`cortex import zeroclaw`) — handles JSONL event-sourced transcripts and `MEMORY_SNAPSHOT.md`/`MEMORY.md` memory snapshot files. Transcript events are written as session messages; `branch_summary`/`compaction` events become episodic memory; memory snapshots become semantic memory. Auto-detects `~/.zeroclaw/`.

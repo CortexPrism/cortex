@@ -492,6 +492,71 @@ class QuartermasterHook implements PipelineHook {
   }
 }
 
+class DLPGuardHook implements PipelineHook {
+  name = '@cortex/dlp-guard';
+  stages: PipelineStage[] = ['pre-output', 'post-tool'];
+  priority = 5;
+  async = true;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    try {
+      const text = ctx.stage === 'post-tool' ? ctx.toolResult?.output : ctx.output;
+      if (!text || text.length === 0) return {};
+
+      const { dlpMiddleware } = await import('../security/dlp.ts');
+      const result = dlpMiddleware(text, ctx.sessionId);
+
+      if (!result.allowed) {
+        return {
+          abort: { reason: 'sensitive_data', message: 'DLP Guard blocked output containing sensitive data.' },
+        };
+      }
+
+      if (result.text !== text) {
+        return { modifyOutput: result.text };
+      }
+    } catch {
+      // DLP failures must never block the pipeline
+    }
+    return {};
+  }
+}
+
+class ResponsibleAIHook implements PipelineHook {
+  name = '@cortex/responsible-ai';
+  stages: PipelineStage[] = ['post-output'];
+  priority = 8;
+  async = true;
+  disableable = true;
+
+  async run(ctx: PipelineContext): Promise<HookResult> {
+    try {
+      const text = ctx.output;
+      if (!text || text.length < 100) return {};
+
+      const { auditAgentOutput } = await import('../agent/responsible-ai.ts');
+      const report = auditAgentOutput(text, {
+        sessionId: ctx.sessionId,
+        agentId: ctx.state.agentName ?? 'default',
+        taskDescription: ctx.state.userMessage?.slice(0, 200) ?? '',
+      });
+
+      if (report.violationCount > 0) {
+        return {
+          injectMessages: [{
+            role: 'system' as const,
+            content: `[Responsible AI]: ${report.violationCount} potential bias/safety concern(s) detected — ${report.recommendations.slice(0, 2).join('; ')}`,
+          }],
+        };
+      }
+    } catch {
+      // Responsible AI auditing failures must never block the pipeline
+    }
+    return {};
+  }
+}
+
 export function registerBuiltinHooks(): void {
   registerHook(new ContentSafetyHook(), 'core');
   registerHook(new InjectionDetectorHook(), 'core');
@@ -503,6 +568,8 @@ export function registerBuiltinHooks(): void {
   registerHook(new LoopDetectionMiddleware(), 'core');
   registerHook(new CostTrackerHook(), 'core');
   registerHook(new AuditLogHook(), 'core');
+  registerHook(new DLPGuardHook(), 'core');
+  registerHook(new ResponsibleAIHook(), 'core');
 }
 
 export function cleanupSessionState(sessionId: string): void {

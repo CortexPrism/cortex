@@ -50,6 +50,7 @@ export function createA2AToolWrapper(
         }
 
         const card = cachedCard;
+        if (!card) throw new Error('Failed to load agent card');
         const task: Task = await sendMessage(card, {
           message: {
             messageId: crypto.randomUUID(),
