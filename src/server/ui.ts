@@ -3893,7 +3893,7 @@ function showPage(name) {
   };
   if (loaders[name]) loaders[name]();
   // Hide global subnav for non-tabbed pages
-  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,'chrome-bridge':1,mcp:1,policies:1,vault:1,remote:1,computer:1};
+  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,tools:1,'chrome-bridge':1,mcp:1,vault:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
 }
 
@@ -3913,12 +3913,15 @@ function hideSubNav() {
   var bar = document.getElementById('global-subnav');
   if (bar) bar.style.display = 'none';
 }
-function switchSubTab(event, pageId, targetPage) {
-  var bar = document.getElementById('subnav-' + pageId);
+function switchSubTab(event, groupId, targetPage) {
+  var bar = document.getElementById('global-subnav');
   if (bar) {
     bar.querySelectorAll('button').forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.classList.remove('active'); });
-    event.target.style.borderBottomColor = 'var(--accent)';
-    event.target.classList.add('active');
+    var btn = event.target;
+    if (btn && btn.tagName === 'BUTTON') {
+      btn.style.borderBottomColor = 'var(--accent)';
+      btn.classList.add('active');
+    }
   }
   showPage(targetPage);
 }
@@ -7350,10 +7353,10 @@ async function loadSettings() {
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  const tabs = ['general', 'providers', 'tools', 'system'];
-  tabs.forEach(t => {
-    const tabBtn = document.getElementById('settings-tab-' + t);
-    const pane = document.getElementById('settings-pane-' + t);
+  var tabs = ['general', 'providers', 'tools', 'system', 'metrics'];
+  tabs.forEach(function(t) {
+    var tabBtn = document.getElementById('settings-tab-' + t);
+    var pane = t === 'metrics' ? document.getElementById('metrics-content') : document.getElementById('settings-pane-' + t);
     if (tabBtn) tabBtn.classList.toggle('active', t === tabName);
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
   });
@@ -13378,6 +13381,7 @@ function extendPoliciesPage() {
   classPanel.id = 'pol-classification-panel';
   classPanel.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:16px;';
   container.appendChild(classPanel);
+  setTimeout(extendCPLEditor, 100);
 }
 function switchPoliciesTab(btn, tab) {
   var classPanel = document.getElementById('pol-classification-panel');
@@ -13402,7 +13406,8 @@ async function loadClassificationConfig() {
           '<span style="font-size:10px;color:var(--text3);">' + (l.patterns || []).length + ' patterns</span></div>' +
           '<div style="font-size:10px;color:var(--text2);margin-top:2px;">' + (l.patterns || []).join(', ') || 'none' + '</div></div>';
       }).join('');
-  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+    extendCPLEditor();
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; extendCPLEditor(); }
 }
 async function testClassification() {
   var text = document.getElementById('class-test-input').value;
@@ -13643,18 +13648,26 @@ function extendMetricsPage() {
   // Add tab to Settings
   var tabs = document.querySelector('#page-settings [style*="display:flex;gap"]');
   if (tabs && !document.getElementById('settings-tab-metrics')) {
-    tabs.innerHTML += '<button class="btn btn-ghost" onclick="switchMetricsTab()" id="settings-tab-metrics" style="font-size:11px;padding:4px 10px;">Metrics</button>';
+    tabs.innerHTML += '<button class="mem-tab" onclick="switchMetricsTab()" id="settings-tab-metrics">Metrics</button>';
     metricsTabAdded = true;
   }
 }
 function switchMetricsTab() {
-  var content = document.querySelector('#page-settings > div:last-of-type') || document.getElementById('page-settings');
+  settingsActiveTab = 'metrics';
+  var tabs = ['general', 'providers', 'tools', 'system', 'metrics'];
+  tabs.forEach(function(t) {
+    var tabBtn = document.getElementById('settings-tab-' + t);
+    var pane = t === 'metrics' ? document.getElementById('metrics-content') : document.getElementById('settings-pane-' + t);
+    if (tabBtn) tabBtn.classList.toggle('active', t === 'metrics');
+    if (pane) pane.style.display = t === 'metrics' ? 'block' : 'none';
+  });
   var container = document.getElementById('metrics-content');
   if (!container) {
     container = document.createElement('div');
     container.id = 'metrics-content';
     container.style.cssText = 'padding:16px;';
-    content.appendChild(container);
+    var settingsContent = document.getElementById('settings-content');
+    if (settingsContent) settingsContent.appendChild(container);
   }
   loadMetrics();
 }
