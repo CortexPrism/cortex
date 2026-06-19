@@ -13,7 +13,7 @@ import { getDefaultAgent, loadAgentIdentity } from '../agent/manager.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { globalRegistry, registerAllBuiltins } from '../tools/registry.ts';
 import { initSessionDb } from '../db/migrate.ts';
-import { createSession, closeSession } from '../db/sessions.ts';
+import { closeSession, createSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { logger } from '../utils/logger.ts';
 import type { Db } from '../db/client.ts';

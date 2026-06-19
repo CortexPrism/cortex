@@ -61,6 +61,8 @@ export interface SkillBusResult {
 
 const bindings = new Map<string, SkillBinding>();
 const cooldownTimers = new Map<string, number>();
+const recentEvents: SkillBusEvent[] = [];
+const MAX_RECENT_EVENTS = 100;
 
 export function createSkillBinding(
   skillId: string,
@@ -135,8 +137,10 @@ async function handleSkillBusEvent(event: PluginEvent): Promise<void> {
 
   const eventId = `sbe_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const results: SkillBusResult[] = [];
+  const triggeredBindings: string[] = [];
 
   for (const binding of matchingBindings) {
+    triggeredBindings.push(binding.id);
     const start = Date.now();
     try {
       const result = await executeSkillAction(binding, event);
@@ -160,6 +164,17 @@ async function handleSkillBusEvent(event: PluginEvent): Promise<void> {
     }
 
     setCooldown(binding);
+  }
+
+  recentEvents.push({
+    id: eventId,
+    sourceEvent: event,
+    triggeredBindings,
+    results,
+    timestamp: new Date().toISOString(),
+  });
+  while (recentEvents.length > MAX_RECENT_EVENTS) {
+    recentEvents.shift();
   }
 }
 
@@ -252,6 +267,10 @@ export function getSkillBusStatus(): {
     totalBindings: all.length,
     enabledBindings: all.filter((b) => b.enabled).length,
     activeCooldowns: cooldownTimers.size,
-    recentResults: [],
+    recentResults: recentEvents.flatMap((e) => e.results).slice(-20),
   };
+}
+
+export function getRecentSkillBusEvents(limit = 20): SkillBusEvent[] {
+  return recentEvents.slice(-limit).reverse();
 }

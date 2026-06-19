@@ -302,6 +302,21 @@ export async function applyPluginUpdate(
       author: manifest.author ?? plugin.author,
       updated_at: new Date().toISOString(),
     });
+
+    const { verifyPluginIntegrity } = await import('./supply-chain.ts');
+    const report = await verifyPluginIntegrity(entryPoint, {
+      name: manifest.name,
+      version: manifest.version,
+      author: manifest.author,
+    });
+    await updatePlugin(pluginName, {
+      verification_report_json: JSON.stringify(report),
+      trust_level: report.status === 'verified'
+        ? 'trusted'
+        : report.status === 'unverified'
+        ? 'signed'
+        : 'untrusted',
+    });
     if (wasEnabled) await pluginManager.enable(pluginName);
     return { success: true, previousVersion, newVersion: check.latestVersion! };
   }
@@ -372,6 +387,21 @@ export async function applyPluginUpdate(
     description: manifest.description ?? plugin.description,
     author: manifest.author ?? plugin.author,
     updated_at: new Date().toISOString(),
+  });
+
+  const { verifyPluginIntegrity } = await import('./supply-chain.ts');
+  const report = await verifyPluginIntegrity(entryPoint, {
+    name: manifest.name,
+    version: manifest.version,
+    author: manifest.author,
+  });
+  await updatePlugin(pluginName, {
+    verification_report_json: JSON.stringify(report),
+    trust_level: report.status === 'verified'
+      ? 'trusted'
+      : report.status === 'unverified'
+      ? 'signed'
+      : 'untrusted',
   });
 
   if (wasEnabled) {

@@ -68,6 +68,7 @@ export interface PluginRow {
   license: string | null;
   source: string | null;
   integrity_hash: string | null;
+  verification_report_json: string | null;
   enabled: number;
   status: string;
   process_id: number | null;
