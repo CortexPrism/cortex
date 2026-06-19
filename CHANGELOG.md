@@ -5,12 +5,69 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.45.2] — 2026-06-19
+
+### Fixed
+
+- **UI: `fetchJSON is not defined` on Sandbox, Projects, PromptLab, and Channels pages** — `fetchJSON()` was scoped inside `loadDashboard()` via the `DASHBOARD_JS` template, making it inaccessible to other page-specific functions. Moved `fetchJSON` to global script scope so all pages can use it.
+
+- **API: 404 on `/api/metacognition/history` and `/api/metacognition/summary`** — added route handlers in `router.ts` querying `lens_events` for `meta_assessment` events. History returns last 100 assessments; summary returns decision distribution, escalation count, and recent adversarial critiques.
+
+- **API: 404 on `/api/tools/registry`** — added route handler returning full tool definitions (name, description, params, capabilities). Also registered built-in tools into `globalRegistry` during server startup (`server.ts`) so both `/api/tools/list` and `/api/tools/registry` return populated data (60 tools).
+
+- **API: 404 on `/api/a2a/agent-card.json`** — added `/api/a2a/agent-card.json` as an alias alongside existing `/.well-known/agent-card.json` in the A2A agent card handler.
+
+- **API: 404 on `/api/processes/sub-agents`** — added route handler listing running sub-agent Deno processes via `ps` filtering.
+
+- **API: 404 on `/api/providers/comparison`, `/api/router/history`, `/api/security/supervisor`, and `/api/security/supervisor/history`** — added route handlers for the Settings page extension tabs (Providers, Router, Supervisor):
+  - `GET /api/providers/comparison` — returns each configured provider with model and context window size
+  - `GET /api/router/history` — returns router fallthrough history (ephemeral, returns empty until router metrics are persisted)
+  - `GET /api/security/supervisor` — returns supervisor configuration (provider, model, cache TTL) via `selectSupervisorModel()`
+  - `PUT /api/security/supervisor` — updates supervisor provider, model, and cache TTL in config
+  - `DELETE /api/security/supervisor/cache` — clears the supervisor decision cache
+  - `GET /api/security/supervisor/history` — returns cached supervisor decision entries
+
+- **Supervisor config now configurable** — added `SupervisorConfig` type (`provider`, `model`, `cacheTTL`) to `CortexConfig`. `selectSupervisorModel()` in `supervisor.ts` checks the explicit config first before falling through to key-detection logic. Settings UI replaced read-only stat rows with editable provider/model dropdowns (populated from configured providers and their available models) and a Save button.
+
+- **UI: `TypeError: Cannot read properties of null (reading 'style')` in Settings tabs** — `switchSettingsTab()` and `switchSettingsExtTab()` were accessing `.style.display` on `document.getElementById('settings-ext-tab-*')` elements that may not exist if `extendSettings()` hasn't been called yet. Added null-guards (`?.style`) on all three tab button references.
+
+- **API: 404 on `/api/memori/checkpoints`** — added route handler querying the `memori_checkpoints` table with optional `sessionId` and `limit` query params, returning turn number, timestamp, tokens used, tool call count, and goal snapshot per checkpoint.
+
+- **API: 404 on `/api/daemons/health`** — added route handler returning live daemon status (validator, executor, scheduler) with their Unix socket paths. Also added `GET /api/daemons/:name/logs?lines=` for log retrieval and `POST /api/daemons/:name/restart`.
+
+- **API: 404 on `/api/memory/privacy`, `/api/memory/heuristics`, `/api/memory/embeddings`, and `/api/memory/vector-store`** — added Memory page extension tab route handlers:
+  - `GET/PUT /api/memory/privacy` — PII redaction toggle and max retention days, stored in config
+  - `GET /api/memory/heuristics` — heuristic category catalog with rule counts; `PUT` runs the heuristic cycle
+  - `GET/PUT /api/memory/embeddings` — embedding provider/model/URL/key/dimensions configuration
+  - `GET/PUT /api/memory/vector-store` — vector store backend selection (SQLite/Qdrant/ChromaDB/Pinecone)
+
+- **Projects: GitHub import + Codegraph integration** — added `POST /api/projects/import-github` to clone a GitHub repository into the local workspaces area, create a filesystem project, and best-effort index it into Codegraph. The Projects page now has an **Import from GitHub** action with both modal and inline fallback repo pickers.
+
+- **Codegraph: created Projects now appear in project selector** — `GET /api/codegraph/projects` now merges indexed codegraph projects with filesystem projects from the Projects page. Selecting a filesystem-only project in Codegraph auto-indexes it on first load via `GET /api/codegraph/architecture` before rendering the graph.
+
+- **Projects import persistence + Codegraph first-load feedback** — GitHub-imported projects now persist the actual cloned workspace path in `cortex-project.json` instead of the metadata directory path, so later Codegraph loads index the real repository. The Codegraph page now shows that first load may take longer while indexing, and surfaces backend error messages instead of a generic empty failure state.
+
+- **API: MCP & Chrome Bridge routes added** — added route handlers for the MCP page and Chrome Bridge settings page:
+  - `GET /api/mcp/connections` — list configured MCP connections with status
+  - `GET /api/mcp/connections/:name/tools` — browse tools for a connection
+  - `POST /api/mcp/connections` — add and connect a new MCP server
+  - `POST /api/mcp/connections/:name/connect` — reconnect a disconnected server
+  - `POST /api/mcp/connections/:name/disconnect` — gracefully disconnect
+  - `DELETE /api/mcp/connections/:name` — remove a connection
+  - `GET /api/mcp/server` — local MCP server status
+  - `GET /api/chrome-bridge/status` — Chrome Bridge connection state, tools, and metrics
+  - `POST /api/chrome-bridge/start` — start the chrome-bridge MCP server
+  - `POST /api/chrome-bridge/stop` — stop the chrome-bridge MCP server
+  - `GET /api/chrome-bridge/tools` — list registered chrome-bridge tools
+
+- **GitHub token detection on Version Control page** — fixed `getGitHubToken()` to read from the actual config locations (`config.update.githubToken` and `config.pluginUpdate.githubToken`) instead of a non-existent top-level `config.githubToken`, so the page correctly reports configured tokens.
+
 ## [0.45.1] — 2026-06-19
 
 ### Fixed
 
 - **UI: removed Tailwind CDN from production** — replaced `cdn.tailwindcss.com` script tag with inline CSS (`html { height: 100% }`), removed 3 redundant Tailwind utility class usages (`h-full`, `flex`), and updated CSP headers accordingly
-- **UI: fixed SyntaxError in sandbox/bug-repro JavaScript** — corrected string escaping in 7 onclick handlers from `\''` to `\\''` (template literal double-escape) in sandbox snapshots, workspace snapshots, and bug repro sections; the broken escaping caused `Uncaught SyntaxError: Unexpected string` in the inline SPA
+- **UI: fixed SyntaxError on Projects page Delete button** — `JSON.stringify(p.name)` in the onclick handler was emitting double quotes that broke the HTML attribute boundary (`onclick="deleteProject("name")"`). Changed to `escAttr(p.name)` wrapped in single-quote JS string delimiters.
 - **UI: vault credential form accessibility** — wrapped vault credential modal inputs in a `<form>` element with proper button types, added `autocomplete="current-password"` to the password field
 
 ## [0.45.0] — 2026-06-19

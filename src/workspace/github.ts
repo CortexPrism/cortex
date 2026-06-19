@@ -111,9 +111,9 @@ async function ghPaginated<T>(
 export async function getGitHubToken(): Promise<string | null> {
   try {
     const { loadConfig } = await import('../config/config.ts');
-    const config = await loadConfig() as unknown as Record<string, unknown>;
-    const ghToken = config.githubToken as string | undefined;
-    if (ghToken) return ghToken;
+    const config = await loadConfig();
+    if (config.update?.githubToken) return config.update.githubToken;
+    if (config.pluginUpdate?.githubToken) return config.pluginUpdate.githubToken;
   } catch { /* ignore */ }
 
   try {

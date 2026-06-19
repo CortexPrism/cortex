@@ -425,6 +425,14 @@ export interface CortexConfig {
   a2a?: import('../a2a/types.ts').A2AConfig;
   /** Server-level security configuration */
   server?: ServerConfig;
+  /** Security supervisor model override */
+  supervisor?: SupervisorConfig;
+}
+
+export interface SupervisorConfig {
+  provider: ProviderKind;
+  model: string;
+  cacheTTL?: number;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
