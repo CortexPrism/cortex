@@ -290,6 +290,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '032_memori_checkpoints.sql',
       label: 'cortex.db (memori checkpoints)',
     },
+    {
+      db: pluginsDb,
+      sqlFile: '033_plugins_verification_report.sql',
+      label: 'plugins.db (verification report)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

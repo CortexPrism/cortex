@@ -55,6 +55,14 @@ class PluginManager {
     }
 
     await dbInstall(manifest);
+    await updatePlugin(manifest.name, {
+      verification_report_json: JSON.stringify(report),
+      trust_level: report.status === 'verified'
+        ? 'trusted'
+        : report.status === 'unverified'
+        ? 'signed'
+        : 'untrusted',
+    });
     const ctx = await this.getContext(manifest.name);
     ctx.logger.info(`Installed v${manifest.version}`);
 

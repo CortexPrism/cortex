@@ -28,6 +28,7 @@ function normalizeManifest(manifest: PluginManifest): {
   license: string | null;
   source: string | null;
   integrity_hash: string | null;
+  verification_report_json: string | null;
 } {
   return {
     name: manifest.name,
@@ -43,6 +44,7 @@ function normalizeManifest(manifest: PluginManifest): {
     license: manifest.license ?? null,
     source: manifest.homepage ?? null,
     integrity_hash: manifest.hash ?? null,
+    verification_report_json: null,
   };
 }
 
@@ -99,11 +101,11 @@ export async function updatePlugin(name: string, updates: Partial<PluginRow>): P
        version = ?, prev_version = ?, type = ?, runtime = ?, entry = ?,
        manifest_json = ?, declared_permissions = ?, effective_permissions = ?,
        author = ?, description = ?, license = ?, source = ?,
-       integrity_hash = ?, enabled = ?, status = ?, process_id = ?,
+       integrity_hash = ?, verification_report_json = ?, enabled = ?, status = ?, process_id = ?,
        updated_at = ?, last_load_at = ?, dependencies_json = ?,
        trust_level = ?, error_message = ?, load_attempts = ?,
        config_schema_json = ?
-     WHERE name = ?`,
+      WHERE name = ?`,
     [
       merged.version,
       merged.prev_version,
@@ -118,6 +120,7 @@ export async function updatePlugin(name: string, updates: Partial<PluginRow>): P
       merged.license,
       merged.source,
       merged.integrity_hash,
+      merged.verification_report_json,
       merged.enabled,
       merged.status,
       merged.process_id,

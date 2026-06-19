@@ -895,6 +895,29 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ name, dependents, dependencies });
   }
 
+  // GET /api/skills/bindings — get skill bus bindings status
+  if (req.method === 'GET' && path === '/api/skills/bindings') {
+    const { listSkillBindings, getSkillBusStatus, getRecentSkillBusEvents } = await import(
+      '../agent/skill-bus.ts'
+    );
+    const bindings = listSkillBindings();
+    const status = getSkillBusStatus();
+    const events = getRecentSkillBusEvents(30);
+    const skillNames = new Set(bindings.map((b) => b.skillId));
+    const skillMap = new Map<string, { name: string; description: string }>();
+    for (const name of skillNames) {
+      try {
+        const skill = await getSkillByName(name);
+        if (skill) skillMap.set(name, { name: skill.name, description: skill.description ?? '' });
+      } catch { /* skip */ }
+    }
+    const enriched = bindings.map((b) => ({
+      ...b,
+      skill: skillMap.get(b.skillId) ?? { name: b.skillId, description: '' },
+    }));
+    return json({ bindings: enriched, status, events });
+  }
+
   // GET /api/skills/health?name=... — get skill health report
   if (req.method === 'GET' && path === '/api/skills/health') {
     const name = url.searchParams.get('name');
@@ -1774,6 +1797,48 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const plugin = await pluginManager.get(pluginGetMatch[1]);
     if (!plugin) return notFound('Plugin not found');
     return json(plugin);
+  }
+
+  // GET/POST /api/plugins/:name/verification
+  const pluginVerificationMatch = path.match(/^\/api\/plugins\/([^/]+)\/verification$/);
+  if (pluginVerificationMatch) {
+    const pluginName = pluginVerificationMatch[1];
+    const plugin = await pluginManager.get(pluginName);
+    if (!plugin) return notFound('Plugin not found');
+
+    if (req.method === 'GET') {
+      try {
+        const report = plugin.verification_report_json
+          ? JSON.parse(plugin.verification_report_json)
+          : null;
+        return json({ report });
+      } catch {
+        return json({ report: null });
+      }
+    }
+
+    if (req.method === 'POST') {
+      try {
+        const manifest = JSON.parse(plugin.manifest_json) as PluginManifest;
+        const { verifyPluginIntegrity } = await import('../plugins/supply-chain.ts');
+        const report = await verifyPluginIntegrity(plugin.entry, {
+          name: manifest.name,
+          version: manifest.version,
+          author: manifest.author,
+        });
+        await pluginManager.update(pluginName, {
+          verification_report_json: JSON.stringify(report),
+          trust_level: report.status === 'verified'
+            ? 'trusted'
+            : report.status === 'unverified'
+            ? 'signed'
+            : 'untrusted',
+        });
+        return json({ report });
+      } catch (e) {
+        return err((e as Error).message, 400);
+      }
+    }
   }
 
   // POST /api/plugins/install

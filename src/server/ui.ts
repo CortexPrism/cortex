@@ -1589,6 +1589,7 @@ const HTML = `<!DOCTYPE html>
           <p style="font-size:12px;color:var(--text3);margin-top:2px;">Skills are codified expertise — reusable patterns that bridge reasoning and action. Human-authored skills provide domain knowledge; learned skills capture emerging patterns from agent experience.</p>
         </div>
         <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" onclick="loadSkillBindings()" id="skills-bindings-btn" style="font-size:11px;">🔗 Bindings</button>
           <button class="btn btn-ghost" onclick="runHealthMaintenance()" style="font-size:11px;" title="Check skill library health">🩺 Health</button>
           <button class="btn btn-ghost" onclick="loadHumanSkills()" style="font-size:11px;">📥 Load .cortex/skills</button>
           <button class="btn btn-ghost" onclick="openSkillDesigner()" style="font-size:11px;">+ New Skill</button>
@@ -5627,6 +5628,94 @@ function renderSkillsList() {
   }
 }
 
+let showingBindings = false;
+let skillBindingsData = { bindings: [], status: {}, events: [] };
+
+async function loadSkillBindings() {
+  const btn = document.getElementById('skills-bindings-btn');
+  const toolbar = document.querySelector('#page-skills > div:first-of-type > div:last-of-type');
+  const listEl = document.getElementById('skills-list');
+  if (!listEl || !toolbar) return;
+
+  showingBindings = !showingBindings;
+
+  if (showingBindings) {
+    btn.style.background = 'rgba(99,102,241,0.12)';
+    btn.style.color = 'var(--accent2)';
+
+    // Hide the main toolbar elements for bindings mode
+    toolbar.querySelectorAll(':scope > *').forEach(el => { if (el.tagName !== 'BUTTON' || el.id === 'skills-bindings-btn') el.style.display = 'none'; });
+
+    try {
+      const res = await fetch(BASE + '/api/skills/bindings');
+      skillBindingsData = await res.json();
+    } catch { skillBindingsData = { bindings: [], status: {}, events: [] }; }
+
+    renderSkillBindings(listEl);
+  } else {
+    btn.style.background = '';
+    btn.style.color = '';
+    toolbar.querySelectorAll(':scope > *').forEach(el => { el.style.display = ''; });
+    loadSkills();
+  }
+}
+
+function renderSkillBindings(el) {
+  const { bindings, status, events } = skillBindingsData;
+  el.innerHTML = '';
+
+  // Status bar
+  el.innerHTML += '<div id="bindings-stats" style="display:flex;gap:16px;padding:12px 0 8px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);margin-bottom:12px;">' +
+    '<span>Bindings: <b>' + status.totalBindings + '</b></span>' +
+    '<span>Enabled: <b>' + status.enabledBindings + '</b></span>' +
+    '<span>On cooldown: <b>' + status.activeCooldowns + '</b></span>' +
+    '<span>Recent events: <b>' + events.length + '</b></span>' +
+    '</div>';
+
+  // Section: Bindings
+  el.innerHTML += '<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Event Bindings</div>';
+
+  if (!bindings.length) {
+    el.innerHTML += '<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:13px;">No event bindings configured. Bindings connect skill actions to system events.</div>';
+  } else {
+    const actionLabels = { invoke_skill: '⚡ Invoke', inject_context: '📥 Inject', emit_event: '📡 Emit', call_tool: '🔧 Call', notify: '🔔 Notify' };
+    for (const b of bindings) {
+      const bhue = [...b.skillId].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
+      el.innerHTML += '<div style="padding:12px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">' +
+        '<span style="background:hsl(' + bhue + ',55%,18%);color:hsl(' + bhue + ',60%,72%);padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">' + esc(b.skill.name || b.skillId) + '</span>' +
+        '<span class="badge" style="font-size:10px;background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(b.eventType) + '</span>' +
+        '<span class="badge" style="font-size:10px;background:' + (b.enabled ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)') + ';color:' + (b.enabled ? '#4ade80' : 'var(--text3)') + ';">' + (b.enabled ? 'active' : 'disabled') + '</span>' +
+        '<span style="font-size:10px;color:var(--accent2);">' + (actionLabels[b.action.type] || b.action.type) + '</span>' +
+        '<span style="font-size:10px;color:var(--text3);">prio ' + b.priority + '</span>' +
+        '</div>' +
+        (b.conditions.length ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;">' + b.conditions.map(c => 'if ' + c.eventType + (c.match ? ' matches ' + JSON.stringify(c.match) : '')).join('; ') + '</div>' : '') +
+        '</div>';
+    }
+  }
+
+  // Section: Recent Events
+  el.innerHTML += '<div style="font-size:12px;font-weight:600;color:var(--text2);margin-top:16px;margin-bottom:8px;">Recent Event Log</div>';
+
+  if (!events.length) {
+    el.innerHTML += '<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:13px;">No events processed yet. Events occur when tools execute and agent turns complete.</div>';
+  } else {
+    for (const ev of events) {
+      const failed = ev.results.filter(r => !r.success).length;
+      el.innerHTML += '<div style="padding:10px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span class="badge" style="font-size:10px;background:rgba(99,102,241,0.1);color:var(--accent2);">' + esc(ev.sourceEvent.type) + '</span>' +
+        '<span style="font-size:11px;color:var(--text3);">' + ev.triggeredBindings.length + ' binding(s) fired</span>' +
+        '<span style="font-size:11px;color:' + (failed ? '#f87171' : '#4ade80') + ';">' + (failed ? failed + ' failed' : 'all ok') + '</span>' +
+        '</div>' +
+        '<span style="font-size:10px;color:var(--text3);">' + new Date(ev.timestamp).toLocaleTimeString() + '</span>' +
+        '</div>' +
+        '</div>';
+    }
+  }
+}
+
 async function loadHumanSkills() {
   try {
     const r = await fetch(BASE + '/api/skills/load-human', { method: 'POST' }).then(r => r.json());
@@ -8778,10 +8867,20 @@ async function loadPlugins() {
     const caps = JSON.parse(p.declared_permissions || '[]');
     const hue = [...p.name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
     let manifest = null;
+    let verification = null;
     try { manifest = JSON.parse(p.manifest_json || '{}'); } catch {}
+    try { verification = p.verification_report_json ? JSON.parse(p.verification_report_json) : null; } catch {}
     const longDesc = manifest?.description || p.description;
     const readme = manifest?.readme || manifest?.readmeHtml || '';
     const readmeId = 'readme-' + p.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const trustColors = {
+      verified: 'background:rgba(34,197,94,0.12);color:#4ade80;',
+      unverified: 'background:rgba(245,158,11,0.12);color:#fbbf24;',
+      suspicious: 'background:rgba(248,113,113,0.12);color:#f87171;',
+      blocked: 'background:rgba(239,68,68,0.12);color:#f87171;',
+    };
+    const trustStyle = verification ? (trustColors[verification.status] || trustColors.unverified) : 'background:rgba(255,255,255,0.05);color:var(--text3);';
+    const trustBadge = '<span class="badge" style="' + trustStyle + '">' + esc(verification ? verification.status : 'unverified') + '</span>';
     return \`<div class="ext-card">
       <div class="ext-card-header">
         <div class="ext-card-icon" style="background:hsl(\${hue},55%,18%);color:hsl(\${hue},60%,72%);">\${esc(p.name[0] || '?')}</div>
@@ -8790,6 +8889,7 @@ async function loadPlugins() {
             <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
             <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">\${esc(p.type)}</span>
             <span class="badge" style="background:rgba(99,102,241,0.12);color:var(--accent2);">v\${esc(p.version)}</span>
+            \${trustBadge}
             <span class="badge" style="background:\${p.enabled?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.05)'};color:\${p.enabled?'#4ade80':'var(--text3)'};">\${p.enabled?'enabled':'disabled'}</span>
           </div>
           <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${esc(p.entry)}</div>
@@ -8801,10 +8901,21 @@ async function loadPlugins() {
         <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;align-self:flex-start;margin-top:4px;" onclick="togglePluginReadme('\${readmeId}')">Show readme</button>\` : ''}
         \${caps.length ? \`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">\${caps.map(c => \`<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text3);">\${esc(c)}</span>\`).join('')}</div>\` : ''}
         \${p.author ? \`<div style="font-size:11px;color:var(--text3);margin-top:2px;">by \${esc(p.author)}\${p.source?' · <a href="'+esc(p.source)+'" target="_blank" style="color:var(--accent2);">homepage</a>':''}</div>\` : ''}
+        \${verification && verification.checks && verification.checks.length ? \`<div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:600;color:var(--text2);">Supply Chain Verification</span>
+            <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;" onclick="refreshPluginVerification('\${p.name}')">Re-scan</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.4;">\${esc(verification.summary || 'Verification complete')}</div>
+          <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">
+            \${verification.checks.filter(c => !c.passed).map(c => \`<div style="font-size:10px;color:var(--text3);padding:6px 8px;border-radius:6px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.14);"><strong style="color:#f87171;">\${esc(c.name)}</strong> · \${esc(c.details)}</div>\`).join('')}
+          </div>
+        </div>\` : ''}
       </div>
       <div class="ext-card-footer">
         <span style="font-size:11px;color:var(--text3);">\${esc(p.runtime || '')} · \${esc(p.status || '')}</span>
         <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost" onclick="refreshPluginVerification('\${p.name}')">Scan</button>
           \${p.enabled
             ? \`<button class="btn btn-ghost" onclick="togglePlugin('\${p.name}', false)">Disable</button>\`
             : \`<button class="btn btn-ghost" onclick="togglePlugin('\${p.name}', true)">Enable</button>\`}
@@ -8813,6 +8924,16 @@ async function loadPlugins() {
       </div>
     </div>\`;
   }).join('');
+}
+
+async function refreshPluginVerification(name) {
+  const res = await fetch(BASE + '/api/plugins/' + encodeURIComponent(name) + '/verification', { method: 'POST' });
+  if (res.ok) {
+    toast('Verification updated', 'success');
+    loadPlugins();
+  } else {
+    toast('Verification failed', 'error');
+  }
 }
 
 function showInstallModal() {

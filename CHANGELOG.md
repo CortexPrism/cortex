@@ -5,6 +5,25 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.44.0] — 2026-06-19
+
+### Added
+
+- **Supply-Chain Verification Reports** — verification results are now persisted per plugin and surfaced in the Extensions page:
+  - New `verification_report_json` column on the plugins table (migration #033)
+  - `IntegrityReport` is stored after plugin install and both update paths (GitHub + marketplace/URL), with `trust_level` auto-derived from verification status
+  - Color-coded trust badges in plugin cards (green verified, amber unverified, red suspicious/blocked)
+  - Inline verification details section showing summary and failed checks with per-check severity
+  - "Scan" button in every plugin card footer and "Re-scan" in the verification section
+  - `GET/POST /api/plugins/:name/verification` endpoint for inspection and on-demand re-verification
+
+- **Skill Bus Bindings View** — live event orchestration surface in the Skills page:
+  - In-memory recent-events buffer in the skill bus (max 100 events) tracking triggered bindings, per-binding results (success/failure, duration), and timestamps
+  - New `GET /api/skills/bindings` endpoint returning enriched bindings, bus status, and recent event log
+  - "Bindings" toggle button in the Skills page header switches between skill list and bindings view
+  - Bindings rendered as cards with skill name, event type, enabled/disabled state, action type, priority, and conditions
+  - Recent event log showing event type, fired binding count, pass/fail breakdown, and local timestamps
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
