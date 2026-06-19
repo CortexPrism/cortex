@@ -97,8 +97,16 @@ function cacheDecision(
  * Use Model Quartermaster or config default to select optimal supervisor model
  * Prefer fast, cheap models (gemini-2.0-flash, gpt-4o-mini, claude-3.5-haiku)
  */
-async function selectSupervisorModel(): Promise<{ provider: ProviderKind; model: string }> {
+export async function selectSupervisorModel(): Promise<{ provider: ProviderKind; model: string }> {
   const config = await loadConfig();
+
+  // Explicit supervisor config takes priority
+  if (config.supervisor?.provider && config.supervisor?.model) {
+    return {
+      provider: config.supervisor.provider,
+      model: config.supervisor.model,
+    };
+  }
 
   if (config.modelSelection?.enabled) {
     try {

@@ -94,6 +94,15 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     _log.warn(`Failed to register A2A executor`, { error: (e as Error).message });
   }
 
+  // Register built-in tools into global registry for API listing
+  try {
+    const { globalRegistry, registerAllBuiltins } = await import('../tools/registry.ts');
+    await registerAllBuiltins(globalRegistry, true);
+    _log.info('Built-in tools registered');
+  } catch (e) {
+    _log.warn(`Failed to register built-in tools`, { error: (e as Error).message });
+  }
+
   // Initialize Skill Bus for cross-plugin event orchestration
   try {
     const { initSkillBus } = await import('../agent/skill-bus.ts');

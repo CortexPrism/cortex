@@ -22,13 +22,14 @@ export async function createProject(name: string, opts?: {
   agentId?: string;
   description?: string;
   tools?: string[];
+  path?: string;
 }): Promise<ProjectConfig> {
   const dir = getProjectDir(name);
   await ensureDir(dir);
 
   const config: ProjectConfig = {
     name,
-    path: dir,
+    path: opts?.path ?? dir,
     agentId: opts?.agentId,
     description: opts?.description,
     tools: opts?.tools ?? [],

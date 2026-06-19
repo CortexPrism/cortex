@@ -189,8 +189,6 @@ function loadWidget(w){
   var fn=fns[w.type];if(fn)fn(body,w.id,w);else body.innerHTML="<div class=empty>Unknown</div>";
 }
 
-async function fetchJSON(url,fallback){try{return await fetch(url).then(function(r){return r.json()})}catch(e){console.log("[Dashboard] fetch error",url,e);return fallback}}
-
 async function renderKpiGrid(body){
   var sys=await fetchJSON("/api/system",{});var ana=await fetchJSON("/api/analytics?days=1",{});var t=ana.totals||{};
   body.innerHTML="<div class=kpi-grid>"
@@ -1412,6 +1410,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="openProjectForm()">+ New Project</button>
+        <button class="btn btn-ghost" onclick="openGitHubImport()">↓ Import from GitHub</button>
         <button class="btn btn-ghost" onclick="loadProjects()">↻ Refresh</button>
       </div>
     </div>
@@ -1439,6 +1438,16 @@ const HTML = `<!DOCTYPE html>
         <button class="btn btn-ghost" onclick="closeProjectForm()" style="height:34px;">Cancel</button>
       </div>
       <div id="project-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
+    </div>
+    <div id="gh-import-inline" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-weight:600;font-size:14px;">Import from GitHub</span>
+        <button class="btn btn-ghost" onclick="closeGitHubImport()">Close</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Select a repository to clone and create as a project.</div>
+      <div id="gh-import-list-inline" style="max-height:50vh;overflow-y:auto;">
+        <div style="text-align:center;color:var(--text3);padding:20px;">Loading repositories…</div>
+      </div>
     </div>
     <!-- Project list -->
     <div id="projects-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:10px;">
@@ -2321,8 +2330,21 @@ const HTML = `<!DOCTYPE html>
         <span id="sk-status" style="font-size:12px;align-self:center;margin-left:4px;"></span>
       </div>
       <input type="hidden" id="sk-edit-name" value="" />
-     </div>
-   </div>
+    </div>
+    <!-- GitHub import modal -->
+    <div id="gh-import-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;min-width:400px;max-height:80vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-weight:600;font-size:14px;">Import from GitHub</span>
+          <button class="btn btn-ghost" onclick="closeGitHubImport()" style="font-size:18px;padding:0 6px;">✕</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Select a repository to clone and create as a project.</div>
+        <div id="gh-import-list" style="margin-bottom:12px;max-height:50vh;overflow-y:auto;">
+          <div style="text-align:center;color:var(--text3);padding:20px;">Loading repositories…</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Security Approval Request -->
   <div id="approval-modal" role="alertdialog" aria-modal="true" aria-labelledby="approval-title" aria-describedby="approval-reasoning" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);">
@@ -3139,6 +3161,7 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
 <script>
 const BASE = window.location.origin;
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws';
+async function fetchJSON(url,fallback){try{return await fetch(url).then(function(r){return r.json()})}catch(e){console.log("[fetchJSON] error",url,e);return fallback}}
 let ws, sessionId = null, agentBubble = null, agentRaw = '';
 let currentPage = 'chat';
 let currentReasoningData = '';
@@ -4876,7 +4899,7 @@ function renderProjects(projects) {
           <span>Created: \${created}</span>
         </div>
       </div>
-      <button class="btn btn-ghost" style="color:#f87171;font-size:12px;" onclick="deleteProject(\${JSON.stringify(p.name)})">Delete</button>
+      <button class="btn btn-ghost" style="color:#f87171;font-size:12px;" onclick="deleteProject('\${escAttr(p.name)}')">Delete</button>
     \`;
     el.appendChild(d);
   }
@@ -4917,6 +4940,56 @@ async function deleteProject(name) {
   const res = await fetch(BASE + '/api/projects/' + encodeURIComponent(name), { method: 'DELETE' });
   if (!res.ok) { const d = await res.json(); showToast(d.error || 'Failed to delete project', 'error'); return; }
   loadProjects();
+}
+
+// ── GitHub Import ─────────────────────────────────────────
+async function openGitHubImport() {
+  var modal = document.getElementById('gh-import-modal');
+  var inline = document.getElementById('gh-import-inline');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+  }
+  if (inline) inline.style.display = 'block';
+  loadGitHubRepos();
+}
+function closeGitHubImport() {
+  var modal = document.getElementById('gh-import-modal');
+  var inline = document.getElementById('gh-import-inline');
+  if (modal) modal.style.display = 'none';
+  if (inline) inline.style.display = 'none';
+}
+async function loadGitHubRepos() {
+  var el = document.getElementById('gh-import-list');
+  var inlineEl = document.getElementById('gh-import-list-inline');
+  function setLists(html) {
+    if (el) el.innerHTML = html;
+    if (inlineEl) inlineEl.innerHTML = html;
+  }
+  try {
+    var repos = await fetch(BASE + '/api/github/repos').then(r => r.json()).catch(function() { return []; });
+    if (!repos.length) { setLists('<div style="text-align:center;color:var(--text3);padding:20px;">No repositories found or token not configured.</div>'); return; }
+    window._ghRepos = repos;
+    setLists(repos.map(function(repo, idx) {
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid var(--border);">' +
+        '<div><div style="font-weight:500;font-size:12px;">' + esc(repo.full_name) + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);">' + esc(repo.description || '') + ' · ⭐ ' + (repo.stargazers_count || 0) + '</div></div>' +
+        '<button class="btn btn-primary" onclick="importGitHubProject(' + idx + ')" style="font-size:10px;padding:4px 10px;">Import</button></div>';
+    }).join(''));
+  } catch(e) { setLists('<div style="text-align:center;color:var(--accent-red);padding:20px;">Failed to load repositories</div>'); }
+}
+async function importGitHubProject(idx) {
+  var repo = window._ghRepos[idx];
+  if (!repo) { toast('Repository not found', 'error'); return; }
+  try {
+    var res = await fetch(BASE + '/api/projects/import-github', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ fullName: repo.full_name, projectName: repo.name })
+    });
+    if (res.ok) { closeGitHubImport(); loadProjects(); toast('Imported ' + repo.name, 'success'); }
+    else { var d = await res.json(); toast(d.error || 'Import failed', 'error'); }
+  } catch(e) { toast('Import failed', 'error'); }
 }
 
 // ── Hooks ────────────────────────────────────────────────────
@@ -7744,9 +7817,9 @@ function switchSettingsTab(tabName) {
   if (extBar) {
     if (tabName === 'providers') {
       extBar.style.display = 'flex';
-      document.getElementById('settings-ext-tab-providers').style.display = '';
-      document.getElementById('settings-ext-tab-router').style.display = '';
-      document.getElementById('settings-ext-tab-supervisor').style.display = '';
+      document.getElementById('settings-ext-tab-providers')?.style && (document.getElementById('settings-ext-tab-providers').style.display = '');
+      document.getElementById('settings-ext-tab-router')?.style && (document.getElementById('settings-ext-tab-router').style.display = '');
+      document.getElementById('settings-ext-tab-supervisor')?.style && (document.getElementById('settings-ext-tab-supervisor').style.display = '');
       if (mt) mt.style.display = 'none';
     } else if (tabName === 'system') {
       extBar.style.display = 'flex';
@@ -12282,16 +12355,18 @@ async function loadCodegraphProjects() {
 }
 async function loadCodegraphProject(name) {
   if (!name) { resetCodegraphGraph(); return; }
-  document.getElementById('cg-graph').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);">Loading graph…</div>';
+  document.getElementById('cg-graph').innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;height:100%;color:var(--text3);"><div>Loading graph…</div><div style="font-size:11px;">Imported projects may take a little longer on first load while Codegraph indexes the repository.</div></div>';
   try {
-    var data = await fetch(BASE + '/api/codegraph/architecture?project=' + encodeURIComponent(name)).then(r => r.json());
+    var res = await fetch(BASE + '/api/codegraph/architecture?project=' + encodeURIComponent(name));
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load graph');
     cgGraphData = data; cgProject = name;
     renderCodegraphGraph(data.nodes || [], data.edges || []);
     document.getElementById('cg-empty-state').style.display = 'none';
     switchCodegraphPanel(cgCurrentPanel);
     loadCodegraphLanguages();
   } catch(e) {
-    document.getElementById('cg-graph').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">Failed to load graph</div>';
+    document.getElementById('cg-graph').innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;height:100%;color:var(--accent-red);"><div>Failed to load graph</div><div style="font-size:11px;color:var(--text3);">' + esc(e && e.message ? e.message : 'Unknown error') + '</div></div>';
   }
 }
 async function loadCodegraphLanguages() {
@@ -13799,9 +13874,9 @@ function switchSettingsExtTab(btn, tab) {
   var extBar = document.getElementById('settings-ext-tab-bar');
   if (extBar) {
     extBar.style.display = 'flex';
-    document.getElementById('settings-ext-tab-providers').style.display = '';
-    document.getElementById('settings-ext-tab-router').style.display = '';
-    document.getElementById('settings-ext-tab-supervisor').style.display = '';
+    document.getElementById('settings-ext-tab-providers')?.style && (document.getElementById('settings-ext-tab-providers').style.display = '');
+    document.getElementById('settings-ext-tab-router')?.style && (document.getElementById('settings-ext-tab-router').style.display = '');
+    document.getElementById('settings-ext-tab-supervisor')?.style && (document.getElementById('settings-ext-tab-supervisor').style.display = '');
     if (mt) mt.style.display = 'none';
   }
   el.style.display = 'block';
@@ -13845,15 +13920,54 @@ async function loadSupervisorConfig() {
   var el = document.getElementById('settings-ext-content');
   try {
     var data = await fetch(BASE + '/api/security/supervisor').then(r => r.json()).catch(function() { return {}; });
+    var providers = await fetch(BASE + '/api/providers/configured').then(r => r.json()).catch(function() { return []; });
+    var providerOpts = providers.map(function(p) { return '<option value="' + esc(p.kind) + '"' + (p.kind === data.provider ? ' selected' : '') + '>' + esc(p.kind) + '</option>'; }).join('');
+    if (!providerOpts) providerOpts = '<option value="' + esc(data.provider || '') + '">' + esc(data.provider || '') + '</option>';
     el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Security Supervisor</h3>' +
-      '<div class="stat-row"><span>Provider</span><span>' + esc(data.provider || 'google') + '</span></div>' +
-      '<div class="stat-row"><span>Model</span><span>' + esc(data.model || 'gemini-2.0-flash') + '</span></div>' +
-      '<div class="stat-row"><span>Cache TTL</span><span>' + (data.cacheTTL || 3600) + 's</span></div>' +
-      '<div style="margin-top:12px;">' +
-      '<button class="btn btn-ghost" onclick="clearSupervisorCache()" style="font-size:10px;">Clear Decision Cache</button>' +
-      '<button class="btn btn-ghost" onclick="loadSupervisorHistory()" style="font-size:10px;">View History</button></div>' +
+      '<div style="margin-bottom:8px;"><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:2px;">Provider</label>' +
+      '<select id="sup-provider" class="inp" onchange="onSupervisorProviderChange()" style="font-size:11px;">' + providerOpts + '</select></div>' +
+      '<div style="margin-bottom:8px;"><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:2px;">Model</label>' +
+      '<select id="sup-model" class="inp" style="font-size:11px;"><option value="">Loading...</option></select></div>' +
+      '<div style="margin-bottom:12px;"><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:2px;">Cache TTL (seconds)</label>' +
+      '<input id="sup-cachettl" class="inp" type="number" value="' + (data.cacheTTL || 3600) + '" style="font-size:11px;width:120px;"></div>' +
+      '<button class="btn btn-primary" onclick="saveSupervisorConfig()" style="font-size:10px;margin-right:4px;">Save</button>' +
+      '<button class="btn btn-ghost" onclick="clearSupervisorCache()" style="font-size:10px;margin-right:4px;">Clear Decision Cache</button>' +
+      '<button class="btn btn-ghost" onclick="loadSupervisorHistory()" style="font-size:10px;">View History</button>' +
       '<div id="supervisor-extra" style="margin-top:8px;"></div>';
+    loadSupervisorModels(data.model || '');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadSupervisorModels(currentModel) {
+  var provider = document.getElementById('sup-provider').value;
+  var sel = document.getElementById('sup-model');
+  if (!sel) return;
+  try {
+    var models = await fetch(BASE + '/api/providers/' + encodeURIComponent(provider) + '/models').then(r => r.json()).catch(function() { return []; });
+    var arr = Array.isArray(models) ? models : (models.models || models.data || []);
+    var opts = arr.map(function(m) {
+      var id = typeof m === 'string' ? m : (m.id || m.name || '');
+      return '<option value="' + esc(id) + '"' + (id === currentModel ? ' selected' : '') + '>' + esc(id) + '</option>';
+    }).join('');
+    if (!opts && currentModel) opts = '<option value="' + esc(currentModel) + '">' + esc(currentModel) + '</option>';
+    sel.innerHTML = opts || '<option value="">No models available</option>';
+  } catch(e) { sel.innerHTML = currentModel ? '<option value="' + esc(currentModel) + '">' + esc(currentModel) + '</option>' : '<option value="">Error loading</option>'; }
+}
+function onSupervisorProviderChange() {
+  loadSupervisorModels('');
+}
+async function saveSupervisorConfig() {
+  var provider = document.getElementById('sup-provider').value;
+  var model = document.getElementById('sup-model').value;
+  var cacheTTL = parseInt(document.getElementById('sup-cachettl').value) || 3600;
+  if (!provider || !model) { toast('Provider and model are required', 'warning'); return; }
+  try {
+    await fetch(BASE + '/api/security/supervisor', {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ provider: provider, model: model, cacheTTL: cacheTTL })
+    });
+    toast('Supervisor config saved', 'success');
+    loadSupervisorConfig();
+  } catch(e) { toast('Save failed', 'error'); }
 }
 async function clearSupervisorCache() {
   await fetch(BASE + '/api/security/supervisor/cache', { method: 'DELETE' });
@@ -13893,13 +14007,13 @@ function disconnectPkm(id) { pkmConnections=pkmConnections.filter(function(c){re
 // ── Page Enhancement Initializers ─────────────────────────────────
 var _enhanced = false;
 function initPageEnhancements() { if(_enhanced)return;_enhanced=true;var os=loadSettings;loadSettings=function(){os();setTimeout(function(){addSettingsCompressor();addSettingsPreferences();addSettingsSandbox();addSettingsA2A()},600)};var oe=loadEvalPage;loadEvalPage=function(){oe();setTimeout(function(){addEvalHarnesses();addEvalRagSection()},600)} }
-function addSettingsCompressor() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-comp-card'))return;var d=document.createElement('div');d.id='s-comp-card';d.className='card-sm';d.style.cssText='margin-top:16px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Context Compressor (#55)</div><div class="stat-row"><span>Token Budget</span><span><input type="range" id="comp-budget" min="16000" max="256000" step="8000" value="128000" oninput="document.getElementById(\\'comp-bval\\').textContent=this.value" style="width:120px;"> <span id="comp-bval">128000</span></span></div><div class="stat-row"><span>Compression</span><span><input type="checkbox" id="comp-enabled" checked> Enabled</span></div><button class="btn btn-ghost" onclick="saveCompressorConfig()" style="font-size:10px;margin-top:8px;">Save</button>';c.appendChild(d);fetch(BASE+'/api/settings/compressor').then(function(r){return r.json()}).then(function(d2){document.getElementById('comp-budget').value=d2.tokenBudget||128000;document.getElementById('comp-bval').textContent=d2.tokenBudget||128000;document.getElementById('comp-enabled').checked=d2.compressionEnabled!==false}).catch(function(){}) }
+function addSettingsCompressor() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-comp-card'))return;var d=document.createElement('div');d.id='s-comp-card';d.className='card-sm';d.style.cssText='margin-top:16px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Context Compressor</div><div class="stat-row"><span>Token Budget</span><span><input type="range" id="comp-budget" min="16000" max="256000" step="8000" value="128000" oninput="document.getElementById(\\'comp-bval\\').textContent=this.value" style="width:120px;"> <span id="comp-bval">128000</span></span></div><div class="stat-row"><span>Compression</span><span><input type="checkbox" id="comp-enabled" checked> Enabled</span></div><button class="btn btn-ghost" onclick="saveCompressorConfig()" style="font-size:10px;margin-top:8px;">Save</button>';c.appendChild(d);fetch(BASE+'/api/settings/compressor').then(function(r){return r.json()}).then(function(d2){document.getElementById('comp-budget').value=d2.tokenBudget||128000;document.getElementById('comp-bval').textContent=d2.tokenBudget||128000;document.getElementById('comp-enabled').checked=d2.compressionEnabled!==false}).catch(function(){}) }
 function saveCompressorConfig() { fetch(BASE+'/api/settings/compressor',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tokenBudget:parseInt(document.getElementById('comp-budget').value),compressionEnabled:document.getElementById('comp-enabled').checked,compressionThreshold:0.7})}).then(function(){toast('Compressor saved','success')}) }
-function addSettingsPreferences() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-pref-card'))return;var d=document.createElement('div');d.id='s-pref-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Learned Preferences (#68)</div><div id="s-pref-list"></div>';c.appendChild(d);fetch(BASE+'/api/agent/preferences').then(function(r){return r.json()}).then(function(prefs){document.getElementById('s-pref-list').innerHTML=prefs.length?prefs.map(function(p){return'<div class="stat-row"><span>'+esc(p.key)+'</span><span>'+esc(p.value)+'</span></div>'}).join(''):'<div style="font-size:10px;color:var(--text3);">No learned preferences yet</div>'}).catch(function(){}) }
-function addSettingsSandbox() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-sbx-card'))return;var d=document.createElement('div');d.id='s-sbx-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Sandbox Backends (#257)</div><div id="s-sbx-list"></div>';c.appendChild(d);fetch(BASE+'/api/sandbox/backends').then(function(r){return r.json()}).then(function(data){document.getElementById('s-sbx-list').innerHTML=(data.backends||[]).map(function(b){return'<div class="stat-row"><span>'+esc(b.label)+'</span><span style="color:'+(b.available?'#4ade80':'#f87171')+'">'+(b.available?'available':'unavailable')+'</span></div>'}).join('')}).catch(function(){}) }
-function addSettingsA2A() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-a2a-card'))return;var d=document.createElement('div');d.id='s-a2a-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">A2A Protocol Bridge (#251)</div><div class="stat-row"><span>Status</span><span style="color:#4ade80;">Active</span></div><div class="stat-row"><span>Agent Card</span><span style="font-size:10px;">GET /.well-known/agent-card.json</span></div>';c.appendChild(d) }
-function addEvalHarnesses() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-harn'))return;var s=document.createElement('div');s.id='e-harn';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Eval Harness Presets (#186)</div><div id="e-harn-list"></div>';c.appendChild(s);fetch(BASE+'/api/eval/harnesses').then(function(r){return r.json()}).then(function(data){document.getElementById('e-harn-list').innerHTML=(data.presets||[]).map(function(p){return'<div style="padding:8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;"><div style="font-weight:500;font-size:11px;">'+esc(p.name)+'</div><div style="font-size:10px;color:var(--text3);">'+(p.tasks||[]).join(' · ')+'</div><div style="font-size:9px;color:var(--accent2);">scoring: '+esc(p.scoring)+'</div></div>'}).join('')}).catch(function(){}) }
-function addEvalRagSection() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-rag'))return;var s=document.createElement('div');s.id='e-rag';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">RAG Eval (#178)</div><input id="rag-q" class="inp" placeholder="Test query..." style="margin-bottom:6px;"><div style="display:flex;gap:8px;"><input id="rag-d" class="inp" placeholder="Retrieved docs" style="flex:1;"><button class="btn btn-ghost" onclick="runRagEval()">Evaluate</button></div><div id="rag-res" style="margin-top:8px;font-size:10px;"></div>';c.appendChild(s) }
+function addSettingsPreferences() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-pref-card'))return;var d=document.createElement('div');d.id='s-pref-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Learned Preferences</div><div id="s-pref-list"></div>';c.appendChild(d);fetch(BASE+'/api/agent/preferences').then(function(r){return r.json()}).then(function(prefs){document.getElementById('s-pref-list').innerHTML=prefs.length?prefs.map(function(p){return'<div class="stat-row"><span>'+esc(p.key)+'</span><span>'+esc(p.value)+'</span></div>'}).join(''):'<div style="font-size:10px;color:var(--text3);">No learned preferences yet</div>'}).catch(function(){}) }
+function addSettingsSandbox() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-sbx-card'))return;var d=document.createElement('div');d.id='s-sbx-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Sandbox Backends</div><div id="s-sbx-list"></div>';c.appendChild(d);fetch(BASE+'/api/sandbox/backends').then(function(r){return r.json()}).then(function(data){document.getElementById('s-sbx-list').innerHTML=(data.backends||[]).map(function(b){return'<div class="stat-row"><span>'+esc(b.label)+'</span><span style="color:'+(b.available?'#4ade80':'#f87171')+'">'+(b.available?'available':'unavailable')+'</span></div>'}).join('')}).catch(function(){}) }
+function addSettingsA2A() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-a2a-card'))return;var d=document.createElement('div');d.id='s-a2a-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">A2A Protocol Bridge</div><div class="stat-row"><span>Status</span><span style="color:#4ade80;">Active</span></div><div class="stat-row"><span>Agent Card</span><span style="font-size:10px;">GET /.well-known/agent-card.json</span></div>';c.appendChild(d) }
+function addEvalHarnesses() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-harn'))return;var s=document.createElement('div');s.id='e-harn';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Eval Harness Presets</div><div id="e-harn-list"></div>';c.appendChild(s);fetch(BASE+'/api/eval/harnesses').then(function(r){return r.json()}).then(function(data){document.getElementById('e-harn-list').innerHTML=(data.presets||[]).map(function(p){return'<div style="padding:8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;"><div style="font-weight:500;font-size:11px;">'+esc(p.name)+'</div><div style="font-size:10px;color:var(--text3);">'+(p.tasks||[]).join(' · ')+'</div><div style="font-size:9px;color:var(--accent2);">scoring: '+esc(p.scoring)+'</div></div>'}).join('')}).catch(function(){}) }
+function addEvalRagSection() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-rag'))return;var s=document.createElement('div');s.id='e-rag';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">RAG Eval</div><input id="rag-q" class="inp" placeholder="Test query..." style="margin-bottom:6px;"><div style="display:flex;gap:8px;"><input id="rag-d" class="inp" placeholder="Retrieved docs" style="flex:1;"><button class="btn btn-ghost" onclick="runRagEval()">Evaluate</button></div><div id="rag-res" style="margin-top:8px;font-size:10px;"></div>';c.appendChild(s) }
 function runRagEval() { var q=document.getElementById('rag-q').value;var docs=document.getElementById('rag-d').value.split(',').map(function(d){return d.trim()}).filter(Boolean);fetch(BASE+'/api/eval/rag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,retrievedDocs:docs})}).then(function(r){return r.json()}).then(function(d){document.getElementById('rag-res').innerHTML='Retrieved: '+d.retrievedCount+' · Hit@1: '+(d.hitAt1?'Yes':'No')+' · Recall: '+(d.recall!=null?d.recall.toFixed(2):'N/A')+' · MRR: '+d.mrr.toFixed(2)}) }
 setTimeout(initPageEnhancements, 1500);
 
