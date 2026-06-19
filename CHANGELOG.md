@@ -57,6 +57,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - Active tasks auto-refresh every 3 seconds when tab is selected
   - `GET /api/workflows/tasks` endpoint for the task board data
 
+- **Memory Health Monitor (#70)** — health scoring and warnings for memory stores:
+  - `getMemoryHealth()` now computes a 0-100 health score and generates `HealthWarning[]` with severity levels
+  - Stale ratio, low decay, low access, unconnected entities, and low reflection confidence trigger warnings
+  - Memory page shows color-coded health score bar (green ≥80, amber ≥50, red <50) and warning list
+
+- **Entity Resolution Memory (#66)** — duplicate detection and merging:
+  - New `findDuplicateEntities()` in `graph.ts` finds fuzzy-matched entity duplicates across the graph
+  - New `mergeEntities()` relinks relations and removes the source entity
+  - `GET /api/memory/duplicates` returns duplicate groups; `POST /api/memory/merge` merges two entities
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed

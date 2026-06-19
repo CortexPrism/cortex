@@ -304,6 +304,12 @@ export async function autoTagUntaggedMemories(): Promise<number> {
   return tagged;
 }
 
+export interface HealthWarning {
+  message: string;
+  severity: 'info' | 'warning' | 'critical';
+  category: 'episodic' | 'semantic' | 'graph' | 'reflection';
+}
+
 export interface MemoryHealth {
   episodic: {
     total: number;
@@ -331,6 +337,8 @@ export interface MemoryHealth {
     avgConfidence: number;
     metaPatterns: number;
   };
+  healthScore: number;
+  warnings: HealthWarning[];
 }
 
 let healthCache: { data: MemoryHealth; ts: number } | null = null;
@@ -398,14 +406,89 @@ export async function getMemoryHealth(): Promise<MemoryHealth> {
     ),
   ]);
 
-  const result = {
+  const result: MemoryHealth = {
     episodic: ep ??
       { total: 0, active: 0, stale: 0, avgDecay: 1.0, avgImportance: 0.5, avgAccess: 0 },
     semantic: sem ??
       { total: 0, active: 0, stale: 0, avgDecay: 1.0, avgImportance: 0.5, avgAccess: 0 },
     graph: graph ?? { entities: 0, relations: 0, avgStrength: 0.5 },
     reflection: ref ?? { total: 0, avgConfidence: 0.5, metaPatterns: 0 },
+    healthScore: 100,
+    warnings: [],
   };
+
+  const warnings: HealthWarning[] = [];
+  let healthScore = 100;
+
+  for (
+    const [category, data] of [
+      ['episodic' as const, result.episodic],
+      ['semantic' as const, result.semantic],
+    ] as const
+  ) {
+    if (data.total > 0 && data.total === data.stale) {
+      warnings.push({
+        message: `All ${data.total} ${category} memories are stale (decay < 0.1)`,
+        severity: 'critical',
+        category,
+      });
+      healthScore -= 25;
+    } else if (data.total > 0 && data.stale / data.total > 0.5) {
+      warnings.push({
+        message: `${data.stale}/${data.total} ${category} memories are stale`,
+        severity: 'warning',
+        category,
+      });
+      healthScore -= 10;
+    }
+    if (data.avgDecay < 0.3 && data.total > 10) {
+      warnings.push({
+        message: `Avg ${category} decay is very low (${data.avgDecay.toFixed(2)})`,
+        severity: 'warning',
+        category,
+      });
+      healthScore -= 8;
+    }
+    if (data.avgAccess < 0.5 && data.total > 20) {
+      warnings.push({
+        message: `Low ${category} access rate (avg ${data.avgAccess.toFixed(1)})`,
+        severity: 'info',
+        category,
+      });
+      healthScore -= 3;
+    }
+  }
+
+  if (result.graph.entities > 0 && result.graph.relations === 0) {
+    warnings.push({
+      message: `${result.graph.entities} entities with no relations`,
+      severity: 'warning',
+      category: 'graph',
+    });
+    healthScore -= 10;
+  }
+  if (result.graph.entities > 100) {
+    warnings.push({
+      message: `Large entity graph (${result.graph.entities} entities) — consider deduplication`,
+      severity: 'info',
+      category: 'graph',
+    });
+    healthScore -= 5;
+  }
+
+  if (result.reflection.total > 0 && result.reflection.avgConfidence < 0.5) {
+    warnings.push({
+      message: `Low average reflection confidence (${result.reflection.avgConfidence.toFixed(2)})`,
+      severity: 'warning',
+      category: 'reflection',
+    });
+    healthScore -= 8;
+  }
+
+  result.warnings = warnings;
+  result.healthScore = Math.max(0, Math.round(healthScore));
+  result.warnings = warnings;
+  result.healthScore = Math.max(0, Math.round(healthScore));
 
   healthCache = { data: result, ts: Date.now() };
   return result;
