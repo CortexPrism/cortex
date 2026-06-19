@@ -98,6 +98,28 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Workspace Context Snapshot (#240)** — `GET /api/sandbox/workspace-snapshot` captures file tree, sizes, session list, and git branch
 
+- **CSV/Spreadsheet Analyst (#109)** — `POST /api/tools/csv-parse` parses CSV data with headers and rows
+
+- **Tool Discovery (#247)** — `GET /api/tools/discover` lists all registered tools with names and descriptions
+
+- **Plugin Scaffolder (#250)** — `POST /api/tools/scaffold-plugin` generates manifest.json scaffolding for new plugins
+
+- **Usage Analytics ROI (#249)** — `GET /api/analytics/roi` aggregates tokens, cost, sessions, and tool calls
+
+- **Multi-Channel Memory (#260)** — `GET /api/analytics/channels-memory` shows message counts per channel
+
+- **Infrastructure Drift Check (#123)** — `GET /api/tools/infrastructure-drift` detects Terraform/Pulumi drift
+
+- **SSL/TLS Certificate Manager (#126)** — `GET /api/tools/certificates` ACME and certificate monitoring
+
+- **Blueprint Scaffolder (#131)** — `GET /api/tools/blueprints` returns project scaffold templates
+
+- **Architecture Fitness (#238)** — `GET /api/codegraph/fitness?project=` runs naming, circular dep, and layer isolation checks
+
+- **MCP Auto-Discovery (#256)** — `GET /api/mcp/discover` finds MCP servers from env vars and config
+
+- **PAL CLI Orchestrator (#311)** — `POST /api/pal/cli` returns recommended model for CLI commands
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
