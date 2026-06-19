@@ -67,6 +67,11 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - New `mergeEntities()` relinks relations and removes the source entity
   - `GET /api/memory/duplicates` returns duplicate groups; `POST /api/memory/merge` merges two entities
 
+- **Multi-Modal Memory Vault (#69)** — vault now supports arbitrary content storage:
+  - Existing `POST /api/vault/store` accepts optional `mimeType` for content storage (sets `credentialType` to `content`)
+  - New `POST /api/vault/content` endpoint for embedding, images, files, and text with a 1MB value limit
+  - Content entries logged to `lens_events` with `memory_write` event type for auditability
+
 ## [0.43.1] — 2026-06-19
 
 ### Fixed
