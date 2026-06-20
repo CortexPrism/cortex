@@ -703,38 +703,38 @@ Sorted by impact (systems with significant backend investment but zero/poor UI):
 
 ## 9. Statistics
 
-| Metric                             | Count             |
-| ---------------------------------- | ----------------- |
-| Total source files audited         | ~225              |
-| Backend systems                    | 33                |
-| LLM providers                      | 24                |
-| Built-in tools                     | ~55               |
-| CLI commands                       | 38                |
-| REST API endpoints                 | ~130              |
-| WebSocket message types            | 20                |
-| Web UI pages                       | 20                |
-| UI modals/overlays                 | 9                 |
-| Dashboard widget types             | 11                |
-| CSS component classes              | 100+              |
-| Database migrations                | 28                |
-| SQLite databases                   | 5                 |
-| Built-in skills                    | 18                |
-| Sub-agent types                    | 5                 |
-| Pipeline stages                    | 12                |
-| Plugin capabilities                | 23                |
-| Memory tiers                       | 5                 |
-| Security policy kinds              | 6                 |
-| Data classification levels         | 4                 |
-| Capability tiers (nodes)           | 4                 |
-| Codegraph node types               | 14                |
-| Codegraph edge types               | 18                |
-| Eval task categories               | 8                 |
-| MQM signals                        | 6                 |
-| Voice providers                    | 2 (STT) + 2 (TTS) |
+| Metric                             | Count                                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| Total source files audited         | ~225                                                                                     |
+| Backend systems                    | 33                                                                                       |
+| LLM providers                      | 24                                                                                       |
+| Built-in tools                     | ~55                                                                                      |
+| CLI commands                       | 38                                                                                       |
+| REST API endpoints                 | ~130                                                                                     |
+| WebSocket message types            | 20                                                                                       |
+| Web UI pages                       | 20                                                                                       |
+| UI modals/overlays                 | 9                                                                                        |
+| Dashboard widget types             | 11                                                                                       |
+| CSS component classes              | 100+                                                                                     |
+| Database migrations                | 28                                                                                       |
+| SQLite databases                   | 5                                                                                        |
+| Built-in skills                    | 18                                                                                       |
+| Sub-agent types                    | 5                                                                                        |
+| Pipeline stages                    | 12                                                                                       |
+| Plugin capabilities                | 23                                                                                       |
+| Memory tiers                       | 5                                                                                        |
+| Security policy kinds              | 6                                                                                        |
+| Data classification levels         | 4                                                                                        |
+| Capability tiers (nodes)           | 4                                                                                        |
+| Codegraph node types               | 14                                                                                       |
+| Codegraph edge types               | 18                                                                                       |
+| Eval task categories               | 8                                                                                        |
+| MQM signals                        | 6                                                                                        |
+| Voice providers                    | 2 (STT) + 2 (TTS)                                                                        |
 | Channel adapters                   | 9 (Discord, Slack, Telegram, Teams, Mattermost, RocketChat, WhatsApp, Google Chat, Lark) |
-| Desktop platforms                  | 3                 |
-| Sandbox runtimes                   | 3                 |
-| Fully covered systems              | 28                |
-| Partially covered systems          | 19                |
-| Missing UI systems                 | 11                |
-| API endpoints without UI consumers | 10                |
+| Desktop platforms                  | 3                                                                                        |
+| Sandbox runtimes                   | 3                                                                                        |
+| Fully covered systems              | 28                                                                                       |
+| Partially covered systems          | 19                                                                                       |
+| Missing UI systems                 | 11                                                                                       |
+| API endpoints without UI consumers | 10                                                                                       |
