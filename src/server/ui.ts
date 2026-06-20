@@ -1021,17 +1021,11 @@ const HTML = `<!DOCTYPE html>
 
     <!-- System & Config -->
     <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true">System &amp; Config <span class="nav-section-toggle">▼</span></div>
-    <button class="nav-item" onclick="showPage('tools');closeMobileSidebar()" id="nav-tools">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> Tools
-    </button>
     <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Policies
     </button>
     <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
-      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote Access
-    </button>
-    <button class="nav-item" onclick="showPage('computer');closeMobileSidebar()" id="nav-computer">
-      <span class="icon">🖥</span> Computer Use
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote &amp; Computer
     </button>
     <button class="nav-item" onclick="showPage('extensions');closeMobileSidebar()" id="nav-extensions">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Extensions
@@ -4319,7 +4313,7 @@ function renderRecentPages() {
       automation:'Automation', channels:'Channels', projects:'Projects',
       dashboard:'Dashboard', analytics:'Analytics', quartermaster:'Quartermaster',
       codegraph:'Codegraph', workflow:'Workflows', eval:'Eval', mcp:'MCP', vault:'Vault',
-      computer:'Computer', remote:'Remote', daemons:'Daemons', tools:'Tools',
+      computer:'Remote & Computer', remote:'Remote & Computer', daemons:'Daemons', tools:'Tools',
       metacognition:'Metacognition' };
     list.innerHTML = recent.map(p => \`<button class="nav-item compact" onclick="showPage('\${p}');closeMobileSidebar()">\${titles[p] || p}</button>\`).join('');
   } catch {}
@@ -4400,6 +4394,9 @@ function showPage(name) {
   var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1};
   var navSettings = document.getElementById('nav-settings');
   if (navSettings) navSettings.classList.toggle('active', !!settingsGroup[name]);
+  // Computer page shares nav item with Remote
+  var navRemote = document.getElementById('nav-remote');
+  if (navRemote && name === 'computer') navRemote.classList.add('active');
   // Hide global subnav for non-tabbed pages
   var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
@@ -10001,7 +9998,7 @@ const CMD_PAGES = [
   { id:'vault', label:'Vault', icon:'🔐', desc:'Encrypted credential and secret storage' },
   { id:'mcp', label:'MCP Servers', icon:'🔌', desc:'Connect to and manage MCP protocol servers' },
   { id:'chrome-bridge', label:'Chrome Bridge', icon:'🌐', desc:'Browser automation via Chrome DevTools Protocol' },
-  { id:'computer', label:'Computer Use', icon:'🖥', desc:'AI-driven computer use and screenshot capture' },
+  { id:'remote', label:'Remote & Computer', icon:'🌐🖥', desc:'Remote agent deployment and AI-driven computer use' },
   { id:'nodes', label:'Nodes', icon:'🖧', desc:'Remote Cortex node registry and management' },
   { id:'daemons', label:'Daemons', icon:'⚡', desc:'Validator, executor, and scheduler process status' },
   { id:'workflow', label:'Workflows', icon:'🔁', desc:'Registered workflow pipelines' },
@@ -15354,7 +15351,7 @@ function extendQuartermaster() {
   btnRow.innerHTML += '<button class="btn btn-ghost" onclick="qmShowConfig()" id="qm-config-btn" style="font-size:12px;">⚙ Config</button>';
 }
 function qmShowConfig() {
-  prompt('QM/MQM config is available via Settings → AI & Models. Quartermaster provider/model settings affect tool orchestration and model selection strategies.');
+  qmOpenSettings();
 }
 
 // ── Automation: Webhook Test-Fire ──

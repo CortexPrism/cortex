@@ -89,6 +89,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Sub-agent model/provider inherits from chat** — `ToolContext` now carries optional `model` and `provider` fields, populated by all chat/caller entry points (WS, CLI, A2A, triggers, services). `spawnSubAgent` prefers type-specific overrides, then context values, then agent defaults, so sub-agents use the active chat model unless a sub-agent type explicitly pins its own. Nested sub-agents preserve the inherited context. (`src/tools/types.ts`, `src/agent/sub-agent.ts`, `src/tools/builtin/sub_agent.ts`, `src/processes/sub-agent-entry.ts`)
 
+- **Sidebar navigation consolidated** — merged "Remote Access" and "Computer Use" into a single "Remote & Computer" nav item (both pages already shared sub-nav tabs). Removed standalone "Tools" sidebar item — Tool Config, MCP Servers, MCP Gateway, Chrome Bridge, and Vault are now accessed via Settings → Tools & Integrations (which already highlighted `nav-settings` for these sub-pages). Fixed Quartermaster "Config" button to open the in-page settings pane instead of showing a prompt redirect to Settings. (`src/server/ui.ts`)
+
 ---
 
 ## [0.46.0] — 2026-06-20
