@@ -12,6 +12,7 @@
 import { Command } from '@cliffy/command';
 import { logger } from '../utils/logger.ts';
 import { getCoreDb, getMemoryDb, getSessionDb } from '../db/client.ts';
+import { i18n } from '../i18n/service.ts';
 
 const _log = logger('cli:debug');
 
@@ -34,10 +35,10 @@ debugCmd
          ORDER BY created_at DESC LIMIT 50`,
       );
       if (!sessions.length) {
-        console.log('No active sessions.');
+        console.log(i18n.t('cli.debug.noActiveSessions'));
         return;
       }
-      console.log(`Active sessions (${sessions.length}):`);
+      console.log(i18n.t('cli.debug.activeSessions', { count: String(sessions.length) }));
       for (const s of sessions) {
         const created = new Date(s.created_at as string).toISOString().split('T')[0];
         console.log(
@@ -47,7 +48,7 @@ debugCmd
         );
       }
     } catch (e) {
-      console.error('Failed to list sessions:', (e as Error).message);
+      console.error(i18n.t('cli.debug.failedToListSessions', { message: (e as Error).message }));
     }
   });
 
@@ -63,7 +64,7 @@ debugCmd
         [id],
       );
       if (!session) {
-        console.error(`Session '${id}' not found.`);
+        console.error(i18n.t('cli.debug.sessionNotFound', { id }));
         return;
       }
       console.log('Session:', JSON.stringify(session, null, 2));
@@ -88,7 +89,7 @@ debugCmd
         console.log(`  ${e.event_type}  ${e.created_at}`);
       }
     } catch (e) {
-      console.error('Failed to inspect session:', (e as Error).message);
+      console.error(i18n.t('cli.debug.failedToInspectSession', { message: (e as Error).message }));
     }
   });
 
@@ -112,7 +113,7 @@ debugCmd
         if ((m.content as string).length > 500) console.log('...[truncated]');
       }
     } catch (e) {
-      console.error('Failed to load turn:', (e as Error).message);
+      console.error(i18n.t('cli.debug.failedToLoadTurn', { message: (e as Error).message }));
     }
   });
 
@@ -163,7 +164,7 @@ debugCmd
       const { renderPrometheus } = await import('../observability/metrics.ts');
       console.log(renderPrometheus());
     } catch (e) {
-      console.error('Failed to render metrics:', (e as Error).message);
+      console.error(i18n.t('cli.debug.failedToRenderMetrics', { message: (e as Error).message }));
     }
   });
 
@@ -182,6 +183,6 @@ debugCmd
       console.log(`Episodic entries: ${episodic[0]?.count ?? 0}`);
       console.log(`Semantic entries: ${semantic[0]?.count ?? 0}`);
     } catch (e) {
-      console.error('Failed to query memory:', (e as Error).message);
+      console.error(i18n.t('cli.debug.failedToQueryMemory', { message: (e as Error).message }));
     }
   });

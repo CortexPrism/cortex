@@ -10,6 +10,7 @@ import {
   stopService,
   updateService,
 } from '../services/manager.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const serviceCommand = new Command()
   .name('service')
@@ -24,7 +25,7 @@ export const serviceCommand = new Command()
         const runtimeMap = new Map(runtime.map((r) => [r.id, r]));
 
         if (services.length === 0) {
-          console.log(dim('  No services registered.'));
+          console.log(dim(i18n.t('cli.service.noServices')));
           return;
         }
 
@@ -55,7 +56,7 @@ export const serviceCommand = new Command()
       .action(async (_opts, id: string) => {
         const svc = await getService(id);
         if (!svc) {
-          console.error(red(`  Service "${id}" not found.`));
+          console.error(red(i18n.t('cli.service.serviceNotFound', { id })));
           Deno.exit(1);
         }
         const rt = (await getRuntimeStatus()).find((r) => r.id === id);
@@ -112,7 +113,7 @@ export const serviceCommand = new Command()
           maxRestarts: opts.maxRestarts ?? 3,
           healthCheckInterval: opts.healthInterval ?? 30,
         });
-        console.log(green(`  ✓ Service "${name}" registered (${id})`));
+        console.log(green(i18n.t('cli.service.serviceRegistered', { name, id })));
       }),
   )
   .command(
@@ -145,7 +146,7 @@ export const serviceCommand = new Command()
         if (opts.healthInterval !== undefined) patch.healthCheckInterval = opts.healthInterval;
         if (opts.systemPrompt !== undefined) patch.systemPrompt = opts.systemPrompt;
         await updateService(id, patch);
-        console.log(green(`  ✓ Service "${id}" updated`));
+        console.log(green(i18n.t('cli.service.serviceUpdated', { id })));
       }),
   )
   .command(
@@ -155,7 +156,7 @@ export const serviceCommand = new Command()
       .arguments('<id:string>')
       .action(async (_opts, id: string) => {
         await deleteService(id);
-        console.log(green(`  ✓ Service "${id}" deleted`));
+        console.log(green(i18n.t('cli.service.serviceDeleted', { id })));
       }),
   )
   .command(
@@ -166,7 +167,7 @@ export const serviceCommand = new Command()
       .action(async (_opts, id: string) => {
         try {
           await startService(id);
-          console.log(green(`  ✓ Service "${id}" started`));
+          console.log(green(i18n.t('cli.service.serviceStarted', { id })));
         } catch (e) {
           console.error(red(`  ${(e as Error).message}`));
           Deno.exit(1);
@@ -180,6 +181,6 @@ export const serviceCommand = new Command()
       .arguments('<id:string>')
       .action(async (_opts, id: string) => {
         await stopService(id);
-        console.log(green(`  ✓ Service "${id}" stopped`));
+        console.log(green(i18n.t('cli.service.serviceStopped', { id })));
       }),
   );

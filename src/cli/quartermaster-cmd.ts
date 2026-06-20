@@ -8,6 +8,7 @@ import {
   resetWeights,
 } from '../quartermaster/mod.ts';
 import { getQmAccuracyTrend, getQmSummary } from '../quartermaster/monitor.ts';
+import { i18n } from '../i18n/service.ts';
 
 const quartermasterCommand = new Command()
   .name('qm')
@@ -29,7 +30,7 @@ quartermasterCommand
   .action(async ({ limit }) => {
     const patterns = await getPatterns(limit);
     if (patterns.length === 0) {
-      console.log('No patterns learned yet.');
+      console.log(i18n.t('cli.quartermaster.noPatterns'));
       return;
     }
     console.log(`\n${patterns.length} learned pattern(s):\n`);
@@ -67,7 +68,7 @@ quartermasterCommand
   .action(async () => {
     const stats = await getToolStats();
     if (stats.length === 0) {
-      console.log('No tool stats collected yet.');
+      console.log(i18n.t('cli.quartermaster.noToolStats'));
       return;
     }
     console.log('\nPer-tool statistics:\n');
@@ -96,7 +97,7 @@ quartermasterCommand
       decisions = await getDecisions('', limit);
     }
     if (decisions.length === 0) {
-      console.log('No decisions recorded yet.');
+      console.log(i18n.t('cli.quartermaster.noDecisions'));
       return;
     }
     console.log(`\n${decisions.length} decision(s):\n`);
@@ -123,7 +124,7 @@ quartermasterCommand
     const decisions = await getDecisions('', 50);
     const turnDecisions = decisions.filter((d) => d.turnId === turnId);
     if (turnDecisions.length === 0) {
-      console.log(`No QM decisions found for turn ${turnId}.`);
+      console.log(i18n.t('cli.quartermaster.noQmDecisions', { turnId }));
       return;
     }
     console.log(`\nQM trace for turn ${turnId}:\n`);
@@ -217,7 +218,7 @@ quartermasterCommand
   .action(async ({ session }) => {
     const accuracyTrend = await getQmAccuracyTrend(session);
     if (accuracyTrend.length === 0) {
-      console.log('No accuracy data available yet.');
+      console.log(i18n.t('cli.quartermaster.noAccuracy'));
       return;
     }
 
@@ -243,7 +244,7 @@ quartermasterCommand
   .description('Reset all learned signal weights to defaults')
   .action(async () => {
     await resetWeights();
-    console.log('Signal weights reset to defaults.');
+    console.log(i18n.t('cli.quartermaster.signalWeightsReset'));
   });
 
 quartermasterCommand
@@ -251,7 +252,7 @@ quartermasterCommand
   .description('Reset all QM state (patterns, decisions, stats, weights)')
   .action(async () => {
     await resetAll();
-    console.log('All Quartermaster state reset.');
+    console.log(i18n.t('cli.quartermaster.allQmStateReset'));
   });
 
 export { quartermasterCommand };

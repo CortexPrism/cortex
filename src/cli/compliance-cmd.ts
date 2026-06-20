@@ -7,6 +7,7 @@ import {
   type RegulatoryFramework,
   type RiskLevel,
 } from '../security/compliance.ts';
+import { i18n } from '../i18n/service.ts';
 
 function riskLabel(level: RiskLevel): string {
   return level.toUpperCase();
@@ -23,7 +24,7 @@ export const complianceCommand = new Command()
   .action(async (opts) => {
     const records = await getComplianceByRisk('medium');
     if (records.length === 0) {
-      console.log('No compliance records found.');
+      console.log(i18n.t('cli.compliance.noRecords'));
       return;
     }
 
@@ -32,15 +33,17 @@ export const complianceCommand = new Command()
       return;
     }
 
-    console.log(`\n${records.length} compliance records (medium+ risk):\n`);
+    console.log(i18n.t('cli.compliance.recordsFound', { count: String(records.length) }));
     for (const r of records.slice(0, 50)) {
       console.log(
         `  ${pad(r.id.slice(0, 14), 14)} ${riskLabel(r.riskLevel).padEnd(8)} ` +
           `${r.dataCategories.join(', ') || '—'}`,
       );
     }
-    if (records.length > 50) console.log(`  ... and ${records.length - 50} more`);
-    console.log(`\nUse --json for full output, or "cortex compliance session <id>" for details.`);
+    if (records.length > 50) {
+      console.log(i18n.t('cli.compliance.moreRecords', { count: String(records.length - 50) }));
+    }
+    console.log(i18n.t('cli.compliance.useJsonHint'));
   })
   .command('session')
   .arguments('<sessionId:string>')
@@ -49,7 +52,7 @@ export const complianceCommand = new Command()
   .action(async (opts, sessionId: string) => {
     const records = await getSessionCompliance(sessionId);
     if (records.length === 0) {
-      console.log(`No compliance records for session ${sessionId}.`);
+      console.log(i18n.t('cli.compliance.noSessionRecords', { sessionId }));
       return;
     }
 
@@ -66,7 +69,7 @@ export const complianceCommand = new Command()
           `${r.dataCategories.join(', ') || '—'}`,
       );
     }
-    console.log(`\n${records.length} records.`);
+    console.log(i18n.t('cli.compliance.sessionRecordsCount', { count: String(records.length) }));
   })
   .command('export')
   .description('Export compliance report for a regulatory framework')
@@ -83,9 +86,12 @@ export const complianceCommand = new Command()
 
     if (opts.output) {
       await Deno.writeTextFile(opts.output, output);
-      console.log(`Report written to ${opts.output}`);
+      console.log(i18n.t('cli.compliance.reportWritten', { file: opts.output }));
       console.log(
-        `${report.records.length} records | ${report.summary.totalSessions} sessions`,
+        i18n.t('cli.compliance.reportSummary', {
+          records: String(report.records.length),
+          sessions: String(report.summary.totalSessions),
+        }),
       );
     } else {
       console.log(output);
@@ -99,7 +105,7 @@ export const complianceCommand = new Command()
   .action(async (opts, level: string) => {
     const levels = ['low', 'medium', 'high', 'critical'];
     if (!levels.includes(level)) {
-      console.log(`Invalid risk level: ${level}. Use: ${levels.join(', ')}`);
+      console.log(i18n.t('cli.compliance.invalidRiskLevel', { level, levels: levels.join(', ') }));
       return;
     }
 
@@ -110,7 +116,12 @@ export const complianceCommand = new Command()
       return;
     }
 
-    console.log(`\n${records.length} records at or above ${riskLabel(level as RiskLevel)} risk:\n`);
+    console.log(
+      i18n.t('cli.compliance.recordsAtRisk', {
+        count: String(records.length),
+        risk: riskLabel(level as RiskLevel),
+      }),
+    );
 
     for (const r of records.slice(0, 50)) {
       console.log(
@@ -124,5 +135,5 @@ export const complianceCommand = new Command()
   .description('Enforce data retention policy (delete expired records)')
   .action(async () => {
     const deleted = await enforceRetention();
-    console.log(`Enforced retention: ${deleted} expired compliance records deleted.`);
+    console.log(i18n.t('cli.compliance.retentionEnforced', { deleted: String(deleted) }));
   });

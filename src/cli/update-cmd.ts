@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { applyUpdate, checkForUpdates, cleanup, getUpdateStatus, rollback } from '../update/mod.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const updateCommand = new Command()
   .name('update')
@@ -59,12 +60,12 @@ async function showStatus(): Promise<void> {
 
 async function doCheck(channelOverride?: string): Promise<void> {
   const channel = channelOverride as 'stable' | 'pre-release' | undefined;
-  console.log(bold('\n  Checking for updates…'));
+  console.log(bold(i18n.t('cli.update.checkingForUpdates')));
 
   const result = await checkForUpdates(channel);
 
   if (result.status === 'error') {
-    console.log(red(`  ✗ ${result.error}`));
+    console.log(red(i18n.t('cli.update.checkFailed', { error: result.error ?? 'Unknown error' })));
     console.log('');
     Deno.exit(1);
   }
@@ -76,47 +77,53 @@ async function doCheck(channelOverride?: string): Promise<void> {
       `  Latest version:   ${green(result.latestVersion!)} ${yellow('(update available)')}`,
     );
     console.log(`  Published:        ${dim(result.latestRelease?.publishedAt || '')}`);
-    console.log(`  Run ${bold('cortex update')} to apply the update.`);
+    console.log(i18n.t('cli.update.runToApply'));
   } else {
-    console.log(`  ${green('✓ You are up to date.')}`);
+    console.log(`  ${green(i18n.t('cli.update.youAreUpToDate'))}`);
   }
   console.log('');
 }
 
 async function doUpdate(channelOverride?: string, force = false): Promise<void> {
   const channel = channelOverride as 'stable' | 'pre-release' | undefined;
-  console.log(bold('\n  Checking for updates…'));
+  console.log(bold(i18n.t('cli.update.checkingForUpdates')));
 
   const result = await applyUpdate(channel, force);
 
   if (!result.success) {
     if (result.needsRollback) {
-      console.log(red(`  ✗ Update failed: ${result.error}`));
-      console.log(yellow('  Automatic rollback was attempted.'));
+      console.log(
+        red(i18n.t('cli.update.updateFailed', { error: result.error ?? 'Unknown error' })),
+      );
+      console.log(yellow(i18n.t('cli.update.autoRollback')));
     } else {
-      console.log(red(`  ✗ ${result.error || 'Update failed'}`));
+      console.log(
+        red(i18n.t('cli.update.updateFailedGeneric', { error: result.error || 'Update failed' })),
+      );
     }
     console.log('');
     Deno.exit(1);
   }
 
-  console.log(`  ${green('✓ Updated to version ' + result.version)}`);
+  console.log(`  ${green(i18n.t('cli.update.updatedTo', { version: result.version }))}`);
   console.log('');
 
   await cleanup();
 }
 
 async function doRollback(): Promise<void> {
-  console.log(bold('\n  Rolling back to previous version…'));
+  console.log(bold(i18n.t('cli.update.rollingBack')));
 
   const result = await rollback();
 
   if (!result.success) {
-    console.log(red(`  ✗ ${result.error}`));
+    console.log(
+      red(i18n.t('cli.update.rollbackFailed', { error: result.error ?? 'Unknown error' })),
+    );
     console.log('');
     Deno.exit(1);
   }
 
-  console.log(`  ${green('✓ Rolled back to version ' + result.version)}`);
+  console.log(`  ${green(i18n.t('cli.update.rolledBackTo', { version: result.version }))}`);
   console.log('');
 }

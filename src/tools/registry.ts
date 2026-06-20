@@ -1,6 +1,7 @@
 import type { Tool, ToolCapability, ToolDefinition } from './types.ts';
 import { createMcpToolWrapper, inferCapabilitiesFromMcpTool } from './mcp-adapter.ts';
 import { getConnection } from '../mcp/client.ts';
+import { i18n } from '../i18n/service.ts';
 
 // Builtin tool imports (consolidated from all entry points)
 import { fileReadTool } from './builtin/file_read.ts';
@@ -78,7 +79,24 @@ export class ToolRegistry {
   }
 
   definitions(): ToolDefinition[] {
-    return this.list().map((t) => t.definition);
+    return this.list().map((t) => {
+      const def: ToolDefinition = {
+        ...t.definition,
+        params: t.definition.params.map((p) => ({ ...p })),
+      };
+      if (def.displayNameKey) {
+        def.displayName = i18n.t(def.displayNameKey);
+      }
+      if (def.descriptionKey) {
+        def.description = i18n.t(def.descriptionKey);
+      }
+      for (const param of def.params) {
+        if (param.descriptionKey) {
+          param.description = i18n.t(param.descriptionKey);
+        }
+      }
+      return def;
+    });
   }
 
   has(name: string): boolean {

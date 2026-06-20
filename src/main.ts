@@ -53,9 +53,13 @@ import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
 import { runSupervisor } from './processes/supervisor-process.ts';
+import { i18n } from './i18n/service.ts';
+import { PATHS } from './config/paths.ts';
 
 const subprocessIdx = Deno.args.findIndex((a) => a === '--subprocess');
 if (subprocessIdx !== -1 && Deno.args[subprocessIdx + 1]) {
+  const localesDir = PATHS.localesDir;
+  await i18n.init('en', localesDir);
   const role = Deno.args[subprocessIdx + 1];
   switch (role) {
     case 'validator':
@@ -140,5 +144,14 @@ const program = new Command()
   .command('mcp-gateway', mcpGatewayCommand)
   .command('compliance', complianceCommand)
   .command('debug', debugCmd);
+
+const localesDir = `${PATHS.projectRoot}/locales`;
+try {
+  const { loadConfig } = await import('./config/config.ts');
+  const cfg = await loadConfig();
+  await i18n.init(cfg.locale, localesDir);
+} catch {
+  await i18n.init('en', localesDir);
+}
 
 await program.parse(Deno.args);

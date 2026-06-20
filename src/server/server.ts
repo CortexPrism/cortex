@@ -16,6 +16,8 @@ import { setWatcherJobCreator, startWatchers } from '../triggers/watcher.ts';
 import { createTriggerJobCreator } from '../triggers/job-creator.ts';
 import { setGitHookServerPort } from '../triggers/git-hooks.ts';
 import { SECURITY_HEADERS } from './security-headers.ts';
+import { i18n } from '../i18n/service.ts';
+import { extractLocale } from '../i18n/middleware.ts';
 
 const _log = logger('server');
 
@@ -29,6 +31,10 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // Initialise the logger from persisted config
   const _serverConfig = await loadConfig();
+
+  // Initialize i18n
+  const localesDir = PATHS.localesDir;
+  await i18n.init(_serverConfig.locale, localesDir);
   const _loggingCfg = _serverConfig.logging ?? { level: 'error', fileEnabled: true };
   configureLogger({
     level: _loggingCfg.level as import('../utils/logger.ts').LogLevel,
@@ -243,7 +249,8 @@ export async function startServer(opts: ServeOptions): Promise<void> {
         }
       }
 
-      const ui = serveUi();
+      const locale = await extractLocale(req);
+      const ui = serveUi(locale);
       const headers = new Headers(ui.headers);
       for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
         if (!headers.has(key)) headers.set(key, value);

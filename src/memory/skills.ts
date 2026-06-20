@@ -885,13 +885,35 @@ Response: {"skip": true}
 const SKILL_EXTRACTION_MIN_TOOL_CALLS = 4;
 
 const SKILL_NAME_BLOCKLIST = new Set([
-  'test', 'debug', 'temp', 'tmp', 'foo', 'bar', 'example', 'sample',
-  'untitled', 'new_skill', 'test_skill', 'debug_skill', 'temp_skill',
-  'helper', 'util', 'misc', 'stuff', 'thing', 'untitled_skill',
+  'test',
+  'debug',
+  'temp',
+  'tmp',
+  'foo',
+  'bar',
+  'example',
+  'sample',
+  'untitled',
+  'new_skill',
+  'test_skill',
+  'debug_skill',
+  'temp_skill',
+  'helper',
+  'util',
+  'misc',
+  'stuff',
+  'thing',
+  'untitled_skill',
 ]);
 
 const SKILL_NAME_BLOCKED_PREFIXES = [
-  'test_', 'debug_', 'temp_', 'tmp_', 'test-', 'debug-', 'temp-',
+  'test_',
+  'debug_',
+  'temp_',
+  'tmp_',
+  'test-',
+  'debug-',
+  'temp-',
 ];
 
 const lastExtractedSession = new Set<string>();

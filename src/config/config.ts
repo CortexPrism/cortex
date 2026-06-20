@@ -437,6 +437,8 @@ export interface CortexConfig {
   supervisor?: SupervisorConfig;
   /** Compliance metadata configuration */
   compliance?: ComplianceConfig;
+  /** UI & CLI locale (e.g. 'en', 'zh', 'es'). Falls back to 'en'. */
+  locale?: string;
 }
 
 export interface SupervisorConfig {

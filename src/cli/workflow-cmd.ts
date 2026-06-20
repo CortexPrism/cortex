@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { getWorkflow, listWorkflows } from '../workflow/engine.ts';
 import { bold, dim, green, red } from '@std/fmt/colors';
+import { i18n } from '../i18n/service.ts';
 
 const workflowCommand = new Command()
   .name('workflow')
@@ -8,7 +9,7 @@ const workflowCommand = new Command()
   .action(() => {
     const wfs = listWorkflows();
     if (wfs.length === 0) {
-      console.log('No workflows registered.');
+      console.log(i18n.t('cli.workflow.noWorkflows'));
       return;
     }
     console.log(`\n${wfs.length} workflow(s) registered:\n`);
@@ -24,7 +25,7 @@ workflowCommand
   .action(() => {
     const wfs = listWorkflows();
     if (wfs.length === 0) {
-      console.log('No workflows registered.');
+      console.log(i18n.t('cli.workflow.noWorkflows'));
       return;
     }
     console.log(`\n${wfs.length} workflow(s) registered:\n`);
@@ -40,7 +41,7 @@ workflowCommand
   .action(async (_opts: void, name: string) => {
     const wf = getWorkflow(name);
     if (!wf) {
-      console.error(`Workflow "${name}" not found.`);
+      console.error(i18n.t('cli.workflow.notFound', { name }));
       return;
     }
 
@@ -70,11 +71,11 @@ workflowCommand
   .action((_opts: void, name: string) => {
     const wf = getWorkflow(name);
     if (!wf) {
-      console.error(`Workflow "${name}" not found.`);
+      console.error(i18n.t('cli.workflow.notFound', { name }));
       return;
     }
     wf.approve();
-    console.log(`Approved workflow: ${name}`);
+    console.log(i18n.t('cli.workflow.approved', { name }));
   });
 
 export { workflowCommand };

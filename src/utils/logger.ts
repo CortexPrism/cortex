@@ -41,6 +41,7 @@ export interface LogEntry {
   data?: unknown;
   reqId?: string;
   stack?: string;
+  i18nKey?: string;
 }
 
 export interface LogTransport {

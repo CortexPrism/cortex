@@ -102,7 +102,8 @@ function fireAndForgetAgentTurn(
         model: opts.model,
         sessionDb: opts.db,
         sessionId,
-        systemPrompt: `${opts.systemPrompt}\n\nYou were activated by an automation trigger. Execute the requested task.`,
+        systemPrompt:
+          `${opts.systemPrompt}\n\nYou were activated by an automation trigger. Execute the requested task.`,
         stream: false,
         registry: globalRegistry,
         toolContext: {

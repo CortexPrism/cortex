@@ -6,6 +6,7 @@ import { initSessionDb } from '../db/migrate.ts';
 import { detectRegressions, runSuite } from '../eval/runner.ts';
 import type { EvalSuite } from '../eval/types.ts';
 import { join } from '@std/path';
+import { i18n } from '../i18n/service.ts';
 
 const DEFAULT_BASELINE_FILE = 'eval_baseline.json';
 
@@ -24,7 +25,7 @@ export const evalCmd = new Command()
 
     const provider = buildProvider(config);
     if (!provider) {
-      console.log(red(`  Failed to build provider from config`));
+      console.log(red(i18n.t('cli.eval.failedToBuildProvider')));
       Deno.exit(1);
     }
 
@@ -35,12 +36,12 @@ export const evalCmd = new Command()
       const raw = await Deno.readTextFile(suitePath);
       suite = JSON.parse(raw);
       if (!suite.name || !Array.isArray(suite.tasks)) {
-        console.log(red(`  Invalid suite file: ${suitePath}`));
+        console.log(red(i18n.t('cli.eval.invalidSuiteFile', { path: suitePath })));
         Deno.exit(1);
       }
     } catch {
-      console.log(red(`  Suite file not found: ${suitePath}`));
-      console.log(dim('  Create a .cortex/eval_suite.json file with tasks to evaluate.'));
+      console.log(red(i18n.t('cli.eval.suiteFileNotFound', { path: suitePath })));
+      console.log(dim(i18n.t('cli.eval.createEvalSuiteHint')));
       Deno.exit(1);
     }
 
@@ -117,7 +118,9 @@ export const evalCmd = new Command()
 
         if (regressions.length > 0) {
           console.log('');
-          console.log(red(`  ⚠ ${regressions.length} regression(s) detected:`));
+          console.log(
+            red(i18n.t('cli.eval.regressionDetected', { count: String(regressions.length) })),
+          );
           for (const r of regressions) {
             console.log(
               red(
@@ -129,10 +132,10 @@ export const evalCmd = new Command()
           }
         } else {
           console.log('');
-          console.log(green('  ✓ No regressions detected'));
+          console.log(green(i18n.t('cli.eval.noRegressions')));
         }
       } catch {
-        console.log(dim(`  No baseline file found at ${options.baseline}`));
+        console.log(dim(i18n.t('cli.eval.noBaselineFile', { path: options.baseline })));
       }
     }
 
@@ -140,7 +143,7 @@ export const evalCmd = new Command()
     if (options.saveBaseline) {
       const baselinePath = options.baseline ?? join(Deno.cwd(), '.cortex', DEFAULT_BASELINE_FILE);
       await Deno.writeTextFile(baselinePath, JSON.stringify(summary, null, 2));
-      console.log(dim(`  Baseline saved to ${baselinePath}`));
+      console.log(dim(i18n.t('cli.eval.baselineSaved', { path: baselinePath })));
     }
 
     Deno.exit(summary.failed > 0 ? 1 : 0);

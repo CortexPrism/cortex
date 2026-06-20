@@ -10,6 +10,7 @@ import {
   uninstallServerService,
   validateMutuallyExclusive,
 } from './service-helper.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const installCommand = new Command()
   .name('install')
@@ -36,7 +37,7 @@ export const installCommand = new Command()
         Deno.exit(1);
       }
 
-      console.log(bold('Installing Cortex services…'));
+      console.log(bold(i18n.t('cli.install.installingServices')));
       console.log('');
 
       const installBoth = !opts.daemonOnly && !opts.serverOnly;
@@ -79,7 +80,7 @@ export const installCommand = new Command()
           if (installServer) {
             await startLinuxService('cortex-server');
           }
-          console.log(green('  ✓ Services started'));
+          console.log(green(i18n.t('cli.install.servicesStarted')));
         } else {
           console.log('');
           const platform = Deno.build.os === 'darwin' ? 'macOS' : 'Windows';
@@ -107,7 +108,7 @@ export const uninstallCommand = new Command()
         Deno.exit(1);
       }
 
-      console.log(bold('Uninstalling Cortex services…'));
+      console.log(bold(i18n.t('cli.install.uninstallingServices')));
       console.log('');
 
       const uninstallBoth = !opts.daemonOnly && !opts.serverOnly;
@@ -124,7 +125,7 @@ export const uninstallCommand = new Command()
       }
 
       console.log('');
-      console.log(green('  ✓ Services uninstalled'));
+      console.log(green(i18n.t('cli.install.servicesUninstalled')));
 
       Deno.exit(0);
     },

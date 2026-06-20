@@ -13,6 +13,7 @@ import {
 import { loadConfig, saveConfig } from '../config/config.ts';
 import type { AgentCategory, ProviderKind } from '../config/config.ts';
 import { runMigrations } from '../db/migrate.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const agentCommand = new Command()
   .name('agent')
@@ -24,12 +25,12 @@ export const agentCommand = new Command()
       .action(async () => {
         const agents = await listAgents();
         if (agents.length === 0) {
-          console.log(dim('  No agents registered.'));
+          console.log(dim(i18n.t('cli.agent.noAgentsRegistered')));
           return;
         }
         const config = await loadConfig();
         const active = config.defaultAgent || 'default';
-        console.log(bold('\n  Registered Agents'));
+        console.log(bold(i18n.t('cli.agent.registeredAgents')));
         console.log(dim('  ' + '─'.repeat(50)));
         for (const a of agents) {
           const isActive = a.id === active;
@@ -51,7 +52,7 @@ export const agentCommand = new Command()
       .action(async (_opts, id: string) => {
         const agent = await getAgent(id);
         if (!agent) {
-          console.error(red(`  Agent "${id}" not found.`));
+          console.error(red(i18n.t('cli.agent.agentNotFound', { id })));
           Deno.exit(1);
         }
         const config = await loadConfig();
@@ -120,7 +121,7 @@ export const agentCommand = new Command()
           tools: opts.tools?.split(',').map((s: string) => s.trim()).filter(Boolean),
           tags: opts.tags?.split(',').map((s: string) => s.trim()).filter(Boolean),
         });
-        console.log(green(`  ✓ Created agent "${agent.name}" (${agent.id})`));
+        console.log(green(i18n.t('cli.agent.createdAgent', { name: agent.name, id: agent.id })));
       }),
   )
   .command(
@@ -175,7 +176,7 @@ export const agentCommand = new Command()
         }
 
         const agent = await updateAgent(id, patch);
-        console.log(green(`  ✓ Updated agent "${agent.name}" (${agent.id})`));
+        console.log(green(i18n.t('cli.agent.updatedAgent', { name: agent.name, id: agent.id })));
       }),
   )
   .command(
@@ -186,7 +187,7 @@ export const agentCommand = new Command()
       .action(async (_opts, id: string) => {
         try {
           await deleteAgent(id);
-          console.log(green(`  ✓ Deleted agent "${id}"`));
+          console.log(green(i18n.t('cli.agent.deletedAgent', { id })));
         } catch (e) {
           console.error(red(`  ${(e as Error).message}`));
           Deno.exit(1);
@@ -202,7 +203,7 @@ export const agentCommand = new Command()
         try {
           await selectAgent(id);
           const agent = await getAgent(id);
-          console.log(green(`  ✓ Active agent set to "${agent?.name || id}" (${id})`));
+          console.log(green(i18n.t('cli.agent.activeAgentSet', { name: agent?.name || id, id })));
         } catch (e) {
           console.error(red(`  ${(e as Error).message}`));
           Deno.exit(1);
@@ -217,7 +218,7 @@ export const agentCommand = new Command()
       .action(async (_opts, id: string) => {
         const agent = await getAgent(id);
         if (!agent) {
-          console.error(red(`  Agent "${id}" not found.`));
+          console.error(red(i18n.t('cli.agent.agentNotFound', { id })));
           Deno.exit(1);
         }
         const identity = await loadAgentIdentity(agent);
@@ -252,24 +253,31 @@ export const agentCommand = new Command()
           const match = rest.match(/^([^/]+)\/agents\/(.+)$/);
           if (!match) {
             console.log(
-              red('  Invalid marketplace reference. Use marketplace:<host>/agents/<slug>'),
+              red(i18n.t('cli.agent.invalidMarketplaceRef')),
             );
             return;
           }
           const host = match[1];
           const slug = match[2];
           url = `https://${host}/api/marketplace/agents/${slug}/download`;
-          console.log(dim(`  Fetching from ${url}`));
+          console.log(dim(i18n.t('cli.agent.fetchingFrom', { url })));
         } else if (source.startsWith('http://') || source.startsWith('https://')) {
           url = source;
         } else {
-          console.log(red('  Invalid source. Use a URL or marketplace:<host>/agents/<slug>'));
+          console.log(red(i18n.t('cli.agent.invalidSource')));
           return;
         }
 
         const res = await fetch(url);
         if (!res.ok) {
-          console.log(red(`  Fetch failed: ${res.status} ${res.statusText}`));
+          console.log(
+            red(
+              i18n.t('cli.agent.fetchFailed', {
+                status: String(res.status),
+                statusText: res.statusText,
+              }),
+            ),
+          );
           return;
         }
         const data = await res.json() as {
@@ -285,7 +293,7 @@ export const agentCommand = new Command()
         };
 
         if (!data.name) {
-          console.log(red('  Invalid agent config: missing required field "name"'));
+          console.log(red(i18n.t('cli.agent.invalidAgentConfig')));
           return;
         }
 
@@ -301,9 +309,11 @@ export const agentCommand = new Command()
             tools: data.tools,
             tags: data.tags,
           });
-          console.log(green(`  ✓ Imported agent "${agent.name}" (${agent.id})`));
+          console.log(green(i18n.t('cli.agent.importedAgent', { name: agent.name, id: agent.id })));
         } catch (e) {
-          console.log(red(`  Failed to import agent: ${(e as Error).message}`));
+          console.log(
+            red(i18n.t('cli.agent.failedToImportAgent', { message: (e as Error).message })),
+          );
         }
       }),
   )
@@ -315,7 +325,9 @@ export const agentCommand = new Command()
       .action(async (_opts, sourceId: string, newName: string) => {
         try {
           const agent = await cloneAgent(sourceId, newName);
-          console.log(green(`  ✓ Cloned agent "${agent.name}" (${agent.id}) from "${sourceId}"`));
+          console.log(
+            green(i18n.t('cli.agent.clonedAgent', { name: agent.name, id: agent.id, sourceId })),
+          );
         } catch (e) {
           console.error(red(`  ${(e as Error).message}`));
           Deno.exit(1);

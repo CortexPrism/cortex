@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
 import { loadConfig } from '../config/config.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const agentlintCommand = new Command()
   .name('agentlint')
@@ -9,12 +10,12 @@ export const agentlintCommand = new Command()
     console.log('');
     console.log(bold('Cortex AgentLint'));
     console.log('');
-    console.log(bold('Actions'));
+    console.log(bold(i18n.t('cli.agentlint.actions')));
     console.log(
-      `  ${cyan('cortex agentlint check')}    — Run AgentLint checks on current agent config`,
+      `  ${cyan(i18n.t('cli.agentlint.checkCommand'))}`,
     );
     console.log(
-      `  ${cyan('cortex agentlint config')}   — Verbose lint report with provider/model details`,
+      `  ${cyan(i18n.t('cli.agentlint.configCommand'))}`,
     );
     console.log('');
   });
@@ -39,7 +40,14 @@ agentlintCommand
     const report = lintAgentConfig(agentConfig);
 
     if (report.passed) {
-      console.log(green(`✓ ${agentConfig.name}: all ${report.totalChecks} checks passed`));
+      console.log(
+        green(
+          i18n.t('cli.agentlint.allChecksPassed', {
+            name: agentConfig.name,
+            totalChecks: String(report.totalChecks),
+          }),
+        ),
+      );
       Deno.exit(0);
     }
 
@@ -51,7 +59,14 @@ agentlintCommand
       if (issue.suggestion) console.log(`  Fix: ${issue.suggestion}`);
     }
     console.log('');
-    console.log(red(`✗ ${report.errorCount} error(s), ${report.warningCount} warning(s)`));
+    console.log(
+      red(
+        i18n.t('cli.agentlint.errorsAndWarnings', {
+          errors: String(report.errorCount),
+          warnings: String(report.warningCount),
+        }),
+      ),
+    );
     Deno.exit(report.errorCount > 0 ? 1 : 0);
   });
 
@@ -72,8 +87,13 @@ agentlintCommand
       model: config.providers[config.defaultProvider]?.model ?? 'unknown',
     };
 
-    console.log(bold(`\nLinting agent: ${agentConfig.name}`));
-    console.log(`Provider: ${agentConfig.provider}, Model: ${agentConfig.model}\n`);
+    console.log(bold(i18n.t('cli.agentlint.lintingAgent', { name: agentConfig.name })));
+    console.log(
+      i18n.t('cli.agentlint.providerModel', {
+        provider: agentConfig.provider,
+        model: agentConfig.model,
+      }) + '\n',
+    );
 
     const report = lintAgentConfig(agentConfig);
     printLintReport(report);
@@ -90,19 +110,25 @@ function printLintReport(report: {
     { severity: string; category: string; message: string; source: string; suggestion?: string }
   >;
 }): void {
-  console.log(`Total checks: ${report.totalChecks}`);
-  console.log(`  ${green(`Passed: ${report.passCount}`)}`);
-  if (report.warningCount > 0) console.log(`  ${yellow(`Warnings: ${report.warningCount}`)}`);
-  if (report.errorCount > 0) console.log(`  ${red(`Errors: ${report.errorCount}`)}`);
+  console.log(i18n.t('cli.agentlint.totalChecks', { count: String(report.totalChecks) }));
+  console.log(`  ${green(i18n.t('cli.agentlint.passed', { count: String(report.passCount) }))}`);
+  if (report.warningCount > 0) {
+    console.log(
+      `  ${yellow(i18n.t('cli.agentlint.warnings', { count: String(report.warningCount) }))}`,
+    );
+  }
+  if (report.errorCount > 0) {
+    console.log(`  ${red(i18n.t('cli.agentlint.errors', { count: String(report.errorCount) }))}`);
+  }
   console.log(`  Info: ${report.infoCount}`);
   console.log('');
 
   if (report.passed) {
-    console.log(green('✓ All checks passed\n'));
+    console.log(green(i18n.t('cli.agentlint.allPassed') + '\n'));
     return;
   }
 
-  console.log(bold('Issues:'));
+  console.log(bold(i18n.t('cli.agentlint.issues')));
   for (const issue of report.issues) {
     const color = issue.severity === 'error' ? red : issue.severity === 'warning' ? yellow : cyan;
     console.log(

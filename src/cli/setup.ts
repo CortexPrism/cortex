@@ -27,6 +27,7 @@ import {
   saveUserProfile,
 } from './onboarding/personalization.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
+import { i18n } from '../i18n/service.ts';
 
 const LABEL_WIDTH = 36;
 
@@ -85,17 +86,17 @@ const PROVIDER_LABELS: Record<string, { label: string; defaultModel: string }> =
   venice: { label: 'Venice AI', defaultModel: 'dolphin-2.9.2-qwen2-72b' },
 };
 
-const CHANNEL_OPTIONS: Array<{ name: string; value: string }> = [
-  { name: 'Web UI — Dashboard on port 3000', value: 'web' },
-  { name: 'Discord — Agent on your server', value: 'discord' },
-  { name: 'Slack — Team collaboration', value: 'slack' },
-  { name: 'Telegram — Instant messaging', value: 'telegram' },
-  { name: 'Microsoft Teams — Enterprise chat', value: 'teams' },
-  { name: 'Mattermost — Self-hosted messaging', value: 'mattermost' },
-  { name: 'Rocket.Chat — Open-source chat', value: 'rocketchat' },
-  { name: 'WhatsApp — Business messaging', value: 'whatsapp' },
-  { name: 'Google Chat — Workspace integration', value: 'google-chat' },
-  { name: 'Lark — All-in-one collaboration', value: 'lark' },
+const CHANNEL_OPTIONS: Array<{ nameKey: string; value: string }> = [
+  { nameKey: 'cli.setup.channel.web', value: 'web' },
+  { nameKey: 'cli.setup.channel.discord', value: 'discord' },
+  { nameKey: 'cli.setup.channel.slack', value: 'slack' },
+  { nameKey: 'cli.setup.channel.telegram', value: 'telegram' },
+  { nameKey: 'cli.setup.channel.teams', value: 'teams' },
+  { nameKey: 'cli.setup.channel.mattermost', value: 'mattermost' },
+  { nameKey: 'cli.setup.channel.rocketchat', value: 'rocketchat' },
+  { nameKey: 'cli.setup.channel.whatsapp', value: 'whatsapp' },
+  { nameKey: 'cli.setup.channel.googleChat', value: 'google-chat' },
+  { nameKey: 'cli.setup.channel.lark', value: 'lark' },
 ];
 
 interface ChannelCredentials {
@@ -115,57 +116,57 @@ async function promptChannelCredentials(
   const creds: ChannelCredentials = {};
   switch (channel) {
     case 'discord':
-      creds.token = await Secret.prompt('Discord bot token:');
+      creds.token = await Secret.prompt(i18n.t('cli.setup.secret.discordToken'));
       savedCredentials.set('discord', creds);
-      successBadge('Discord configured');
+      successBadge(i18n.t('cli.setup.success.discord'));
       break;
     case 'slack':
-      creds.botToken = await Secret.prompt('Slack bot token (xoxb-...):');
-      creds.appSecret = await Secret.prompt('Slack signing secret:');
+      creds.botToken = await Secret.prompt(i18n.t('cli.setup.secret.slackToken'));
+      creds.appSecret = await Secret.prompt(i18n.t('cli.setup.secret.slackSecret'));
       savedCredentials.set('slack', creds);
-      successBadge('Slack configured');
+      successBadge(i18n.t('cli.setup.success.slack'));
       break;
     case 'telegram':
-      creds.token = await Secret.prompt('Telegram bot token (from @BotFather):');
+      creds.token = await Secret.prompt(i18n.t('cli.setup.secret.telegramToken'));
       savedCredentials.set('telegram', creds);
-      successBadge('Telegram configured');
+      successBadge(i18n.t('cli.setup.success.telegram'));
       break;
     case 'teams':
-      creds.appId = await Input.prompt('Microsoft Teams app ID:');
-      creds.appSecret = await Secret.prompt('Microsoft Teams app secret:');
+      creds.appId = await Input.prompt(i18n.t('cli.setup.input.teamsAppId'));
+      creds.appSecret = await Secret.prompt(i18n.t('cli.setup.secret.teamsSecret'));
       creds.tenantId = await Input.prompt({
-        message: 'Microsoft Teams tenant ID:',
+        message: i18n.t('cli.setup.input.teamsTenantId'),
         default: 'common',
       });
       savedCredentials.set('teams', creds);
-      successBadge('Teams configured');
+      successBadge(i18n.t('cli.setup.success.teams'));
       break;
     case 'mattermost':
-      creds.token = await Secret.prompt('Mattermost personal access token:');
+      creds.token = await Secret.prompt(i18n.t('cli.setup.secret.mattermostToken'));
       savedCredentials.set('mattermost', creds);
-      infoBadge('Set MATTERMOST_URL env var to your Mattermost server URL');
+      infoBadge(i18n.t('cli.setup.info.mattermostEnv'));
       break;
     case 'rocketchat':
-      creds.token = await Secret.prompt('Rocket.Chat personal access token:');
+      creds.token = await Secret.prompt(i18n.t('cli.setup.secret.rocketchatToken'));
       savedCredentials.set('rocketchat', creds);
-      infoBadge('Set ROCKETCHAT_URL env var to your Rocket.Chat server URL');
+      infoBadge(i18n.t('cli.setup.info.rocketchatEnv'));
       break;
     case 'whatsapp':
-      creds.token = await Secret.prompt('WhatsApp API token:');
+      creds.token = await Secret.prompt(i18n.t('cli.setup.secret.whatsappToken'));
       savedCredentials.set('whatsapp', creds);
-      successBadge('WhatsApp configured');
+      successBadge(i18n.t('cli.setup.success.whatsapp'));
       break;
     case 'google-chat':
-      creds.token = await Secret.prompt('Google Chat webhook URL:');
+      creds.token = await Secret.prompt(i18n.t('cli.setup.secret.googleChatWebhook'));
       savedCredentials.set('google-chat', creds);
-      successBadge('Google Chat configured');
+      successBadge(i18n.t('cli.setup.success.googleChat'));
       break;
     case 'lark':
-      creds.appId = await Input.prompt('Lark app ID:');
-      creds.appSecret = await Secret.prompt('Lark app secret:');
-      creds.verifyToken = await Secret.prompt('Lark verification token:');
+      creds.appId = await Input.prompt(i18n.t('cli.setup.input.larkAppId'));
+      creds.appSecret = await Secret.prompt(i18n.t('cli.setup.secret.larkSecret'));
+      creds.verifyToken = await Secret.prompt(i18n.t('cli.setup.secret.larkVerifyToken'));
       savedCredentials.set('lark', creds);
-      successBadge('Lark configured');
+      successBadge(i18n.t('cli.setup.success.lark'));
       break;
   }
   return savedCredentials;
@@ -173,8 +174,8 @@ async function promptChannelCredentials(
 
 export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig> {
   if (!Deno.stdin.isTerminal()) {
-    console.log(yellow('Interactive setup requires a terminal.'));
-    console.log(dim('Run `cortex setup` in a terminal to configure your LLM provider.'));
+    console.log(yellow(i18n.t('cli.setup.noTerminal')));
+    console.log(dim(i18n.t('cli.setup.noTerminalHint')));
     await runMigrations();
     return config;
   }
@@ -184,7 +185,7 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
   if (!noAnim) {
     const useWeb = await Confirm.prompt({
-      message: 'Complete setup in your web browser instead?',
+      message: i18n.t('cli.setup.confirm.webBrowser'),
       default: false,
     });
 
@@ -205,22 +206,22 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   const updated: CortexConfig = { ...config };
 
   if (noAnim) {
-    console.log(bold(cyan('  ⚡ Welcome to Cortex!')));
-    console.log(dim("  Let's get your agent up and running. This takes about 3 minutes.\n"));
-    console.log(bold('  Step 1/5: Model Provider'));
+    console.log(bold(cyan('  ⚡ ' + i18n.t('cli.setup.welcomeBanner'))));
+    console.log(dim('  ' + i18n.t('cli.setup.welcomeSub') + '\n'));
+    console.log(bold('  Step 1/5: ' + i18n.t('cli.setup.step.modelProvider')));
   } else {
-    stepHeader(1, 7, 'Model Provider');
+    stepHeader(1, 7, i18n.t('cli.setup.step.modelProvider'));
   }
 
-  const providerOptions = Object.entries(PROVIDER_LABELS).map(([value, { label }]) => ({
-    name: label,
+  const providerOptions = Object.entries(PROVIDER_LABELS).map(([value]) => ({
+    name: i18n.t(`cli.setup.provider.${value}`),
     value,
   }));
   const providerChoice = (await Select.prompt({
-    message: 'Which LLM provider do you want to use?',
+    message: i18n.t('cli.setup.select.llmProvider'),
     options: [
       ...providerOptions,
-      { name: "Skip — I'll configure later", value: 'skip' },
+      { name: i18n.t('cli.setup.provider.skip'), value: 'skip' },
     ],
   })) as string;
 
@@ -234,35 +235,37 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
     if (providerChoice === 'ollama') {
       baseUrl = await Input.prompt({
-        message: 'Ollama base URL:',
+        message: i18n.t('cli.setup.input.ollamaUrl'),
         default: 'http://localhost:11434',
       });
       await testConnection(providerChoice as ProviderKind, defaultModel, apiKey, baseUrl);
     } else if (providerChoice === 'bedrock') {
-      apiKey = await Secret.prompt('AWS Access Key ID:');
-      secretKey = await Secret.prompt('AWS Secret Access Key:');
+      apiKey = await Secret.prompt(i18n.t('cli.setup.secret.awsAccessKey'));
+      secretKey = await Secret.prompt(i18n.t('cli.setup.secret.awsSecretKey'));
       baseUrl = await Input.prompt({
-        message: 'AWS Region:',
+        message: i18n.t('cli.setup.input.awsRegion'),
         default: 'us-east-1',
       });
     } else if (providerChoice === 'lmstudio') {
       baseUrl = await Input.prompt({
-        message: 'LM Studio base URL:',
+        message: i18n.t('cli.setup.input.lmstudioUrl'),
         default: 'http://localhost:1234',
       });
     } else if (providerChoice === 'litellm') {
       baseUrl = await Input.prompt({
-        message: 'LiteLLM proxy base URL:',
+        message: i18n.t('cli.setup.input.litellmUrl'),
         default: 'http://localhost:4000',
       });
     } else {
       apiKey = await Secret.prompt(
-        `${PROVIDER_LABELS[providerChoice as ProviderKind].label} API key:`,
+        i18n.t('cli.setup.secret.providerApiKey', {
+          provider: i18n.t(`cli.setup.provider.${providerChoice}`),
+        }),
       );
     }
 
     const model = await Input.prompt({
-      message: 'Model name:',
+      message: i18n.t('cli.setup.input.modelName'),
       default: defaultModel,
     });
 
@@ -270,13 +273,17 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
     const connected = await testConnection(providerKind, model, apiKey, baseUrl);
     if (noAnim) {
-      console.log(connected ? '  ✓ Connected' : '  ⚠ Connection failed');
+      console.log(
+        connected
+          ? '  ✓ ' + i18n.t('cli.setup.connected.success')
+          : '  ⚠ ' + i18n.t('cli.setup.connected.failed'),
+      );
     } else {
       if (connected) {
-        successBadge(`${model} is reachable`);
+        successBadge(i18n.t('cli.setup.success.reachable', { model }));
       } else {
-        errorBadge(`Could not reach ${model}. Check your credentials`);
-        infoBadge('You can reconfigure later with `cortex config edit`');
+        errorBadge(i18n.t('cli.setup.error.unreachable', { model }));
+        infoBadge(i18n.t('cli.setup.info.reconfigureHint'));
       }
     }
 
@@ -289,15 +296,15 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     };
 
     // AI Personalization (optional)
-    stepHeader(2, 7, 'AI Personalization (Optional)');
+    stepHeader(2, 7, i18n.t('cli.setup.step.aiPersonalization'));
 
     const doAI = await Confirm.prompt({
-      message: 'Answer a few questions to personalize your experience? (3-4 quick questions)',
+      message: i18n.t('cli.setup.confirm.aiPersonalize'),
       default: false,
     });
 
     if (doAI) {
-      const spin = spinner('Initializing AI questionnaire...');
+      const spin = spinner(i18n.t('cli.setup.spinner.initQuestionnaire'));
       try {
         const provider = buildProviderFromConfig(providerKind, {
           kind: providerKind,
@@ -305,22 +312,22 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
           apiKey,
           ...(baseUrl && { baseUrl }),
         });
-        spin.update('Asking AI to generate questions...');
+        spin.update(i18n.t('cli.setup.spinner.generateQuestions'));
         const profile = await runAIQuestionnaireInteractive(provider, model, 4);
         if (profile) {
-          spin.succeed('Profile created!');
+          spin.succeed(i18n.t('cli.setup.spinner.profileCreated'));
           await saveUserProfile(profile);
           console.log('');
-          console.log(bold(green('  Profile Summary:')));
+          console.log(bold(green('  ' + i18n.t('cli.setup.profileSummaryTitle'))));
           console.log(getUserProfileSummary(profile));
           console.log('');
         } else {
           spin.stop();
-          infoBadge('Questionnaire skipped. You can complete it later.');
+          infoBadge(i18n.t('cli.setup.info.questionnaireSkipped'));
         }
       } catch {
         spin.stop();
-        infoBadge('AI personalization unavailable. You can complete it later.');
+        infoBadge(i18n.t('cli.setup.info.aiUnavailable'));
       }
     } else {
       separator();
@@ -328,70 +335,70 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   }
 
   // Personality
-  stepHeader(providerChoice === 'skip' ? 2 : 3, 7, 'Agent Personality');
+  stepHeader(providerChoice === 'skip' ? 2 : 3, 7, i18n.t('cli.setup.step.agentPersonality'));
 
   const personality = await Select.prompt<string>({
-    message: 'Pick a vibe for your agent:',
+    message: i18n.t('cli.setup.select.personality'),
     options: [
-      { name: 'Professional — Concise, precise, business-ready', value: 'professional' },
-      { name: 'Friendly — Warm, helpful, casual', value: 'friendly' },
-      { name: 'Developer — Technical, direct, code-aware', value: 'developer' },
-      { name: 'Creative — Imaginative, expressive, lateral', value: 'creative' },
-      { name: 'Analyst — Logical, structured, evidence-based', value: 'analyst' },
-      { name: 'Teacher — Patient, explanatory, mentoring', value: 'teacher' },
-      { name: 'Minimalist — Brief, concise, no fluff', value: 'minimalist' },
-      { name: "Custom — I'll write my own SOUL.md", value: 'custom' },
+      { name: i18n.t('cli.setup.personality.professional'), value: 'professional' },
+      { name: i18n.t('cli.setup.personality.friendly'), value: 'friendly' },
+      { name: i18n.t('cli.setup.personality.developer'), value: 'developer' },
+      { name: i18n.t('cli.setup.personality.creative'), value: 'creative' },
+      { name: i18n.t('cli.setup.personality.analyst'), value: 'analyst' },
+      { name: i18n.t('cli.setup.personality.teacher'), value: 'teacher' },
+      { name: i18n.t('cli.setup.personality.minimalist'), value: 'minimalist' },
+      { name: i18n.t('cli.setup.personality.custom'), value: 'custom' },
     ],
   });
 
   if (personality !== 'custom') {
     const soul = generatePersonalitySoul(personality);
     await writeSoul(soul);
-    successBadge(`SOUL.md created (${personality})`);
+    successBadge(i18n.t('cli.setup.success.soulCreated', { personality }));
   } else {
-    infoBadge('Write your own SOUL.md with `cortex soul edit`');
+    infoBadge(i18n.t('cli.setup.info.customSoul'));
   }
 
   // Channels — multi-select with credential prompts
-  stepHeader(providerChoice === 'skip' ? 3 : 4, 7, 'Channels & Integrations');
+  stepHeader(providerChoice === 'skip' ? 3 : 4, 7, i18n.t('cli.setup.step.channels'));
 
   const selectedChannels = await Checkbox.prompt({
-    message: 'Select channels to enable (space to toggle, enter to confirm):',
-    options: CHANNEL_OPTIONS,
+    message: i18n.t('cli.setup.checkbox.channels'),
+    options: CHANNEL_OPTIONS.map((o) => ({ name: i18n.t(o.nameKey), value: o.value })),
     minOptions: 1,
     maxOptions: 10,
   });
 
   if (selectedChannels.length === 0) {
-    infoBadge('No channels selected. Use `cortex channels` later to configure.');
+    infoBadge(i18n.t('cli.setup.info.noChannels'));
   }
 
   const channelCredentials = new Map<string, ChannelCredentials>();
 
   for (const channel of selectedChannels) {
     if (channel === 'web') {
-      successBadge('Web UI will be available on port 3000');
+      successBadge(i18n.t('cli.setup.success.webUi'));
     } else {
       await promptChannelCredentials(channel, channelCredentials);
     }
   }
 
   // Advanced: Embeddings + Vector Store + Chrome Bridge + Voice
-  stepHeader(providerChoice === 'skip' ? 4 : 5, 7, 'Advanced Features (Optional)');
+  stepHeader(providerChoice === 'skip' ? 4 : 5, 7, i18n.t('cli.setup.step.advancedFeatures'));
 
   const configureAdvanced = await Confirm.prompt({
-    message: 'Configure embeddings, vector store, Chrome Bridge, and voice?',
+    message: i18n.t('cli.setup.confirm.advancedFeatures'),
     default: false,
   });
 
   if (configureAdvanced) {
     // Embeddings
     const embeddingsChoice = await Select.prompt<string>({
-      message: 'Embedding provider for memory:',
+      message: i18n.t('cli.setup.select.embeddingProvider'),
       options: [
-        { name: 'OpenAI (text-embedding-3-small) — Best quality', value: 'openai' },
-        { name: 'Ollama (local) — Free, private', value: 'ollama' },
-        { name: 'Stub — Minimal memory (default)', value: 'stub' },
+        { name: i18n.t('cli.setup.embedding.openai'), value: 'openai' },
+        { name: i18n.t('cli.setup.embedding.ollama'), value: 'ollama' },
+        { name: i18n.t('cli.setup.embedding.stub'), value: 'stub' },
       ],
     });
 
@@ -401,34 +408,34 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
       };
       if (embeddingsChoice === 'openai') {
         embedConfig.apiKey = await Secret.prompt(
-          'OpenAI API key for embeddings (or leave blank to reuse provider key):',
+          i18n.t('cli.setup.secret.embeddingApiKey'),
         );
         embedConfig.model = await Input.prompt({
-          message: 'Embedding model:',
+          message: i18n.t('cli.setup.input.embeddingModel'),
           default: 'text-embedding-3-small',
         });
       } else if (embeddingsChoice === 'ollama') {
         embedConfig.baseUrl = await Input.prompt({
-          message: 'Ollama base URL for embeddings:',
+          message: i18n.t('cli.setup.input.ollamaEmbeddingUrl'),
           default: 'http://localhost:11434',
         });
         embedConfig.model = await Input.prompt({
-          message: 'Embedding model:',
+          message: i18n.t('cli.setup.input.ollamaModel'),
           default: 'nomic-embed-text',
         });
       }
       updated.embeddings = embedConfig;
-      successBadge(`Embeddings: ${embeddingsChoice}`);
+      successBadge(i18n.t('cli.setup.success.embeddings', { provider: embeddingsChoice }));
     }
 
     // Vector Store
     const vectorChoice = await Select.prompt<string>({
-      message: 'Vector store backend:',
+      message: i18n.t('cli.setup.select.vectorStore'),
       options: [
-        { name: 'SQLite (built-in) — No setup required', value: 'sqlite' },
-        { name: 'Qdrant — Self-hosted or cloud', value: 'qdrant' },
-        { name: 'ChromaDB — Open-source', value: 'chromadb' },
-        { name: 'Pinecone — Managed cloud', value: 'pinecone' },
+        { name: i18n.t('cli.setup.vector.sqlite'), value: 'sqlite' },
+        { name: i18n.t('cli.setup.vector.qdrant'), value: 'qdrant' },
+        { name: i18n.t('cli.setup.vector.chromadb'), value: 'chromadb' },
+        { name: i18n.t('cli.setup.vector.pinecone'), value: 'pinecone' },
       ],
     });
 
@@ -437,34 +444,45 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
         kind: vectorChoice as MemoryVectorStoreConfig['kind'],
       };
       vecConfig.url = await Input.prompt({
-        message: `${vectorChoice} URL:`,
+        message: i18n.t('cli.setup.input.vectorUrl', {
+          provider: i18n.t(`cli.setup.vector.${vectorChoice}`),
+        }),
         default: vectorChoice === 'qdrant' ? 'http://localhost:6333' : 'http://localhost:8000',
       });
-      vecConfig.apiKey = await Secret.prompt(`${vectorChoice} API key (if required):`);
+      vecConfig.apiKey = await Secret.prompt(
+        i18n.t('cli.setup.secret.vectorApiKey', {
+          provider: i18n.t(`cli.setup.vector.${vectorChoice}`),
+        }),
+      );
       vecConfig.collection = await Input.prompt({
-        message: `${vectorChoice} collection name:`,
+        message: i18n.t('cli.setup.input.vectorCollection', {
+          provider: i18n.t(`cli.setup.vector.${vectorChoice}`),
+        }),
         default: 'cortex',
       });
       updated.memory = { ...updated.memory, vectorStore: vecConfig };
-      successBadge(`Vector store: ${vectorChoice}`);
+      successBadge(i18n.t('cli.setup.success.vectorStore', { provider: vectorChoice }));
     } else {
       updated.memory = {
         ...updated.memory,
         vectorStore: { kind: 'sqlite' } as MemoryVectorStoreConfig,
       };
-      infoBadge('Vector store: SQLite (built-in)');
+      infoBadge(i18n.t('cli.setup.info.vectorSqlite'));
     }
 
     // Chrome Bridge
     const useChrome = await Confirm.prompt({
-      message: 'Enable Chrome Bridge (browser automation via MCP)?',
+      message: i18n.t('cli.setup.confirm.chromeBridge'),
       default: false,
     });
 
     if (useChrome) {
-      const nodePath = await Input.prompt({ message: 'Node.js path:', default: 'node' });
+      const nodePath = await Input.prompt({
+        message: i18n.t('cli.setup.input.nodePath'),
+        default: 'node',
+      });
       const serverPath = await Input.prompt({
-        message: 'Chrome Bridge server script path:',
+        message: i18n.t('cli.setup.input.chromeBridgePath'),
         default: '',
       });
       updated.chromeBridge = {
@@ -476,31 +494,31 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
         autoRegisterTools: true,
         toolPrefix: 'chrome',
       };
-      successBadge('Chrome Bridge configured');
+      successBadge(i18n.t('cli.setup.success.chromeBridge'));
     }
 
     // Voice / Speech
     const useVoice = await Confirm.prompt({
-      message: 'Enable voice/speech features (STT/TTS)?',
+      message: i18n.t('cli.setup.confirm.voice'),
       default: false,
     });
 
     if (useVoice) {
       const sttChoice = await Select.prompt<string>({
-        message: 'Speech-to-text provider:',
+        message: i18n.t('cli.setup.select.stt'),
         options: [
-          { name: 'OpenAI Whisper', value: 'openai' as const },
+          { name: i18n.t('cli.setup.voice.stt.openai'), value: 'openai' as const },
         ],
       });
       const ttsChoice = await Select.prompt<string>({
-        message: 'Text-to-speech provider:',
+        message: i18n.t('cli.setup.select.tts'),
         options: [
-          { name: 'OpenAI TTS', value: 'openai' as const },
-          { name: 'ElevenLabs', value: 'elevenlabs' as const },
+          { name: i18n.t('cli.setup.voice.tts.openai'), value: 'openai' as const },
+          { name: i18n.t('cli.setup.voice.tts.elevenlabs'), value: 'elevenlabs' as const },
         ],
       });
       const elevenLabsKey = ttsChoice === 'elevenlabs'
-        ? await Secret.prompt('ElevenLabs API key:')
+        ? await Secret.prompt(i18n.t('cli.setup.secret.elevenlabsKey'))
         : undefined;
       updated.voice = {
         enabled: true,
@@ -513,27 +531,27 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
         language: 'en',
         elevenLabsApiKey: elevenLabsKey,
       };
-      successBadge('Voice features configured');
+      successBadge(i18n.t('cli.setup.success.voice'));
     }
   }
 
   // Telemetry
-  stepHeader(providerChoice === 'skip' ? 5 : 6, 7, 'Usage Data');
+  stepHeader(providerChoice === 'skip' ? 5 : 6, 7, i18n.t('cli.setup.step.usageData'));
   const telemetry = await Confirm.prompt({
-    message: 'Share anonymous usage data to help improve Cortex?',
+    message: i18n.t('cli.setup.confirm.telemetry'),
     default: false,
   });
   if (telemetry) {
-    infoBadge('Anonymous usage data collection enabled. Thank you!');
+    infoBadge(i18n.t('cli.setup.info.telemetryOn'));
   } else {
-    infoBadge('Telemetry disabled.');
+    infoBadge(i18n.t('cli.setup.info.telemetryOff'));
   }
 
   // Initialization
   console.log('');
-  const initSpin = spinner('Initializing databases...');
+  const initSpin = spinner(i18n.t('cli.setup.spinner.initDb'));
   await runMigrations();
-  initSpin.succeed('Databases ready');
+  initSpin.succeed(i18n.t('cli.setup.spinner.dbReady'));
 
   updated.agent ??= { name: 'cortex', maxTurns: 25, streamOutput: true };
 
@@ -548,27 +566,35 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   await saveConfig(updated);
 
   console.log('');
-  console.log(green(bold('  ✅ Cortex is ready!')));
+  console.log(green(bold('  ✅ ' + i18n.t('cli.setup.ready'))));
   console.log('');
-  console.log('  Quick commands:');
-  console.log(`    ${bold(cyan('cortex'))}                    → Start interactive chat`);
-  console.log(`    ${bold(cyan('cortex "check the time"'))}   → One-shot command`);
-  console.log(`    ${bold(cyan('cortex status'))}             → View agent status`);
-  console.log(`    ${bold(cyan('cortex help'))}               → See all commands\n`);
-  console.log('  Next steps:');
-  console.log(`    ${bold('cortex plugin list')}        → Browse available plugins`);
-  console.log(`    ${bold('cortex config edit')}        → Customize settings`);
-  console.log(`    ${bold('cortex docs')}               → Open documentation\n`);
+  console.log('  ' + i18n.t('cli.setup.quickCommandsTitle'));
+  console.log('    ' + bold(cyan(i18n.t('cli.setup.quick.startChat', { command: 'cortex' }))));
+  console.log(
+    '    ' + bold(cyan(i18n.t('cli.setup.quick.oneShot', { command: 'cortex "check the time"' }))),
+  );
+  console.log('    ' + bold(cyan(i18n.t('cli.setup.quick.status', { command: 'cortex status' }))));
+  console.log(
+    '    ' + bold(cyan(i18n.t('cli.setup.quick.help', { command: 'cortex help' }))) + '\n',
+  );
+  console.log('  ' + i18n.t('cli.setup.nextStepsTitle'));
+  console.log(
+    '    ' + bold(i18n.t('cli.setup.next.pluginList', { command: 'cortex plugin list' })),
+  );
+  console.log(
+    '    ' + bold(i18n.t('cli.setup.next.configEdit', { command: 'cortex config edit' })),
+  );
+  console.log('    ' + bold(i18n.t('cli.setup.next.docs', { command: 'cortex docs' })) + '\n');
 
   return updated;
 }
 
 async function handleWebOnboarding(config: CortexConfig): Promise<CortexConfig> {
-  console.log(cyan('  Starting web server for browser-based setup...\n'));
+  console.log(cyan('  ' + i18n.t('cli.setup.web.starting') + '\n'));
   const { startServer } = await import('../server/server.ts');
   startServer({ port: 3000, host: '0.0.0.0' }).catch(() => {});
-  console.log(green('  ✓ Web server started on http://localhost:3000/onboarding'));
-  console.log(dim('  Complete setup in your browser, then return here.\n'));
+  console.log(green(i18n.t('cli.setup.web.started', { url: 'http://localhost:3000/onboarding' })));
+  console.log(dim('  ' + i18n.t('cli.setup.web.returnHere') + '\n'));
 
   const updated = { ...config };
   const cfg = updated as unknown as Record<string, unknown>;
@@ -585,5 +611,5 @@ async function handleWebOnboarding(config: CortexConfig): Promise<CortexConfig> 
 }
 
 export function printSetupHint(): void {
-  console.log(yellow('  No provider configured. Run `cortex setup` first.\n'));
+  console.log(yellow('  ' + i18n.t('cli.setup.hint.noProvider') + '\n'));
 }

@@ -35,6 +35,17 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Trigger job creator** — new `src/triggers/job-creator.ts` module that implements `WebhookJobCreator` and `WatcherJobCreator` interfaces. Creates ephemeral agent sessions and executes `agentTurn()` in a fire-and-forget background context, returning session metadata to the caller immediately.
 
+- **Multi-lingual system (i18n)** — all human-readable text across CLI, web UI, tool descriptions, server errors, logs, and agent prompts is now localizable. 10 target languages (zh, es, fr, de, ja, ko, pt, ru, ar, hi) with English as the source of truth and fallback. 753 translation keys across 6 namespaces (`cli`, `ui`, `tools`, `server`, `agent`, `common`).
+  - New `src/i18n/` module: `I18nService` with `t()` dot-notation key lookup, `loadLocale()` with cache and fallback chain, `handleI18nApi()` serving `GET /api/i18n/:locale` (ui+common namespaces only), and `extractLocale()` middleware (env var → config → Accept-Language → `'en'`).
+  - `CortexConfig.locale` field with `CORTEX_LOCALE` env var override. Resolved per-request for the web UI via `serveUi(locale)` with `{LOCALE}` template replacement.
+  - `PATHS.localesDir` with `CORTEX_LOCALES_DIR` env var override and compiled-binary fallback to `Deno.cwd()/locales`.
+  - Frontend vanilla JS `t()` function with `initI18n()` loading translations via `/api/i18n/:locale`, cached in `localStorage`.
+  - Tool definitions extended with optional `displayNameKey`, `descriptionKey`, and param `descriptionKey` fields; `ToolRegistry` resolves via `i18n.t()`.
+  - Router `err()`/`notFound()` helpers pass messages through `i18n.t()` for backwards-compatible error localization.
+  - `LogEntry.i18nKey` for structured log aggregation. Agent system prompt includes locale hint when set.
+  - CI scripts: `deno task i18n:validate` (key parity across locales), `deno task i18n:sync` (add new English keys to all locales), `deno task i18n:extract` (scan source for `i18n.t()` calls).
+  - 11 locale files in `locales/` (ar includes `direction: "rtl"` in `_meta`).
+
 ---
 
 ## [0.46.0] — 2026-06-20

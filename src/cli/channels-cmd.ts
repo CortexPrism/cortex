@@ -17,6 +17,7 @@ import {
   storeChannelCredentials,
 } from '../channels/store.ts';
 import { green, red, yellow } from '@std/fmt/colors';
+import { i18n } from '../i18n/service.ts';
 
 async function loadChannelPlugin(type: string) {
   switch (type) {
@@ -67,11 +68,11 @@ const channelsCommand = new Command()
   .action(async () => {
     const channels = await listChannels();
     if (channels.length === 0) {
-      console.log('No channels configured.');
-      console.log('Use `cortex channels add` to add a new channel.');
+      console.log(i18n.t('cli.channels.noChannelsConfigured'));
+      console.log(i18n.t('cli.channels.useAddHint'));
       return;
     }
-    console.log(`\n${channels.length} channel(s) configured:\n`);
+    console.log(i18n.t('cli.channels.channelsConfigured', { count: String(channels.length) }));
     for (const c of channels) {
       const status = c.enabled ? green('enabled') : yellow('disabled');
       console.log(`  ${c.id}`);
@@ -208,10 +209,10 @@ channelsCommand
         agentId,
       });
 
-      console.log(green(`\nChannel "${name}" (${id}) added successfully!`));
-      console.log(`Use ${green(`\`cortex channels start ${id}\``)} to activate it.`);
+      console.log(green(i18n.t('cli.channels.channelAdded', { name, id })));
+      console.log(i18n.t('cli.channels.useStartHint', { id }));
     } catch (e) {
-      console.error(red(`Failed to add channel: ${(e as Error).message}`));
+      console.error(red(i18n.t('cli.channels.failedToAdd', { message: (e as Error).message })));
       Deno.exit(1);
     }
   });
@@ -237,9 +238,9 @@ channelsCommand
       await startChannel(id);
       await setChannelEnabled(id, true);
 
-      console.log(green(`Channel "${id}" started.`));
+      console.log(green(i18n.t('cli.channels.channelStarted', { id })));
     } catch (e) {
-      console.error(red(`Failed to start channel: ${(e as Error).message}`));
+      console.error(red(i18n.t('cli.channels.failedToStart', { message: (e as Error).message })));
       Deno.exit(1);
     }
   });
@@ -251,9 +252,9 @@ channelsCommand
     try {
       await stopChannel(id);
       await setChannelEnabled(id, false);
-      console.log(green(`Channel "${id}" stopped.`));
+      console.log(green(i18n.t('cli.channels.channelStopped', { id })));
     } catch (e) {
-      console.error(red(`Failed to stop channel: ${(e as Error).message}`));
+      console.error(red(i18n.t('cli.channels.failedToStop', { message: (e as Error).message })));
       Deno.exit(1);
     }
   });
@@ -265,21 +266,24 @@ channelsCommand
     try {
       const record = await getChannel(id);
       if (!record) {
-        throw new Error(`Channel "${id}" not found`);
+        throw new Error(i18n.t('cli.channels.channelNotFound', { id }));
       }
 
-      console.log(`Testing connection to ${record.name} (${record.channelType})...`);
+      console.log(
+        i18n.t('cli.channels.testingConnection', { name: record.name, type: record.channelType }),
+      );
 
       const config = await buildChannelConfig(record);
       const plugin = await loadChannelPlugin(record.channelType);
 
       await plugin.connect(config);
-      console.log(green('✓ Connection successful'));
-
+      console.log(green(i18n.t('cli.channels.connectionSuccessful')));
       await plugin.disconnect();
-      console.log('Test completed.');
+      console.log(i18n.t('cli.channels.testCompleted'));
     } catch (e) {
-      console.error(red(`Connection test failed: ${(e as Error).message}`));
+      console.error(
+        red(i18n.t('cli.channels.connectionTestFailed', { message: (e as Error).message })),
+      );
       Deno.exit(1);
     }
   });
@@ -306,7 +310,7 @@ channelsCommand
         });
 
         if (confirm === 'no') {
-          console.log('Cancelled.');
+          console.log(i18n.t('cli.channels.cancelled'));
           return;
         }
       }
@@ -321,9 +325,9 @@ channelsCommand
       // Delete from store
       await deleteChannel(id);
 
-      console.log(green(`Channel "${id}" removed.`));
+      console.log(green(i18n.t('cli.channels.channelRemoved', { id })));
     } catch (e) {
-      console.error(red(`Failed to remove channel: ${(e as Error).message}`));
+      console.error(red(i18n.t('cli.channels.failedToRemove', { message: (e as Error).message })));
       Deno.exit(1);
     }
   });

@@ -1,5 +1,6 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
+import { i18n } from '../i18n/service.ts';
 
 const mcpCommand = new Command()
   .name('mcp')
@@ -36,8 +37,10 @@ mcpCommand
   .option('-H, --host <host:string>', 'Host to bind to', { default: '127.0.0.1' })
   .action(async (opts: { port: number; host: string }) => {
     const { handleMcpHttpRequest } = await import('../mcp/server.ts');
-    console.log(cyan(`  Starting MCP HTTP server on http://${opts.host}:${opts.port}/mcp`));
-    console.log(green('  Ready for MCP connections. Press Ctrl+C to stop.\n'));
+    console.log(
+      cyan(i18n.t('cli.mcp.startingHttpServer', { host: opts.host, port: String(opts.port) })),
+    );
+    console.log(green(i18n.t('cli.mcp.readyForMcp')));
     await Deno.serve({ port: opts.port, hostname: opts.host }, async (req) => {
       const res = await handleMcpHttpRequest(req);
       return res ?? new Response('Not Found', { status: 404 });
@@ -67,19 +70,24 @@ mcpCommand
       const { connectHttp, connectStdio } = await import('../mcp/client.ts');
 
       if (options.url) {
-        console.log(`Connecting to ${green(name)} via HTTP at ${cyan(options.url)}...`);
+        console.log(
+          i18n.t('cli.mcp.connectingHttp', { name: green(name), url: cyan(options.url) }),
+        );
         try {
           const conn = await connectHttp({ name, transport: 'http', url: options.url });
-          console.log(green('Connected!'));
+          console.log(green(i18n.t('cli.mcp.connected')));
           console.log(
-            `  Server: ${conn.serverInfo?.name ?? 'unknown'} v${conn.serverInfo?.version ?? '?'}`,
+            i18n.t('cli.mcp.serverInfo', {
+              serverName: conn.serverInfo?.name ?? 'unknown',
+              serverVersion: conn.serverInfo?.version ?? '?',
+            }),
           );
-          console.log(`  Tools: ${conn.tools.length}`);
+          console.log(i18n.t('cli.mcp.toolsCount', { count: String(conn.tools.length) }));
           for (const t of conn.tools) {
             console.log(`    ${yellow(t.name)} — ${t.description}`);
           }
         } catch (e) {
-          console.error(red(`Failed to connect: ${(e as Error).message}`));
+          console.error(red(i18n.t('cli.mcp.failedToConnect', { message: (e as Error).message })));
         }
       } else if (options.command) {
         const args = options.args
@@ -94,9 +102,10 @@ mcpCommand
         }
 
         console.log(
-          `Connecting to ${green(name)} via stdio: ${
-            cyan(options.command + ' ' + args.join(' '))
-          }...`,
+          i18n.t('cli.mcp.connectingStdio', {
+            name: green(name),
+            command: cyan(options.command + ' ' + args.join(' ')),
+          }),
         );
         try {
           const conn = await connectStdio({
@@ -106,19 +115,22 @@ mcpCommand
             args,
             env,
           });
-          console.log(green('Connected!'));
+          console.log(green(i18n.t('cli.mcp.connected')));
           console.log(
-            `  Server: ${conn.serverInfo?.name ?? 'unknown'} v${conn.serverInfo?.version ?? '?'}`,
+            i18n.t('cli.mcp.serverInfo', {
+              serverName: conn.serverInfo?.name ?? 'unknown',
+              serverVersion: conn.serverInfo?.version ?? '?',
+            }),
           );
-          console.log(`  Tools: ${conn.tools.length}`);
+          console.log(i18n.t('cli.mcp.toolsCount', { count: String(conn.tools.length) }));
           for (const t of conn.tools) {
             console.log(`    ${yellow(t.name)} — ${t.description}`);
           }
         } catch (e) {
-          console.error(red(`Failed to connect: ${(e as Error).message}`));
+          console.error(red(i18n.t('cli.mcp.failedToConnect', { message: (e as Error).message })));
         }
       } else {
-        console.error(red('Specify --command (stdio) or --url (HTTP)'));
+        console.error(red(i18n.t('cli.mcp.specifyTransport')));
       }
     },
   );
@@ -130,7 +142,7 @@ mcpCommand
     const { disconnectHttp, disconnectStdio, getConnection } = await import('../mcp/client.ts');
     const conn = getConnection(name);
     if (!conn) {
-      console.error(red(`No MCP connection named "${name}"`));
+      console.error(red(i18n.t('cli.mcp.noConnectionNamed', { name })));
       return;
     }
     if (conn.config.transport === 'http') {
@@ -138,7 +150,7 @@ mcpCommand
     } else {
       await disconnectStdio(name);
     }
-    console.log(green(`Disconnected from "${name}"`));
+    console.log(green(i18n.t('cli.mcp.disconnectedFrom', { name })));
   });
 
 mcpCommand
@@ -149,16 +161,16 @@ mcpCommand
     const connections = listConnections();
 
     if (!connections.length) {
-      console.log(yellow('No MCP servers are currently connected.'));
+      console.log(yellow(i18n.t('cli.mcp.noMcpServers')));
       console.log('');
-      console.log('Connect options:');
-      console.log(`  ${cyan('cortex mcp connect <name> --command "kilocode mcp"')}`);
-      console.log(`  ${cyan('cortex mcp connect <name> --url http://localhost:9187/mcp')}`);
+      console.log(i18n.t('cli.mcp.connectOptions'));
+      console.log(i18n.t('cli.mcp.connectStdioHint'));
+      console.log(i18n.t('cli.mcp.connectHttpHint'));
       return;
     }
 
     console.log('');
-    console.log(bold('Connected MCP Servers'));
+    console.log(bold(i18n.t('cli.mcp.connectedMcpServers')));
     console.log('');
 
     for (const conn of connections) {
@@ -211,7 +223,7 @@ mcpCommand
             console.log('');
             if (servers.length === 0) {
               console.log(
-                yellow('  No managed MCP servers. Add connections via `cortex mcp connect`.'),
+                yellow(i18n.t('cli.mcp.noManagedServers')),
               );
               console.log('');
               return;
@@ -245,7 +257,7 @@ mcpCommand
             const { healthCheck } = await import('../mcp-gateway/gateway.ts');
             const servers = listServers();
             if (servers.length === 0) {
-              console.log(yellow('\nNo managed MCP servers to check.'));
+              console.log(yellow(i18n.t('cli.mcp.noManagedServersCheck')));
               return;
             }
             console.log(bold(`\nRunning health checks on ${servers.length} server(s)...\n`));

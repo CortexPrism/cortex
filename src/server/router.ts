@@ -30,6 +30,8 @@ import {
 } from '../config/config.ts';
 import { mergeSecurityHeaders } from './security-headers.ts';
 import type { SandboxRuntime } from '../sandbox/executor.ts';
+import { handleI18nApi } from '../i18n/api.ts';
+import { i18n } from '../i18n/service.ts';
 
 const authRateLimit = new Map<string, { count: number; until: number }>();
 const AUTH_RATE_LIMIT_WINDOW = 60_000;
@@ -169,12 +171,13 @@ function json(data: unknown, status = 200, extraCookie?: string): Response {
   return new Response(JSON.stringify(data), { status, headers: merged });
 }
 
-function notFound(msg = 'Not found'): Response {
-  return json({ error: msg }, 404);
+function notFound(msg = 'server.errors.notFound'): Response {
+  return json({ error: i18n.t(msg) }, 404);
 }
 
 function err(msg: string, status = 500): Response {
-  return json({ error: msg }, status);
+  const translated = i18n.t(msg);
+  return json({ error: translated !== msg ? translated : msg }, status);
 }
 
 // In-memory cache of GitHub versions for marketplace plugins (TTL: 1 hour)
@@ -263,6 +266,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
         'Access-Control-Max-Age': '86400',
       }),
     });
+  }
+
+  if (req.method === 'GET' && path.startsWith('/api/i18n/')) {
+    const i18nRes = await handleI18nApi(path);
+    if (i18nRes) return i18nRes;
   }
 
   // ── Public auth & onboarding routes (no auth required) ──

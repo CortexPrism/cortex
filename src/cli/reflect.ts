@@ -4,6 +4,7 @@ import { runMigrations } from '../db/migrate.ts';
 import { consolidateReflections, listReflections } from '../agent/reflect.ts';
 import { loadConfig } from '../config/config.ts';
 import { buildProvider } from '../llm/router.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const reflectCommand = new Command()
   .name('reflect')
@@ -20,12 +21,12 @@ export const reflectCommand = new Command()
         const filtered = opts.category ? rows.filter((r) => r.category === opts.category) : rows;
 
         if (filtered.length === 0) {
-          console.log(dim('\n  No reflection patterns yet. Run some chat sessions first.\n'));
+          console.log(dim('\n  ' + i18n.t('cli.reflect.empty') + '\n'));
           return;
         }
 
         console.log('');
-        console.log(bold('  Reflection Patterns'));
+        console.log(bold('  ' + i18n.t('cli.reflect.heading')));
         console.log(dim('  ──────────────────────────────────────────────────'));
 
         for (const r of filtered) {
@@ -56,7 +57,7 @@ export const reflectCommand = new Command()
         }
         const activeConfig = config.providers[config.defaultProvider]!;
 
-        console.log(dim('\n  Running reflection consolidation…'));
+        console.log(dim('\n  ' + i18n.t('cli.reflect.consolidating')));
         const count = await consolidateReflections(
           provider!,
           activeConfig.model,
@@ -64,10 +65,10 @@ export const reflectCommand = new Command()
         );
 
         if (count > 0) {
-          console.log(green(`  ✓ Extracted ${count} meta-pattern(s)`));
+          console.log(green('  ' + i18n.t('cli.reflect.extracted', { count })));
         } else {
           console.log(
-            dim('  No new meta-patterns found (need more data or patterns already consolidated)'),
+            dim('  ' + i18n.t('cli.reflect.noNewPatterns')),
           );
         }
         console.log('');

@@ -18,6 +18,7 @@ export interface ToolParam {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
   description: string;
+  descriptionKey?: string;
   required?: boolean;
   enum?: string[];
 }
@@ -25,6 +26,9 @@ export interface ToolParam {
 export interface ToolDefinition {
   name: string;
   description: string;
+  displayName?: string;
+  displayNameKey?: string;
+  descriptionKey?: string;
   params: ToolParam[];
   capabilities: ToolCapability[];
 }

@@ -12,6 +12,7 @@ import {
 import { runMigrations } from '../db/migrate.ts';
 import { runConsolidation } from '../memory/consolidate.ts';
 import { getShellCommand } from '../utils/platform.ts';
+import { i18n } from '../i18n/service.ts';
 
 function statusColor(status: string): string {
   switch (status) {
@@ -43,19 +44,21 @@ export const jobsCommand = new Command()
         const jobs = await listJobs(opts.status as never);
 
         if (jobs.length === 0) {
-          console.log(dim('\n  No jobs found.\n'));
+          console.log(dim('\n  ' + i18n.t('cli.jobs.empty') + '\n'));
           return;
         }
 
         console.log('');
-        console.log(bold('  Jobs'));
+        console.log(bold('  ' + i18n.t('cli.jobs.heading')));
         console.log(dim('  ──────────────────────────────────────────────────────────'));
 
         for (const j of jobs) {
           const next = j.next_run_at ? new Date(j.next_run_at).toLocaleString() : '—';
-          const attempts = `${j.attempts}/${j.max_attempts}`;
+          const ratio = `${j.attempts}/${j.max_attempts}`;
           console.log(
-            `  ${bold(cyan(j.id))}  ${statusColor(j.status)}  ${dim(attempts + ' attempts')}`,
+            `  ${bold(cyan(j.id))}  ${statusColor(j.status)}  ${
+              dim(i18n.t('cli.jobs.attempts', { ratio }))
+            }`,
           );
           console.log(`    ${bold(j.name)}: ${dim(j.command)}`);
           if (j.kind !== 'once') console.log(`    schedule: ${dim(j.schedule ?? '—')}`);
@@ -88,7 +91,7 @@ export const jobsCommand = new Command()
           maxAttempts: opts.maxAttempts,
           runAt,
         });
-        console.log(green(`  ✓ Job created: ${id}`));
+        console.log(green('  ' + i18n.t('cli.jobs.created', { id })));
       }),
   )
   .command(
@@ -99,7 +102,7 @@ export const jobsCommand = new Command()
       .action(async (_opts: void, id: string) => {
         await runMigrations();
         await cancelJob(id);
-        console.log(green(`  ✓ Cancelled: ${id}`));
+        console.log(green('  ' + i18n.t('cli.jobs.cancelled', { id })));
       }),
   )
   .command(
@@ -111,12 +114,14 @@ export const jobsCommand = new Command()
         const due = await getDueJobs();
 
         if (due.length === 0) {
-          console.log(dim('  No jobs due.'));
+          console.log(dim('  ' + i18n.t('cli.jobs.noDue')));
           return;
         }
 
         for (const job of due) {
-          console.log(`  Running: ${bold(job.name)} — ${dim(job.command)}`);
+          console.log(
+            '  ' + i18n.t('cli.jobs.running', { name: bold(job.name), command: dim(job.command) }),
+          );
           const runId = await markJobRunning(job.id, 'cli');
           const t0 = Date.now();
 
@@ -140,7 +145,7 @@ export const jobsCommand = new Command()
                 );
               }
 
-              console.log(green(`  ✓ Done: ${job.name}`));
+              console.log(green('  ' + i18n.t('cli.jobs.done', { name: job.name })));
             } else {
               const { cmd, args } = getShellCommand();
               const proc = new Deno.Command(cmd, {
@@ -161,7 +166,7 @@ export const jobsCommand = new Command()
                   exitCode: code,
                 });
                 if (out.trim()) console.log(dim(out));
-                console.log(green(`  ✓ Done: ${job.name}`));
+                console.log(green('  ' + i18n.t('cli.jobs.done', { name: job.name })));
               } else {
                 await markJobFailed(job.id, runId, err.trim() || `exit ${code}`, {
                   stdout: out,
@@ -169,14 +174,16 @@ export const jobsCommand = new Command()
                   durationMs: elapsed,
                   exitCode: code,
                 });
-                console.log(red(`  ✗ Failed (exit ${code}): ${job.name}`));
+                console.log(
+                  red('  ' + i18n.t('cli.jobs.failedWithExit', { code, name: job.name })),
+                );
                 if (err.trim()) console.log(red(`    ${err.trim()}`));
               }
             }
           } catch (err) {
             const msg = (err as Error).message;
             await markJobFailed(job.id, runId, msg, { durationMs: Date.now() - t0 });
-            console.log(red(`  ✗ Error: ${msg}`));
+            console.log(red('  ' + i18n.t('cli.jobs.error', { message: msg })));
           }
         }
       }),

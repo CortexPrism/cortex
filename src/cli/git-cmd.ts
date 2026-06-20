@@ -16,6 +16,7 @@ import {
   gitPush,
   gitStatus,
 } from '../workspace/git.ts';
+import { i18n } from '../i18n/service.ts';
 
 async function resolveDir(agentId?: string): Promise<string> {
   if (agentId) return await ensureAgentWorkspace(agentId);
@@ -75,7 +76,7 @@ const addCmd = new Command()
     const dir = await resolveDir(opts.agent);
     const files = opts.all ? ['-A'] : paths.flat();
     const ok = await gitAdd(dir, files);
-    console.log(ok ? 'Staged.' : 'Failed to stage.');
+    console.log(ok ? i18n.t('cli.git.staged') : i18n.t('cli.git.failedToStage'));
   });
 
 const commitCmd = new Command()
@@ -87,7 +88,7 @@ const commitCmd = new Command()
     const dir = await resolveDir(opts.agent);
     if (opts.all) await gitAdd(dir, ['-A']);
     const ok = await gitCommit(dir, message);
-    console.log(ok ? `Committed: ${message}` : 'Nothing to commit.');
+    console.log(ok ? i18n.t('cli.git.committed', { message }) : i18n.t('cli.git.nothingToCommit'));
   });
 
 const pushCmd = new Command()
@@ -98,7 +99,11 @@ const pushCmd = new Command()
   .action(async (opts: { agent?: string; remote: string; branch?: string }) => {
     const dir = await resolveDir(opts.agent);
     const result = await gitPush(dir, opts.remote, opts.branch);
-    console.log(result.success ? 'Push successful.' : `Push failed:\n${result.output}`);
+    console.log(
+      result.success
+        ? i18n.t('cli.git.pushSuccessful')
+        : i18n.t('cli.git.pushFailed', { output: result.output }),
+    );
   });
 
 const pullCmd = new Command()
@@ -109,7 +114,11 @@ const pullCmd = new Command()
   .action(async (opts: { agent?: string; remote: string; branch?: string }) => {
     const dir = await resolveDir(opts.agent);
     const result = await gitPull(dir, opts.remote, opts.branch);
-    console.log(result.success ? 'Pull successful.' : `Pull failed:\n${result.output}`);
+    console.log(
+      result.success
+        ? i18n.t('cli.git.pullSuccessful')
+        : i18n.t('cli.git.pullFailed', { output: result.output }),
+    );
   });
 
 const cloneCmd = new Command()
@@ -118,7 +127,11 @@ const cloneCmd = new Command()
   .option('--branch <branch:string>', 'Branch to clone')
   .action(async (opts: { branch?: string }, url: string, dest: string) => {
     const result = await gitClone(url, dest, opts.branch);
-    console.log(result.success ? `Cloned into ${dest}` : `Clone failed:\n${result.output}`);
+    console.log(
+      result.success
+        ? i18n.t('cli.git.cloned', { dest })
+        : i18n.t('cli.git.cloneFailed', { output: result.output }),
+    );
   });
 
 const branchCmd = new Command()
@@ -130,11 +143,17 @@ const branchCmd = new Command()
     const dir = await resolveDir(opts.agent);
     if (opts.create) {
       const ok = await gitCreateBranch(dir, opts.create);
-      return console.log(ok ? `Created and switched to ${opts.create}` : 'Failed.');
+      return console.log(
+        ok
+          ? i18n.t('cli.git.createdAndSwitched', { branch: opts.create })
+          : i18n.t('cli.git.failed'),
+      );
     }
     if (opts.checkout) {
       const ok = await gitCheckout(dir, opts.checkout);
-      return console.log(ok ? `Switched to ${opts.checkout}` : 'Failed.');
+      return console.log(
+        ok ? i18n.t('cli.git.switchedTo', { branch: opts.checkout }) : i18n.t('cli.git.failed'),
+      );
     }
     const branches = await gitListBranches(dir);
     for (const b of branches) {
@@ -151,7 +170,9 @@ const remoteCmd = new Command()
     const dir = await resolveDir(opts.agent);
     if (opts.add && opts.url) {
       const ok = await gitAddRemote(dir, opts.add, opts.url);
-      return console.log(ok ? `Added remote ${opts.add}` : 'Failed.');
+      return console.log(
+        ok ? i18n.t('cli.git.addedRemote', { name: opts.add }) : i18n.t('cli.git.failedAddRemote'),
+      );
     }
     const remotes = await gitListRemotes(dir);
     for (const r of remotes) console.log(`${r.name}\t${r.url}`);

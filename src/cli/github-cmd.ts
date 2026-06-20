@@ -13,12 +13,13 @@ import {
   updateIssue,
   updatePullRequest,
 } from '../workspace/github.ts';
+import { i18n } from '../i18n/service.ts';
 
 async function requireToken(): Promise<string> {
   const token = await getGitHubToken();
   if (!token) {
     console.error(
-      'GitHub token not found. Set GITHUB_TOKEN env, githubToken in config, or vault entry "github_token".',
+      i18n.t('cli.github.noTokenFound'),
     );
     Deno.exit(1);
   }
@@ -62,7 +63,7 @@ prCmd
           limit: opts.limit,
         });
         if (prs.length === 0) {
-          console.log('No pull requests found.');
+          console.log(i18n.t('cli.github.noPullRequests'));
           return;
         }
         for (const pr of prs) printPR(pr);
@@ -109,7 +110,9 @@ prCmd
             body: opts.body ?? '',
             draft: !!opts.draft,
           });
-          console.log(`Created PR #${pr.number}: ${pr.html_url}`);
+          console.log(
+            i18n.t('cli.github.createdPr', { number: String(pr.number), url: pr.html_url }),
+          );
         },
       ),
   );
@@ -129,7 +132,9 @@ prCmd
           mergeMethod: opts.method as 'merge' | 'squash' | 'rebase',
         });
         console.log(
-          result.merged ? `PR #${prNumber} merged. SHA: ${result.sha}` : 'PR could not be merged.',
+          result.merged
+            ? i18n.t('cli.github.prMerged', { number: String(prNumber), sha: result.sha })
+            : i18n.t('cli.github.prNotMerged'),
         );
       }),
   );
@@ -143,7 +148,7 @@ prCmd
       .action(async (_opts: unknown, repo: string, prNumber: number) => {
         const token = await requireToken();
         await updatePullRequest(repo, token, prNumber, { state: 'closed' });
-        console.log(`PR #${prNumber} closed.`);
+        console.log(i18n.t('cli.github.prClosed', { number: String(prNumber) }));
       }),
   );
 
@@ -168,7 +173,7 @@ issueCmd
           labels: opts.labels ? opts.labels.split(',') : undefined,
         });
         if (issues.length === 0) {
-          console.log('No issues found.');
+          console.log(i18n.t('cli.github.noIssues'));
           return;
         }
         for (const issue of issues) {
@@ -202,7 +207,12 @@ issueCmd
             labels: opts.labels ? opts.labels.split(',') : undefined,
             assignees: opts.assignees ? opts.assignees.split(',') : undefined,
           });
-          console.log(`Created issue #${issue.number}: ${issue.html_url}`);
+          console.log(
+            i18n.t('cli.github.createdIssue', {
+              number: String(issue.number),
+              url: issue.html_url,
+            }),
+          );
         },
       ),
   );
@@ -216,7 +226,7 @@ issueCmd
       .action(async (_opts: unknown, repo: string, issueNumber: number) => {
         const token = await requireToken();
         await updateIssue(repo, token, issueNumber, { state: 'closed' });
-        console.log(`Issue #${issueNumber} closed.`);
+        console.log(i18n.t('cli.github.issueClosed', { number: String(issueNumber) }));
       }),
   );
 
@@ -238,7 +248,7 @@ repoCmd
           limit: opts.limit,
         });
         if (repos.length === 0) {
-          console.log('No repositories found.');
+          console.log(i18n.t('cli.github.noRepositories'));
           return;
         }
         for (const repo of repos) {
@@ -293,14 +303,14 @@ const tokenCmd = new Command()
     const token = await getGitHubToken();
     if (token) {
       const masked = token.slice(0, 8) + '...' + token.slice(-4);
-      console.log(`GitHub token found: ${masked}`);
-      console.log('Token sources checked: config.json, GITHUB_TOKEN env, vault');
+      console.log(i18n.t('cli.github.tokenFound', { masked }));
+      console.log(i18n.t('cli.github.tokenSourcesCheck'));
     } else {
-      console.log('No GitHub token found.');
-      console.log('Set via:');
-      console.log('  1. GITHUB_TOKEN environment variable');
-      console.log('  2. githubToken in config.json');
-      console.log('  3. Vault entry named "github_token" (cortex vault add github_token)');
+      console.log(i18n.t('cli.github.noToken'));
+      console.log(i18n.t('cli.github.setVia'));
+      console.log(i18n.t('cli.github.setViaEnv'));
+      console.log(i18n.t('cli.github.setViaConfig'));
+      console.log(i18n.t('cli.github.setViaVault'));
     }
   });
 

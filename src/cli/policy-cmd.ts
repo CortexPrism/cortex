@@ -10,6 +10,7 @@ import {
   removePolicy,
 } from '../security/policy.ts';
 import { findCplFile, generateCplTemplate, importCplFile } from '../security/cpl.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const policyCommand = new Command()
   .name('policy')
@@ -22,11 +23,11 @@ export const policyCommand = new Command()
         await runMigrations();
         const rules = await listPolicies();
         if (!rules.length) {
-          console.log(dim('\n  No policy rules.\n'));
+          console.log(dim('\n  ' + i18n.t('cli.policy.empty') + '\n'));
           return;
         }
         console.log('');
-        console.log(bold('  Policy Rules'));
+        console.log(bold('  ' + i18n.t('cli.policy.heading')));
         console.log(dim('  ──────────────────────────────────────────────────────────────'));
         for (const r of rules) {
           const fx = r.effect === 'allow' ? green('allow') : red(' deny');
@@ -61,7 +62,7 @@ export const policyCommand = new Command()
           reason: opts.reason,
           priority: opts.priority,
         });
-        console.log(green(`  ✓ Policy rule added: ${id}`));
+        console.log(green('  ' + i18n.t('cli.policy.added', { id })));
       }),
   )
   .command(
@@ -73,9 +74,9 @@ export const policyCommand = new Command()
         await runMigrations();
         const removed = await removePolicy(id);
         if (removed) {
-          console.log(green(`  ✓ Removed: ${id}`));
+          console.log(green('  ' + i18n.t('cli.policy.removed', { id })));
         } else {
-          console.log(red(`  Not found: ${id}`));
+          console.log(red('  ' + i18n.t('cli.policy.notFound', { id })));
         }
       }),
   )
@@ -88,14 +89,14 @@ export const policyCommand = new Command()
         await runMigrations();
         const path = file ?? await findCplFile();
         if (!path) {
-          console.log(red('  No CPL file found. Create .cortex/policy.yaml or pass a file path.'));
-          console.log(dim('  Run: cortex policy init  to create a starter file'));
+          console.log(red('  ' + i18n.t('cli.policy.noCplFile')));
+          console.log(dim('  ' + i18n.t('cli.policy.runInit')));
           return;
         }
         const { imported, skipped } = await importCplFile(path);
         console.log(
-          green(`  ✓ Imported ${imported} rules`),
-          skipped ? dim(`(${skipped} already exist)`) : '',
+          green('  ' + i18n.t('cli.policy.imported', { count: imported })),
+          skipped ? dim(' ' + i18n.t('cli.policy.alreadyExist', { count: skipped })) : '',
         );
       }),
   )
@@ -108,11 +109,11 @@ export const policyCommand = new Command()
         const path = '.cortex/policy.yaml';
         try {
           await Deno.stat(path);
-          console.log(yellow(`  Already exists: ${path}`));
+          console.log(yellow('  ' + i18n.t('cli.policy.alreadyExists', { path })));
         } catch {
           await Deno.writeTextFile(path, generateCplTemplate());
-          console.log(green(`  ✓ Created: ${path}`));
-          console.log(dim('  Edit the file then run: cortex policy import'));
+          console.log(green('  ' + i18n.t('cli.policy.created', { path })));
+          console.log(dim('  ' + i18n.t('cli.policy.editThenImport')));
         }
       }),
   )
@@ -124,12 +125,16 @@ export const policyCommand = new Command()
       .action(async (_: void, kind: string, value: string) => {
         await runMigrations();
         const decision = await checkPolicy(kind as PolicyKind, value);
-        const status = decision.allowed ? green('✓ ALLOWED') : red('✗ DENIED');
+        const status = decision.allowed
+          ? green(i18n.t('cli.policy.allowed'))
+          : red(i18n.t('cli.policy.denied'));
         console.log(`\n  ${status}`);
-        console.log(`  ${dim('reason:')} ${decision.reason}`);
+        console.log(`  ${dim(i18n.t('cli.policy.reason'))} ${decision.reason}`);
         if (decision.rule) {
           console.log(
-            `  ${dim('matched rule:')} ${decision.rule.id} — ${yellow(decision.rule.pattern)}`,
+            `  ${dim(i18n.t('cli.policy.matchedRule'))} ${decision.rule.id} — ${
+              yellow(decision.rule.pattern)
+            }`,
           );
         }
         console.log('');

@@ -5,6 +5,7 @@ import { retrieve, searchEpisodic, searchSemantic, writeSemantic } from '../memo
 import { buildEmbedder } from '../memory/embeddings.ts';
 import { loadConfig } from '../config/config.ts';
 import { getMemoryHealth, runHeuristicCycle } from '../memory/heuristics.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const memoryCommand = new Command()
   .name('memory')
@@ -33,7 +34,7 @@ export const memoryCommand = new Command()
         }
 
         if (hits.length === 0) {
-          console.log(dim('  No results found.\n'));
+          console.log(dim('  ' + i18n.t('cli.memory.noResults') + '\n'));
           return;
         }
 
@@ -67,7 +68,7 @@ export const memoryCommand = new Command()
           importance: opts.importance,
           embedder,
         });
-        console.log(green(`  ✓ Semantic memory stored: ${id}`));
+        console.log(green('  ' + i18n.t('cli.memory.stored', { id })));
       }),
   )
   .command(
@@ -78,7 +79,7 @@ export const memoryCommand = new Command()
         await runMigrations();
         const h = await getMemoryHealth();
 
-        console.log('\n' + bold('  Memory Health Report'));
+        console.log('\n' + bold('  ' + i18n.t('cli.memory.healthReport')));
         console.log(dim('  ──────────────────────────────────────────────────'));
 
         const fmtTier = (
@@ -106,17 +107,17 @@ export const memoryCommand = new Command()
           );
         };
 
-        fmtTier('Episodic Memory', h.episodic);
-        fmtTier('Semantic Memory', h.semantic);
+        fmtTier(i18n.t('cli.memory.episodicMemory'), h.episodic);
+        fmtTier(i18n.t('cli.memory.semanticMemory'), h.semantic);
 
-        console.log(`\n  ${bold(cyan('Knowledge Graph'))}`);
+        console.log(`\n  ${bold(cyan(i18n.t('cli.memory.knowledgeGraph')))}`);
         console.log(
           `    entities: ${h.graph.entities}  relations: ${h.graph.relations}  avg strength: ${
             h.graph.avgStrength.toFixed(3)
           }`,
         );
 
-        console.log(`\n  ${bold(cyan('Reflection Memory'))}`);
+        console.log(`\n  ${bold(cyan(i18n.t('cli.memory.reflectionMemory')))}`);
         console.log(
           `    patterns: ${h.reflection.total}  avg confidence: ${
             h.reflection.avgConfidence.toFixed(3)
@@ -132,28 +133,28 @@ export const memoryCommand = new Command()
       .description('Manually run a heuristic learning cycle')
       .action(async () => {
         await runMigrations();
-        console.log(dim('\n  Running heuristic learning cycle…'));
+        console.log(dim('\n  ' + i18n.t('cli.memory.heuristicCycle')));
         const result = await runHeuristicCycle();
-        console.log(`\n  ${bold('Results:')}`);
+        console.log(`\n  ${bold(i18n.t('cli.memory.results'))}`);
         console.log(
-          `    importance boosted:    ${
+          `    ${i18n.t('cli.memory.importanceBoosted')} ${
             result.importanceBoosted > 0 ? green(String(result.importanceBoosted)) : dim('0')
           }`,
         );
         console.log(
-          `    decay slowed:          ${
+          `    ${i18n.t('cli.memory.decaySlowed')} ${
             result.decaySlowed > 0 ? green(String(result.decaySlowed)) : dim('0')
           }`,
         );
         console.log(
-          `    relations strengthened: ${
+          `    ${i18n.t('cli.memory.relationsStrengthened')} ${
             result.relationsStrengthened > 0
               ? green(String(result.relationsStrengthened))
               : dim('0')
           }`,
         );
         console.log(
-          `    auto-tagged:           ${
+          `    ${i18n.t('cli.memory.autoTagged')} ${
             result.autoTagged > 0 ? green(String(result.autoTagged)) : dim('0')
           }`,
         );

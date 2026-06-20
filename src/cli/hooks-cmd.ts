@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { getHookCount, listHooks, registerHook, unregisterHook } from '../pipeline/manager.ts';
 import { getBuiltinHook, registerBuiltinHooks } from '../pipeline/builtin.ts';
+import { i18n } from '../i18n/service.ts';
 
 const hooksCommand = new Command()
   .name('hooks')
@@ -8,11 +9,11 @@ const hooksCommand = new Command()
   .action(() => {
     const hooks = listHooks();
     if (hooks.length === 0) {
-      console.log('No hooks registered.');
-      console.log('Run "cortex hooks init" to register built-in hooks.');
+      console.log(i18n.t('cli.hooks.noHooks'));
+      console.log(i18n.t('cli.hooks.runInitHint'));
       return;
     }
-    console.log(`\n${hooks.length} hook(s) registered:\n`);
+    console.log(i18n.t('cli.hooks.hooksRegistered', { count: String(hooks.length) }));
     for (const { hook, source, pluginName } of hooks) {
       const dis = hook.disableable ? '' : ' (non-disableable)';
       const src = pluginName ? `plugin:${pluginName}` : source;
@@ -30,7 +31,9 @@ hooksCommand
     const before = getHookCount();
     registerBuiltinHooks();
     const after = getHookCount();
-    console.log(`Registered ${after - before} built-in hooks (${after} total).`);
+    console.log(
+      i18n.t('cli.hooks.registeredHooks', { delta: String(after - before), total: String(after) }),
+    );
   });
 
 hooksCommand
@@ -40,12 +43,12 @@ hooksCommand
     const hook = getBuiltinHook(name);
     if (!hook) {
       console.error(
-        `Built-in hook "${name}" not found. Run "cortex hooks" to see registered hooks.`,
+        i18n.t('cli.hooks.builtinHookNotFound', { name }),
       );
       return;
     }
     registerHook(hook, 'core');
-    console.log(`Hook "${name}" enabled.`);
+    console.log(i18n.t('cli.hooks.hookEnabled', { name }));
   });
 
 hooksCommand
@@ -54,9 +57,9 @@ hooksCommand
   .action((_opts: void, name: string) => {
     const removed = unregisterHook(name);
     if (removed) {
-      console.log(`Hook "${name}" unregistered.`);
+      console.log(i18n.t('cli.hooks.hookUnregistered', { name }));
     } else {
-      console.error(`Hook "${name}" not found.`);
+      console.error(i18n.t('cli.hooks.hookNotFound', { name }));
     }
   });
 

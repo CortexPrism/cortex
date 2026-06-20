@@ -7,6 +7,7 @@ import {
   resetSignalWeights as resetMqmWeights,
 } from '../model-quartermaster/store.ts';
 import { getMqmAccuracyTrend, getMqmSummary } from '../model-quartermaster/monitor.ts';
+import { i18n } from '../i18n/service.ts';
 
 const mqmCommand = new Command()
   .name('mqm')
@@ -28,7 +29,7 @@ mqmCommand
   .action(async () => {
     const stats = await getAllModelStats();
     if (stats.length === 0) {
-      console.log('No model statistics collected yet.');
+      console.log(i18n.t('cli.model_qm.noStats'));
       return;
     }
     console.log(`\n${stats.length} model stat(s):\n`);
@@ -55,7 +56,7 @@ mqmCommand
   .action(async ({ limit }) => {
     const decisions = await getAllRecentDecisions(limit);
     if (decisions.length === 0) {
-      console.log('No decisions recorded yet.');
+      console.log(i18n.t('cli.model_qm.noDecisions'));
       return;
     }
     console.log(`\n${decisions.length} decision(s):\n`);
@@ -103,7 +104,7 @@ mqmCommand
   .action(async ({ hours }) => {
     const trend = await getMqmAccuracyTrend(hours);
     if (trend.length === 0) {
-      console.log('No accuracy data available yet.');
+      console.log(i18n.t('cli.model_qm.noAccuracy'));
       return;
     }
     const bar = (v: number, w = 20) => {
@@ -201,7 +202,7 @@ mqmCommand
   .description('Reset signal weights to defaults')
   .action(async () => {
     await resetMqmWeights();
-    console.log('Signal weights reset to defaults.');
+    console.log(i18n.t('cli.model_qm.signalWeightsReset'));
   });
 
 mqmCommand
@@ -209,7 +210,7 @@ mqmCommand
   .description('Reset all learning data (destructive)')
   .action(async () => {
     await resetAllMqmData();
-    console.log('All Model Quartermaster data reset.');
+    console.log(i18n.t('cli.model_qm.allMqmDataReset'));
   });
 
 export { mqmCommand };
