@@ -27,6 +27,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Missing secret env var rejected all webhook requests** — when `secretEnv` was configured but the environment variable was not set, `verifyWebhookSignature()` returned `false` for every request. Now logs a warning and returns `true` (skipping verification) when the secret cannot be resolved.
 
+- **Skill extraction created low-quality "test" skills** — `extractSkillFromSession()` fired on every turn with 2+ tool calls, with no naming guard or session throttle. The LLM could produce names like `test`, `debug`, or `helper`. Added a naming blocklist (`test`, `debug`, `temp`, generics, names under 5 chars), raised the minimum tool call threshold from 2 to 4, added a session throttle (max 1 extraction per session), and capped the throttle cache at 10K entries.
+
+- **Test suite leaked skill artifacts into the production database** — `cleanSkillsDb()` in `tests/skills_eval_test.ts` was defined but never called. Wired into setup and teardown steps so test skills are removed before and after the test run.
+
 ### Added
 
 - **Trigger job creator** — new `src/triggers/job-creator.ts` module that implements `WebhookJobCreator` and `WatcherJobCreator` interfaces. Creates ephemeral agent sessions and executes `agentTurn()` in a fire-and-forget background context, returning session metadata to the caller immediately.

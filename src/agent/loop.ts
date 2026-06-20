@@ -1396,7 +1396,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }
     })().catch(() => {});
 
-    if (collectedToolCalls.length >= 2) {
+    if (collectedToolCalls.length >= 4) {
       extractSkillFromSession(
         sessionId,
         userMessage.slice(0, 300),

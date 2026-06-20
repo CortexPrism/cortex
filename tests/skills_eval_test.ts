@@ -11,6 +11,7 @@ import {
   listSkills,
   mergeSkill,
   promoteSkill,
+  resetSkillExtractionThrottle,
   runSkillHealthMaintenance,
   type SkillStep,
   storeSkill,
@@ -21,6 +22,10 @@ async function cleanSkillsDb() {
   const db = await getMemoryDb();
   await db.run(`DELETE FROM procedural_memory WHERE name LIKE 'test_%' OR name LIKE 'eval_%'`);
 }
+
+Deno.test('cleanup: remove leftover test skills from previous runs', async () => {
+  await cleanSkillsDb();
+});
 
 Deno.test('skill storeSkill creates and retrieves a skill', async () => {
   const name = `test_create_${Date.now()}`;
@@ -249,13 +254,15 @@ Deno.test('skill stats includes new metrics', async () => {
 });
 
 Deno.test('extractSkillFromSession validator rejects bad input', async () => {
-  // Test with fewer than 2 tool calls - should skip
+  resetSkillExtractionThrottle();
+
+  // Test with fewer than 4 tool calls - should skip
   const mockProvider = {
     complete: async () => ({ content: '{"skip": true}' }),
   } as any;
 
   const result = await extractSkillFromSession(
-    'test_session',
+    'test_session_reject',
     'Do one thing',
     [{ tool: 'bash', params: {}, result: 'ok' }],
     mockProvider,
@@ -265,26 +272,33 @@ Deno.test('extractSkillFromSession validator rejects bad input', async () => {
 });
 
 Deno.test('extractSkillFromSession with valid tool calls returns skill ID', async () => {
+  resetSkillExtractionThrottle();
+
   const mockProvider = {
     complete: async () => ({
       content: JSON.stringify({
         name: `eval_extracted_${Date.now().toString(36)}`,
-        description: 'A test extracted skill',
-        triggerPattern: 'extraction test',
+        description: 'A test extracted skill for automated evaluation',
+        triggerPattern: 'extraction test, automated eval',
         steps: [
           { step: 1, action: 'Search for files', tool: 'glob', params: { pattern: '*.ts' } },
           { step: 2, action: 'Check types', tool: 'bash', params: { command: 'deno check' } },
+          { step: 3, action: 'Run linter', tool: 'bash', params: { command: 'deno lint' } },
+          { step: 4, action: 'Report results', tool: 'bash', params: { command: 'echo done' } },
         ],
       }),
     }),
   } as any;
 
+  const sessionId = `test_session_extract_${Date.now().toString(36)}`;
   const result = await extractSkillFromSession(
-    'test_session',
-    'Find and check TypeScript files',
+    sessionId,
+    'Find and validate TypeScript files',
     [
       { tool: 'glob', params: { pattern: '**/*.ts' }, result: 'found files' },
       { tool: 'bash', params: { command: 'deno check' }, result: 'passed' },
+      { tool: 'bash', params: { command: 'deno lint' }, result: 'passed' },
+      { tool: 'bash', params: { command: 'echo done' }, result: 'done' },
     ],
     mockProvider,
     'test-model',
@@ -298,4 +312,9 @@ Deno.test('skill listSkills with lifecycle filter', async () => {
 
   const deprecated = await listSkills(5, undefined, 'deprecated');
   assertEquals(Array.isArray(deprecated), true);
+});
+
+Deno.test('cleanup: remove test skills after all tests', async () => {
+  resetSkillExtractionThrottle();
+  await cleanSkillsDb();
 });
