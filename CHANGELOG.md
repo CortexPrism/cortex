@@ -5,7 +5,7 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
-## [Unreleased]
+## [0.46.0] — 2026-06-20
 
 ### Added
 
@@ -66,6 +66,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **OpenAI-compatible streaming tool calls could leave the UI stuck at `Thinking…`** — some providers emit `tool_calls` deltas where the tool call entry is created before the function name arrives in a later chunk. The stream adapter created an entry with an empty name and never updated it, so no `tool_use_start` event was emitted and the agent loop saw zero tool calls. The adapters in `src/llm/openai.ts` and `src/llm/openai-compatible.ts` now update the cached entry name when later chunks provide it and emit the start event as soon as the name becomes available.
 
 - **Chat response formatting collapsed into a single paragraph** — the websocket stream sanitizer trimmed leading and trailing newlines from every chunk and collapsed whitespace too aggressively, flattening markdown paragraph boundaries in the visible chat bubble. Streaming and final-output cleanup now preserve normal newlines, only collapsing excessive blank lines and repeated spaces.
+
+---
+
+## [Unreleased]
+
+### Added
+
+### Fixed
 
 ---
 
