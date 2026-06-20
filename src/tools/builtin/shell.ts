@@ -25,24 +25,29 @@ export const shellTool: Tool = {
     name: 'shell',
     description:
       'Run a shell command and return stdout + stderr. Requires user approval before executing.',
+    displayNameKey: 'tools.shell.displayName',
+    descriptionKey: 'tools.shell.description',
     capabilities: ['shell:run'],
     params: [
       {
         name: 'command',
         type: 'string',
         description: 'The shell command to run',
+        descriptionKey: 'tools.shell.params.command',
         required: true,
       },
       {
         name: 'cwd',
         type: 'string',
         description: 'Working directory for the command (defaults to session working dir)',
+        descriptionKey: 'tools.shell.params.cwd',
         required: false,
       },
       {
         name: 'timeout',
         type: 'number',
         description: 'Timeout in milliseconds (default 30000)',
+        descriptionKey: 'tools.shell.params.timeout',
         required: false,
       },
     ],

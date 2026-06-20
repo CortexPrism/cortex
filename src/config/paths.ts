@@ -1,5 +1,5 @@
-import { join } from '@std/path';
-import { resolveHomeDir } from '../utils/platform.ts';
+import { fromFileUrl, join } from '@std/path';
+import { isCompiledBinary, resolveHomeDir } from '../utils/platform.ts';
 
 function resolveDataDir(): string {
   const envOverride = Deno.env.get('CORTEX_DATA_DIR');
@@ -17,9 +17,26 @@ function resolveConfigDir(): string {
   return join(home, '.cortex');
 }
 
+function resolveLocalesDir(): string {
+  const envOverride = Deno.env.get('CORTEX_LOCALES_DIR');
+  if (envOverride) return envOverride;
+
+  // In compiled binary mode, import.meta.url points to the binary path,
+  // so resolve relative to CWD instead
+  if (isCompiledBinary()) {
+    return join(Deno.cwd(), 'locales');
+  }
+
+  return join(fromFileUrl(new URL('../../', import.meta.url)), 'locales');
+}
+
+const _projectRoot = fromFileUrl(new URL('../../', import.meta.url));
+
 export const PATHS = {
+  projectRoot: _projectRoot,
   dataDir: resolveDataDir(),
   configDir: resolveConfigDir(),
+  localesDir: resolveLocalesDir(),
 
   get db() {
     return join(this.dataDir, 'cortex.db');

@@ -5,6 +5,7 @@ import type { LoggingConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { setLogLevel } from '../utils/logger.ts';
 import type { LogLevel } from '../utils/logger.ts';
+import { i18n } from '../i18n/service.ts';
 
 const LEVELS: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error', 'silent'];
 
@@ -82,7 +83,7 @@ const showCommand = new Command()
 
     const lines = await readLogFile(logPath);
     if (lines.length === 0) {
-      console.log(dim(`  No log entries found at ${logPath}`));
+      console.log(dim(i18n.t('cli.log.noEntries', { path: logPath })));
       return;
     }
 
@@ -95,7 +96,7 @@ const showCommand = new Command()
       .slice(-opts.lines);
 
     if (filtered.length === 0) {
-      console.log(dim(`  No entries matching filters.`));
+      console.log(dim(i18n.t('cli.log.noEntriesMatch')));
       return;
     }
 
@@ -103,7 +104,9 @@ const showCommand = new Command()
     for (const entry of filtered) {
       console.log(formatEntry(entry));
     }
-    console.log(dim(`\n  ${filtered.length} entries · ${logPath}\n`));
+    console.log(
+      dim(i18n.t('cli.log.entriesCount', { count: String(filtered.length), path: logPath })),
+    );
   });
 
 const tailCommand = new Command()
@@ -114,7 +117,9 @@ const tailCommand = new Command()
     const config = await loadConfig();
     const logPath = resolveLogFile(config.logging);
 
-    console.log(bold(cyan(`\n  Tailing ${logPath}`)) + dim(' (Ctrl+C to stop)\n'));
+    console.log(
+      bold(cyan(i18n.t('cli.log.tailing', { path: logPath }))) + dim(' (Ctrl+C to stop)\n'),
+    );
 
     const minRank = LEVELS.indexOf(opts.level as LogLevel);
 
@@ -179,9 +184,9 @@ const clearCommand = new Command()
     const logPath = resolveLogFile(config.logging);
     try {
       await Deno.truncate(logPath);
-      console.log(green(`  ✓ Log file cleared: ${logPath}`));
+      console.log(green(i18n.t('cli.log.logCleared', { path: logPath })));
     } catch (e) {
-      console.error(red(`  Failed to clear log: ${(e as Error).message}`));
+      console.error(red(i18n.t('cli.log.failedToClear', { message: (e as Error).message })));
     }
   });
 
@@ -190,7 +195,7 @@ const setLevelCommand = new Command()
   .arguments('<level:string>')
   .action(async (_opts: unknown, level: string) => {
     if (!LEVELS.includes(level as LogLevel)) {
-      console.error(red(`  Invalid level "${level}". Must be one of: ${LEVELS.join(', ')}`));
+      console.error(red(i18n.t('cli.log.invalidLevel', { level, levels: LEVELS.join(', ') })));
       Deno.exit(1);
     }
     const config = await loadConfig();
@@ -204,8 +209,8 @@ const setLevelCommand = new Command()
     }
     await saveConfig(config);
     setLogLevel(level as LogLevel);
-    console.log(green(`  ✓ Log level set to ${bold(level)}`));
-    console.log(dim('  Restart the server for file transport to pick up the change.'));
+    console.log(green(i18n.t('cli.log.logLevelSet', { level: bold(level) })));
+    console.log(dim(i18n.t('cli.log.restartHint')));
   });
 
 const pathCommand = new Command()

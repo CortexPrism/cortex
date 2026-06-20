@@ -2,6 +2,7 @@ import { Command } from '@cliffy/command';
 import { Input } from '@cliffy/prompt';
 import { createProject, deleteProject, listProjects, loadProject } from '../projects/manager.ts';
 import { green, yellow } from '@std/fmt/colors';
+import { i18n } from '../i18n/service.ts';
 
 const projectsCommand = new Command()
   .name('projects')
@@ -9,7 +10,7 @@ const projectsCommand = new Command()
   .action(async () => {
     const projects = await listProjects();
     if (projects.length === 0) {
-      console.log('No projects. Create one with `cortex projects create <name>`');
+      console.log(i18n.t('cli.projects.noProjects'));
       return;
     }
     console.log(`\n${projects.length} project(s):\n`);
@@ -32,8 +33,10 @@ projectsCommand
       agentId: agent === 'default' ? undefined : agent,
       description: desc || undefined,
     });
-    console.log(green(`\nProject "${project.name}" created at ${project.path}`));
-    console.log(`Run ${yellow('cortex chat --project ' + name)} to use it.`);
+    console.log(
+      green(i18n.t('cli.projects.projectCreated', { name: project.name, path: project.path })),
+    );
+    console.log(i18n.t('cli.projects.useProjectHint', { name }));
   });
 
 projectsCommand
@@ -41,7 +44,11 @@ projectsCommand
   .description('Delete a project workspace')
   .action(async (_opts: void, name: string) => {
     const ok = await deleteProject(name);
-    console.log(ok ? `Project "${name}" deleted.` : `Project "${name}" not found.`);
+    console.log(
+      ok
+        ? i18n.t('cli.projects.projectDeleted', { name })
+        : i18n.t('cli.projects.projectNotFound', { name }),
+    );
   });
 
 export { projectsCommand };

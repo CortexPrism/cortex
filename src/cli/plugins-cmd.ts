@@ -11,6 +11,7 @@ import { applyPluginUpdate, checkAllUpdates, checkPluginUpdate } from '../plugin
 import { installFromMarketplace, installFromUrl } from '../plugins/install.ts';
 import type { PluginCapability, PluginKind } from '../plugins/types.ts';
 import { resolve } from '@std/path';
+import { i18n } from '../i18n/service.ts';
 
 /**
  * Resolve a plugin entryPoint against the source directory.
@@ -43,10 +44,10 @@ export const pluginsCommand = new Command()
         await runMigrations();
         const plugins = await listPlugins();
         if (!plugins.length) {
-          console.log(dim('\n  No plugins installed.\n'));
+          console.log(dim(i18n.t('cli.plugins.noPluginsInstalled')));
           return;
         }
-        console.log(bold('\n  Installed Plugins'));
+        console.log(bold(i18n.t('cli.plugins.installedPlugins')));
         console.log(dim('  ' + '─'.repeat(60)));
         for (const p of plugins) {
           const status = p.enabled ? green('● enabled') : dim('○ disabled');
@@ -74,7 +75,7 @@ export const pluginsCommand = new Command()
           const match = rest.match(/^([^/]+)\/plugins\/(.+)$/);
           if (!match) {
             console.log(
-              red('  Invalid marketplace reference. Use marketplace:<host>/plugins/<slug>'),
+              red(i18n.t('cli.plugins.invalidMarketplaceRef')),
             );
             return;
           }
@@ -83,7 +84,14 @@ export const pluginsCommand = new Command()
           const url = `https://${host}/api/marketplace/plugins/${slug}/download`;
           const res = await fetch(url);
           if (!res.ok) {
-            console.log(red(`  Marketplace fetch failed: ${res.status} ${res.statusText}`));
+            console.log(
+              red(
+                i18n.t('cli.plugins.marketplaceFetchFailed', {
+                  status: String(res.status),
+                  statusText: res.statusText,
+                }),
+              ),
+            );
             return;
           }
           const manifest = await res.json() as {
@@ -100,11 +108,18 @@ export const pluginsCommand = new Command()
             hash?: string;
           };
           await installFromMarketplace(slug, host, manifest);
-          console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
+          console.log(
+            green(
+              i18n.t('cli.plugins.pluginInstalled', {
+                name: manifest.name,
+                version: manifest.version,
+              }),
+            ),
+          );
         } else if (source.startsWith('http://') || source.startsWith('https://')) {
           const res = await fetch(source);
           if (!res.ok) {
-            console.log(red(`  Fetch failed: ${res.status}`));
+            console.log(red(i18n.t('cli.plugins.fetchFailed', { status: String(res.status) })));
             return;
           }
           const manifest = await res.json() as {
@@ -121,7 +136,14 @@ export const pluginsCommand = new Command()
             hash?: string;
           };
           await installFromUrl(source, manifest);
-          console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
+          console.log(
+            green(
+              i18n.t('cli.plugins.pluginInstalled', {
+                name: manifest.name,
+                version: manifest.version,
+              }),
+            ),
+          );
         } else {
           const sourceStat = await Deno.stat(source).catch(() => null);
           if (sourceStat?.isDirectory) {
@@ -152,7 +174,14 @@ export const pluginsCommand = new Command()
               homepage: manifest.homepage,
               license: manifest.license,
             });
-            console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
+            console.log(
+              green(
+                i18n.t('cli.plugins.pluginInstalled', {
+                  name: manifest.name,
+                  version: manifest.version,
+                }),
+              ),
+            );
           } else {
             sourceDir = await Deno.realPath(dirname(source));
             const manifest = JSON.parse(await Deno.readTextFile(source)) as {
@@ -181,7 +210,14 @@ export const pluginsCommand = new Command()
               homepage: manifest.homepage,
               license: manifest.license,
             });
-            console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
+            console.log(
+              green(
+                i18n.t('cli.plugins.pluginInstalled', {
+                  name: manifest.name,
+                  version: manifest.version,
+                }),
+              ),
+            );
           }
         }
       }),
@@ -194,7 +230,7 @@ export const pluginsCommand = new Command()
       .action(async (_: void, name: string) => {
         await runMigrations();
         await pluginManager.enable(name);
-        console.log(green(`  ✓ Enabled: ${name}`));
+        console.log(green(i18n.t('cli.plugins.pluginEnabled', { name })));
       }),
   )
   .command(
@@ -205,7 +241,7 @@ export const pluginsCommand = new Command()
       .action(async (_: void, name: string) => {
         await runMigrations();
         await pluginManager.disable(name);
-        console.log(yellow(`  ○ Disabled: ${name}`));
+        console.log(yellow(i18n.t('cli.plugins.pluginDisabled', { name })));
       }),
   )
   .command(
@@ -216,7 +252,7 @@ export const pluginsCommand = new Command()
       .action(async (_: void, name: string) => {
         await runMigrations();
         await pluginManager.remove(name);
-        console.log(red(`  ✗ Removed: ${name}`));
+        console.log(red(i18n.t('cli.plugins.pluginRemoved', { name })));
       }),
   )
   .command(
@@ -228,23 +264,25 @@ export const pluginsCommand = new Command()
         await runMigrations();
         const plugin = await getPlugin(name);
         if (!plugin) {
-          console.log(red(`  Plugin "${name}" not found.`));
+          console.log(red(i18n.t('cli.plugins.pluginNotFound', { name })));
           return;
         }
         if (!plugin.integrity_hash) {
-          console.log(yellow(`  No integrity hash declared for ${name}.`));
-          console.log(dim(`  Generate one to enable verification.`));
+          console.log(yellow(i18n.t('cli.plugins.noIntegrityHash', { name })));
+          console.log(dim(i18n.t('cli.plugins.generateHashHint')));
           return;
         }
         const result = await verifyEntryPointIntegrity(plugin.entry, plugin.integrity_hash);
         if (result.valid) {
-          console.log(green(`  ✓ Integrity verified: ${name}`));
-          console.log(dim(`    Hash: ${result.hash}`));
+          console.log(green(i18n.t('cli.plugins.integrityVerified', { name })));
+          console.log(dim(i18n.t('cli.plugins.hashLabel', { hash: result.hash ?? 'unknown' })));
         } else {
-          console.log(red(`  ✗ Integrity check FAILED for ${name}`));
+          console.log(red(i18n.t('cli.plugins.integrityFailed', { name })));
           if (result.hash) {
-            console.log(dim(`    Expected: ${plugin.integrity_hash}`));
-            console.log(dim(`    Actual:   ${result.hash}`));
+            console.log(
+              dim(i18n.t('cli.plugins.expectedHash', { expected: plugin.integrity_hash })),
+            );
+            console.log(dim(i18n.t('cli.plugins.actualHash', { actual: result.hash })));
           }
         }
       }),
@@ -269,32 +307,34 @@ export const pluginsCommand = new Command()
         if (set) {
           const parts = set.split('=');
           if (parts.length !== 2 || !['grant', 'deny'].includes(parts[1])) {
-            console.log(red('  Invalid format. Use: --set capability=grant|deny'));
+            console.log(red(i18n.t('cli.plugins.invalidPermissionFormat')));
             return;
           }
           const { setPermissionOverride } = await import('../plugins/permissions.ts');
           await setPermissionOverride(name, parts[0], parts[1], 'cli-override');
-          console.log(green(`  ✓ Override set: ${parts[0]} → ${parts[1]}`));
+          console.log(
+            green(i18n.t('cli.plugins.overrideSet', { capability: parts[0], action: parts[1] })),
+          );
         }
 
         const declared = deserializeCapabilities(plugin.declared_permissions);
         const overrides = await getPluginPermissionOverrides(name);
         const result = resolvePermissions(declared, overrides);
 
-        console.log(bold(`\n  Permissions: ${name}`));
+        console.log(bold(i18n.t('cli.plugins.permissionsTitle', { name })));
         console.log(dim('  ' + '─'.repeat(50)));
-        console.log(bold('  Declared:'));
+        console.log(bold(i18n.t('cli.plugins.declaredLabel')));
         for (const c of result.declared) {
           console.log(`    ${cyan(c)}`);
         }
         if (result.overrides.length > 0) {
-          console.log(bold('\n  Overrides:'));
+          console.log(bold(i18n.t('cli.plugins.overridesLabel')));
           for (const o of result.overrides) {
             const symbol = o.action === 'deny' ? red('⊘') : green('⊕');
             console.log(`    ${symbol} ${o.permission_path} → ${o.action}`);
           }
         }
-        console.log(bold('\n  Effective:'));
+        console.log(bold(i18n.t('cli.plugins.effectiveLabel')));
         for (const c of result.effective) {
           const isAdded = result.added.includes(c);
           const isDenied = result.denied.includes(c);
@@ -335,10 +375,10 @@ export const pluginsCommand = new Command()
             if (r.error) console.log(dim(`    ${r.error}`));
           }
           if (available === 0) {
-            console.log(dim('\n  All plugins are up to date.\n'));
+            console.log(dim(i18n.t('cli.plugins.allUpToDate')));
           } else {
             console.log(
-              dim(`\n  ${available} update(s) available. Run without --check to apply.\n`),
+              dim(i18n.t('cli.plugins.updatesAvailable', { count: String(available) })),
             );
           }
           return;
@@ -348,10 +388,12 @@ export const pluginsCommand = new Command()
           const results = await checkAllUpdates();
           const available = results.filter((r) => r.updateAvailable);
           if (available.length === 0) {
-            console.log(dim('\n  All plugins are up to date.\n'));
+            console.log(dim(i18n.t('cli.plugins.allUpToDate')));
             return;
           }
-          console.log(bold(`\n  Updating ${available.length} plugin(s)...`));
+          console.log(
+            bold(i18n.t('cli.plugins.updatingPlugins', { count: String(available.length) })),
+          );
           for (const r of available) {
             try {
               const result = await applyPluginUpdate(r.pluginName);
@@ -367,7 +409,7 @@ export const pluginsCommand = new Command()
         }
 
         if (!name) {
-          console.log(red('  Specify a plugin name or use --all to update all plugins.'));
+          console.log(red(i18n.t('cli.plugins.specifyNameOrAll')));
           return;
         }
 
@@ -391,11 +433,11 @@ export const pluginsCommand = new Command()
         const plugins = await listPlugins();
 
         if (!plugins.length) {
-          console.log(dim('\n  No plugins to validate.\n'));
+          console.log(dim(i18n.t('cli.plugins.noPluginsValidate')));
           return;
         }
 
-        console.log(bold('\n  Validating Plugins'));
+        console.log(bold(i18n.t('cli.plugins.validatingPlugins')));
         console.log(dim('  ' + '─'.repeat(60)));
 
         const invalid: Array<{ name: string; reason: string }> = [];
@@ -430,18 +472,16 @@ export const pluginsCommand = new Command()
         }
 
         if (invalid.length === 0) {
-          console.log(green('\n  ✓ All plugins are valid.\n'));
+          console.log(green(i18n.t('cli.plugins.allPluginsValid')));
           return;
         }
 
         console.log(
-          yellow(
-            `\n  Found ${invalid.length} invalid plugin(s).`,
-          ),
+          yellow(i18n.t('cli.plugins.foundInvalid', { count: String(invalid.length) })),
         );
 
         if (opts.fix) {
-          console.log(dim('\n  Removing invalid plugins...\n'));
+          console.log(dim(i18n.t('cli.plugins.removingInvalid')));
           for (const { name, reason } of invalid) {
             try {
               await removePlugin(name);
@@ -450,10 +490,10 @@ export const pluginsCommand = new Command()
               console.log(`  ${red('✗')} Failed to remove ${bold(name)}: ${(e as Error).message}`);
             }
           }
-          console.log(green('\n  ✓ Cleanup complete.\n'));
+          console.log(green(i18n.t('cli.plugins.cleanupComplete')));
         } else {
           console.log(
-            dim('\n  Run with --fix to automatically remove invalid plugins.\n'),
+            dim(i18n.t('cli.plugins.fixHint')),
           );
         }
       }),

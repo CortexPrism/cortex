@@ -310,11 +310,15 @@ export function buildSystemPrompt(
   extra?: string,
   user?: string | null,
   memory?: string | null,
+  locale?: string,
 ): string {
   const parts: string[] = [soul.trim()];
   if (user) parts.push(`## User Context\n${user.trim()}`);
   if (memory) parts.push(`## Persistent Memory\n${memory.trim()}`);
   if (extra) parts.push(`---\n\n${extra.trim()}`);
+  if (locale && locale !== 'en') {
+    parts.push(`---\n\nRespond in ${locale} language when possible.`);
+  }
   return parts.join('\n\n');
 }
 

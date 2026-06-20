@@ -3,6 +3,7 @@ import { Confirm, Input, Select } from '@cliffy/prompt';
 import { listTriggers, registerTrigger, unregisterTrigger } from '../triggers/manager.ts';
 import { installGitHooks, uninstallGitHooks } from '../triggers/git-hooks.ts';
 import type { TriggerConfig } from '../triggers/types.ts';
+import { i18n } from '../i18n/service.ts';
 
 const triggersCommand = new Command()
   .name('triggers')
@@ -10,11 +11,11 @@ const triggersCommand = new Command()
   .action(async () => {
     const triggers = listTriggers();
     if (triggers.length === 0) {
-      console.log('No triggers configured.');
-      console.log('Use `cortex triggers add` to create a trigger.');
+      console.log(i18n.t('cli.triggers.noTriggers'));
+      console.log(i18n.t('cli.triggers.useAddHint'));
       return;
     }
-    console.log(`\n${triggers.length} trigger(s) configured:\n`);
+    console.log(i18n.t('cli.triggers.triggersConfigured', { count: String(triggers.length) }));
     for (const t of triggers) {
       const status = t.enabled ? 'enabled' : 'disabled';
       console.log(`  ${t.name} (${t.source}) — ${status}`);
@@ -114,7 +115,9 @@ triggersCommand
     }
 
     registerTrigger(config);
-    console.log(`\nTrigger "${name}" added and ${active ? 'enabled' : 'disabled'}.`);
+    console.log(
+      i18n.t('cli.triggers.triggerAdded', { name, status: active ? 'enabled' : 'disabled' }),
+    );
   });
 
 triggersCommand
@@ -122,7 +125,11 @@ triggersCommand
   .description('Remove a trigger')
   .action((_opts: void, name: string) => {
     const ok = unregisterTrigger(name);
-    console.log(ok ? `Trigger "${name}" removed.` : `Trigger "${name}" not found.`);
+    console.log(
+      ok
+        ? i18n.t('cli.triggers.triggerRemoved', { name })
+        : i18n.t('cli.triggers.triggerNotFound', { name }),
+    );
   });
 
 triggersCommand

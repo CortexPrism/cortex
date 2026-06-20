@@ -3,6 +3,7 @@ import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import type { ProviderConfig, ProviderKind } from '../config/config.ts';
 import { fetchModels } from '../server/models.ts';
+import { i18n } from '../i18n/service.ts';
 
 const PROVIDER_KINDS: ProviderKind[] = [
   'anthropic',
@@ -66,7 +67,7 @@ export const modelsCommand = new Command()
         ) as [ProviderKind, ProviderConfig][];
 
         if (entries.length === 0) {
-          console.log(dim('\n  No providers configured. Run `cortex setup` to add one.\n'));
+          console.log(dim(i18n.t('cli.models.noProvidersConfigured')));
           return;
         }
 
@@ -94,8 +95,10 @@ export const modelsCommand = new Command()
       .arguments('<provider:string>')
       .action(async (_: void, provider: string) => {
         if (!isProviderKind(provider)) {
-          console.error(red(`  Error: unknown provider "${provider}"`));
-          console.error(dim(`  Valid providers: ${PROVIDER_KINDS.join(', ')}`));
+          console.error(red(i18n.t('cli.models.errorUnknownProvider', { provider })));
+          console.error(
+            dim(i18n.t('cli.models.validProviders', { providers: PROVIDER_KINDS.join(', ') })),
+          );
           Deno.exit(1);
         }
 
@@ -103,7 +106,7 @@ export const modelsCommand = new Command()
         const cfg = config.providers[provider];
 
         if (!cfg) {
-          console.log(dim(`\n  Provider "${provider}" is not configured. Run \`cortex setup\`.\n`));
+          console.log(dim(i18n.t('cli.models.providerNotConfigured', { provider })));
           return;
         }
 
@@ -164,8 +167,8 @@ export const modelsCommand = new Command()
           'topP',
         ];
         if (!validKeys.includes(key)) {
-          console.error(red(`  Error: unknown key "${key}"`));
-          console.error(dim(`  Valid keys: ${validKeys.join(', ')}`));
+          console.error(red(i18n.t('cli.models.unknownKey', { key })));
+          console.error(dim(i18n.t('cli.models.validKeys', { keys: validKeys.join(', ') })));
           Deno.exit(1);
         }
 
@@ -174,7 +177,7 @@ export const modelsCommand = new Command()
 
         if (!cfg) {
           console.error(
-            red(`  Error: provider "${provider}" is not configured. Run \`cortex setup\` first.`),
+            red(i18n.t('cli.models.providerNotConfiguredError', { provider })),
           );
           Deno.exit(1);
         }
@@ -182,13 +185,15 @@ export const modelsCommand = new Command()
         if (value === undefined || value === '') {
           // Unset the field
           if (key === 'model') {
-            console.error(red('  Error: model cannot be unset'));
+            console.error(red(i18n.t('cli.models.modelCannotUnset')));
             Deno.exit(1);
           }
           (cfg as unknown as Record<string, unknown>)[key] = undefined;
           config.providers[provider] = cfg;
           await saveConfig(config);
-          console.log(green(`  ✓ Unset ${bold(key)} on ${bold(provider)}`));
+          console.log(
+            green(i18n.t('cli.models.unsetKey', { key: bold(key), provider: bold(provider) })),
+          );
         } else {
           switch (key) {
             case 'model':
@@ -198,7 +203,11 @@ export const modelsCommand = new Command()
               const validEfforts = ['low', 'medium', 'high'];
               if (!validEfforts.includes(value)) {
                 console.error(
-                  red(`  Error: reasoningEffort must be one of: ${validEfforts.join(', ')}`),
+                  red(
+                    i18n.t('cli.models.invalidReasoningEffort', {
+                      values: validEfforts.join(', '),
+                    }),
+                  ),
                 );
                 Deno.exit(1);
               }
@@ -209,7 +218,7 @@ export const modelsCommand = new Command()
               const num = Number(value);
               if (isNaN(num) || num < 1000 || num > 2_000_000) {
                 console.error(
-                  red('  Error: contextWindow must be a number between 1000 and 2000000 (tokens)'),
+                  red(i18n.t('cli.models.invalidContextWindow')),
                 );
                 Deno.exit(1);
               }
@@ -219,7 +228,7 @@ export const modelsCommand = new Command()
             case 'temperature': {
               const num = Number(value);
               if (isNaN(num) || num < 0 || num > 2) {
-                console.error(red('  Error: temperature must be a number between 0 and 2'));
+                console.error(red(i18n.t('cli.models.invalidTemperature')));
                 Deno.exit(1);
               }
               cfg.temperature = num;
@@ -228,7 +237,7 @@ export const modelsCommand = new Command()
             case 'maxTokens': {
               const num = Number(value);
               if (isNaN(num) || num < 1) {
-                console.error(red('  Error: maxTokens must be a positive number'));
+                console.error(red(i18n.t('cli.models.invalidMaxTokens')));
                 Deno.exit(1);
               }
               cfg.maxTokens = num;
@@ -237,7 +246,7 @@ export const modelsCommand = new Command()
             case 'topP': {
               const num = Number(value);
               if (isNaN(num) || num < 0 || num > 1) {
-                console.error(red('  Error: topP must be a number between 0 and 1'));
+                console.error(red(i18n.t('cli.models.invalidTopP')));
                 Deno.exit(1);
               }
               cfg.topP = num;
@@ -247,7 +256,15 @@ export const modelsCommand = new Command()
           config.providers[provider] = cfg;
 
           await saveConfig(config);
-          console.log(green(`  ✓ Set ${bold(key)} = ${cyan(value)} on ${bold(provider)}`));
+          console.log(
+            green(
+              i18n.t('cli.models.setKey', {
+                key: bold(key),
+                value: cyan(value),
+                provider: bold(provider),
+              }),
+            ),
+          );
         }
       }),
   )
@@ -269,7 +286,7 @@ export const modelsCommand = new Command()
           const cfg = config.providers[kind];
           if (!cfg?.apiKey && kind !== 'ollama' && kind !== 'bedrock') {
             if (provider) {
-              console.error(red(`  Error: provider "${kind}" has no API key configured.`));
+              console.error(red(i18n.t('cli.models.noApiKey', { provider: kind })));
               Deno.exit(1);
             }
             continue;

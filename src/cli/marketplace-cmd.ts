@@ -5,6 +5,7 @@ import { installFromMarketplace } from '../plugins/install.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
 import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
 import { pluginManager } from '../plugins/manager.ts';
+import { i18n } from '../i18n/service.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
 const API_BASE = `https://${MARKETPLACE_HOST}/api/marketplace`;
@@ -63,7 +64,7 @@ export const marketplaceCommand = new Command()
                   totalPages: number;
                 };
                 if (data.plugins.length === 0) {
-                  console.log(dim('\n  No plugins found.\n'));
+                  console.log(dim(i18n.t('cli.marketplace.noPluginsFound')));
                   return;
                 }
                 console.log(
@@ -128,7 +129,7 @@ export const marketplaceCommand = new Command()
                   totalPages: number;
                 };
                 if (data.agents.length === 0) {
-                  console.log(dim('\n  No agents found.\n'));
+                  console.log(dim(i18n.t('cli.marketplace.noAgentsFound')));
                   return;
                 }
                 console.log(
@@ -169,7 +170,7 @@ export const marketplaceCommand = new Command()
             agentCount: number;
           }>;
           if (data.length === 0) {
-            console.log(dim('\n  No categories found.\n'));
+            console.log(dim(i18n.t('cli.marketplace.noCategoriesFound')));
             return;
           }
           console.log(bold('\n  Marketplace Categories'));
@@ -220,7 +221,7 @@ export const marketplaceCommand = new Command()
         try {
           const res = await fetch(downloadUrl);
           if (!res.ok) {
-            console.log(red(`  Plugin "${slug}" not found on marketplace.`));
+            console.log(red(i18n.t('cli.marketplace.pluginNotFound', { slug })));
             return;
           }
           const manifest = await res.json() as {
@@ -290,7 +291,7 @@ export const marketplaceCommand = new Command()
               console.log('');
             }
           } else {
-            console.log(dim('  No special permissions required.\n'));
+            console.log(dim(i18n.t('cli.marketplace.noPermissions')));
           }
 
           if (!yes) {
@@ -303,8 +304,15 @@ export const marketplaceCommand = new Command()
 
           await installFromMarketplace(slug, MARKETPLACE_HOST, manifest);
 
-          console.log(green(`  ✓ Installed: ${manifest.name}@${manifest.version}`));
-          console.log(dim(`  Enable it with: cortex plugins enable ${manifest.name}\n`));
+          console.log(
+            green(
+              i18n.t('cli.marketplace.pluginInstalled', {
+                name: manifest.name,
+                version: manifest.version,
+              }),
+            ),
+          );
+          console.log(dim(i18n.t('cli.marketplace.enableHint', { name: manifest.name })));
         } catch (e) {
           console.error(red(`  ${(e as Error).message}`));
         }

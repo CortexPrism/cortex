@@ -7,18 +7,22 @@ export const fileWriteTool: Tool = {
   definition: {
     name: 'file_write',
     description: 'Create or overwrite a file in the workspace.',
+    displayNameKey: 'tools.file_write.displayName',
+    descriptionKey: 'tools.file_write.description',
     capabilities: ['fs:write'],
     params: [
       {
         name: 'path',
         type: 'string',
         description: 'Path to the file (relative or absolute within workspace)',
+        descriptionKey: 'tools.file_write.params.path',
         required: true,
       },
       {
         name: 'content',
         type: 'string',
         description: 'Content to write to the file',
+        descriptionKey: 'tools.file_write.params.content',
         required: true,
       },
       {
@@ -26,6 +30,7 @@ export const fileWriteTool: Tool = {
         type: 'string',
         description:
           'Target workspace: "agent" (default), "global", or "config" (for SOUL.md, USER.md, MEMORY.md)',
+        descriptionKey: 'tools.file_write.params.workspace',
         required: false,
         enum: ['agent', 'global', 'config'],
       },

@@ -22,6 +22,7 @@ import {
   registerBuiltinSkills,
 } from '../memory/skills.ts';
 import { getDefaultAgent, listAgents, loadAgentIdentity } from '../agent/manager.ts';
+import { i18n } from '../i18n/service.ts';
 
 function makeSessionId(): string {
   return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -30,14 +31,23 @@ function makeSessionId(): string {
 function printBanner(agentName: string, model: string, provider: string): void {
   console.log('');
   console.log(bold(cyan(`  ${agentName}`)) + dim(` · ${provider}/${model}`));
-  console.log(dim('  Type your message. Press Ctrl+C or type /exit to quit.\n'));
+  console.log(dim(i18n.t('cli.chat.banner.promptHint') + '\n'));
 }
 
 function printCost(costUsd: number, durationMs: number): void {
   if (costUsd > 0) {
-    console.log(dim(`\n  [${durationMs}ms · $${costUsd.toFixed(6)}]`));
+    console.log(dim(
+      '\n  ' + i18n.t('cli.chat.cost.withCost', {
+        durationMs: String(durationMs),
+        costUsd: costUsd.toFixed(6),
+      }),
+    ));
   } else {
-    console.log(dim(`\n  [${durationMs}ms]`));
+    console.log(dim(
+      '\n  ' + i18n.t('cli.chat.cost.withoutCost', {
+        durationMs: String(durationMs),
+      }),
+    ));
   }
 }
 
@@ -81,7 +91,7 @@ export const chatCommand = new Command()
       // List agents and exit
       if (options.listAgents) {
         const agents = await listAgents();
-        console.log(bold('\n  Available Agents:'));
+        console.log(bold('\n  ' + i18n.t('cli.chat.listAgents.heading')));
         for (const a of agents) {
           const active = config.defaultAgent === a.id ? green(' ●') : dim(' ○');
           const p = a.provider ? ` [${a.provider}/${a.model || '?'}]` : '';
@@ -101,7 +111,7 @@ export const chatCommand = new Command()
         const found = await getAgent(options.agent);
         if (!found) {
           console.error(
-            red(`  Agent "${options.agent}" not found. Use --list-agents to see available agents.`),
+            red('  ' + i18n.t('cli.chat.error.agentNotFound', { agent: options.agent! })),
           );
           Deno.exit(1);
         }
@@ -121,7 +131,9 @@ export const chatCommand = new Command()
       try {
         provider = buildProvider(config);
       } catch (err) {
-        console.error(red(`  Error: ${(err as Error).message}`));
+        console.error(
+          red('  ' + i18n.t('cli.chat.error.generic', { message: (err as Error).message })),
+        );
         Deno.exit(1);
       }
       const activeProvider = provider!;
@@ -157,7 +169,7 @@ export const chatCommand = new Command()
       if (options.resume) {
         const existing = await getSession(sid);
         if (!existing) {
-          console.error(red(`  Session "${sid}" not found.`));
+          console.error(red('  ' + i18n.t('cli.chat.error.sessionNotFound', { id: sid })));
           Deno.exit(1);
         }
         await resumeSession(sid);
@@ -195,7 +207,9 @@ export const chatCommand = new Command()
       // Load active plugin tools
       const { pluginManager } = await import('../plugins/manager.ts');
       await pluginManager.loadAll().catch((e) => {
-        console.error(dim(`  Plugin load warning: ${(e as Error).message}`));
+        console.error(
+          dim('  ' + i18n.t('cli.chat.warning.pluginLoad', { message: (e as Error).message })),
+        );
       });
 
       const approvalGate = async (
@@ -225,7 +239,7 @@ export const chatCommand = new Command()
         const line = await readLine(cyan('  You › '));
 
         if (line === null || line.trim() === '/exit' || line.trim() === '/quit') {
-          console.log(dim('\n  Session closed.\n'));
+          console.log(dim('\n  ' + i18n.t('cli.chat.sessionClosed') + '\n'));
           await Promise.allSettled([
             closeSession(sid),
             logEvent({
@@ -281,7 +295,11 @@ export const chatCommand = new Command()
 
           printCost(result.costUsd, result.durationMs);
         } catch (err) {
-          console.error(red(`\n  Error: ${(err as Error).message}\n`));
+          console.error(
+            red(
+              '\n  ' + i18n.t('cli.chat.error.generic', { message: (err as Error).message }) + '\n',
+            ),
+          );
         }
 
         console.log('');
@@ -293,25 +311,25 @@ async function handleSlashCommand(input: string, _sessionId: string): Promise<vo
   const cmd = input.slice(1).split(' ')[0];
   switch (cmd) {
     case 'help':
-      console.log(dim('  Commands: /help /soul /exit /quit'));
+      console.log(dim('  ' + i18n.t('cli.chat.help.commandList')));
       break;
     case 'soul': {
       const ctx = await loadSoulContext();
-      console.log(dim('\n--- SOUL.md ---'));
+      console.log(dim(i18n.t('cli.chat.soul.soulHeader')));
       console.log(dim(ctx.soul));
       if (ctx.user) {
-        console.log(dim('\n--- USER.md ---'));
+        console.log(dim(i18n.t('cli.chat.soul.userHeader')));
         console.log(dim(ctx.user));
       }
       if (ctx.memory) {
-        console.log(dim('\n--- MEMORY.md ---'));
+        console.log(dim(i18n.t('cli.chat.soul.memoryHeader')));
         console.log(dim(ctx.memory));
       }
-      console.log(dim('---------------\n'));
+      console.log(dim(i18n.t('cli.chat.soul.footer') + '\n'));
       break;
     }
     default:
-      console.log(yellow(`  Unknown command: ${input}`));
+      console.log(yellow('  ' + i18n.t('cli.chat.unknownCommand', { input })));
   }
 }
 

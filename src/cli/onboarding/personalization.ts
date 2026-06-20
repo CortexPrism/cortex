@@ -1,6 +1,7 @@
 import type { LLMProvider } from '../../llm/types.ts';
 import { loadConfig, saveConfig } from '../../config/config.ts';
 import type { CortexConfig, UserProfile } from '../../config/config.ts';
+import { i18n } from '../../i18n/service.ts';
 
 export interface QuestionContext {
   previousQuestions: string[];
@@ -99,7 +100,7 @@ async function generateInitialQuestion(
     const parsed = JSON.parse(jsonStr);
     return parsed.nextQuestion ?? null;
   } catch {
-    return 'First off, what do you do? (work, study, hobby projects, etc.)';
+    return i18n.t('cli.setup.fallbackQuestion1');
   }
 }
 
@@ -192,7 +193,7 @@ export async function runAIQuestionnaireInteractive(
   return runAIQuestionnaire(provider, model, maxQuestions, async (question, qNum) => {
     const { Input } = await import('@cliffy/prompt');
     const answer = await Input.prompt({
-      message: `Q${qNum}: ${question}`,
+      message: i18n.t('cli.setup.input.aiQuestion', { num: qNum, question }),
     });
     return answer;
   });
@@ -216,11 +217,15 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 
 export function getUserProfileSummary(profile: UserProfile): string {
   const lines: string[] = [];
-  if (profile.role) lines.push(`  • Role: ${profile.role}`);
-  if (profile.primaryUseCase) lines.push(`  • Use case: ${profile.primaryUseCase}`);
-  if (profile.experienceLevel) lines.push(`  • Experience: ${profile.experienceLevel}`);
+  if (profile.role) lines.push(`  • ${i18n.t('cli.setup.profile.label.role')}${profile.role}`);
+  if (profile.primaryUseCase) {
+    lines.push(`  • ${i18n.t('cli.setup.profile.label.useCase')}${profile.primaryUseCase}`);
+  }
+  if (profile.experienceLevel) {
+    lines.push(`  • ${i18n.t('cli.setup.profile.label.experience')}${profile.experienceLevel}`);
+  }
   if (profile.domains && profile.domains.length > 0) {
-    lines.push(`  • Domains: ${profile.domains.join(', ')}`);
+    lines.push(`  • ${i18n.t('cli.setup.profile.label.domains')}${profile.domains.join(', ')}`);
   }
   return lines.join('\n');
 }

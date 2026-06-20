@@ -1,0 +1,976 @@
+{
+  "_meta": {
+    "locale": "ru",
+    "version": "1.0.0",
+    "lastUpdated": "2026-06-20T00:00:00Z"
+  },
+  "cli": {
+    "serve": {
+      "commandDescription": "Start the Cortex HTTP + WebSocket server with Web UI",
+      "startedInBackground": "Cortex server started in background ({url})",
+      "failedToStart": "Server failed to start on {host}:{port}",
+      "stoppedServer": "Stopped cortex server (pid {pid}, {url})",
+      "couldNotStop": "Could not stop server process",
+      "noServerOnPort": "No server found on port {port}",
+      "stoppedExisting": "Stopped existing server (pid {pid})",
+      "couldNotStopExisting": "Could not stop existing server",
+      "noExistingOnPort": "No existing server found on port {port}",
+      "checkLogsHint": "Check logs or run without --daemon to see errors",
+      "option": {
+        "port": "Port to listen on",
+        "host": "Host to bind to",
+        "daemon": "Run the server in the background",
+        "restart": "Restart an existing background server (only with --daemon)",
+        "stop": "Stop a background server"
+      },
+      "starting": "Starting HTTP server on http://{host}:{port}",
+      "ready": "Ready. Press Ctrl+C to stop.",
+      "alreadyRunning": "Server already running on port {port}",
+      "stopped": "Server stopped."
+    },
+    "chat": {
+      "description": "Start an interactive chat session with Cortex",
+      "option": {
+        "model": "Override the model for this session",
+        "provider": "Override the provider for this session",
+        "agent": "Use a specific agent identity",
+        "resume": "Resume an existing session",
+        "listAgents": "List available agents and exit",
+        "noStream": "Disable streaming output"
+      },
+      "banner": {
+        "promptHint": "Type your message. Press Ctrl+C or type /exit to quit."
+      },
+      "listAgents": {
+        "heading": "Available Agents:"
+      },
+      "sessionClosed": "Session closed.",
+      "cost": {
+        "withCost": "[{durationMs}ms · ${costUsd}]",
+        "withoutCost": "[{durationMs}ms]"
+      },
+      "help": {
+        "commandList": "Commands: /help /soul /exit /quit"
+      },
+      "soul": {
+        "soulHeader": "--- SOUL.md ---",
+        "userHeader": "--- USER.md ---",
+        "memoryHeader": "--- MEMORY.md ---",
+        "footer": "---------------"
+      },
+      "unknownCommand": "Unknown command: {input}",
+      "error": {
+        "agentNotFound": "Agent \"{agent}\" not found. Use --list-agents to see available agents.",
+        "generic": "Error: {message}",
+        "sessionNotFound": "Session \"{id}\" not found."
+      },
+      "warning": {
+        "pluginLoad": "Plugin load warning: {message}"
+      },
+      "approval": {
+        "prompt": "{tool} action requires approval:\n  {command}\n  Sample: {sample}\n  Allow? [y/N] "
+      },
+      "prompt": {
+        "you": "You › ",
+        "agent": "Cortex › "
+      }
+    },
+    "setup": {
+      "commandDescription": "Configure Cortex — LLM provider, channels, personality, voice, vector memory, and more",
+      "noTerminal": "Interactive setup requires a terminal.",
+      "noTerminalHint": "Run `cortex setup` in a terminal to configure your LLM provider.",
+      "welcomeBanner": "Welcome to Cortex!",
+      "welcomeSub": "Let's get your agent up and running. This takes about 3 minutes.",
+      "connected": {
+        "success": "Connected",
+        "failed": "Connection failed"
+      },
+      "profileSummaryTitle": "Profile Summary:",
+      "ready": "Cortex is ready!",
+      "quickCommandsTitle": "Quick commands:",
+      "quick": {
+        "startChat": "{command} → Start interactive chat",
+        "oneShot": "{command} → One-shot command",
+        "status": "{command} → View agent status",
+        "help": "{command} → See all commands"
+      },
+      "nextStepsTitle": "Next steps:",
+      "next": {
+        "pluginList": "{command} → Browse available plugins",
+        "configEdit": "{command} → Customize settings",
+        "docs": "{command} → Open documentation"
+      },
+      "web": {
+        "starting": "Starting web server for browser-based setup...",
+        "started": "Web server started on {url}",
+        "returnHere": "Complete setup in your browser, then return here."
+      },
+      "hint": {
+        "noProvider": "No provider configured. Run `cortex setup` first."
+      },
+      "confirm": {
+        "webBrowser": "Complete setup in your web browser instead?",
+        "aiPersonalize": "Answer a few questions to personalize your experience? (3-4 quick questions)",
+        "advancedFeatures": "Configure embeddings, vector store, Chrome Bridge, and voice?",
+        "chromeBridge": "Enable Chrome Bridge (browser automation via MCP)?",
+        "voice": "Enable voice/speech features (STT/TTS)?",
+        "telemetry": "Share anonymous usage data to help improve Cortex?"
+      },
+      "select": {
+        "llmProvider": "Which LLM provider do you want to use?",
+        "personality": "Pick a vibe for your agent:",
+        "embeddingProvider": "Embedding provider for memory:",
+        "vectorStore": "Vector store backend:",
+        "stt": "Speech-to-text provider:",
+        "tts": "Text-to-speech provider:"
+      },
+      "checkbox": {
+        "channels": "Select channels to enable (space to toggle, enter to confirm):"
+      },
+      "input": {
+        "ollamaUrl": "Ollama base URL:",
+        "awsRegion": "AWS Region:",
+        "lmstudioUrl": "LM Studio base URL:",
+        "litellmUrl": "LiteLLM proxy base URL:",
+        "modelName": "Model name:",
+        "embeddingModel": "Embedding model:",
+        "ollamaEmbeddingUrl": "Ollama base URL for embeddings:",
+        "ollamaModel": "Embedding model:",
+        "nodePath": "Node.js path:",
+        "chromeBridgePath": "Chrome Bridge server script path:",
+        "vectorUrl": "{provider} URL:",
+        "vectorCollection": "{provider} collection name:",
+        "teamsAppId": "Microsoft Teams app ID:",
+        "larkAppId": "Lark app ID:",
+        "teamsTenantId": "Microsoft Teams tenant ID:",
+        "aiQuestion": "Q{num}: {question}"
+      },
+      "secret": {
+        "awsAccessKey": "AWS Access Key ID:",
+        "awsSecretKey": "AWS Secret Access Key:",
+        "providerApiKey": "{provider} API key:",
+        "embeddingApiKey": "OpenAI API key for embeddings (or leave blank to reuse provider key):",
+        "vectorApiKey": "{provider} API key (if required):",
+        "elevenlabsKey": "ElevenLabs API key:",
+        "discordToken": "Discord bot token:",
+        "slackToken": "Slack bot token (xoxb-...):",
+        "slackSecret": "Slack signing secret:",
+        "telegramToken": "Telegram bot token (from @BotFather):",
+        "teamsSecret": "Microsoft Teams app secret:",
+        "mattermostToken": "Mattermost personal access token:",
+        "rocketchatToken": "Rocket.Chat personal access token:",
+        "whatsappToken": "WhatsApp API token:",
+        "googleChatWebhook": "Google Chat webhook URL:",
+        "larkSecret": "Lark app secret:",
+        "larkVerifyToken": "Lark verification token:"
+      },
+      "success": {
+        "discord": "Discord configured",
+        "slack": "Slack configured",
+        "telegram": "Telegram configured",
+        "teams": "Teams configured",
+        "whatsapp": "WhatsApp configured",
+        "googleChat": "Google Chat configured",
+        "lark": "Lark configured",
+        "reachable": "{model} is reachable",
+        "soulCreated": "SOUL.md created ({personality})",
+        "webUi": "Web UI will be available on port 3000",
+        "embeddings": "Embeddings: {provider}",
+        "vectorStore": "Vector store: {provider}",
+        "chromeBridge": "Chrome Bridge configured",
+        "voice": "Voice features configured"
+      },
+      "error": {
+        "unreachable": "Could not reach {model}. Check your credentials"
+      },
+      "info": {
+        "mattermostEnv": "Set MATTERMOST_URL env var to your Mattermost server URL",
+        "rocketchatEnv": "Set ROCKETCHAT_URL env var to your Rocket.Chat server URL",
+        "reconfigureHint": "You can reconfigure later with `cortex config edit`",
+        "questionnaireSkipped": "Questionnaire skipped. You can complete it later.",
+        "aiUnavailable": "AI personalization unavailable. You can complete it later.",
+        "customSoul": "Write your own SOUL.md with `cortex soul edit`",
+        "noChannels": "No channels selected. Use `cortex channels` later to configure.",
+        "vectorSqlite": "Vector store: SQLite (built-in)",
+        "telemetryOn": "Anonymous usage data collection enabled. Thank you!",
+        "telemetryOff": "Telemetry disabled."
+      },
+      "spinner": {
+        "initQuestionnaire": "Initializing AI questionnaire...",
+        "generateQuestions": "Asking AI to generate questions...",
+        "profileCreated": "Profile created!",
+        "initDb": "Initializing databases...",
+        "dbReady": "Databases ready"
+      },
+      "step": {
+        "modelProvider": "Model Provider",
+        "aiPersonalization": "AI Personalization (Optional)",
+        "agentPersonality": "Agent Personality",
+        "channels": "Channels & Integrations",
+        "advancedFeatures": "Advanced Features (Optional)",
+        "usageData": "Usage Data"
+      },
+      "provider": {
+        "anthropic": "Anthropic (Claude)",
+        "openai": "OpenAI (GPT-4o)",
+        "google": "Google (Gemini)",
+        "mistral": "Mistral AI",
+        "groq": "Groq",
+        "deepseek": "DeepSeek",
+        "openrouter": "OpenRouter",
+        "xai": "xAI (Grok)",
+        "together": "Together AI",
+        "bedrock": "AWS Bedrock",
+        "cohere": "Cohere",
+        "kilo": "Kilo (AI Gateway)",
+        "ollama": "Ollama (local / self-hosted)",
+        "cerebras": "Cerebras",
+        "fireworks": "Fireworks AI",
+        "perplexity": "Perplexity",
+        "nvidia": "NVIDIA NIM",
+        "moonshot": "Moonshot",
+        "novita": "Novita AI",
+        "lmstudio": "LM Studio (local)",
+        "litellm": "LiteLLM (proxy)",
+        "huggingface": "Hugging Face",
+        "alibaba": "Alibaba (Qwen)",
+        "venice": "Venice AI",
+        "skip": "Skip — I'll configure later"
+      },
+      "channel": {
+        "web": "Web UI — Dashboard on port 3000",
+        "discord": "Discord — Agent on your server",
+        "slack": "Slack — Team collaboration",
+        "telegram": "Telegram — Instant messaging",
+        "teams": "Microsoft Teams — Enterprise chat",
+        "mattermost": "Mattermost — Self-hosted messaging",
+        "rocketchat": "Rocket.Chat — Open-source chat",
+        "whatsapp": "WhatsApp — Business messaging",
+        "googleChat": "Google Chat — Workspace integration",
+        "lark": "Lark — All-in-one collaboration"
+      },
+      "personality": {
+        "professional": "Professional — Concise, precise, business-ready",
+        "friendly": "Friendly — Warm, helpful, casual",
+        "developer": "Developer — Technical, direct, code-aware",
+        "creative": "Creative — Imaginative, expressive, lateral",
+        "analyst": "Analyst — Logical, structured, evidence-based",
+        "teacher": "Teacher — Patient, explanatory, mentoring",
+        "minimalist": "Minimalist — Brief, concise, no fluff",
+        "custom": "Custom — I'll write my own SOUL.md"
+      },
+      "embedding": {
+        "openai": "OpenAI (text-embedding-3-small) — Best quality",
+        "ollama": "Ollama (local) — Free, private",
+        "stub": "Stub — Minimal memory (default)"
+      },
+      "vector": {
+        "sqlite": "SQLite (built-in) — No setup required",
+        "qdrant": "Qdrant — Self-hosted or cloud",
+        "chromadb": "ChromaDB — Open-source",
+        "pinecone": "Pinecone — Managed cloud"
+      },
+      "voice": {
+        "stt": {
+          "openai": "OpenAI Whisper"
+        },
+        "tts": {
+          "openai": "OpenAI TTS",
+          "elevenlabs": "ElevenLabs"
+        }
+      },
+      "fallbackQuestion1": "First off, what do you do? (work, study, hobby projects, etc.)",
+      "profile": {
+        "label": {
+          "role": "Role: ",
+          "useCase": "Use case: ",
+          "experience": "Experience: ",
+          "domains": "Domains: "
+        }
+      },
+      "welcome": {
+        "tagline": "Your Agentic AI Harness",
+        "pressEnter": "[ Press Enter to begin ]  "
+      }
+    },
+    "sessions": {
+      "empty": "No sessions yet. Run `cortex chat` to start one.",
+      "heading": "Recent Sessions",
+      "oneTurn": "1 turn",
+      "turnCount": "{count} turns",
+      "childOf": "child of",
+      "subAgent": "⤷ {count} sub-agent",
+      "subAgents": "⤷ {count} sub-agents",
+      "stillActive": "{count} session(s) still active (process may have crashed)",
+      "commandDescription": "List recent chat sessions",
+      "option": {
+        "limit": "Number of sessions to show"
+      }
+    },
+    "jobs": {
+      "empty": "No jobs found.",
+      "heading": "Jobs",
+      "attempts": "{ratio} attempts",
+      "created": "✓ Job created: {id}",
+      "cancelled": "✓ Cancelled: {id}",
+      "noDue": "No jobs due.",
+      "running": "Running: {name} — {command}",
+      "done": "✓ Done: {name}",
+      "failedWithExit": "✗ Failed (exit {code}): {name}",
+      "error": "✗ Error: {message}",
+      "commandDescription": "Manage scheduled jobs",
+      "listDescription": "List all jobs",
+      "addDescription": "Schedule a new shell command job",
+      "cancelDescription": "Cancel a pending or failed job",
+      "runDueDescription": "Execute all currently due jobs (shell commands)",
+      "option": {
+        "status": "Filter by status",
+        "cron": "Cron expression (e.g. \"0 * * * *\")",
+        "in": "Run after N minutes from now",
+        "maxAttempts": "Max retry attempts"
+      }
+    },
+    "run": {
+      "cannotReadFile": "Error: cannot read file: {file}",
+      "running": "Running: {file}",
+      "languageRuntime": "Language: {lang}  Runtime: {runtime}",
+      "failed": "✗ Failed (exit {code})",
+      "tipAutoFix": "Tip: use --fix to enable LLM auto-fix loop",
+      "success": "✓ Success",
+      "autoFixEnabled": "Auto-fix enabled (max {rounds} rounds)",
+      "llmProposedFix": "→ LLM proposed fix ({chars} chars)",
+      "succeededAfter": "✓ Succeeded after {rounds} round(s)",
+      "finalCode": "Final code:",
+      "stillFailing": "✗ Still failing after {rounds} round(s)",
+      "finalError": "Final error:",
+      "commandDescription": "Execute code in a sandbox with optional LLM auto-fix loop",
+      "option": {
+        "lang": "Language override (python, javascript, bash, typescript)",
+        "fix": "Enable auto-fix loop on failure",
+        "maxFix": "Max fix rounds",
+        "noSandbox": "Skip Docker, use subprocess directly"
+      }
+    },
+    "reflect": {
+      "empty": "No reflection patterns yet. Run some chat sessions first.",
+      "heading": "Reflection Patterns",
+      "consolidating": "Running reflection consolidation…",
+      "extracted": "✓ Extracted {count} meta-pattern(s)",
+      "noNewPatterns": "No new meta-patterns found (need more data or patterns already consolidated)",
+      "commandDescription": "Inspect and consolidate agent reflection memory",
+      "listDescription": "List stored reflection patterns",
+      "consolidateDescription": "Run LLM consolidation pass — extract meta-patterns from observed patterns",
+      "option": {
+        "limit": "Max results",
+        "category": "Filter by category"
+      }
+    },
+    "vault": {
+      "emptyValue": "Error: value cannot be empty",
+      "stored": "✓ Stored: {name} [{id}]",
+      "empty": "No vault entries.",
+      "heading": "Vault Entries",
+      "deleted": "✓ Deleted: {name}",
+      "notFound": "Not found: {name}",
+      "commandDescription": "Manage encrypted credential vault",
+      "storeDescription": "Store a secret in the vault (prompts for value)",
+      "getDescription": "Retrieve and print a secret (requires CORTEX_VAULT_KEY)",
+      "listDescription": "List all vault entries (names only, no values)",
+      "deleteDescription": "Delete a vault entry",
+      "option": {
+        "service": "Service name",
+        "type": "Credential type (api_key, token, password)"
+      }
+    },
+    "policy": {
+      "empty": "No policy rules.",
+      "heading": "Policy Rules",
+      "added": "✓ Policy rule added: {id}",
+      "removed": "✓ Removed: {id}",
+      "notFound": "Not found: {id}",
+      "noCplFile": "No CPL file found. Create .cortex/policy.yaml or pass a file path.",
+      "runInit": "Run: cortex policy init  to create a starter file",
+      "imported": "✓ Imported {count} rules",
+      "alreadyExist": "({count} already exist)",
+      "alreadyExists": "Already exists: {path}",
+      "created": "✓ Created: {path}",
+      "editThenImport": "Edit the file then run: cortex policy import",
+      "allowed": "✓ ALLOWED",
+      "denied": "✗ DENIED",
+      "reason": "reason:",
+      "matchedRule": "matched rule:",
+      "commandDescription": "Manage Cortex security policy rules",
+      "listDescription": "List all policy rules",
+      "addDescription": "Add a policy rule",
+      "removeDescription": "Remove a policy rule by ID",
+      "importDescription": "Import policy rules from a CPL YAML file",
+      "initDescription": "Create a starter CPL policy file at .cortex/policy.yaml",
+      "checkDescription": "Test a value against policy rules",
+      "option": {
+        "kind": "Rule kind: tool | shell | domain | capability",
+        "effect": "Effect: allow | deny",
+        "reason": "Human-readable reason",
+        "priority": "Priority (lower = higher precedence)"
+      }
+    },
+    "memory": {
+      "noResults": "No results found.",
+      "stored": "✓ Semantic memory stored: {id}",
+      "healthReport": "Memory Health Report",
+      "heuristicCycle": "Running heuristic learning cycle…",
+      "results": "Results:",
+      "importanceBoosted": "importance boosted:",
+      "decaySlowed": "decay slowed:",
+      "relationsStrengthened": "relations strengthened:",
+      "autoTagged": "auto-tagged:",
+      "episodicMemory": "Episodic Memory",
+      "semanticMemory": "Semantic Memory",
+      "knowledgeGraph": "Knowledge Graph",
+      "reflectionMemory": "Reflection Memory",
+      "commandDescription": "Inspect and manage Cortex memory",
+      "searchDescription": "Search memory by keyword query",
+      "addDescription": "Manually add a semantic memory entry",
+      "healthDescription": "Show memory health statistics across all tiers",
+      "heuristicsDescription": "Manually run a heuristic learning cycle",
+      "option": {
+        "limit": "Max results",
+        "type": "Filter: episodic | semantic | all",
+        "category": "Category tag",
+        "importance": "Importance 0.0-1.0"
+      }
+    },
+    "migrate": {
+      "running": "Running Cortex database migrations...",
+      "done": "Done.",
+      "commandDescription": "Initialize or migrate all Cortex databases"
+    },
+    "agent": {
+      "noAgentsRegistered": "  No agents registered.",
+      "registeredAgents": "\n  Registered Agents",
+      "agentNotFound": "  Agent \"{id}\" not found.",
+      "createdAgent": "  ✓ Created agent \"{name}\" ({id})",
+      "updatedAgent": "  ✓ Updated agent \"{name}\" ({id})",
+      "deletedAgent": "  ✓ Deleted agent \"{id}\"",
+      "activeAgentSet": "  ✓ Active agent set to \"{name}\" ({id})",
+      "importedAgent": "  ✓ Imported agent \"{name}\" ({id})",
+      "clonedAgent": "  ✓ Cloned agent \"{name}\" ({id}) from \"{sourceId}\"",
+      "invalidMarketplaceRef": "  Invalid marketplace reference. Use marketplace:<host>/agents/<slug>",
+      "fetchingFrom": "  Fetching from {url}",
+      "invalidSource": "  Invalid source. Use a URL or marketplace:<host>/agents/<slug>",
+      "fetchFailed": "  Fetch failed: {status} {statusText}",
+      "invalidAgentConfig": "  Invalid agent config: missing required field \"name\"",
+      "failedToImportAgent": "  Failed to import agent: {message}"
+    },
+    "agentlint": {
+      "actions": "Actions",
+      "checkCommand": "  cortex agentlint check    — Run AgentLint checks on current agent config",
+      "configCommand": "  cortex agentlint config   — Verbose lint report with provider/model details",
+      "allChecksPassed": "✓ {name}: all {totalChecks} checks passed",
+      "lintingAgent": "\nLinting agent: {name}",
+      "providerModel": "Provider: {provider}, Model: {model}",
+      "totalChecks": "Total checks: {count}",
+      "passed": "Passed: {count}",
+      "warnings": "Warnings: {count}",
+      "errors": "Errors: {count}",
+      "allPassed": "✓ All checks passed",
+      "issues": "Issues:",
+      "errorsAndWarnings": "{errors} error(s), {warnings} warning(s)"
+    },
+    "a2a": {
+      "agentSkills": "\nA2A Agent Skills"
+    },
+    "channels": {
+      "noChannelsConfigured": "No channels configured.",
+      "useAddHint": "Use `cortex channels add` to add a new channel.",
+      "channelsConfigured": "\n{count} channel(s) configured:\n",
+      "testingConnection": "Testing connection to {name} ({type})...",
+      "connectionSuccessful": "✓ Connection successful",
+      "testCompleted": "Test completed.",
+      "connectionTestFailed": "Connection test failed: {message}",
+      "cancelled": "Cancelled.",
+      "channelNotFound": "Channel \"{id}\" not found",
+      "channelAdded": "\nChannel \"{name}\" ({id}) added successfully!",
+      "useStartHint": "Use `cortex channels start {id}` to activate it.",
+      "failedToAdd": "Failed to add channel: {message}",
+      "channelStarted": "Channel \"{id}\" started.",
+      "failedToStart": "Failed to start channel: {message}",
+      "channelStopped": "Channel \"{id}\" stopped.",
+      "failedToStop": "Failed to stop channel: {message}",
+      "channelRemoved": "Channel \"{id}\" removed.",
+      "failedToRemove": "Failed to remove channel: {message}"
+    },
+    "chrome_bridge": {
+      "actions": "Actions",
+      "startCommand": "  cortex chrome-bridge start  — Start chrome-bridge MCP server",
+      "stopCommand": "  cortex chrome-bridge stop   — Stop chrome-bridge MCP server",
+      "statusCommand": "  cortex chrome-bridge status — Check connection status",
+      "toolsCommand": "  cortex chrome-bridge tools  — List registered chrome-bridge tools",
+      "notConfigured": "chrome-bridge not configured. Add a chromeBridge section to your config.",
+      "disabled": "chrome-bridge is disabled in config. Enable it first.",
+      "started": "chrome-bridge started",
+      "failedToStart": "Failed to start chrome-bridge: {message}",
+      "stopped": "chrome-bridge stopped",
+      "running": "chrome-bridge: running",
+      "notRunning": "chrome-bridge: not running",
+      "noTools": "No chrome-bridge tools registered. Start chrome-bridge first.",
+      "registeredTools": "Registered chrome-bridge tools ({count}):"
+    },
+    "compliance": {
+      "noRecords": "No compliance records found.",
+      "recordsFound": "\n{count} compliance records (medium+ risk):\n",
+      "moreRecords": "  ... and {count} more",
+      "useJsonHint": "\nUse --json for full output, or \"cortex compliance session <id>\" for details.",
+      "noSessionRecords": "No compliance records for session {sessionId}.",
+      "reportWritten": "Report written to {file}",
+      "reportSummary": "{records} records | {sessions} sessions",
+      "invalidRiskLevel": "Invalid risk level: {level}. Use: {levels}",
+      "recordsAtRisk": "\n{count} records at or above {risk} risk:\n",
+      "retentionEnforced": "Enforced retention: {deleted} expired compliance records deleted.",
+      "sessionRecordsCount": "\n{count} records."
+    },
+    "debug": {
+      "noActiveSessions": "No active sessions.",
+      "activeSessions": "Active sessions ({count}):",
+      "failedToListSessions": "Failed to list sessions: {message}",
+      "sessionNotFound": "Session '{id}' not found.",
+      "failedToInspectSession": "Failed to inspect session: {message}",
+      "failedToLoadTurn": "Failed to load turn: {message}",
+      "failedToRenderMetrics": "Failed to render metrics: {message}",
+      "failedToQueryMemory": "Failed to query memory: {message}"
+    },
+    "desktop": {
+      "screenshotSaved": "Screenshot saved: {path} ({duration}ms)",
+      "screenshotFailed": "Screenshot failed: {error}",
+      "clicked": "Clicked ({x},{y})",
+      "clickFailed": "Failed: {error}",
+      "typed": "Typed",
+      "typeFailed": "Failed: {error}",
+      "clipboardFailed": "Clipboard read failed: {error}"
+    },
+    "discord": {
+      "deprecated": "  ⚠  cortex discord is deprecated.",
+      "useChannels": "  Use the channels system instead:",
+      "step1Add": "  {step} Add a Discord channel:",
+      "step2Start": "  {step} Start the channel:",
+      "step3Manage": "  {step} Manage channels:",
+      "channelsSupports": "  The channels system supports Discord, Slack, Telegram, Teams, and more.",
+      "commandHint": "     {command}"
+    },
+    "eval": {
+      "failedToBuildProvider": "Failed to build provider from config",
+      "invalidSuiteFile": "  Invalid suite file: {path}",
+      "suiteFileNotFound": "  Suite file not found: {path}",
+      "createEvalSuiteHint": "  Create a .cortex/eval_suite.json file with tasks to evaluate.",
+      "regressionDetected": "  ⚠ {count} regression(s) detected:",
+      "noRegressions": "  ✓ No regressions detected",
+      "noBaselineFile": "  No baseline file found at {path}",
+      "baselineSaved": "  Baseline saved to {path}"
+    },
+    "git": {
+      "staged": "Staged.",
+      "failedToStage": "Failed to stage.",
+      "committed": "Committed: {message}",
+      "nothingToCommit": "Nothing to commit.",
+      "pushSuccessful": "Push successful.",
+      "pushFailed": "Push failed:\n{output}",
+      "pullSuccessful": "Pull successful.",
+      "pullFailed": "Pull failed:\n{output}",
+      "cloned": "Cloned into {dest}",
+      "cloneFailed": "Clone failed:\n{output}",
+      "createdAndSwitched": "Created and switched to {branch}",
+      "switchedTo": "Switched to {branch}",
+      "failed": "Failed.",
+      "addedRemote": "Added remote {name}",
+      "failedAddRemote": "Failed."
+    },
+    "github": {
+      "noTokenFound": "GitHub token not found. Set GITHUB_TOKEN env, githubToken in config, or vault entry \"github_token\".",
+      "noPullRequests": "No pull requests found.",
+      "createdPr": "Created PR #{number}: {url}",
+      "prMerged": "PR #{number} merged. SHA: {sha}",
+      "prNotMerged": "PR could not be merged.",
+      "prClosed": "PR #{number} closed.",
+      "noIssues": "No issues found.",
+      "createdIssue": "Created issue #{number}: {url}",
+      "issueClosed": "Issue #{number} closed.",
+      "noRepositories": "No repositories found.",
+      "tokenFound": "GitHub token found: {masked}",
+      "tokenSourcesCheck": "Token sources checked: config.json, GITHUB_TOKEN env, vault",
+      "noToken": "No GitHub token found.",
+      "setVia": "Set via:",
+      "setViaEnv": "  1. GITHUB_TOKEN environment variable",
+      "setViaConfig": "  2. githubToken in config.json",
+      "setViaVault": "  3. Vault entry named \"github_token\" (cortex vault add github_token)"
+    },
+    "hooks": {
+      "noHooks": "No hooks registered.",
+      "runInitHint": "Run \"cortex hooks init\" to register built-in hooks.",
+      "hooksRegistered": "\n{count} hook(s) registered:\n",
+      "registeredHooks": "Registered {delta} built-in hooks ({total} total).",
+      "builtinHookNotFound": "Built-in hook \"{name}\" not found. Run \"cortex hooks\" to see registered hooks.",
+      "hookEnabled": "Hook \"{name}\" enabled.",
+      "hookUnregistered": "Hook \"{name}\" unregistered.",
+      "hookNotFound": "Hook \"{name}\" not found."
+    },
+    "import": {
+      "noOpenclawFound": "  No OpenClaw export found.",
+      "passPathHint": "  Pass a path: cortex import openclaw <path-to-export.json>",
+      "autoDetected": "  Auto-detected: {source}",
+      "cannotRead": "  Cannot read: {source}",
+      "noJsonFound": "  No JSON files found to import.",
+      "importComplete": "\n  Import complete:",
+      "importedSummary": "\n  ✓ Imported: memories={memories} messages={messages} policies={policies}",
+      "errors": "  Errors: {count}",
+      "noHermesFound": "  No Hermes export found.",
+      "passHermesPathHint": "  Pass a path: cortex import hermes <path-to-export.jsonl>",
+      "noZeroClawFound": "  No ZeroClaw export found.",
+      "passZeroClawPathHint": "  Pass a path: cortex import zeroclaw <path-to-transcripts>"
+    },
+    "install": {
+      "installingServices": "Installing Cortex services…",
+      "uninstallingServices": "Uninstalling Cortex services…",
+      "servicesStarted": "  ✓ Services started",
+      "servicesUninstalled": "  ✓ Services uninstalled"
+    },
+    "log": {
+      "noEntries": "  No log entries found at {path}",
+      "noEntriesMatch": "  No entries matching filters.",
+      "entriesCount": "\n  {count} entries · {path}\n",
+      "tailing": "\n  Tailing {path}",
+      "logCleared": "  ✓ Log file cleared: {path}",
+      "failedToClear": "  Failed to clear log: {message}",
+      "invalidLevel": "  Invalid level \"{level}\". Must be one of: {levels}",
+      "logLevelSet": "  ✓ Log level set to {level}",
+      "restartHint": "  Restart the server for file transport to pick up the change."
+    },
+    "marketplace": {
+      "noPluginsFound": "\n  No plugins found.\n",
+      "noAgentsFound": "\n  No agents found.\n",
+      "noCategoriesFound": "\n  No categories found.\n",
+      "pluginNotFound": "  Plugin \"{slug}\" not found on marketplace.",
+      "pluginInstalled": "  ✓ Installed: {name}@{version}",
+      "enableHint": "  Enable it with: cortex plugins enable {name}\n",
+      "noPermissions": "  No special permissions required.\n"
+    },
+    "mcp": {
+      "startingHttpServer": "  Starting MCP HTTP server on http://{host}:{port}/mcp",
+      "readyForMcp": "  Ready for MCP connections. Press Ctrl+C to stop.\n",
+      "connectingHttp": "Connecting to {name} via HTTP at {url}...",
+      "connectingStdio": "Connecting to {name} via stdio: {command}...",
+      "connected": "Connected!",
+      "serverInfo": "  Server: {serverName} v{serverVersion}",
+      "toolsCount": "  Tools: {count}",
+      "failedToConnect": "Failed to connect: {message}",
+      "specifyTransport": "Specify --command (stdio) or --url (HTTP)",
+      "noConnectionNamed": "No MCP connection named \"{name}\"",
+      "disconnectedFrom": "Disconnected from \"{name}\"",
+      "noMcpServers": "No MCP servers are currently connected.",
+      "connectOptions": "Connect options:",
+      "connectStdioHint": "  cortex mcp connect <name> --command \"kilocode mcp\"",
+      "connectHttpHint": "  cortex mcp connect <name> --url http://localhost:9187/mcp",
+      "connectedMcpServers": "Connected MCP Servers",
+      "noManagedServers": "  No managed MCP servers. Add connections via `cortex mcp connect`.",
+      "noManagedServersCheck": "\nNo managed MCP servers to check."
+    },
+    "mcp_gateway": {
+      "deprecated": "  ⚠  cortex mcp-gateway is deprecated.",
+      "gatewayMoved": "  Gateway management has moved under the mcp command:",
+      "statusHint": "  {bold}  {command}",
+      "healthHint": "  {bold}  {command}"
+    },
+    "memori": {
+      "prunedCheckpoints": "\nPruned {removed} old checkpoint(s) from session {sessionId}",
+      "keptRecent": "Kept the most recent {keep} checkpoint(s)\n",
+      "sessionIdRequired": "Session ID is required"
+    },
+    "model_qm": {
+      "noStats": "No model statistics collected yet.",
+      "noDecisions": "No decisions recorded yet.",
+      "noAccuracy": "No accuracy data available yet.",
+      "signalWeightsReset": "Signal weights reset to defaults.",
+      "allMqmDataReset": "All Model Quartermaster data reset."
+    },
+    "models": {
+      "noProvidersConfigured": "\n  No providers configured. Run `cortex setup` to add one.\n",
+      "errorUnknownProvider": "  Error: unknown provider \"{provider}\"",
+      "validProviders": "  Valid providers: {providers}",
+      "providerNotConfigured": "\n  Provider \"{provider}\" is not configured. Run `cortex setup`.\n",
+      "modelCannotUnset": "  Error: model cannot be unset",
+      "unsetKey": "  ✓ Unset {key} on {provider}",
+      "setKey": "  ✓ Set {key} = {value} on {provider}",
+      "invalidReasoningEffort": "  Error: reasoningEffort must be one of: {values}",
+      "invalidContextWindow": "  Error: contextWindow must be a number between 1000 and 2000000 (tokens)",
+      "invalidTemperature": "  Error: temperature must be a number between 0 and 2",
+      "invalidMaxTokens": "  Error: maxTokens must be a positive number",
+      "invalidTopP": "  Error: topP must be a number between 0 and 1",
+      "noApiKey": "  Error: provider \"{provider}\" has no API key configured.",
+      "providerNotConfiguredError": "  Error: provider \"{provider}\" is not configured. Run `cortex setup` first.",
+      "unknownKey": "  Error: unknown key \"{key}\"",
+      "validKeys": "  Valid keys: {keys}"
+    },
+    "node": {
+      "noNodes": "No nodes registered.",
+      "useRegisterHint": "Use `cortex node register` to register a remote node.",
+      "nodesRegistered": "\n{count} registered node(s):\n",
+      "nodeRegistered": "\nNode \"{name}\" registered.",
+      "nodeId": "  ID: {id}",
+      "nodeToken": "  Token: {token}",
+      "copyTokenHint": "\nCopy this token to the Node machine. It will NOT be shown again.\n",
+      "nodeNotFound": "Node \"{id}\" not found.",
+      "nodeDeregistered": "Node \"{id}\" deregistered.",
+      "tokenRotated": "Token rotated for node \"{id}\".",
+      "newToken": "New token: {token}"
+    },
+    "plugins": {
+      "noPluginsInstalled": "\n  No plugins installed.\n",
+      "installedPlugins": "\n  Installed Plugins",
+      "invalidMarketplaceRef": "  Invalid marketplace reference. Use marketplace:<host>/plugins/<slug>",
+      "marketplaceFetchFailed": "  Marketplace fetch failed: {status} {statusText}",
+      "fetchFailed": "  Fetch failed: {status}",
+      "pluginInstalled": "  ✓ Installed: {name}@{version}",
+      "pluginEnabled": "  ✓ Enabled: {name}",
+      "pluginDisabled": "  ○ Disabled: {name}",
+      "pluginRemoved": "  ✗ Removed: {name}",
+      "pluginNotFound": "  Plugin \"{name}\" not found.",
+      "noIntegrityHash": "  No integrity hash declared for {name}.",
+      "generateHashHint": "  Generate one to enable verification.",
+      "integrityVerified": "  ✓ Integrity verified: {name}",
+      "hashLabel": "    Hash: {hash}",
+      "integrityFailed": "  ✗ Integrity check FAILED for {name}",
+      "expectedHash": "    Expected: {expected}",
+      "actualHash": "    Actual: {actual}",
+      "invalidPermissionFormat": "  Invalid format. Use: --set capability=grant|deny",
+      "overrideSet": "  ✓ Override set: {capability} → {action}",
+      "permissionsTitle": "\n  Permissions: {name}",
+      "declaredLabel": "  Declared:",
+      "overridesLabel": "\n  Overrides:",
+      "effectiveLabel": "\n  Effective:",
+      "allUpToDate": "\n  All plugins are up to date.\n",
+      "allUpToDateNoUpdates": "\n  All plugins are up to date.\n",
+      "updatesAvailable": "\n  {count} update(s) available. Run without --check to apply.\n",
+      "updatingPlugins": "\n  Updating {count} plugin(s)...",
+      "specifyNameOrAll": "  Specify a plugin name or use --all to update all plugins.",
+      "noPluginsValidate": "\n  No plugins to validate.\n",
+      "validatingPlugins": "\n  Validating Plugins",
+      "allPluginsValid": "\n  ✓ All plugins are valid.\n",
+      "foundInvalid": "\n  Found {count} invalid plugin(s).",
+      "removingInvalid": "\n  Removing invalid plugins...\n",
+      "cleanupComplete": "\n  ✓ Cleanup complete.\n",
+      "fixHint": "\n  Run with --fix to automatically remove invalid plugins.\n"
+    },
+    "projects": {
+      "noProjects": "No projects. Create one with `cortex projects create <name>`",
+      "projectCreated": "\nProject \"{name}\" created at {path}",
+      "useProjectHint": "Run cortex chat --project {name} to use it.",
+      "projectDeleted": "Project \"{name}\" deleted.",
+      "projectNotFound": "Project \"{name}\" not found."
+    },
+    "quartermaster": {
+      "noPatterns": "No patterns learned yet.",
+      "noToolStats": "No tool stats collected yet.",
+      "noDecisions": "No decisions recorded yet.",
+      "noQmDecisions": "No QM decisions found for turn {turnId}.",
+      "noAccuracy": "No accuracy data available yet.",
+      "signalWeightsReset": "Signal weights reset to defaults.",
+      "allQmStateReset": "All Quartermaster state reset."
+    },
+    "remote": {
+      "deprecated": "  ⚠  cortex remote is deprecated.",
+      "useNodeSystem": "  Use the node system instead, which adds tier and group support:",
+      "registerNodeHint": "  {bold}  {command}",
+      "listNodesHint": "  {bold}       {command}",
+      "connectNodeHint": "  {bold}   {command}",
+      "deregisterHint": "  {bold}       {command}",
+      "nodeSupports": "  cortex node supports capability tiers (root/sudo/unprivileged) and groups."
+    },
+    "service": {
+      "noServices": "  No services registered.",
+      "serviceNotFound": "  Service \"{id}\" not found.",
+      "serviceRegistered": "  ✓ Service \"{name}\" registered ({id})",
+      "serviceUpdated": "  ✓ Service \"{id}\" updated",
+      "serviceDeleted": "  ✓ Service \"{id}\" deleted",
+      "serviceStarted": "  ✓ Service \"{id}\" started",
+      "serviceStopped": "  ✓ Service \"{id}\" stopped",
+      "agent": {
+        "showActive": "● active",
+        "showInactive": "○ inactive"
+      }
+    },
+    "soul": {
+      "created": "  ✓ Created: {dir}/{file}",
+      "skipped": "  ~ Skipped (exists): {file}",
+      "editHelp": "\n  Edit these files to personalise your agent, then restart cortex.\n",
+      "userNotFound": "\n  USER.md not found — run: cortex soul init",
+      "memoryNotFound": "\n  MEMORY.md not found — run: cortex soul init",
+      "editorExited": "  Editor exited with code {code}",
+      "appendedToMemory": "  ✓ Appended to MEMORY.md",
+      "unknownTemplate": "  Unknown template: \"{template}\"",
+      "runTemplatesHint": "  Run `cortex soul templates` to see available templates.\n",
+      "appliedTemplate": "  ✓ Applied \"{template}\" template to SOUL.md\n",
+      "failedToApplyTemplate": "  Failed to apply template: {error}\n",
+      "noSoulFound": "\n  No SOUL.md found. Run `cortex soul init` first.\n",
+      "soulLooksGood": "\n  ✓ SOUL.md looks good.\n",
+      "soulSuggestions": "\n  SOUL.md has {count} suggestion(s):\n",
+      "soulHint": "\n  Hint: run `cortex soul apply-template <name>` or `cortex soul edit`",
+      "soulHint2": "\n  to add the missing sections.\n"
+    },
+    "start": {
+      "startingCortex": "Starting Cortex…",
+      "cortexStarted": "  ✓ Cortex started",
+      "someServicesFailed": "  ✕ Some services failed to start",
+      "daemonStarted": "  ✓ Daemon started",
+      "daemonFailed": "  ✕ Daemon failed to start",
+      "serverStarted": "  ✓ Server started",
+      "serverFailed": "  ✕ Server failed to start",
+      "restartingCortex": "Restarting Cortex…",
+      "cortexRestarted": "  ✓ Cortex restarted",
+      "someServicesFailedRestart": "  ✕ Some services failed to restart",
+      "stoppingDaemons": "Stopping daemons…",
+      "stoppingServer": "Stopping server…",
+      "stoppedServerPort": "  Stopped server (port {port})",
+      "stoppedServerPid": "  Stopped server (pid {pid})",
+      "noServerFound": "  No server found",
+      "mutuallyExclusive": "  Cannot use both --daemon-only and --server-only together."
+    },
+    "stop": {
+      "stoppingCortex": "Stopping Cortex…",
+      "noServerFound": "  No background server found",
+      "cortexStopped": "  ✓ Cortex stopped"
+    },
+    "triggers": {
+      "noTriggers": "No triggers configured.",
+      "useAddHint": "Use `cortex triggers add` to create a trigger.",
+      "triggersConfigured": "\n{count} trigger(s) configured:\n",
+      "triggerAdded": "\nTrigger \"{name}\" added and {status}.",
+      "triggerRemoved": "Trigger \"{name}\" removed.",
+      "triggerNotFound": "Trigger \"{name}\" not found."
+    },
+    "update": {
+      "checkingForUpdates": "\n  Checking for updates…",
+      "rollingBack": "\n  Rolling back to previous version…",
+      "checkFailed": "  ✗ {error}",
+      "youAreUpToDate": "  ✓ You are up to date.",
+      "runToApply": "  Run cortex update to apply the update.",
+      "updatedTo": "  ✓ Updated to version {version}",
+      "rollbackFailed": "  ✗ {error}",
+      "rolledBackTo": "  ✓ Rolled back to version {version}",
+      "updateFailed": "  ✗ Update failed: {error}",
+      "autoRollback": "  Automatic rollback was attempted.",
+      "updateFailedGeneric": "  ✗ {error}"
+    },
+    "voice": {
+      "disabled": "Voice system is disabled. Run `cortex voice enable` to enable.",
+      "enabled": "Voice mode enabled.",
+      "disabledMsg": "Voice mode disabled.",
+      "voiceSet": "Default voice set to \"{voice}\".",
+      "speedSet": "Speech rate set to {rate}.",
+      "invalidSpeed": "Speech rate must be between 0.25 and 4.0"
+    },
+    "workflow": {
+      "noWorkflows": "No workflows registered.",
+      "notFound": "Workflow \"{name}\" not found.",
+      "approved": "Approved workflow: {name}"
+    }
+  },
+  "tools": {
+    "file_read": {
+      "displayName": "Read File",
+      "description": "Read any file including PDFs (auto-extracts text). Returns up to 64KB with line numbers.",
+      "params": {
+        "path": "Path to the file (absolute or relative)",
+        "workspace": "Target workspace: \"agent\" (default) or \"global\"",
+        "offset": "Line offset to start reading from (1-indexed)",
+        "limit": "Maximum number of lines to return"
+      }
+    },
+    "file_write": {
+      "displayName": "Write File",
+      "description": "Create or overwrite a file in the workspace.",
+      "params": {
+        "path": "Path to the file (relative or absolute within workspace)",
+        "content": "Content to write to the file",
+        "workspace": "Target workspace: \"agent\" (default), \"global\", or \"config\" (for SOUL.md, USER.md, MEMORY.md)"
+      }
+    },
+    "shell": {
+      "displayName": "Shell",
+      "description": "Run a shell command and return stdout + stderr. Requires user approval before executing.",
+      "params": {
+        "command": "The shell command to run",
+        "cwd": "Working directory for the command (defaults to session working dir)",
+        "timeout": "Timeout in milliseconds (default 30000)"
+      }
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "edit": "Edit",
+    "done": "Done",
+    "loading": "Loading…",
+    "error": "Error: {message}"
+  },
+  "server": {
+    "errors": {
+      "notFound": "Resource not found",
+      "unauthorized": "Unauthorized",
+      "internalError": "Internal server error",
+      "rateLimited": "Too many requests, try again later",
+      "validationError": "Validation error: {details}",
+      "bodyTooLarge": "Request body too large",
+      "invalidJson": "Invalid JSON body",
+      "missingField": "Missing required field: {field}",
+      "alreadyExists": "Resource already exists",
+      "notImplemented": "Not implemented",
+      "sessionNotFound": "Session not found",
+      "agentNotFound": "Agent not found",
+      "providerNotFound": "Provider not found",
+      "configError": "Configuration error: {details}",
+      "dbError": "Database error: {details}",
+      "forbidden": "Forbidden"
+    }
+  },
+  "ui": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "sessions": "Sessions",
+      "settings": "Settings",
+      "vault": "Vault",
+      "sandbox": "Sandbox"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "noWidgets": "No widgets",
+      "addWidgetsHint": "Click Edit to add widgets",
+      "addWidget": "Add Widget",
+      "editWidgets": "Edit Widgets",
+      "emptyNoSessions": "No sessions",
+      "emptyNoData": "No data",
+      "emptyNoActivity": "No recent activity",
+      "emptyNoModelData": "No model data",
+      "emptyNoAgentData": "No agent data",
+      "emptyUnknown": "Unknown",
+      "widgets": {
+        "kpiGrid": "KPI Cards",
+        "serverInfo": "Server Info",
+        "systemResources": "System Resources",
+        "daemonStatus": "Daemon Status",
+        "memoryStats": "Memory Stats",
+        "recentSessions": "Recent Sessions",
+        "dailyTokensChart": "Token Chart",
+        "recentActivity": "Recent Activity",
+        "modelBreakdown": "Model Breakdown",
+        "agentBreakdown": "Agent Breakdown",
+        "custom": "Custom HTML"
+      }
+    }
+  },
+  "agent": {
+    "prompts": {
+      "systemBase": "You are {name}, a helpful AI assistant.",
+      "localeHint": "Respond in {locale} language when possible."
+    }
+  }
+}

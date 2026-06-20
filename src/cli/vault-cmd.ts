@@ -3,6 +3,7 @@ import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { Secret } from '@cliffy/prompt';
 import { runMigrations } from '../db/migrate.ts';
 import { vaultDelete, vaultGet, vaultList, vaultStore } from '../security/vault.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const vaultCommand = new Command()
   .name('vault')
@@ -20,7 +21,7 @@ export const vaultCommand = new Command()
         await runMigrations();
         const value = await Secret.prompt(`  Value for "${name}" (hidden): `);
         if (!value.trim()) {
-          console.error(red('  Error: value cannot be empty'));
+          console.error(red('  ' + i18n.t('cli.vault.emptyValue')));
           Deno.exit(1);
         }
         const id = await vaultStore({
@@ -29,7 +30,7 @@ export const vaultCommand = new Command()
           value,
           credentialType: opts.type,
         });
-        console.log(green(`  ✓ Stored: ${bold(name)} [${id}]`));
+        console.log(green('  ' + i18n.t('cli.vault.stored', { name: bold(name), id })));
       }),
   )
   .command(
@@ -56,11 +57,11 @@ export const vaultCommand = new Command()
         await runMigrations();
         const entries = await vaultList();
         if (!entries.length) {
-          console.log(dim('\n  No vault entries.\n'));
+          console.log(dim('\n  ' + i18n.t('cli.vault.empty') + '\n'));
           return;
         }
         console.log('');
-        console.log(bold('  Vault Entries'));
+        console.log(bold('  ' + i18n.t('cli.vault.heading')));
         console.log(dim('  ────────────────────────────────────────'));
         for (const e of entries) {
           console.log(
@@ -81,9 +82,9 @@ export const vaultCommand = new Command()
         await runMigrations();
         const deleted = await vaultDelete(name);
         if (deleted) {
-          console.log(green(`  ✓ Deleted: ${name}`));
+          console.log(green('  ' + i18n.t('cli.vault.deleted', { name })));
         } else {
-          console.log(red(`  Not found: ${name}`));
+          console.log(red('  ' + i18n.t('cli.vault.notFound', { name })));
         }
       }),
   );

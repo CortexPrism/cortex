@@ -10,6 +10,7 @@ import {
 } from '../hub/node-registry.ts';
 import type { NodeTier } from '../hub/node-registry.ts';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
+import { i18n } from '../i18n/service.ts';
 
 const nodeCommand = new Command()
   .name('node')
@@ -19,12 +20,12 @@ const nodeCommand = new Command()
     const groups = await nodeGroups();
 
     if (nodes.length === 0) {
-      console.log('No nodes registered.');
-      console.log('Use `cortex node register` to register a remote node.');
+      console.log(i18n.t('cli.node.noNodes'));
+      console.log(i18n.t('cli.node.useRegisterHint'));
       return;
     }
 
-    console.log(`\n${nodes.length} registered node(s):\n`);
+    console.log(i18n.t('cli.node.nodesRegistered', { count: String(nodes.length) }));
     for (const n of nodes) {
       const statusColor = n.status === 'connected'
         ? green
@@ -83,10 +84,10 @@ nodeCommand
       group: group || undefined,
     });
 
-    console.log(green(`\nNode "${name}" registered.`));
-    console.log(`  ID: ${cyan(result.node.id)}`);
-    console.log(`  Token: ${cyan(result.token)}`);
-    console.log(`\nCopy this token to the Node machine. It will NOT be shown again.\n`);
+    console.log(green(i18n.t('cli.node.nodeRegistered', { name })));
+    console.log(i18n.t('cli.node.nodeId', { id: cyan(result.node.id) }));
+    console.log(i18n.t('cli.node.nodeToken', { token: cyan(result.token) }));
+    console.log(i18n.t('cli.node.copyTokenHint'));
   });
 
 nodeCommand
@@ -95,7 +96,7 @@ nodeCommand
   .action(async (_opts: void, id: string) => {
     const node = await getNode(id);
     if (!node) {
-      console.error(red(`Node "${id}" not found.`));
+      console.error(red(i18n.t('cli.node.nodeNotFound', { id })));
       return;
     }
 
@@ -120,10 +121,10 @@ nodeCommand
   .action(async (_opts: void, id: string) => {
     const ok = await deregisterNode(id);
     if (!ok) {
-      console.error(red(`Node "${id}" not found.`));
+      console.error(red(i18n.t('cli.node.nodeNotFound', { id })));
       return;
     }
-    console.log(green(`Node "${id}" deregistered.`));
+    console.log(green(i18n.t('cli.node.nodeDeregistered', { id })));
   });
 
 nodeCommand
@@ -132,11 +133,11 @@ nodeCommand
   .action(async (_opts: void, id: string) => {
     const token = await rotateNodeToken(id);
     if (!token) {
-      console.error(red(`Node "${id}" not found.`));
+      console.error(red(i18n.t('cli.node.nodeNotFound', { id })));
       return;
     }
-    console.log(green(`Token rotated for node "${id}".`));
-    console.log(`New token: ${cyan(token)}`);
+    console.log(green(i18n.t('cli.node.tokenRotated', { id })));
+    console.log(i18n.t('cli.node.newToken', { token: cyan(token) }));
     console.log(`\nCopy this token to the Node machine. It will NOT be shown again.\n`);
   });
 

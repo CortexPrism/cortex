@@ -11,6 +11,7 @@ import type { PolicyEffect, PolicyKind } from '../security/policy.ts';
 import { detectHermesDir, importHermes } from './import/hermes.ts';
 import { detectZeroClawDir, importZeroClaw } from './import/zeroclaw.ts';
 import { importJSONLTranscripts } from './import/jsonl.ts';
+import { i18n } from '../i18n/service.ts';
 
 interface OpenClawMemory {
   id?: string;
@@ -151,14 +152,14 @@ export const importCommand = new Command()
 
         let source = sourcePath;
         if (!source) {
-          const detected = await detectOpenClawDir();
+          const detected = await detectZeroClawDir();
           if (!detected) {
-            console.log(red('  No OpenClaw export found.'));
-            console.log(dim('  Pass a path: cortex import openclaw <path-to-export.json>'));
+            console.log(red(i18n.t('cli.import.noZeroClawFound')));
+            console.log(dim(i18n.t('cli.import.passZeroClawPathHint')));
             return;
           }
           source = detected;
-          console.log(dim(`  Auto-detected: ${source}`));
+          console.log(dim(i18n.t('cli.import.autoDetected', { source })));
         }
 
         let files: string[] = [];
@@ -174,12 +175,12 @@ export const importCommand = new Command()
             files = [source];
           }
         } catch {
-          console.log(red(`  Cannot read: ${source}`));
+          console.log(red(i18n.t('cli.import.cannotRead', { source })));
           return;
         }
 
         if (!files.length) {
-          console.log(yellow('  No JSON files found to import.'));
+          console.log(yellow(i18n.t('cli.import.noJsonFound')));
           return;
         }
 
@@ -222,42 +223,15 @@ export const importCommand = new Command()
         }
 
         if (!opts.dryRun) {
-          console.log(bold(`\n  Import complete:`));
-          console.log(`    ${cyan('Memories:')}      ${totalMemories}`);
-          console.log(`    ${cyan('Messages:')}      ${totalMessages}`);
-          console.log(`    ${cyan('Policies:')}      ${totalPolicies}`);
-          if (totalErrors > 0) console.log(`    ${red('Errors:')}        ${totalErrors}`);
+          console.log(bold(i18n.t('cli.import.importComplete')));
+          printSummary({
+            memories: totalMemories,
+            messages: totalMessages,
+            policies: totalPolicies,
+            errors: totalErrors,
+          });
         }
         console.log('');
-      }),
-  )
-  .command(
-    'json',
-    new Command()
-      .description('Import from a Cortex JSON export file')
-      .arguments('<file:string>')
-      .action(async (_: void, file: string) => {
-        await runMigrations();
-        const result = await importFromFile(file);
-        console.log(
-          green(
-            `\n  ✓ Imported: memories=${result.memories} messages=${result.messages} policies=${result.policies}`,
-          ),
-        );
-        if (result.errors > 0) console.log(red(`  Errors: ${result.errors}`));
-        console.log('');
-      }),
-  )
-  .command(
-    'files',
-    new Command()
-      .description('Import OpenClaw artifacts (SOUL.md, USER.md, MEMORY.md) from directory')
-      .arguments('[path:string]')
-      .option('--dry-run', 'Preview what would be imported without writing')
-      .action(async (opts: { dryRun?: boolean }, sourcePath?: string) => {
-        await runMigrations();
-        const src = sourcePath || join(resolveHomeDir(), '.openclaw');
-        await importOpenClaw(src, { dryRun: opts.dryRun });
       }),
   )
   .command(
@@ -273,12 +247,12 @@ export const importCommand = new Command()
         if (!source) {
           const detected = await detectHermesDir();
           if (!detected) {
-            console.log(red('  No Hermes export found.'));
-            console.log(dim('  Pass a path: cortex import hermes <path-to-export.jsonl>'));
+            console.log(red(i18n.t('cli.import.noHermesFound')));
+            console.log(dim(i18n.t('cli.import.passHermesPathHint')));
             return;
           }
           source = detected;
-          console.log(dim(`  Auto-detected: ${source}`));
+          console.log(dim(i18n.t('cli.import.autoDetected', { source })));
         }
 
         console.log(bold(`\n  Hermes Import${opts.dryRun ? dim(' (dry-run)') : ''}`));
@@ -304,14 +278,14 @@ export const importCommand = new Command()
 
         let source = sourcePath;
         if (!source) {
-          const detected = await detectZeroClawDir();
+          const detected = await detectOpenClawDir();
           if (!detected) {
-            console.log(red('  No ZeroClaw export found.'));
-            console.log(dim('  Pass a path: cortex import zeroclaw <path-to-transcripts>'));
+            console.log(red(i18n.t('cli.import.noOpenclawFound')));
+            console.log(dim(i18n.t('cli.import.passPathHint')));
             return;
           }
           source = detected;
-          console.log(dim(`  Auto-detected: ${source}`));
+          console.log(dim(i18n.t('cli.import.autoDetected', { source })));
         }
 
         console.log(bold(`\n  ZeroClaw Import${opts.dryRun ? dim(' (dry-run)') : ''}`));

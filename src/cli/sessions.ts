@@ -2,6 +2,7 @@ import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { countChildSessions, listSessions } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
+import { i18n } from '../i18n/service.ts';
 
 function formatDuration(startedAt: string, closedAt: string | null): string {
   const start = new Date(startedAt).getTime();
@@ -36,7 +37,7 @@ export const sessionsCommand = new Command()
     const sessions = await listSessions(options.limit);
 
     if (sessions.length === 0) {
-      console.log(dim('\n  No sessions yet. Run `cortex chat` to start one.\n'));
+      console.log(dim('\n  ' + i18n.t('cli.sessions.empty') + '\n'));
       return;
     }
 
@@ -50,12 +51,14 @@ export const sessionsCommand = new Command()
     );
 
     console.log('');
-    console.log(bold('  Recent Sessions'));
+    console.log(bold('  ' + i18n.t('cli.sessions.heading')));
     console.log(dim('  ─────────────────────────────────────────────────────'));
 
     for (const s of sessions) {
       const status = s.status === 'active' ? green('●') : dim('○');
-      const turns = s.turn_count === 1 ? '1 turn' : `${s.turn_count} turns`;
+      const turns = s.turn_count === 1
+        ? i18n.t('cli.sessions.oneTurn')
+        : i18n.t('cli.sessions.turnCount', { count: s.turn_count });
       const duration = formatDuration(s.started_at, s.closed_at);
       const date = formatDate(s.started_at);
       const name = s.name ?? s.id;
@@ -65,10 +68,14 @@ export const sessionsCommand = new Command()
       const chBadge = s.channel !== 'cli' ? ` ${chClr(`[${ch}]`)}` : '';
       const childCount = childCounts.get(s.id);
       const childBadge = childCount
-        ? yellow(` ⤷ ${childCount} sub-agent${childCount > 1 ? 's' : ''}`)
+        ? yellow(
+          ' ⤷ ' + (childCount > 1
+            ? i18n.t('cli.sessions.subAgents', { count: childCount })
+            : i18n.t('cli.sessions.subAgent', { count: childCount })),
+        )
         : '';
       const parentBadge = s.parent_session_id
-        ? dim(' ⤣ child of ') + dim(s.parent_session_id.slice(-12))
+        ? dim(' ⤣ ' + i18n.t('cli.sessions.childOf') + ' ') + dim(s.parent_session_id.slice(-12))
         : '';
 
       console.log(
@@ -86,6 +93,6 @@ export const sessionsCommand = new Command()
 
     const active = sessions.filter((s) => s.status === 'active');
     if (active.length > 0) {
-      console.log(red(`  ${active.length} session(s) still active (process may have crashed)\n`));
+      console.log(red('  ' + i18n.t('cli.sessions.stillActive', { count: active.length }) + '\n'));
     }
   });

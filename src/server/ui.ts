@@ -1,5 +1,6 @@
-export function serveUi(): Response {
-  return new Response(HTML, {
+export function serveUi(locale = 'en'): Response {
+  const html = HTML.replace('{LOCALE}', locale);
+  return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
@@ -36,18 +37,73 @@ const PROVIDER_OPTIONS_HTML = PROVIDER_OPTIONS.map((p) =>
 
 const DASHBOARD_JS = `
 console.log("[Dashboard] Script loaded, starting init...");
+var I18N = { locale: '{LOCALE}', translations: {} };
+
+async function initI18n() {
+  var cached = localStorage.getItem('cortex_i18n_' + I18N.locale);
+  if (cached) { try { I18N.translations = JSON.parse(cached); return; } catch(e) {} }
+  var r = await fetch('/api/i18n/' + I18N.locale);
+  I18N.translations = await r.json();
+  localStorage.setItem('cortex_i18n_' + I18N.locale, JSON.stringify(I18N.translations));
+}
+
+function t(key, params) {
+  var parts = key.split('.');
+  var val = I18N.translations;
+  for (var i = 0; i < parts.length; i++) {
+    if (!val || typeof val !== 'object') break;
+    val = val[parts[i]];
+  }
+  if (typeof val !== 'string') return key;
+  if (params) {
+    for (var k in params) val = val.split('{' + k + '}').join(params[k]);
+  }
+  return val;
+}
+
+function initNavLabels() {
+  var map = {
+    'nav-dashboard': 'ui.nav.dashboard',
+    'nav-sessions': 'ui.nav.sessions',
+    'nav-sandbox': 'ui.nav.sandbox',
+    'nav-settings': 'ui.nav.settings'
+  };
+  for (var id in map) {
+    var el = document.getElementById(id);
+    if (!el) continue;
+    var nodes = el.childNodes;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].nodeType === 3 && nodes[i].textContent.trim()) {
+        nodes[i].textContent = ' ' + t(map[id]);
+        break;
+      }
+    }
+  }
+  var ml = document.getElementById('model-label');
+  if (ml && ml.textContent === 'loading\u2026') ml.textContent = t('common.loading');
+}
+
+function initPageLabels() {
+  document.querySelectorAll('button').forEach(function(btn) {
+    var txt = btn.textContent.trim();
+    if (txt === 'Save') btn.textContent = t('common.save');
+    else if (txt === 'Cancel') btn.textContent = t('common.cancel');
+    else if (txt === 'Delete') btn.textContent = t('common.delete');
+    else if (txt === 'Confirm') btn.textContent = t('common.confirm');
+  });
+}
 var WIDGET_DEFS = {
-  "kpi-grid":{label:"KPI Cards",icon:"\uD83D\uDCCA",defaultW:4,defaultH:1},
-  "server-info":{label:"Server Info",icon:"\uD83D\uDD50",defaultW:2,defaultH:1},
-  "system-resources":{label:"System Resources",icon:"\uD83D\uDCBB",defaultW:2,defaultH:2},
-  "daemon-status":{label:"Daemon Status",icon:"\u26A1",defaultW:2,defaultH:2},
-  "memory-stats":{label:"Memory Stats",icon:"\uD83E\uDDE0",defaultW:2,defaultH:1},
-  "recent-sessions":{label:"Recent Sessions",icon:"\uD83D\uDCAC",defaultW:2,defaultH:2},
-  "daily-tokens-chart":{label:"Token Chart",icon:"\uD83D\uDCC8",defaultW:2,defaultH:2},
-  "recent-lens":{label:"Recent Activity",icon:"\uD83D\uDCCB",defaultW:2,defaultH:2},
-  "model-breakdown":{label:"Model Breakdown",icon:"\uD83E\uDD16",defaultW:2,defaultH:2},
-  "agent-breakdown":{label:"Agent Breakdown",icon:"\uD83D\uDC64",defaultW:2,defaultH:2},
-  "custom":{label:"Custom HTML",icon:"\uD83C\uDFA8",defaultW:2,defaultH:2}
+  "kpi-grid":{label:"ui.dashboard.widgets.kpiGrid",icon:"\uD83D\uDCCA",defaultW:4,defaultH:1},
+  "server-info":{label:"ui.dashboard.widgets.serverInfo",icon:"\uD83D\uDD50",defaultW:2,defaultH:1},
+  "system-resources":{label:"ui.dashboard.widgets.systemResources",icon:"\uD83D\uDCBB",defaultW:2,defaultH:2},
+  "daemon-status":{label:"ui.dashboard.widgets.daemonStatus",icon:"\u26A1",defaultW:2,defaultH:2},
+  "memory-stats":{label:"ui.dashboard.widgets.memoryStats",icon:"\uD83E\uDDE0",defaultW:2,defaultH:1},
+  "recent-sessions":{label:"ui.dashboard.widgets.recentSessions",icon:"\uD83D\uDCAC",defaultW:2,defaultH:2},
+  "daily-tokens-chart":{label:"ui.dashboard.widgets.dailyTokensChart",icon:"\uD83D\uDCC8",defaultW:2,defaultH:2},
+  "recent-lens":{label:"ui.dashboard.widgets.recentActivity",icon:"\uD83D\uDCCB",defaultW:2,defaultH:2},
+  "model-breakdown":{label:"ui.dashboard.widgets.modelBreakdown",icon:"\uD83E\uDD16",defaultW:2,defaultH:2},
+  "agent-breakdown":{label:"ui.dashboard.widgets.agentBreakdown",icon:"\uD83D\uDC64",defaultW:2,defaultH:2},
+  "custom":{label:"ui.dashboard.widgets.custom",icon:"\uD83C\uDFA8",defaultW:2,defaultH:2}
 };
 var dashboardConfig=null,dashboardEditMode=false,dashboardCharts={};
 
@@ -55,7 +111,7 @@ async function initDashboard(){
   console.log("[Dashboard] initDashboard running");
   dashboardEditMode=false;
   var btn=document.getElementById("dashboard-edit-btn");
-  if(btn)btn.textContent="Edit";else console.log("[Dashboard] No edit btn");
+  if(btn)btn.textContent=t('common.edit');else console.log("[Dashboard] No edit btn");
   var c=document.getElementById("dashboard-content");
   if(c)c.classList.remove("dashboard-edit-mode");else console.log("[Dashboard] No content div");
   try{
@@ -91,17 +147,17 @@ function renderWidgets(){
   var c=document.getElementById("dashboard-content");if(!c)return;
   Object.keys(dashboardCharts).forEach(function(k){if(dashboardCharts[k]){dashboardCharts[k].destroy();delete dashboardCharts[k]}});
   var ws=dashboardConfig.widgets;
-  if(!ws||!ws.length){c.innerHTML="<div class=widget-empty-state><p>No widgets</p><span class=sub>Click Edit to add widgets</span></div>";return}
+  if(!ws||!ws.length){c.innerHTML="<div class=widget-empty-state><p>"+t('ui.dashboard.noWidgets')+"</p><span class=sub>"+t('ui.dashboard.addWidgetsHint')+"</span></div>";return}
   var h="<div class=dashboard-grid>";
   for(var i=0;i<ws.length;i++){
     var w=ws[i];var de=WIDGET_DEFS[w.type]||{label:w.type,icon:"\uD83D\uDCE6"};
     h+="<div class=widget id=widget-"+w.id+" draggable=true style=grid-column:span+"+w.width+";grid-row:span+"+w.height+" data-wid="+w.id+">"
-    h+="<div class=widget-header><span>"+de.icon+" "+(w.title||de.label)+"</span>"
+    h+="<div class=widget-header><span>"+de.icon+" "+(w.title||t(de.label))+"</span>"
     h+="<div class=widget-actions><span class=drag-handle>\u283F</span>"
     h+="<button class=widget-remove data-rid="+w.id+">\u2715</button></div></div>"
-    h+="<div class=widget-body id=body-"+w.id+"><div class=widget-loading>Loading...</div></div></div>"
+    h+="<div class=widget-body id=body-"+w.id+"><div class=widget-loading>"+t('common.loading')+"</div></div></div>"
   }
-  h+="</div><div class=widget-add-bar><button class=add-btn onclick=showPicker()>+ Add Widget</button></div>"
+  h+="</div><div class=widget-add-bar><button class=add-btn onclick=showPicker()>+ "+t('ui.dashboard.addWidget')+"</button></div>"
   c.innerHTML=h;
   console.log("[Dashboard] Widget HTML set");
   if(dashboardEditMode)c.classList.add("dashboard-edit-mode");
@@ -147,7 +203,7 @@ function toggleEdit(){
   dashboardEditMode=!dashboardEditMode;
   var btn=document.getElementById("dashboard-edit-btn");
   var c=document.getElementById("dashboard-content");
-  if(btn)btn.textContent=dashboardEditMode?"Done":"Edit";
+  if(btn)btn.textContent=dashboardEditMode?t('common.done'):t('common.edit');
   c.classList.toggle("dashboard-edit-mode",dashboardEditMode);
   if(dashboardEditMode){if(!c.querySelector(".widget-add-bar"))renderWidgets()}else saveConfig()
 }
@@ -156,13 +212,13 @@ function showPicker(){
   var c=document.getElementById("dashboard-content");if(!c||!dashboardEditMode)return;
   var ex=c.querySelector(".widget-picker");if(ex){ex.remove();return}
   var p=document.createElement("div");p.className="widget-picker";p.style.cssText="padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg2)";
-  p.innerHTML="<div style=display:flex;align-items:center;justify-content:space-between;margin-bottom:8px><span style=font-size:12px;font-weight:600;color:var(--text2)>Add Widget</span><button class=btn onclick=this.parentElement.parentElement.remove()>\u2715</button></div>";
+  p.innerHTML="<div style=display:flex;align-items:center;justify-content:space-between;margin-bottom:8px><span style=font-size:12px;font-weight:600;color:var(--text2)>"+t('ui.dashboard.addWidget')+"</span><button class=btn onclick=this.parentElement.parentElement.remove()>\u2715</button></div>";
   var div=document.createElement("div");div.style.cssText="display:flex;flex-wrap:wrap;gap:6px";
   var keys=Object.keys(WIDGET_DEFS).filter(function(k){return k!=="custom"});
   for(var i=0;i<keys.length;i++){
     var d=WIDGET_DEFS[keys[i]];var btn=document.createElement("button");
     btn.className="btn";btn.style.cssText="font-size:11px;padding:6px 10px;background:rgba(99,102,241,0.12);color:var(--accent2)";
-    btn.textContent=d.icon+" "+d.label;
+    btn.textContent=d.icon+" "+t(d.label);
     btn.onclick=(function(k){return function(){addWidget(k)}})(keys[i]);
     div.appendChild(btn);
   }
@@ -186,7 +242,7 @@ function loadWidget(w){
     "recent-lens":renderLensEvents,"model-breakdown":renderModelBreak,"agent-breakdown":renderAgentBreak,
     "custom":renderCustom
   };
-  var fn=fns[w.type];if(fn)fn(body,w.id,w);else body.innerHTML="<div class=empty>Unknown</div>";
+  var fn=fns[w.type];if(fn)fn(body,w.id,w);else body.innerHTML="<div class=empty>"+t('ui.dashboard.emptyUnknown')+"</div>";
 }
 
 async function renderKpiGrid(body){
@@ -257,7 +313,7 @@ async function renderMemStats(body){
 
 async function renderSessions(body){
   var list=await fetchJSON("/api/sessions?limit=8",[]);
-  if(!list.length){body.innerHTML="<div class=empty>No sessions</div>";return}
+  if(!list.length){body.innerHTML="<div class=empty>"+t('ui.dashboard.emptyNoSessions')+"</div>";return}
   var cs={active:"#4ade80",idle:"#fbbf24",closed:"#6b7280",archived:"#6b7280"};
   body.innerHTML=list.map(function(s){
     var c=cs[s.status]||"#6b7280";
@@ -268,7 +324,7 @@ async function renderSessions(body){
 
 async function renderTokenChart(body,wid){
   var ana=await fetchJSON("/api/analytics?days=14",{});var daily=ana.daily||[];
-  if(!daily.length){body.innerHTML="<div class=empty>No data</div>";return}
+  if(!daily.length){body.innerHTML="<div class=empty>"+t('ui.dashboard.emptyNoData')+"</div>";return}
   body.innerHTML="<div style=height:140px><canvas id=ch-"+wid+"></canvas></div>";
   var cv=document.getElementById("ch-"+wid);if(!cv)return;var ctx=cv.getContext("2d");if(!ctx)return;
   if(dashboardCharts[wid])dashboardCharts[wid].destroy();
@@ -294,7 +350,7 @@ async function renderTokenChart(body,wid){
 
 async function renderLensEvents(body){
   var evts=await fetchJSON("/api/lens/recent?limit=10",[]);
-  if(!evts.length){body.innerHTML="<div class=empty>No recent activity</div>";return}
+  if(!evts.length){body.innerHTML="<div class=empty>"+t('ui.dashboard.emptyNoActivity')+"</div>";return}
   body.innerHTML=evts.map(function(e){
     var ts=new Date(e.started_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
     var txt=esc((e.summary||e.event_type||"").slice(0,45));
@@ -304,7 +360,7 @@ async function renderLensEvents(body){
 
 async function renderModelBreak(body){
   var ana=await fetchJSON("/api/analytics?days=7",{});var models=ana.models||[];
-  if(!models.length){body.innerHTML="<div class=empty>No model data</div>";return}
+  if(!models.length){body.innerHTML="<div class=empty>"+t('ui.dashboard.emptyNoModelData')+"</div>";return}
   body.innerHTML=models.slice(0,8).map(function(m){
     var n=esc(m.model.length>18?m.model.slice(0,18)+"..":m.model);
     var toks=m.tokens_in+m.tokens_out;
@@ -315,7 +371,7 @@ async function renderModelBreak(body){
 
 async function renderAgentBreak(body){
   var ana=await fetchJSON("/api/analytics?days=7",{});var agents=ana.perAgent||[];
-  if(!agents.length){body.innerHTML="<div class=empty>No agent data</div>";return}
+  if(!agents.length){body.innerHTML="<div class=empty>"+t('ui.dashboard.emptyNoAgentData')+"</div>";return}
   body.innerHTML=agents.slice(0,8).map(function(a){
     var n=esc(a.agent_id.length>16?a.agent_id.slice(0,16)+"..":a.agent_id);
     return "<div class=stat-row><span class=stat-label title=\\""+esc(a.agent_id)+"\\">"+n+"</span><span style=width:25px;text-align:right;color:var(--text3)>"+a.sessions+"</span><span style=width:50px;text-align:right;font-family:monospace;color:var(--accent-green)>"+fmtCost(a.cost_usd)+"</span></div>"
@@ -355,7 +411,7 @@ function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(
 function fmtBytes(b){if(!b)return"0 B";var u=["B","KB","MB","GB","TB"],i=0;while(b>=1024&&i<4){b/=1024;i++}return b.toFixed(1)+" "+u[i]}
 
 (function(){document.querySelectorAll('input[type=password]').forEach(function(i){if(!i.closest('form')){var f=document.createElement('form');f.onsubmit=function(){return false};f.style.display='contents';i.parentNode.insertBefore(f,i);f.appendChild(i)}})})();
-initDashboard();
+initI18n().then(function(){initNavLabels();initPageLabels();initDashboard()});
 
 `;
 

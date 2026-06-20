@@ -40,6 +40,7 @@ import {
   spanUpdate,
   traceCreate,
 } from '../observability/langfuse.ts';
+import { i18n } from '../i18n/service.ts';
 
 const _log = logger('agent:loop');
 
@@ -532,7 +533,12 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     : metaCogPrompt;
 
   const nodeSection = await buildNodeContextSection().catch(() => null);
-  const nodeAwareSystemPrompt = injectNodeContext(effectiveSystemPrompt, nodeSection);
+  let nodeAwareSystemPrompt = injectNodeContext(effectiveSystemPrompt, nodeSection);
+
+  const locale = i18n.getLocale();
+  if (locale && locale !== 'en') {
+    nodeAwareSystemPrompt += '\n' + i18n.t('agent.prompts.localeHint', { locale });
+  }
 
   // ── Model Quartermaster: predict model before LLM call ──
   let effectiveProvider = provider;

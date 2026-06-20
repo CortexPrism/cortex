@@ -11,6 +11,7 @@ import {
   TEMPLATE_DESCRIPTIONS,
   validateSoul,
 } from '../agent/soul.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const soulCommand = new Command()
   .name('soul')
@@ -22,11 +23,13 @@ export const soulCommand = new Command()
       .option('--force', 'Overwrite existing files')
       .action(async (opts: { force?: boolean }) => {
         const { created, skipped } = await initSoulFiles(opts.force ?? false);
-        for (const f of created) console.log(green(`  ✓ Created: ${PATHS.configDir}/${f}`));
-        for (const f of skipped) console.log(dim(`  ~ Skipped (exists): ${f}`));
+        for (const f of created) {
+          console.log(green(i18n.t('cli.soul.created', { dir: PATHS.configDir, file: f })));
+        }
+        for (const f of skipped) console.log(dim(i18n.t('cli.soul.skipped', { file: f })));
         if (created.length > 0) {
           console.log(
-            dim(`\n  Edit these files to personalise your agent, then restart cortex.\n`),
+            dim(i18n.t('cli.soul.editHelp')),
           );
         }
       }),
@@ -46,7 +49,7 @@ export const soulCommand = new Command()
           console.log(dim('  ' + '─'.repeat(50)));
           console.log(ctx.user.split('\n').map((l) => `  ${l}`).join('\n'));
         } else {
-          console.log(dim('\n  USER.md not found — run: cortex soul init'));
+          console.log(dim(i18n.t('cli.soul.userNotFound')));
         }
 
         if (ctx.memory) {
@@ -54,7 +57,7 @@ export const soulCommand = new Command()
           console.log(dim('  ' + '─'.repeat(50)));
           console.log(ctx.memory.split('\n').map((l) => `  ${l}`).join('\n'));
         } else {
-          console.log(dim('\n  MEMORY.md not found — run: cortex soul init'));
+          console.log(dim(i18n.t('cli.soul.memoryNotFound')));
         }
         console.log('');
       }),
@@ -80,7 +83,9 @@ export const soulCommand = new Command()
           stderr: 'inherit',
         });
         const { code } = await proc.output();
-        if (code !== 0) console.log(yellow(`  Editor exited with code ${code}`));
+        if (code !== 0) {
+          console.log(yellow(i18n.t('cli.soul.editorExited', { code: String(code) })));
+        }
       }),
   )
   .command(
@@ -90,7 +95,7 @@ export const soulCommand = new Command()
       .arguments('<note:string>')
       .action(async (_opts: void, note: string) => {
         await appendToMemoryFile(note);
-        console.log(green('  ✓ Appended to MEMORY.md'));
+        console.log(green(i18n.t('cli.soul.appendedToMemory')));
       }),
   )
   .command(
@@ -115,17 +120,17 @@ export const soulCommand = new Command()
       .arguments('<template:string>')
       .action(async (_opts: void, template: string) => {
         if (!Object.hasOwn(TEMPLATE_DESCRIPTIONS, template)) {
-          console.log(red(`  Unknown template: "${template}"`));
-          console.log(dim('  Run `cortex soul templates` to see available templates.\n'));
+          console.log(red(i18n.t('cli.soul.unknownTemplate', { template })));
+          console.log(dim(i18n.t('cli.soul.runTemplatesHint')));
           return;
         }
         try {
           const soul = generatePersonalitySoul(template);
           await Deno.mkdir(PATHS.configDir, { recursive: true });
           await Deno.writeTextFile(PATHS.soulFile, soul);
-          console.log(green(`  ✓ Applied "${template}" template to SOUL.md\n`));
+          console.log(green(i18n.t('cli.soul.appliedTemplate', { template })));
         } catch (err) {
-          console.log(red(`  Failed to apply template: ${err}\n`));
+          console.log(red(i18n.t('cli.soul.failedToApplyTemplate', { error: String(err) })));
         }
       }),
   )
@@ -135,19 +140,21 @@ export const soulCommand = new Command()
       .description('Validate soul file structure')
       .action(async () => {
         if (!(await exists(PATHS.soulFile))) {
-          console.log(yellow('\n  No SOUL.md found. Run `cortex soul init` first.\n'));
+          console.log(yellow(i18n.t('cli.soul.noSoulFound')));
           return;
         }
         const content = await Deno.readTextFile(PATHS.soulFile);
         const { valid, warnings } = validateSoul(content);
         if (valid) {
-          console.log(green('\n  ✓ SOUL.md looks good.\n'));
+          console.log(green(i18n.t('cli.soul.soulLooksGood')));
         } else {
-          console.log(yellow(`\n  SOUL.md has ${warnings.length} suggestion(s):\n`));
+          console.log(
+            yellow(i18n.t('cli.soul.soulSuggestions', { count: String(warnings.length) })),
+          );
           for (const w of warnings) console.log(`  ${yellow('⚠')} ${w}`);
           console.log(
-            dim('\n  Hint: run `cortex soul apply-template <name>` or `cortex soul edit`') +
-              dim('\n  to add the missing sections.\n'),
+            dim(i18n.t('cli.soul.soulHint')) +
+              dim(i18n.t('cli.soul.soulHint2')),
           );
         }
       }),

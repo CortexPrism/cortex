@@ -21,18 +21,22 @@ export const fileReadTool: Tool = {
     name: 'file_read',
     description:
       'Read any file including PDFs (auto-extracts text). Returns up to 64KB with line numbers.',
+    displayNameKey: 'tools.file_read.displayName',
+    descriptionKey: 'tools.file_read.description',
     capabilities: ['fs:read'],
     params: [
       {
         name: 'path',
         type: 'string',
         description: 'Path to the file (absolute or relative)',
+        descriptionKey: 'tools.file_read.params.path',
         required: true,
       },
       {
         name: 'workspace',
         type: 'string',
         description: 'Target workspace: "agent" (default) or "global"',
+        descriptionKey: 'tools.file_read.params.workspace',
         required: false,
         enum: ['agent', 'global'],
       },
@@ -40,12 +44,14 @@ export const fileReadTool: Tool = {
         name: 'offset',
         type: 'number',
         description: 'Line offset to start reading from (1-indexed)',
+        descriptionKey: 'tools.file_read.params.offset',
         required: false,
       },
       {
         name: 'limit',
         type: 'number',
         description: 'Maximum number of lines to return',
+        descriptionKey: 'tools.file_read.params.limit',
         required: false,
       },
     ],

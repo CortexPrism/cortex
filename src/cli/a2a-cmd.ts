@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan } from '@std/fmt/colors';
 import { loadConfig } from '../config/config.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const a2aCommand = new Command()
   .name('a2a')

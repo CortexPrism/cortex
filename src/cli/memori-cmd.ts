@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
 import { loadConfig } from '../config/config.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const memoriCommand = new Command()
   .name('memori')
@@ -50,7 +51,7 @@ memoriCommand
   .option('-k, --keep <keep:number>', 'Number of checkpoints to keep', { default: 5 })
   .action(async ({ keep }: { keep: number }, sessionId?: string) => {
     if (!sessionId) {
-      console.error(red('Session ID is required'));
+      console.error(red(i18n.t('cli.memori.sessionIdRequired')));
       Deno.exit(1);
     }
 
@@ -61,6 +62,8 @@ memoriCommand
     await initCheckpointStore(db);
     const removed = await pruneOldCheckpoints(db, sessionId, keep);
 
-    console.log(green(`\nPruned ${removed} old checkpoint(s) from session ${sessionId}`));
-    console.log(`Kept the most recent ${keep} checkpoint(s)\n`);
+    console.log(
+      green(i18n.t('cli.memori.prunedCheckpoints', { removed: String(removed), sessionId })),
+    );
+    console.log(i18n.t('cli.memori.keptRecent', { keep: String(keep) }));
   });

@@ -5,6 +5,7 @@ import { buildProvider } from '../llm/router.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { formatSandboxResult, isDockerAvailable, runInSandbox } from '../sandbox/executor.ts';
 import { autofix } from '../sandbox/autofix.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const runCommand = new Command()
   .name('run')
@@ -21,7 +22,7 @@ export const runCommand = new Command()
     await runMigrations();
 
     const code = await Deno.readTextFile(file).catch(() => {
-      console.error(red(`  Error: cannot read file: ${file}`));
+      console.error(red('  ' + i18n.t('cli.run.cannotReadFile', { file })));
       Deno.exit(1);
     });
 
@@ -30,8 +31,8 @@ export const runCommand = new Command()
     const runtime = opts.sandbox === false ? 'subprocess' : (dockerAvail ? 'docker' : 'subprocess');
 
     console.log('');
-    console.log(bold(`  Running: ${cyan(file)}`));
-    console.log(dim(`  Language: ${lang}  Runtime: ${runtime}`));
+    console.log(bold('  ' + i18n.t('cli.run.running', { file: cyan(file) })));
+    console.log(dim('  ' + i18n.t('cli.run.languageRuntime', { lang, runtime })));
 
     if (!opts.fix) {
       const result = await runInSandbox({ code, language: lang, runtime });
@@ -42,10 +43,10 @@ export const runCommand = new Command()
       console.log('');
 
       if (result.exitCode !== 0 || result.timedOut) {
-        console.log(red(`  ✗ Failed (exit ${result.exitCode})`));
-        console.log(dim('  Tip: use --fix to enable LLM auto-fix loop'));
+        console.log(red('  ' + i18n.t('cli.run.failed', { code: result.exitCode })));
+        console.log(dim('  ' + i18n.t('cli.run.tipAutoFix')));
       } else {
-        console.log(green('  ✓ Success'));
+        console.log(green('  ' + i18n.t('cli.run.success')));
       }
       return;
     }
@@ -61,7 +62,7 @@ export const runCommand = new Command()
 
     const activeConfig = config.providers[config.defaultProvider]!;
 
-    console.log(dim(`  Auto-fix enabled (max ${opts.maxFix} rounds)\n`));
+    console.log(dim('  ' + i18n.t('cli.run.autoFixEnabled', { rounds: opts.maxFix }) + '\n'));
 
     const result = await autofix({
       code,
@@ -86,21 +87,21 @@ export const runCommand = new Command()
           );
         }
         if (fixedCode) {
-          console.log(yellow(`  → LLM proposed fix (${fixedCode.length} chars)`));
+          console.log(yellow('  ' + i18n.t('cli.run.llmProposedFix', { chars: fixedCode.length })));
         }
       },
     });
 
     console.log('');
     if (result.success) {
-      console.log(green(`  ✓ Succeeded after ${result.rounds} round(s)`));
+      console.log(green('  ' + i18n.t('cli.run.succeededAfter', { rounds: result.rounds })));
       if (result.rounds > 1) {
-        console.log(dim(`\n  Final code:\n`));
+        console.log(dim('\n  ' + i18n.t('cli.run.finalCode') + '\n'));
         result.finalCode.split('\n').forEach((l) => console.log(dim(`  ${l}`)));
       }
     } else {
-      console.log(red(`  ✗ Still failing after ${result.rounds} round(s)`));
-      console.log(dim('  Final error:'));
+      console.log(red('  ' + i18n.t('cli.run.stillFailing', { rounds: result.rounds })));
+      console.log(dim('  ' + i18n.t('cli.run.finalError')));
       console.log(red(`  ${result.finalResult.stderr.trim().slice(0, 300)}`));
     }
   });

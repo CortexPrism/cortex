@@ -4,6 +4,7 @@ import { Input } from '@cliffy/prompt';
 import { dim, green } from '@std/fmt/colors';
 import { getTempDir } from '../utils/platform.ts';
 import { join } from '@std/path';
+import { i18n } from '../i18n/service.ts';
 
 const desktopCommand = new Command()
   .name('desktop')
@@ -44,9 +45,11 @@ desktopCommand
     if (result.success && result.screenshot) {
       const path = join(getTempDir(), `cortex-screenshot-${Date.now()}.png`);
       await Deno.writeFile(path, result.screenshot);
-      console.log(green(`Screenshot saved: ${path} (${result.durationMs}ms)`));
+      console.log(
+        green(i18n.t('cli.desktop.screenshotSaved', { path, duration: String(result.durationMs) })),
+      );
     } else {
-      console.error(`Screenshot failed: ${result.error}`);
+      console.error(i18n.t('cli.desktop.screenshotFailed', { error: result.error ?? 'unknown' }));
     }
   });
 
@@ -55,7 +58,11 @@ desktopCommand
   .description('Click at coordinates')
   .action(async (_opts: void, x: number, y: number) => {
     const result = await executeDesktopAction({ action: 'click', x, y });
-    console.log(result.success ? green(`Clicked (${x},${y})`) : `Failed: ${result.error}`);
+    console.log(
+      result.success
+        ? green(i18n.t('cli.desktop.clicked', { x: String(x), y: String(y) }))
+        : i18n.t('cli.desktop.clickFailed', { error: result.error ?? 'unknown' }),
+    );
   });
 
 desktopCommand
@@ -63,7 +70,11 @@ desktopCommand
   .description('Type text via xdotool')
   .action(async (_opts: void, text: string) => {
     const result = await executeDesktopAction({ action: 'type', text });
-    console.log(result.success ? green('Typed') : `Failed: ${result.error}`);
+    console.log(
+      result.success
+        ? green(i18n.t('cli.desktop.typed'))
+        : i18n.t('cli.desktop.typeFailed', { error: result.error ?? 'unknown' }),
+    );
   });
 
 desktopCommand
@@ -74,7 +85,7 @@ desktopCommand
     if (result.success) {
       console.log(dim(result.output ?? ''));
     } else {
-      console.error(`Clipboard read failed: ${result.error}`);
+      console.error(i18n.t('cli.desktop.clipboardFailed', { error: result.error ?? 'unknown' }));
     }
   });
 

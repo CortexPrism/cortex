@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { initVoiceSystem, listVoiceSessions } from '../voice/manager.ts';
+import { i18n } from '../i18n/service.ts';
 
 const VOICE_DEFAULTS = {
   enabled: false,
@@ -24,7 +25,7 @@ export const voiceCommand = new Command()
     const config = await loadConfig();
     const vc = config.voice;
     if (!vc?.enabled) {
-      console.log('Voice system is disabled. Run `cortex voice enable` to enable.');
+      console.log(i18n.t('cli.voice.disabled'));
       return;
     }
     console.log(`Voice: enabled (${vc.sttProvider} STT, ${vc.ttsProvider} TTS)`);
@@ -40,7 +41,7 @@ voiceCommand
     config.voice!.enabled = true;
     await saveConfig(config);
     await initVoiceSystem(config.voice!);
-    console.log('Voice mode enabled.');
+    console.log(i18n.t('cli.voice.enabled'));
   });
 
 voiceCommand
@@ -50,7 +51,7 @@ voiceCommand
     const config = await loadConfig();
     if (config.voice) config.voice.enabled = false;
     await saveConfig(config);
-    console.log('Voice mode disabled.');
+    console.log(i18n.t('cli.voice.disabledMsg'));
   });
 
 voiceCommand
@@ -88,7 +89,7 @@ voiceCommand
     config.voice!.defaultVoice = voice;
     config.voice!.enabled = true;
     await saveConfig(config);
-    console.log(`Default voice set to "${voice}".`);
+    console.log(i18n.t('cli.voice.voiceSet', { voice }));
   });
 
 voiceCommand
@@ -97,12 +98,12 @@ voiceCommand
   .arguments('<rate:number>')
   .action(async (_options: unknown, rate: number) => {
     if (rate < 0.25 || rate > 4.0) {
-      console.error('Speech rate must be between 0.25 and 4.0');
+      console.error(i18n.t('cli.voice.invalidSpeed'));
       Deno.exit(1);
     }
     const config = await loadConfig();
     ensureVoiceConfig(config);
     (config.voice as unknown as Record<string, unknown>).speed = rate;
     await saveConfig(config);
-    console.log(`Speech rate set to ${rate}.`);
+    console.log(i18n.t('cli.voice.speedSet', { rate: String(rate) }));
   });

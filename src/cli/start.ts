@@ -3,6 +3,7 @@ import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { isLinux, killProcessById } from '../utils/platform.ts';
 import { startDaemonCore, stopDaemons } from './daemon.ts';
 import { findServerProcess, startServerBackground, stopBackgroundServer } from './serve.ts';
+import { i18n } from '../i18n/service.ts';
 
 export const startCommand = new Command()
   .name('start')
@@ -14,11 +15,11 @@ export const startCommand = new Command()
   .action(
     async (opts: { port: number; host: string; daemonOnly?: boolean; serverOnly?: boolean }) => {
       if (opts.daemonOnly && opts.serverOnly) {
-        console.error(red('  Cannot use both --daemon-only and --server-only together.'));
+        console.error(red(i18n.t('cli.start.mutuallyExclusive')));
         Deno.exit(1);
       }
 
-      console.log(bold('Starting Cortex…'));
+      console.log(bold(i18n.t('cli.start.startingCortex')));
       console.log('');
 
       const startDaemon = !opts.serverOnly;
@@ -38,14 +39,22 @@ export const startCommand = new Command()
       console.log('');
       if (startDaemon && startServer) {
         if (daemonOk && serverOk) {
-          console.log(green('  ✓ Cortex started'));
+          console.log(green(i18n.t('cli.start.cortexStarted')));
         } else {
-          console.log(red('  ✕ Some services failed to start'));
+          console.log(red(i18n.t('cli.start.someServicesFailed')));
         }
       } else if (startDaemon) {
-        console.log(daemonOk ? green('  ✓ Daemon started') : red('  ✕ Daemon failed to start'));
+        console.log(
+          daemonOk
+            ? green(i18n.t('cli.start.daemonStarted'))
+            : red(i18n.t('cli.start.daemonFailed')),
+        );
       } else if (startServer) {
-        console.log(serverOk ? green('  ✓ Server started') : red('  ✕ Server failed to start'));
+        console.log(
+          serverOk
+            ? green(i18n.t('cli.start.serverStarted'))
+            : red(i18n.t('cli.start.serverFailed')),
+        );
       }
 
       Deno.exit(0);
@@ -62,24 +71,24 @@ export const restartCommand = new Command()
   .action(
     async (opts: { port: number; host: string; daemonOnly?: boolean; serverOnly?: boolean }) => {
       if (opts.daemonOnly && opts.serverOnly) {
-        console.error(red('  Cannot use both --daemon-only and --server-only together.'));
+        console.error(red(i18n.t('cli.start.mutuallyExclusive')));
         Deno.exit(1);
       }
 
-      console.log(bold('Restarting Cortex…'));
+      console.log(bold(i18n.t('cli.start.restartingCortex')));
       console.log('');
 
       const restartDaemon = !opts.serverOnly;
       const restartServer = !opts.daemonOnly;
 
       if (restartDaemon) {
-        console.log(dim('Stopping daemons…'));
+        console.log(dim(i18n.t('cli.start.stoppingDaemons')));
         await stopDaemons();
         console.log('');
       }
 
       if (restartServer) {
-        console.log(dim('Stopping server…'));
+        console.log(dim(i18n.t('cli.start.stoppingServer')));
         let serverStopped = false;
         if (isLinux()) {
           try {
@@ -89,7 +98,7 @@ export const restartCommand = new Command()
               stderr: 'null',
             });
             await fuserProc.output();
-            console.log(cyan(`  Stopped server (port ${opts.port})`));
+            console.log(cyan(i18n.t('cli.start.stoppedServerPort', { port: String(opts.port) })));
             serverStopped = true;
           } catch {
             // fuser not installed, fall through to pid-based kill
@@ -99,10 +108,10 @@ export const restartCommand = new Command()
           const existing = await findServerProcess(opts.port);
           if (existing) {
             killProcessById(existing.pid);
-            console.log(cyan(`  Stopped server (pid ${existing.pid})`));
+            console.log(cyan(i18n.t('cli.start.stoppedServerPid', { pid: String(existing.pid) })));
           } else {
             const stopped = await stopBackgroundServer(opts.port);
-            if (!stopped) console.log(dim('  No server found'));
+            if (!stopped) console.log(dim(i18n.t('cli.start.noServerFound')));
           }
         }
         console.log('');
@@ -124,9 +133,9 @@ export const restartCommand = new Command()
 
       console.log('');
       if (daemonOk && serverOk) {
-        console.log(green('  ✓ Cortex restarted'));
+        console.log(green(i18n.t('cli.start.cortexRestarted')));
       } else {
-        console.log(red('  ✕ Some services failed to restart'));
+        console.log(red(i18n.t('cli.start.someServicesFailedRestart')));
       }
 
       Deno.exit(0);

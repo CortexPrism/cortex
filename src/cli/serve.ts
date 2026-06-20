@@ -9,6 +9,7 @@ import {
 } from '../utils/platform.ts';
 import { startServer } from '../server/server.ts';
 import { PATHS } from '../config/paths.ts';
+import { i18n } from '../i18n/service.ts';
 
 export async function findServerProcess(
   port: number,
@@ -116,9 +117,9 @@ export async function startServerBackground(port: number, host: string): Promise
 
   const alive = await waitForServer(host, port, 5000);
   if (alive) {
-    console.log(green(`  ✓ Cortex server started in background (http://${host}:${port})`));
+    console.log(green(i18n.t('cli.serve.startedInBackground', { url: `http://${host}:${port}` })));
   } else {
-    console.log(red(`  ✕ Server failed to start on ${host}:${port}`));
+    console.log(red(i18n.t('cli.serve.failedToStart', { host, port: String(port) })));
   }
   return alive;
 }
@@ -130,11 +131,14 @@ export async function stopBackgroundServer(port = 3000): Promise<boolean> {
   try {
     killProcessById(existing.pid);
     console.log(
-      cyan(`  Stopped cortex server (pid ${existing.pid}, http://${existing.host}:${port})`),
+      cyan(i18n.t('cli.serve.stoppedServer', {
+        pid: String(existing.pid),
+        url: `http://${existing.host}:${port}`,
+      })),
     );
     return true;
   } catch {
-    console.log(dim('  Could not stop server process'));
+    console.log(dim(i18n.t('cli.serve.couldNotStop')));
     return false;
   }
 }
@@ -153,7 +157,9 @@ export const serveCommand = new Command()
     ) => {
       if (opts.stop) {
         const stopped = await stopBackgroundServer(opts.port);
-        if (!stopped) console.log(dim(`  No server found on port ${opts.port}`));
+        if (!stopped) {
+          console.log(dim(i18n.t('cli.serve.noServerOnPort', { port: String(opts.port) })));
+        }
         Deno.exit(0);
       }
 
@@ -163,20 +169,20 @@ export const serveCommand = new Command()
           if (existing) {
             try {
               killProcessById(existing.pid);
-              console.log(cyan(`  Stopped existing server (pid ${existing.pid})`));
+              console.log(cyan(i18n.t('cli.serve.stoppedExisting', { pid: String(existing.pid) })));
               await new Promise((r) => setTimeout(r, 1000));
             } catch {
-              console.log(dim('  Could not stop existing server'));
+              console.log(dim(i18n.t('cli.serve.couldNotStopExisting')));
             }
             opts.host = existing.host;
           } else {
-            console.log(dim(`  No existing server found on port ${opts.port}`));
+            console.log(dim(i18n.t('cli.serve.noExistingOnPort', { port: String(opts.port) })));
           }
         }
 
         const alive = await startServerBackground(opts.port, opts.host);
         if (!alive) {
-          console.log(dim('    Check logs or run without --daemon to see errors'));
+          console.log(dim(i18n.t('cli.serve.checkLogsHint')));
           Deno.exit(1);
         }
 
