@@ -545,7 +545,10 @@ export async function bulkInsertEdges(
      VALUES ${placeholders}`,
     params,
   );
-  await db.run(`DELETE FROM code_edges WHERE project_id = ? AND (source_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?) OR target_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?))`, [params[0], params[0]]);
+  await db.run(
+    `DELETE FROM code_edges WHERE project_id = ? AND (source_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?) OR target_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?))`,
+    [params[0], params[0]],
+  );
   await db.run(`PRAGMA foreign_keys = ON`);
   await db.run(`COMMIT`);
 

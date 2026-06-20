@@ -3503,10 +3503,16 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (body.expiration || body.maxUses !== undefined) {
       const db = await import('../db/client.ts').then((m) => m.getVaultDb());
       if (body.expiration) {
-        await db.run(`UPDATE vault_entries SET expires_at = ? WHERE name = ?`, [body.expiration, body.key.trim()]);
+        await db.run(`UPDATE vault_entries SET expires_at = ? WHERE name = ?`, [
+          body.expiration,
+          body.key.trim(),
+        ]);
       }
       if (body.maxUses !== undefined && body.maxUses > 0) {
-        await db.run(`UPDATE vault_entries SET usage_limit = ? WHERE name = ?`, [body.maxUses, body.key.trim()]);
+        await db.run(`UPDATE vault_entries SET usage_limit = ? WHERE name = ?`, [
+          body.maxUses,
+          body.key.trim(),
+        ]);
       }
     }
     return json({ ok: true });
@@ -3557,7 +3563,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
         const value = await vaultGet(e.name, 'system');
         exported.push({ name: e.name, service: e.service, value });
       } catch {
-        exported.push({ name: e.name, service: e.service, value: null, error: 'decryption_failed' });
+        exported.push({
+          name: e.name,
+          service: e.service,
+          value: null,
+          error: 'decryption_failed',
+        });
       }
     }
     return json(exported);
@@ -3931,12 +3942,25 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'POST' && path === '/api/codegraph/index') {
     const body = await req.json() as { rootPath: string; projectName?: string };
     if (!body.rootPath) return err('rootPath is required', 400);
-    console.error('[codegraph] index endpoint: path=' + body.rootPath + ' name=' + (body.projectName || '(auto)'));
+    console.error(
+      '[codegraph] index endpoint: path=' + body.rootPath + ' name=' +
+        (body.projectName || '(auto)'),
+    );
     const { indexRepository } = await import('../codegraph/sync.ts');
     try {
       const result = await indexRepository(body.rootPath, body.projectName);
-      console.error('[codegraph] index endpoint: done — ' + result.nodeCount + ' nodes, ' + result.edgeCount + ' edges, ' + result.fileCount + ' files, ' + result.errorCount + ' errors');
-      return json({ ok: true, nodeCount: result.nodeCount, edgeCount: result.edgeCount, fileCount: result.fileCount, errorCount: result.errorCount, errorSample: result.errorSample });
+      console.error(
+        '[codegraph] index endpoint: done — ' + result.nodeCount + ' nodes, ' + result.edgeCount +
+          ' edges, ' + result.fileCount + ' files, ' + result.errorCount + ' errors',
+      );
+      return json({
+        ok: true,
+        nodeCount: result.nodeCount,
+        edgeCount: result.edgeCount,
+        fileCount: result.fileCount,
+        errorCount: result.errorCount,
+        errorSample: result.errorSample,
+      });
     } catch (e) {
       return err((e as Error).message, 500);
     }
@@ -4248,7 +4272,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!p) return notFound('Project not found');
     const name = body.symbol || body.file || '';
     const trace = await tracePath(p.id, name, { direction: 'both' });
-    return json({ nodes: trace.map(function(t) { return t.node; }) });
+    return json({
+      nodes: trace.map(function (t) {
+        return t.node;
+      }),
+    });
   }
 
   // GET /api/codegraph/architecture?project=
@@ -4260,16 +4288,27 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!p || p.node_count === 0) {
       const { loadProject } = await import('../projects/manager.ts');
       const fsProj = await loadProject(project);
-      console.error('[codegraph] architecture endpoint: project=' + project + ' found_in_codegraph=' + !!p + ' node_count=' + (p?.node_count ?? 'N/A') + ' fsProj=' + !!fsProj + ' fsPath=' + (fsProj?.path || 'N/A'));
+      console.error(
+        '[codegraph] architecture endpoint: project=' + project + ' found_in_codegraph=' + !!p +
+          ' node_count=' + (p?.node_count ?? 'N/A') + ' fsProj=' + !!fsProj + ' fsPath=' +
+          (fsProj?.path || 'N/A'),
+      );
       if (fsProj?.path) {
-        console.error('[codegraph] architecture endpoint: auto-indexing ' + fsProj.path + ' as ' + project);
+        console.error(
+          '[codegraph] architecture endpoint: auto-indexing ' + fsProj.path + ' as ' + project,
+        );
         try {
           const { indexRepository } = await import('../codegraph/sync.ts');
           const result = await indexRepository(fsProj.path, project);
-          console.error('[codegraph] architecture endpoint: index complete — ' + result.nodeCount + ' nodes, ' + result.edgeCount + ' edges in ' + result.durationMs + 'ms');
+          console.error(
+            '[codegraph] architecture endpoint: index complete — ' + result.nodeCount + ' nodes, ' +
+              result.edgeCount + ' edges in ' + result.durationMs + 'ms',
+          );
           p = await getProject(project);
         } catch (e) {
-          console.error('[codegraph] architecture endpoint: index FAILED — ' + (e as Error).message);
+          console.error(
+            '[codegraph] architecture endpoint: index FAILED — ' + (e as Error).message,
+          );
         }
       } else {
         console.error('[codegraph] architecture endpoint: no fsProj path to index');
@@ -4278,9 +4317,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!p) return notFound('Project not found');
     const arch = await getArchitecture(p.id);
     try {
-      const { detectFFIBridges, detectLanguage, normalizeCodeNode } = await import('../codegraph/polyglot.ts');
+      const { detectFFIBridges, detectLanguage, normalizeCodeNode } = await import(
+        '../codegraph/polyglot.ts'
+      );
       const allNodes = arch.nodes || [];
-      const normalized = allNodes.map(function(n) { return normalizeCodeNode(n); });
+      const normalized = allNodes.map(function (n) {
+        return normalizeCodeNode(n);
+      });
       if (normalized.length > 0) {
         const ffiBridges = detectFFIBridges(normalized);
         if (ffiBridges.length > 0) {
@@ -4299,7 +4342,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const p = await getProject(body.project);
     if (!p) return notFound('Project not found');
     const trace = await tracePath(p.id, body.from, { direction: 'both' });
-    const pathNodes = [body.from, ...trace.map(function(t) { return t.node.name; })];
+    const pathNodes = [
+      body.from,
+      ...trace.map(function (t) {
+        return t.node.name;
+      }),
+    ];
     return json({ paths: [pathNodes] });
   }
 
