@@ -44,7 +44,9 @@ async function discoverFiles(
         entries.push(entry);
       }
     } catch (e) {
-      console.error('[codegraph] discoverFiles: readDir failed for ' + dir + ' — ' + (e as Error).message);
+      console.error(
+        '[codegraph] discoverFiles: readDir failed for ' + dir + ' — ' + (e as Error).message,
+      );
       return false;
     }
 
@@ -84,13 +86,15 @@ async function indexFile(
   filePath: string,
   rootPath: string,
 ): Promise<
-  {
+  | {
     nodes: ExtractedNode[];
     edges: ExtractedEdge[];
     relPath: string;
     language: string;
     hash: string;
-  } | { error: string } | null
+  }
+  | { error: string }
+  | null
 > {
   try {
     const source = await Deno.readTextFile(filePath);
@@ -101,7 +105,9 @@ async function indexFile(
 
     const result = await parseFile(filePath, source);
     if (result.error) {
-      if (result.error === 'Unsupported language' || result.error.startsWith('Grammar not available')) return null;
+      if (
+        result.error === 'Unsupported language' || result.error.startsWith('Grammar not available')
+      ) return null;
       console.error('[codegraph] parse error: ' + filePath + ' — ' + result.error);
       return { error: result.error };
     }
@@ -129,13 +135,25 @@ async function indexFile(
 export async function indexRepository(
   rootPath: string,
   projectName?: string,
-): Promise<{ project: string; nodeCount: number; edgeCount: number; durationMs: number; fileCount: number; errorCount: number; errorSample: string[] }> {
+): Promise<
+  {
+    project: string;
+    nodeCount: number;
+    edgeCount: number;
+    durationMs: number;
+    fileCount: number;
+    errorCount: number;
+    errorSample: string[];
+  }
+> {
   const start = Date.now();
   const name = projectName ?? rootPath.split('/').pop() ?? 'unknown';
   let errorCount = 0;
   const errorSample: string[] = [];
 
-  console.error('[codegraph] indexRepository starting: rootPath=' + rootPath + ' projectName=' + name);
+  console.error(
+    '[codegraph] indexRepository starting: rootPath=' + rootPath + ' projectName=' + name,
+  );
 
   const project = await upsertProject(name, rootPath);
   await clearProjectNodes(project.id);
@@ -168,8 +186,15 @@ export async function indexRepository(
     const results = await Promise.all(batch.map((f) => indexFile(f, rootPath)));
 
     for (const result of results) {
-      if (!result) { errorCount++; continue; }
-      if ('error' in result) { errorCount++; if (errorSample.length < 5) errorSample.push(result.error); continue; }
+      if (!result) {
+        errorCount++;
+        continue;
+      }
+      if ('error' in result) {
+        errorCount++;
+        if (errorSample.length < 5) errorSample.push(result.error);
+        continue;
+      }
       languageStats[result.language] = (languageStats[result.language] ?? 0) + 1;
 
       for (const node of result.nodes) {
@@ -220,11 +245,14 @@ export async function indexRepository(
     })),
   );
 
-  const validEdges = resolvedEdges.filter(function(e) {
+  const validEdges = resolvedEdges.filter(function (e) {
     return validNodeIds.has(e.sourceId) && validNodeIds.has(e.targetId);
   });
   if (validEdges.length < resolvedEdges.length) {
-    console.error('[codegraph] filtered ' + (resolvedEdges.length - validEdges.length) + ' edges with invalid source/target IDs');
+    console.error(
+      '[codegraph] filtered ' + (resolvedEdges.length - validEdges.length) +
+        ' edges with invalid source/target IDs',
+    );
   }
 
   const edgeIds = await chunkedBulkInsertEdges(
@@ -240,8 +268,14 @@ export async function indexRepository(
   await rebuildFtsIndex();
 
   const duration = Date.now() - start;
-  const languageStatsStr = Object.entries(languageStats).map(function(e) { return e[0] + ':' + e[1]; }).join(', ');
-  console.error('[codegraph] indexRepository complete: ' + nodeIds.length + ' nodes, ' + edgeIds.length + ' edges, ' + files.length + ' files, ' + errorCount + ' errors, lang=[' + languageStatsStr + '] in ' + duration + 'ms');
+  const languageStatsStr = Object.entries(languageStats).map(function (e) {
+    return e[0] + ':' + e[1];
+  }).join(', ');
+  console.error(
+    '[codegraph] indexRepository complete: ' + nodeIds.length + ' nodes, ' + edgeIds.length +
+      ' edges, ' + files.length + ' files, ' + errorCount + ' errors, lang=[' + languageStatsStr +
+      '] in ' + duration + 'ms',
+  );
 
   return {
     project: name,

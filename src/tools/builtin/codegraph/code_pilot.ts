@@ -1,5 +1,9 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { createCodePilotConfig, optimizeCodebase, buildCodePilotPrompt } from '../../../codegraph/codebase-pilot.ts';
+import {
+  buildCodePilotPrompt,
+  createCodePilotConfig,
+  optimizeCodebase,
+} from '../../../codegraph/codebase-pilot.ts';
 import { getProject, searchNodes } from '../../../codegraph/graph.ts';
 import { join } from '@std/path';
 
@@ -61,15 +65,25 @@ export const codePilotTool: Tool = {
     try {
       const { loadConfig } = await import('../../../config/config.ts');
       const cfg = await loadConfig();
-      saved = (cfg as unknown as Record<string, unknown>);
+      saved = cfg as unknown as Record<string, unknown>;
     } catch { /* use defaults */ }
-    const maxTokens = typeof args.max_tokens === 'number' ? Math.min(args.max_tokens, 64000) : (typeof saved.pilotBudget === 'number' ? saved.pilotBudget : 8000);
+    const maxTokens = typeof args.max_tokens === 'number'
+      ? Math.min(args.max_tokens, 64000)
+      : (typeof saved.pilotBudget === 'number' ? saved.pilotBudget : 8000);
     const config = createCodePilotConfig({
       maxTokens: maxTokens,
-      includeImports: args.include_imports !== undefined ? Boolean(args.include_imports) : (saved.pilotIncludeImports as boolean ?? true),
-      includeComments: args.include_comments !== undefined ? Boolean(args.include_comments) : (saved.pilotIncludeComments as boolean ?? false),
-      includeTestFiles: args.include_test_files !== undefined ? Boolean(args.include_test_files) : (saved.pilotIncludeTests as boolean ?? false),
-      prunePrivateMembers: args.prune_private !== undefined ? Boolean(args.prune_private) : (![false].includes(saved.pilotPruningMode as boolean) ? true : false),
+      includeImports: args.include_imports !== undefined
+        ? Boolean(args.include_imports)
+        : (saved.pilotIncludeImports as boolean ?? true),
+      includeComments: args.include_comments !== undefined
+        ? Boolean(args.include_comments)
+        : (saved.pilotIncludeComments as boolean ?? false),
+      includeTestFiles: args.include_test_files !== undefined
+        ? Boolean(args.include_test_files)
+        : (saved.pilotIncludeTests as boolean ?? false),
+      prunePrivateMembers: args.prune_private !== undefined
+        ? Boolean(args.prune_private)
+        : (![false].includes(saved.pilotPruningMode as boolean) ? true : false),
     });
 
     try {
@@ -138,7 +152,10 @@ export const codePilotTool: Tool = {
       }
 
       const optimized = optimizeCodebase(files, config);
-      const prompt = buildCodePilotPrompt(optimized, args.user_query ? String(args.user_query) : 'Analyze this codebase');
+      const prompt = buildCodePilotPrompt(
+        optimized,
+        args.user_query ? String(args.user_query) : 'Analyze this codebase',
+      );
 
       return {
         toolName: 'code_pilot',

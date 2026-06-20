@@ -95,34 +95,60 @@ async function loadLanguage(langName: string): Promise<TreeSitterLanguage | null
     'java': 'https://cdn.jsdelivr.net/npm/tree-sitter-java@0.23.5/tree-sitter-java.wasm',
     'cpp': 'https://cdn.jsdelivr.net/npm/tree-sitter-cpp@0.23.4/tree-sitter-cpp.wasm',
     'c': 'https://cdn.jsdelivr.net/npm/tree-sitter-c@0.24.0/tree-sitter-c.wasm',
-    'c_sharp':
-      'https://cdn.jsdelivr.net/npm/tree-sitter-c-sharp@0.23.1/tree-sitter-c_sharp.wasm',
+    'c_sharp': 'https://cdn.jsdelivr.net/npm/tree-sitter-c-sharp@0.23.1/tree-sitter-c_sharp.wasm',
     'php': 'https://cdn.jsdelivr.net/npm/tree-sitter-php@0.23.12/tree-sitter-php.wasm',
     'ruby': 'https://cdn.jsdelivr.net/npm/tree-sitter-ruby@0.23.1/tree-sitter-ruby.wasm',
   };
 
   const url = grammarPaths[langName];
-  if (!url) { console.error('[codegraph] loadLanguage: no grammar URL for ' + langName); return null; }
+  if (!url) {
+    console.error('[codegraph] loadLanguage: no grammar URL for ' + langName);
+    return null;
+  }
 
   try {
     const response = await fetch(url);
-    if (!response.ok) { console.error('[codegraph] loadLanguage: HTTP ' + response.status + ' for ' + langName + ' — ' + url); return null; }
+    if (!response.ok) {
+      console.error(
+        '[codegraph] loadLanguage: HTTP ' + response.status + ' for ' + langName + ' — ' + url,
+      );
+      return null;
+    }
     const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > MAX_GRAMMAR_SIZE) { console.error('[codegraph] loadLanguage: grammar too large for ' + langName + ' (' + contentLength + ' bytes)'); return null; }
+    if (contentLength && parseInt(contentLength) > MAX_GRAMMAR_SIZE) {
+      console.error(
+        '[codegraph] loadLanguage: grammar too large for ' + langName + ' (' + contentLength +
+          ' bytes)',
+      );
+      return null;
+    }
     const wasmBytes = await response.arrayBuffer();
-    if (wasmBytes.byteLength > MAX_GRAMMAR_SIZE) { console.error('[codegraph] loadLanguage: grammar too large for ' + langName + ' (' + wasmBytes.byteLength + ' bytes)'); return null; }
+    if (wasmBytes.byteLength > MAX_GRAMMAR_SIZE) {
+      console.error(
+        '[codegraph] loadLanguage: grammar too large for ' + langName + ' (' +
+          wasmBytes.byteLength + ' bytes)',
+      );
+      return null;
+    }
 
     const parser = await getParser();
     const lang = await (_Language as any).load(
       new Uint8Array(wasmBytes),
     ) as TreeSitterLanguage;
-    if (!lang) { console.error('[codegraph] loadLanguage: Language.load returned null for ' + langName); return null; }
+    if (!lang) {
+      console.error('[codegraph] loadLanguage: Language.load returned null for ' + langName);
+      return null;
+    }
 
     _languageCache.set(langName, lang);
-    console.error('[codegraph] loadLanguage: loaded ' + langName + ' (' + wasmBytes.byteLength + ' bytes)');
+    console.error(
+      '[codegraph] loadLanguage: loaded ' + langName + ' (' + wasmBytes.byteLength + ' bytes)',
+    );
     return lang;
   } catch (e) {
-    console.error('[codegraph] loadLanguage: exception for ' + langName + ' — ' + (e as Error).message);
+    console.error(
+      '[codegraph] loadLanguage: exception for ' + langName + ' — ' + (e as Error).message,
+    );
     return null;
   }
 }
