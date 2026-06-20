@@ -144,13 +144,36 @@ export class AnthropicProvider implements LLMProvider {
 
     let tokensIn = 0;
     let tokensOut = 0;
+    let blockIndex = 0;
+    let blockIsTool = false;
 
     for await (const event of stream) {
-      if (
-        event.type === 'content_block_delta' &&
-        event.delta.type === 'text_delta'
-      ) {
-        yield { delta: event.delta.text, done: false };
+      if (event.type === 'content_block_start') {
+        blockIndex = event.index;
+        blockIsTool = event.content_block.type === 'tool_use';
+        if (blockIsTool && event.content_block.type === 'tool_use') {
+          yield {
+            delta: '',
+            done: false,
+            event: 'tool_use_start',
+            blockIndex: event.index,
+            blockName: event.content_block.name,
+          };
+        }
+      } else if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          yield { delta: event.delta.text, done: false };
+        } else if (event.delta.type === 'input_json_delta') {
+          yield {
+            delta: event.delta.partial_json,
+            done: false,
+            event: 'input_json_delta',
+            blockIndex,
+            blockIsToolInput: true,
+          };
+        }
+      } else if (event.type === 'content_block_stop') {
+        blockIsTool = false;
       } else if (event.type === 'message_delta' && event.usage) {
         tokensOut = event.usage.output_tokens;
       } else if (event.type === 'message_start' && event.message.usage) {

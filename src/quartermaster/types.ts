@@ -93,7 +93,7 @@ export interface SignalScores {
   reflection: { tool: string; score: number }[];
 }
 
-export const OBSERVE_THRESHOLD = 50;
+export const OBSERVE_THRESHOLD = 10;
 export const AUTOMATE_CONFIDENCE = 0.9;
 export const SUGGEST_CONFIDENCE = 0.6;
 

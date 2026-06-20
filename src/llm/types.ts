@@ -58,12 +58,28 @@ export interface CompletionOptions {
   includeVeniceSystemPrompt?: boolean;
 }
 
+export type CompletionChunkEventType =
+  | 'text_delta'
+  | 'content_block_start'
+  | 'content_block_delta'
+  | 'content_block_stop'
+  | 'tool_use_start'
+  | 'input_json_delta';
+
 export interface CompletionChunk {
   delta: string;
   done: boolean;
   tokensIn?: number;
   tokensOut?: number;
   costUsd?: number;
+  /** Structured content block events (Anthropic-style, for providers that support them) */
+  event?: CompletionChunkEventType;
+  /** Index of the content block (for tracking multiple parallel tool calls) */
+  blockIndex?: number;
+  /** Tool name (set on tool_use_start) */
+  blockName?: string;
+  /** Whether this delta should NOT be shown as text (tool input json) */
+  blockIsToolInput?: boolean;
 }
 
 export interface CompletionResult {

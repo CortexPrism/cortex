@@ -23,12 +23,24 @@ const LEVEL_COLORS: Record<LogLevel, string> = {
 const RESET = '\x1b[0m';
 const DIM = '\x1b[2m';
 
+let _globalReqId: string | null = null;
+
+export function setLogRequestId(id: string | null): void {
+  _globalReqId = id;
+}
+
+export function getLogRequestId(): string | null {
+  return _globalReqId;
+}
+
 export interface LogEntry {
   ts: string;
   level: LogLevel;
   ns: string;
   msg: string;
   data?: unknown;
+  reqId?: string;
+  stack?: string;
 }
 
 export interface LogTransport {
@@ -180,7 +192,9 @@ class LoggerImpl implements Logger {
     this.registry.emit('warn', this.ns, msg, data);
   }
   error(msg: string, data?: unknown): void {
-    this.registry.emit('error', this.ns, msg, data);
+    const errorData = data !== undefined ? data : undefined;
+    const stack = new Error().stack?.split('\n').slice(2, 6).join('\n') ?? undefined;
+    this.registry.emit('error', this.ns, msg, errorData, stack);
   }
   child(subNs: string): Logger {
     return new LoggerImpl(this.ns ? `${this.ns}:${subNs}` : subNs, this.registry);
@@ -245,13 +259,11 @@ class LoggerRegistry {
     return this.level;
   }
 
-  emit(level: LogLevel, ns: string, msg: string, data?: unknown): void {
+  emit(level: LogLevel, ns: string, msg: string, data?: unknown, stack?: string): void {
     const rank = LEVEL_RANK[level];
     const globalRank = LEVEL_RANK[this.level];
-    // File uses the configured level when it's more verbose than the floor, otherwise floor
     const fileRank = Math.min(globalRank, LEVEL_RANK[FILE_FLOOR]);
 
-    // Fast exit: nothing would receive this entry
     if (rank < globalRank && rank < fileRank) return;
 
     const entry: LogEntry = {
@@ -260,6 +272,8 @@ class LoggerRegistry {
       ns,
       msg,
       ...(data !== undefined ? { data } : {}),
+      ...(_globalReqId ? { reqId: _globalReqId } : {}),
+      ...(stack ? { stack } : {}),
     };
 
     // Stdout: gated by global level

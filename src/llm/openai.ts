@@ -120,10 +120,46 @@ export class OpenAIProvider implements LLMProvider {
 
     let tokensIn = 0;
     let tokensOut = 0;
+    const activeToolCalls = new Map<number, { name: string; emitted: boolean }>();
 
     for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content ?? '';
-      if (delta) yield { delta, done: false };
+      const delta = chunk.choices[0]?.delta;
+
+      if (delta?.content) {
+        yield { delta: delta.content, done: false };
+      }
+
+      for (const tc of delta?.tool_calls ?? []) {
+        const idx = tc.index ?? 0;
+        let entry = activeToolCalls.get(idx);
+        if (!entry) {
+          entry = { name: tc.function?.name ?? '', emitted: false };
+          activeToolCalls.set(idx, entry);
+        }
+        if (tc.function?.name && !entry.name) {
+          entry.name = tc.function.name;
+        }
+        if (entry && !entry.emitted && entry.name) {
+          yield {
+            delta: '',
+            done: false,
+            event: 'tool_use_start',
+            blockIndex: idx,
+            blockName: entry.name,
+          };
+          entry.emitted = true;
+        }
+        if (tc.function?.arguments) {
+          yield {
+            delta: tc.function.arguments,
+            done: false,
+            event: 'input_json_delta',
+            blockIndex: idx,
+            blockIsToolInput: true,
+          };
+        }
+      }
+
       if (chunk.usage) {
         tokensIn = chunk.usage.prompt_tokens ?? 0;
         tokensOut = chunk.usage.completion_tokens ?? 0;

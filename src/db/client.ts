@@ -99,6 +99,11 @@ export class Db {
     await this.client.execute({ sql, args });
   }
 
+  async insert(sql: string, args: InValue[] = []): Promise<number> {
+    const result = await this.client.execute({ sql, args });
+    return Number(result.lastInsertRowid ?? 0);
+  }
+
   close(): void {
     this.client.close();
   }
