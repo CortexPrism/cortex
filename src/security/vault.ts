@@ -211,12 +211,14 @@ export async function vaultList(): Promise<
       credential_type: string;
       created_at: string;
       usage_count: number;
+      usage_limit: number | null;
+      expires_at: string | null;
     }
   >
 > {
   const db = await getVaultDb();
   return await db.all(
-    `SELECT id, name, service, credential_type, created_at, usage_count
+    `SELECT id, name, service, credential_type, created_at, usage_count, usage_limit, expires_at
      FROM vault_entries ORDER BY service, name`,
   );
 }

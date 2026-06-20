@@ -455,6 +455,14 @@ export async function getArchitecture(projectId: number): Promise<ArchitectureSu
     routes,
     hotspots,
     clusters,
+    nodes: await db.all<CodeNode>(
+      `SELECT * FROM code_nodes WHERE project_id = ? ORDER BY label, name`,
+      [projectId],
+    ),
+    edges: await db.all<CodeEdge>(
+      `SELECT * FROM code_edges WHERE project_id = ? ORDER BY type`,
+      [projectId],
+    ),
     node_count: project.node_count,
     edge_count: project.edge_count,
   };
@@ -503,6 +511,11 @@ export async function bulkInsertNodes(
   return ids;
 }
 
+export async function rebuildFtsIndex(): Promise<void> {
+  const db = await getMemoryDb();
+  await db.run(`INSERT INTO code_nodes_fts(code_nodes_fts) VALUES('rebuild')`);
+}
+
 export async function bulkInsertEdges(
   edges: Omit<CodeEdge, 'id' | 'created_at'>[],
 ): Promise<number[]> {
@@ -525,11 +538,16 @@ export async function bulkInsertEdges(
     );
   }
 
+  await db.run(`BEGIN`);
+  await db.run(`PRAGMA foreign_keys = OFF`);
   await db.run(
-    `INSERT INTO code_edges (project_id, type, source_id, target_id, confidence, call_line, arg_to_param, metadata)
+    `INSERT OR IGNORE INTO code_edges (project_id, type, source_id, target_id, confidence, call_line, arg_to_param, metadata)
      VALUES ${placeholders}`,
     params,
   );
+  await db.run(`DELETE FROM code_edges WHERE project_id = ? AND (source_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?) OR target_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?))`, [params[0], params[0]]);
+  await db.run(`PRAGMA foreign_keys = ON`);
+  await db.run(`COMMIT`);
 
   const lastId = await insertAndGetId(db, `SELECT last_insert_rowid() as id`, []);
   const firstId = lastId - edges.length + 1;

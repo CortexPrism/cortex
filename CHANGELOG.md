@@ -5,6 +5,74 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.45.3] — 2026-06-20
+
+### Fixed
+
+- **Codegraph: zero nodes from indexing** — tree-sitter WASM grammar URLs at `indexer.ts:88–104` had a non-existent `wasm/` subdirectory prefix (404 from jsDelivr). Removed the prefix; all 12 grammars now download successfully.
+
+- **Codegraph: tree-sitter API mismatch** — `web-tree-sitter` v0.24.x moved `init()` and `Language` to the default export. Updated `getParser()` and `loadLanguage()` to call `mod.default.init()` and store `mod.default.Language` on the module-level `_Language` variable instead of accessing `parser.constructor.Language` (which resolved to the internal `ParserImpl`, not the public `Parser` class).
+
+- **Codegraph: zero edges from indexing** — edge resolution failed because call/import edges had `sourceQName` set to the file path (`src/router.ts`) while node qualified names are `src/router.ts:functionName`. Added `fileNodeMap` to `ResolutionContext` so `resolveEdges` falls back to finding a node in the source file when the exact QName doesn't match.
+
+- **Codegraph: FTS5 search index never populated** — the `code_nodes_fts` virtual table uses external content mode (`content='code_nodes'`), which requires an explicit `rebuild` command to sync. Added `rebuildFtsIndex()` to `graph.ts` and call it after `indexRepository()` and `incrementalSync()` complete. Symbol search now returns results.
+
+- **Codegraph: edge insert foreign key / unique constraint crashes** — wrapped edge insertion in `BEGIN`/`COMMIT` with `PRAGMA foreign_keys = OFF` and `INSERT OR IGNORE`, plus an orphan cleanup that deletes edges referencing non-existent nodes. Added client-side edge filtering in `renderCodegraphGraph` so D3 never sees invalid `source_id`/`target_id`.
+
+- **Codegraph: Impact / Path Tracer panels always showed "No dependencies/paths found"** — the `POST /api/codegraph/impact` endpoint returned a flat `TraceResult[]` array, but the UI expected `{ nodes: [...] }`. The `POST /api/codegraph/trace` endpoint returned a flat array, but the UI expected `{ paths: [[...]] }`. Fixed both endpoints to match the expected shape.
+
+- **Codegraph: Architecture panel referenced non-existent `circularDeps`** — removed the dead field reference and added live Node/Edge/Hotspot counts from the `ArchitectureSummary` data.
+
+- **Codegraph: legend showed colors for labels not in `CODE_NODE_LABELS`** — removed `CodeVariable`, `CodeConstant`, `CodeComponent`, `CodeHook`, `CodeProject`, `CodeService`, `CodeMiddleware` and mapped the remaining 7 colors to actual labels: `CodeFunction`, `CodeMethod`, `CodeClass`, `CodeInterface`, `CodeEnum`, `CodeType`, `CodeModule`, `CodeRoute`, `CodePackage`, `CodeFile`, `CodeResource`.
+
+- **Codegraph: `resolveTarget` logic bug** — the prefix extracted from dotted target QNames was computed but the loop always returned on the first candidate iteration, skipping import-map resolution. Restructured so import-map matching runs first, then falls back to generic candidate match with a lower confidence score.
+
+- **Codegraph UI: blank page with no way to index** — added an **Index** button next to the project selector that opens an inline path prompt. The empty-state overlay now shows an actionable "Index a Project" button. The button changes to **Re-index** when a project is selected and re-indexes directly using the stored `root_path`.
+
+- **Codegraph UI: refresh reset selected project** — `loadCodegraphProjects()` now saves and restores the `<select>` value after rebuilding the dropdown HTML.
+
+- **Codegraph UI: graph visualization** — nodes are now sized by degree (connection count), hover tooltips show type/name/file/line, labels use white text, edges use brighter stroke with arrowhead markers, and the group element moves via `transform` instead of separate circle/text positioning.
+
+- **Editor: directories shown as plain files** — both workspace listing endpoints (`GET /api/workspace/files` and `GET /api/workspace/agents/:id/files`) now append `/` to directory names via `entry.isDirectory ? entry.name + '/' : entry.name`, matching the frontend's `name.endsWith('/')` check.
+
+- **Editor: directory navigation** — added `editorCurrentPath` state, `editorOpenDir()`, and `editorGoUp()` functions. Clicking a folder navigates into it; a `..` breadcrumb navigates up. File open/save use the full relative path including directory prefix.
+
+- **Projects: agent selection on GitHub import** — added an agent `<select>` dropdown to both the import modal and inline panel. The `POST /api/projects/import-github` endpoint now accepts an `agentId` field and clones repos into `PATHS.workspacesDir/<agentId>/<projectName>` instead of the generic workspace root. The New Project form's agent field changed from free-text input to an agent dropdown.
+
+- **Re‑index diagnostics** — `POST /api/codegraph/index` now returns `nodeCount`, `edgeCount`, `fileCount`, `errorCount`, and `errorSample` (first 5 error messages) in the response. The UI shows these counts after every index/re‑index operation so failures are visible without checking server logs. Unsupported languages and missing grammars are now silently skipped instead of counting as errors.
+
+- **Template‑literal string escaping** — fixed the `renderEditorTree` regex `/\/$/` and onclick-string `\'` escapes that were consumed by the TypeScript template literal, producing broken JavaScript in the generated HTML.
+
+- **API: 404 on `/api/remote/agents`, `/api/remote/directives`, and `/api/remote/deploy`** — added route handlers for the Remote Agents page proxying the existing node registry and directive dispatch infrastructure in `hub/node-registry.ts` and `hub/ws-node.ts`.
+
+- **API: 404 on `/api/computer/screenshots`, `/api/computer/actions`, and `/api/computer/config`** — wired existing `listComputerScreenshots()`, `listComputerActions()`, and `isComputerUseAvailable()` helper functions to API routes.
+
+- **API: 404 on `/api/vault/list`, `/api/vault/store`, `/api/vault/delete/:key`, `/api/vault/audit`, `/api/vault/export`, and `/api/vault/import`** — added route handlers for the Vault page covering credential listing, storage, deletion, audit log retrieval, export, and import. Extended `vaultList()` to include `expires_at` and `usage_limit` fields.
+
+- **Web auth: login redirect loop on HTTP** — session cookies had the `Secure` flag unconditionally set, preventing browsers from storing them over plain HTTP connections. `setSessionCookie()` and `clearSessionCookie()` in `auth.ts` now accept the `Request` and conditionally include `Secure` based on the request protocol.
+
+- **Web auth: vault key not set causing auth bypass** — the vault encryption system requires `CORTEX_VAULT_KEY` to be set in the environment. Without it, `hasPassword()` silently returned `false`, causing `requireAuth()` to bypass all authentication. Documented the requirement and set the key for the server process.
+
+- **Web auth: onboarding API endpoints behind auth middleware** — the 11 onboarding POST endpoints (`/api/onboarding/provider`, `/api/onboarding/personality`, `/api/onboarding/channels`, `/api/onboarding/advanced`, `/api/onboarding/telemetry`, `/api/onboarding/complete`, `/api/onboarding/progress`, `/api/onboarding/profile/start`, `/api/onboarding/profile/answer`, `/api/onboarding/profile/skip`) were placed after the auth middleware gate, causing 401 errors during onboarding when sessions expired. Moved them to the public section before the middleware.
+
+- **UI: password field DOM warnings** — orphaned `<input type="password">` elements in settings pages triggered Chrome's "not contained in a form" warnings. Added a `DOMContentLoaded` script that auto-wraps orphaned password inputs in `<form onsubmit="return false">` with `display:contents`.
+
+- **UI: missing autocomplete on vault key input** — added `autocomplete="off"` to the `#vault-key-input` element in the credential modal.
+
+- **API: 404 on `/api/eval/suites`, `/api/eval/run`, `/api/eval/runs`, `/api/eval/runs/:id`, `/api/eval/baselines`, and `/api/eval/baselines/:id`** — added route handlers for the Eval page wiring the existing `listSuites()`, `runSuite()`, `listRuns()`, `getRun()`, `listBaselines()` functions from `eval/runner.ts`. Added `deleteBaseline()` to the runner module.
+
+- **API: 502 on `/api/providers/:kind/models` for unconfigured providers** — the model list endpoint now returns an empty array instead of a 502 error when the provider has no API key configured or the upstream API is unreachable, eliminating console noise while the frontend fallback handles the empty list.
+
+### Added
+
+- **Polyglot cross-language analysis** — the architecture endpoint now runs `detectFFIBridges` on loaded nodes via the `polyglot.ts` module. If FFI bridges (JNI, cgo, ctypes, etc.) are detected, the architecture response includes an `ffiBridges` field.
+
+- **Incremental sync watcher** — the Codegraph page now starts a 30‑second polling loop (`POST /api/codegraph/incremental-sync`) that calls `incrementalSync()` to re‑index only changed files. The graph auto‑refreshes when new nodes/edges are found. Stops when leaving the page or switching projects.
+
+- **Pilot config wired** — the `code_pilot` tool now loads saved pilot config from `loadConfig()` (token budget, pruning mode, include tests) and uses those values as defaults when arguments aren't provided. The `GET/PUT /api/codegraph/pilot-config` endpoints now have an active consumer.
+
+- **Error logging** — added `console.error` logging to previously-bare catch blocks in `discoverFiles`, `indexFile`, and `incrementalSync` so IO/parsing failures are visible in server logs.
+
 ## [0.45.2] — 2026-06-19
 
 ### Fixed

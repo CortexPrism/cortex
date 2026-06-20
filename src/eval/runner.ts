@@ -48,6 +48,10 @@ export async function setBaseline(runId: string): Promise<void> {
   baselineStore.set(runId, { runId, name: run.suiteName, timestamp: run.timestamp });
 }
 
+export async function deleteBaseline(id: string): Promise<boolean> {
+  return baselineStore.delete(id);
+}
+
 let runCounter = 0;
 function nextRunId(): string {
   return 'eval_run_' + (++runCounter) + '_' + Date.now().toString(36);

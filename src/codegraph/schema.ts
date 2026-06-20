@@ -105,6 +105,8 @@ export interface ArchitectureSummary {
   routes: Array<{ method: string; path: string; handler: string }>;
   hotspots: Array<{ name: string; caller_count: number; callee_count: number }>;
   clusters: Array<{ id: number; name: string; member_count: number }>;
+  nodes: CodeNode[];
+  edges: CodeEdge[];
   node_count: number;
   edge_count: number;
 }

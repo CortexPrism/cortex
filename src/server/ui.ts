@@ -354,6 +354,7 @@ function sanitizeHtml(html){
 function fmtCost(v){if(!v||v<=0)return"$0";if(v<0.01)return"$"+(v*1000).toFixed(1)+"m";return"$"+v.toFixed(4)}
 function fmtBytes(b){if(!b)return"0 B";var u=["B","KB","MB","GB","TB"],i=0;while(b>=1024&&i<4){b/=1024;i++}return b.toFixed(1)+" "+u[i]}
 
+(function(){document.querySelectorAll('input[type=password]').forEach(function(i){if(!i.closest('form')){var f=document.createElement('form');f.onsubmit=function(){return false};f.style.display='contents';i.parentNode.insertBefore(f,i);f.appendChild(i)}})})();
 initDashboard();
 
 `;
@@ -1432,7 +1433,9 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;">
           <label style="font-size:11px;color:var(--text3);">Agent ID</label>
-          <input id="proj-agent" class="inp" style="width:140px;" placeholder="default" />
+          <select id="proj-agent" class="inp" style="width:140px;">
+            <option value="default">default</option>
+          </select>
         </div>
         <button class="btn btn-primary" onclick="saveProject()" style="height:34px;">Create</button>
         <button class="btn btn-ghost" onclick="closeProjectForm()" style="height:34px;">Cancel</button>
@@ -1444,7 +1447,13 @@ const HTML = `<!DOCTYPE html>
         <span style="font-weight:600;font-size:14px;">Import from GitHub</span>
         <button class="btn btn-ghost" onclick="closeGitHubImport()">Close</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Select a repository to clone and create as a project.</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Select a repository to clone under the chosen agent's workspace.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <label style="font-size:11px;color:var(--text3);white-space:nowrap;">Agent:</label>
+        <select id="gh-import-agent" class="inp" style="flex:1;max-width:200px;font-size:12px;padding:5px 8px;">
+          <option value="default">default</option>
+        </select>
+      </div>
       <div id="gh-import-list-inline" style="max-height:50vh;overflow-y:auto;">
         <div style="text-align:center;color:var(--text3);padding:20px;">Loading repositories…</div>
       </div>
@@ -2339,6 +2348,12 @@ const HTML = `<!DOCTYPE html>
           <button class="btn btn-ghost" onclick="closeGitHubImport()" style="font-size:18px;padding:0 6px;">✕</button>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Select a repository to clone and create as a project.</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--text3);white-space:nowrap;">Agent:</label>
+          <select id="gh-import-agent-modal" class="inp" style="flex:1;font-size:12px;padding:5px 8px;" onchange="document.getElementById('gh-import-agent').value=this.value">
+            <option value="default">default</option>
+          </select>
+        </div>
         <div id="gh-import-list" style="margin-bottom:12px;max-height:50vh;overflow-y:auto;">
           <div style="text-align:center;color:var(--text3);padding:20px;">Loading repositories…</div>
         </div>
@@ -2570,12 +2585,13 @@ const HTML = `<!DOCTYPE html>
         <h1 style="font-size:15px;font-weight:600;">Codegraph</h1>
         <p style="font-size:12px;color:var(--text3);margin-top:2px;">Interactive code dependency graph explorer</p>
       </div>
-      <div style="display:flex;gap:8px;">
-        <select id="cg-project-select" class="inp" style="width:200px;font-size:12px;padding:5px 8px;" onchange="loadCodegraphProject(this.value)">
-          <option value="">Select project…</option>
-        </select>
-        <button class="btn btn-ghost" onclick="loadCodegraphProjects()" style="font-size:12px;">↻ Refresh</button>
-      </div>
+           <div style="display:flex;gap:8px;">
+            <select id="cg-project-select" class="inp" style="width:200px;font-size:12px;padding:5px 8px;" onchange="loadCodegraphProject(this.value)">
+              <option value="">Select project…</option>
+            </select>
+            <button id="cg-index-btn" class="btn btn-primary" onclick="showCodegraphIndexPrompt()" style="font-size:12px;padding:5px 14px;">Index</button>
+            <button class="btn btn-ghost" onclick="loadCodegraphProjects()" style="font-size:12px;">↻ Refresh</button>
+          </div>
     </div>
     <div style="flex:1;display:flex;overflow:hidden;">
       <div style="width:280px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
@@ -2597,11 +2613,12 @@ const HTML = `<!DOCTYPE html>
             <div style="margin-bottom:4px;font-weight:500;">Legend</div>
             <div id="cg-legend-items"></div>
           </div>
-          <div id="cg-empty-state" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+           <div id="cg-empty-state" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
             <div style="text-align:center;color:var(--text3);">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin:0 auto 8px;opacity:0.3;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              <p style="font-size:13px;">Select a project to visualize</p>
-              <p style="font-size:11px;margin-top:4px;">Index your codebase to explore dependencies</p>
+              <p style="font-size:13px;">No project indexed</p>
+              <p style="font-size:11px;margin-top:4px;margin-bottom:10px;">Index a codebase to explore its dependency graph</p>
+              <span style="pointer-events:auto;"><button class="btn btn-primary" onclick="showCodegraphIndexPrompt()" style="font-size:12px;padding:6px 16px;">Index a Project</button></span>
             </div>
           </div>
         </div>
@@ -3120,7 +3137,7 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
       <h2 id="vault-modal-title" style="font-size:15px;font-weight:600;margin-bottom:16px;">Add Credential</h2>
       <form onsubmit="event.preventDefault();saveVaultCredential();return false;" style="display:flex;flex-direction:column;gap:10px;">
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Key Name</label>
-        <input id="vault-key-input" class="inp" placeholder="OPENAI_API_KEY" style="font-size:12px;"></div>
+        <input id="vault-key-input" class="inp" placeholder="OPENAI_API_KEY" autocomplete="off" style="font-size:12px;"></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Value</label>
         <div style="position:relative;">
           <input id="vault-value-input" class="inp" type="password" placeholder="sk-…" autocomplete="current-password" style="font-size:12px;padding-right:40px;">
@@ -4909,13 +4926,24 @@ function openProjectForm() {
   document.getElementById('project-form-panel').style.display = 'block';
   document.getElementById('project-form-error').style.display = 'none';
   document.getElementById('proj-name').focus();
+  loadProjectAgentDropdown();
+}
+async function loadProjectAgentDropdown() {
+  var sel = document.getElementById('proj-agent');
+  if (sel.options.length > 1) return;
+  try {
+    var agents = await fetch(BASE + '/api/agents').then(r => r.json()).catch(function() { return []; });
+    sel.innerHTML = (Array.isArray(agents) ? agents : []).map(function(a) {
+      return '<option value="' + escAttr(a.id) + '">' + esc(a.name || a.id) + '</option>';
+    }).join('') || '<option value="default">default</option>';
+  } catch(e) {}
 }
 
 function closeProjectForm() {
   document.getElementById('project-form-panel').style.display = 'none';
   document.getElementById('proj-name').value = '';
   document.getElementById('proj-desc').value = '';
-  document.getElementById('proj-agent').value = '';
+  document.getElementById('proj-agent').value = 'default';
 }
 
 async function saveProject() {
@@ -4952,7 +4980,21 @@ async function openGitHubImport() {
     modal.style.opacity = '1';
   }
   if (inline) inline.style.display = 'block';
+  loadGitHubImportAgents();
   loadGitHubRepos();
+}
+async function loadGitHubImportAgents() {
+  var sel = document.getElementById('gh-import-agent');
+  var selModal = document.getElementById('gh-import-agent-modal');
+  try {
+    var agents = await fetch(BASE + '/api/agents').then(r => r.json()).catch(function() { return []; });
+    var html = (Array.isArray(agents) ? agents : []).map(function(a) {
+      return '<option value="' + escAttr(a.id) + '">' + esc(a.name || a.id) + '</option>';
+    }).join('');
+    if (!html) html = '<option value="default">default</option>';
+    if (sel) sel.innerHTML = html;
+    if (selModal) selModal.innerHTML = html;
+  } catch(e) {}
 }
 function closeGitHubImport() {
   var modal = document.getElementById('gh-import-modal');
@@ -4982,12 +5024,13 @@ async function loadGitHubRepos() {
 async function importGitHubProject(idx) {
   var repo = window._ghRepos[idx];
   if (!repo) { toast('Repository not found', 'error'); return; }
+  var agentId = document.getElementById('gh-import-agent').value || 'default';
   try {
     var res = await fetch(BASE + '/api/projects/import-github', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ fullName: repo.full_name, projectName: repo.name })
+      body: JSON.stringify({ fullName: repo.full_name, projectName: repo.name, agentId: agentId })
     });
-    if (res.ok) { closeGitHubImport(); loadProjects(); toast('Imported ' + repo.name, 'success'); }
+    if (res.ok) { closeGitHubImport(); loadProjects(); var d = await res.json(); if (d.indexing_warning) { toast('Imported but indexing failed: ' + d.indexing_warning, 'warning'); } else { toast('Imported ' + repo.name + ' under ' + agentId, 'success'); } }
     else { var d = await res.json(); toast(d.error || 'Import failed', 'error'); }
   } catch(e) { toast('Import failed', 'error'); }
 }
@@ -9918,6 +9961,7 @@ let editorOpenFiles = [];
 let editorCurrentFile = null;
 let editorWorkspace = 'global';
 let editorContentDirty = false;
+let editorCurrentPath = '';
 
 async function editorLoadWorkspaces() {
   try {
@@ -9943,11 +9987,12 @@ async function editorRefreshTree() {
   tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Loading…</div>';
   try {
     const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
-    const url = agentId
+    var base = agentId
       ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
       : BASE + '/api/workspace/files';
+    var url = editorCurrentPath ? base + '/' + editorCurrentPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
     const res = await fetch(url);
-    if (!res.ok) { tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Failed to load files</div>'; return; }
+    if (!res.ok) { tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Folder not found: ' + esc(editorCurrentPath || '/') + '</div>'; return; }
     const entries = await res.json();
     editorFileTree = Array.isArray(entries) ? entries : [];
     renderEditorTree();
@@ -9958,23 +10003,44 @@ async function editorRefreshTree() {
 
 function renderEditorTree() {
   const tree = document.getElementById('editor-tree');
-  if (!editorFileTree.length) {
+  if (!editorFileTree.length && !editorCurrentPath) {
     tree.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">Empty workspace</div>';
     return;
   }
-  tree.innerHTML = editorFileTree.map(name => {
+  var html = '';
+  if (editorCurrentPath) {
+    html += '<button class="editor-tree-item" onclick="editorGoUp()" style="color:var(--accent2);">' +
+      '<span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></span>' +
+      '<span>..</span></button>';
+  }
+  html += editorFileTree.map(function(name) {
     const isDir = name.endsWith('/');
     const active = editorCurrentFile === name;
     const icon = isDir
-      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
     const nameClean = name.replace(/\\/$/, '');
-    return '<button class="editor-tree-item' + (active ? ' active' : '') + '" onclick="editorOpenFile(\\'' + esc(nameClean) + '\\')" title="' + esc(nameClean) + '">' +
+    var onclick = isDir
+      ? 'editorOpenDir(\\'' + esc(nameClean) + '\\')'
+      : 'editorOpenFile(\\'' + esc(nameClean) + '\\')';
+    return '<button class="editor-tree-item' + (active ? ' active' : '') + '" onclick="' + onclick + '" title="' + esc(nameClean) + '">' +
       '<span class="icon">' + icon + '</span>' +
       '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(nameClean) + '</span>' +
       '</button>';
   }).join('');
+  tree.innerHTML = html;
 }
+function editorOpenDir(dirName) {
+  editorCurrentPath = editorCurrentPath ? editorCurrentPath + '/' + dirName : dirName;
+  editorRefreshTree();
+}
+function editorGoUp() {
+  var parts = editorCurrentPath.split('/');
+  parts.pop();
+  editorCurrentPath = parts.join('/');
+  editorRefreshTree();
+}
+
 
 async function editorSwitchWorkspace(value) {
   if (editorInstance && editorContentDirty) {
@@ -9985,6 +10051,7 @@ async function editorSwitchWorkspace(value) {
     }
   }
   editorWorkspace = value;
+  editorCurrentPath = '';
   editorCloseAllTabs();
   editorRefreshTree();
 }
@@ -9997,15 +10064,16 @@ async function editorOpenFile(fileName) {
     }
   }
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var relPath = editorCurrentPath ? editorCurrentPath + '/' + fileName : fileName;
   const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(fileName)
-    : BASE + '/api/workspace/files/' + encodeURIComponent(fileName);
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(relPath)
+    : BASE + '/api/workspace/files/' + encodeURIComponent(relPath);
   try {
     const res = await fetch(url);
     if (!res.ok) { toast('Failed to open file', 'error'); return; }
     const data = await res.json();
     const content = data.content || '';
-    editorCurrentFile = fileName;
+    editorCurrentFile = relPath;
     editorContentDirty = false;
     editorAddTab(fileName);
     editorShowEditor(fileName, content);
@@ -12333,38 +12401,44 @@ function soulAskLlm(type) {
 // ── Phase 1 New Page Functions ────────────────────────────────────────────
 
 // ── Codegraph Page ──
-var cgProject = null, cgGraphData = null, cgSimulation = null, cgCurrentPanel = 'impact';
+var cgProject = null, cgGraphData = null, cgSimulation = null, cgCurrentPanel = 'impact', cgProjects = [], cgWatcher = null;
 var CG_LABEL_COLORS = {
   CodeFunction: '#06b6d4', CodeMethod: '#22d3ee', CodeClass: '#8b5cf6',
   CodeInterface: '#a78bfa', CodeEnum: '#f59e0b', CodeType: '#fbbf24',
-  CodeVariable: '#22c55e', CodeConstant: '#4ade80', CodeModule: '#ef4444',
-  CodeRoute: '#f97316', CodeComponent: '#ec4899', CodeHook: '#f472b6',
-  CodeProject: '#6b7280', CodeService: '#14b8a6', CodeMiddleware: '#6366f1'
+  CodeModule: '#ef4444', CodeRoute: '#f97316',
+  CodePackage: '#6b7280', CodeFile: '#14b8a6', CodeResource: '#6366f1'
 };
 function loadCodegraphPage() { loadCodegraphProjects(); }
 async function loadCodegraphProjects() {
   var sel = document.getElementById('cg-project-select');
+  var prev = sel.value;
   sel.innerHTML = '<option value="">Loading…</option>';
   try {
     var projects = await fetch(BASE + '/api/codegraph/projects').then(r => r.json()).catch(function() { return []; });
+    cgProjects = Array.isArray(projects) ? projects : [];
     sel.innerHTML = '<option value="">Select project…</option>';
-    (Array.isArray(projects) ? projects : []).forEach(function(p) {
+    cgProjects.forEach(function(p) {
       sel.innerHTML += '<option value="' + escAttr(p.name) + '">' + esc(p.name) + '</option>';
     });
+    if (prev) sel.value = prev;
   } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 async function loadCodegraphProject(name) {
-  if (!name) { resetCodegraphGraph(); return; }
+  if (!name) { resetCodegraphGraph(); updateCodegraphIndexBtn(); return; }
+  console.log('[codegraph-ui] loadProject: name=' + name);
   document.getElementById('cg-graph').innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;height:100%;color:var(--text3);"><div>Loading graph…</div><div style="font-size:11px;">Imported projects may take a little longer on first load while Codegraph indexes the repository.</div></div>';
   try {
     var res = await fetch(BASE + '/api/codegraph/architecture?project=' + encodeURIComponent(name));
     var data = await res.json();
+    console.log('[codegraph-ui] loadProject: status=' + res.status + ' nodes=' + (data.nodes ? data.nodes.length : 'undefined') + ' edges=' + (data.edges ? data.edges.length : 'undefined'), data);
     if (!res.ok) throw new Error(data.error || 'Failed to load graph');
     cgGraphData = data; cgProject = name;
     renderCodegraphGraph(data.nodes || [], data.edges || []);
     document.getElementById('cg-empty-state').style.display = 'none';
     switchCodegraphPanel(cgCurrentPanel);
     loadCodegraphLanguages();
+    updateCodegraphIndexBtn();
+    startCodegraphWatcher();
   } catch(e) {
     document.getElementById('cg-graph').innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;height:100%;color:var(--accent-red);"><div>Failed to load graph</div><div style="font-size:11px;color:var(--text3);">' + esc(e && e.message ? e.message : 'Unknown error') + '</div></div>';
   }
@@ -12404,43 +12478,163 @@ async function searchCodegraphCrossRepo() {
   } catch(e) { el.innerHTML = '<div class="empty">Search failed</div>'; }
 }
 function resetCodegraphGraph() {
+  stopCodegraphWatcher();
   document.getElementById('cg-graph').innerHTML = '';
   document.getElementById('cg-empty-state').style.display = 'flex';
   document.getElementById('cg-bottom-panel').innerHTML = '';
   document.getElementById('cg-search-results').innerHTML = '';
+  updateCodegraphIndexBtn();
+}
+function startCodegraphWatcher() {
+  stopCodegraphWatcher();
+  if (!cgProject) return;
+  cgWatcher = setInterval(function() {
+    if (!cgProject || !document.getElementById('page-codegraph') || document.getElementById('page-codegraph').style.display === 'none') {
+      stopCodegraphWatcher();
+      return;
+    }
+    fetch(BASE + '/api/codegraph/incremental-sync', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ projectName: cgProject })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.addedNodes > 0 || d.addedEdges > 0) {
+        loadCodegraphProject(cgProject);
+      }
+    }).catch(function() {});
+  }, 30000);
+}
+function stopCodegraphWatcher() {
+  if (cgWatcher) { clearInterval(cgWatcher); cgWatcher = null; }
+}
+function updateCodegraphIndexBtn() {
+  var btn = document.getElementById('cg-index-btn');
+  if (!btn) return;
+  if (cgProject) {
+    btn.textContent = 'Re-index';
+    btn.onclick = function() { reindexCodegraphProject(); };
+  } else {
+    btn.textContent = 'Index';
+    btn.onclick = function() { showCodegraphIndexPrompt(); };
+  }
+}
+function showCodegraphIndexPrompt() {
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML =
+    '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Index a Codebase</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<input id="cg-index-path" class="inp" placeholder="Absolute path to project root" style="flex:1;min-width:250px;font-size:12px;">' +
+    '<input id="cg-index-name" class="inp" placeholder="Project name (optional)" style="width:180px;min-width:140px;font-size:12px;">' +
+    '<button class="btn btn-primary" onclick="runCodegraphIndex()" style="font-size:12px;padding:6px 14px;">Index</button>' +
+    '</div>' +
+    '<div style="font-size:10px;color:var(--text3);margin-top:6px;">Point to any local repository root. Codegraph will parse all supported source files and build a dependency graph.</div>' +
+    '<div id="cg-index-result" style="margin-top:8px;"></div>';
+}
+async function runCodegraphIndex() {
+  var path = document.getElementById('cg-index-path').value.trim();
+  var name = document.getElementById('cg-index-name').value.trim();
+  if (!path) { document.getElementById('cg-index-result').innerHTML = '<div class="empty" style="color:var(--accent-red);">Please enter a path</div>'; return; }
+  var el = document.getElementById('cg-index-result');
+  el.innerHTML = '<div class="widget-loading">Indexing codebase… this may take a minute for large repositories</div>';
+  console.log('[codegraph-ui] runIndex: path=' + path + ' name=' + (name || '(auto)'));
+  try {
+    var body = { rootPath: path }; if (name) body.projectName = name;
+    var res = await fetch(BASE + '/api/codegraph/index', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    console.log('[codegraph-ui] runIndex: status=' + res.status, data);
+    if (!res.ok) throw new Error(data.error || 'Indexing failed');
+    var errDetail2 = data.errorSample && data.errorSample.length ? ' — ' + data.errorSample.slice(0, 3).map(function(e) { return esc(e); }).join('; ') : '';
+    el.innerHTML = '<div style="font-size:12px;color:var(--accent-green);">Indexed: ' + (data.nodeCount || 0) + ' nodes, ' + (data.edgeCount || 0) + ' edges, ' + (data.fileCount || 0) + ' files' + (data.errorCount ? ', ' + data.errorCount + ' parse errors' : '') + '.</div>' + (errDetail2 ? '<div style="font-size:10px;color:var(--accent-red);margin-top:4px;">' + errDetail2 + '</div>' : '') + '<div style="font-size:11px;color:var(--text3);margin-top:4px;">Refreshing…</div>';
+    await loadCodegraphProjects();
+    var projectName = name || path.split('/').pop() || path;
+    document.getElementById('cg-project-select').value = projectName;
+    loadCodegraphProject(projectName);
+  } catch(e) { el.innerHTML = '<div class="empty" style="color:var(--accent-red);">' + esc(e && e.message ? e.message : 'Indexing failed') + '</div>'; }
+}
+async function reindexCodegraphProject() {
+  if (!cgProject) { console.log('[codegraph-ui] reindex: no cgProject set'); return; }
+  var proj = cgProjects.find(function(p) { return p.name === cgProject; });
+  var rootPath = proj && proj.root_path ? proj.root_path : null;
+  console.log('[codegraph-ui] reindex: cgProject=' + cgProject + ' rootPath=' + rootPath + ' foundInList=' + !!proj);
+  if (!rootPath) {
+    showCodegraphIndexPrompt();
+    document.getElementById('cg-index-path').value = cgProject;
+    document.getElementById('cg-index-result').innerHTML = '<div style="color:var(--accent-amber);font-size:11px;margin-top:4px;">Project path not stored. Enter the absolute path to re-index.</div>';
+    return;
+  }
+  var el = document.getElementById('cg-bottom-panel');
+  el.innerHTML = '<div class="widget-loading">Re-indexing ' + esc(cgProject) + '… this may take a minute for large repositories</div>';
+  try {
+    var body = { rootPath: rootPath, projectName: cgProject };
+    console.log('[codegraph-ui] reindex: POST /api/codegraph/index', JSON.stringify(body));
+    var res = await fetch(BASE + '/api/codegraph/index', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    console.log('[codegraph-ui] reindex: response status=' + res.status, data);
+    if (!res.ok) throw new Error(data.error || 'Re-indexing failed');
+    var errDetail = data.errorSample && data.errorSample.length ? ' — ' + data.errorSample.slice(0, 3).map(function(e) { return esc(e); }).join('; ') : '';
+    el.innerHTML = '<div style="font-size:12px;color:var(--accent-green);">Re-indexed: ' + (data.nodeCount || 0) + ' nodes, ' + (data.edgeCount || 0) + ' edges, ' + (data.fileCount || 0) + ' files' + (data.errorCount ? ', ' + data.errorCount + ' parse errors' : '') + '.</div>' + (errDetail ? '<div style="font-size:10px;color:var(--accent-red);margin-top:4px;">' + errDetail + '</div>' : '') + '<div style="font-size:11px;color:var(--text3);margin-top:4px;">Reloading graph…</div>';
+    await loadCodegraphProjects();
+    document.getElementById('cg-project-select').value = cgProject;
+    loadCodegraphProject(cgProject);
+  } catch(e) { console.log('[codegraph-ui] reindex: error', e); el.innerHTML = '<div class="empty" style="color:var(--accent-red);">' + esc(e && e.message ? e.message : 'Re-indexing failed') + '</div>'; }
 }
 function renderCodegraphGraph(nodes, edges) {
   var container = document.getElementById('cg-graph');
   var width = container.clientWidth, height = container.clientHeight;
   container.innerHTML = '';
+  if (!nodes || !nodes.length) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No graph data — index a project to populate the dependency graph</div>';
+    return;
+  }
+  var validNodeIds = {};
+  (nodes || []).forEach(function(n) { validNodeIds[n.id] = true; });
+  var d3edges = (edges || []).filter(function(e) {
+    return validNodeIds[e.source_id] && validNodeIds[e.target_id];
+  }).map(function(e) {
+    return { id: e.id, source: e.source_id, target: e.target_id, type: e.type };
+  });
+  console.log('[codegraph-ui] renderGraph: ' + nodes.length + ' nodes, ' + d3edges.length + ' edges (' + ((edges||[]).length - d3edges.length) + ' orphaned)');
+  // compute node degree for sizing
+  var degree = {};
+  d3edges.forEach(function(e) {
+    degree[e.source] = (degree[e.source] || 0) + 1;
+    degree[e.target] = (degree[e.target] || 0) + 1;
+  });
   var svg = d3.select('#cg-graph').append('svg').attr('width', width).attr('height', height);
   var g = svg.append('g');
   var zoom = d3.zoom().scaleExtent([0.1, 4]).on('zoom', function(event) { g.attr('transform', event.transform); });
   svg.call(zoom);
-  var simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(edges).id(function(d) { return d.id; }).distance(80))
-    .force('charge', d3.forceManyBody().strength(-200))
-    .force('center', d3.forceCenter(width / 2, height / 2))
-    .force('collision', d3.forceCollide(30));
-  var link = g.append('g').selectAll('line').data(edges).join('line')
-    .attr('stroke', 'rgba(255,255,255,0.1)').attr('stroke-width', 1.5).attr('marker-end', 'url(#cg-arrowhead)');
   svg.append('defs').append('marker').attr('id', 'cg-arrowhead').attr('viewBox', '0 -5 10 10')
-    .attr('refX', 20).attr('refY', 0).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
-    .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#6b7280');
-  var node = g.append('g').selectAll('circle').data(nodes).join('circle')
-    .attr('r', 8).attr('fill', function(d) { return CG_LABEL_COLORS[d.label] || '#6b7280'; })
-    .attr('stroke', '#0a0e1a').attr('stroke-width', 2)
+    .attr('refX', 16).attr('refY', 0).attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', 'rgba(255,255,255,0.3)');
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(d3edges).id(function(d) { return d.id; }).distance(60))
+    .force('charge', d3.forceManyBody().strength(-150))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide(20));
+  var link = g.append('g').selectAll('line').data(d3edges).join('line')
+    .attr('stroke', 'rgba(255,255,255,0.18)').attr('stroke-width', 1).attr('marker-end', 'url(#cg-arrowhead)');
+  var node = g.append('g').selectAll('g').data(nodes).join('g')
     .call(d3.drag().on('start', function(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
       .on('drag', function(event, d) { d.fx = event.x; d.fy = event.y; })
       .on('end', function(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
-  var label = g.append('g').selectAll('text').data(nodes).join('text').text(function(d) { return d.name; })
-    .attr('font-size', '10px').attr('fill', '#9ca3af').attr('dx', 12).attr('dy', 3);
+  node.append('circle')
+    .attr('r', function(d) { return 3 + Math.min((degree[d.id] || 0) * 1.5, 12); })
+    .attr('fill', function(d) { return CG_LABEL_COLORS[d.label] || '#6b7280'; })
+    .attr('stroke', '#0a0e1a').attr('stroke-width', 1.5);
+  node.append('title').text(function(d) { return d.label?.replace('Code','') + ': ' + d.name + '\\n' + (d.file_path || '') + (d.line_start ? ':' + d.line_start : ''); });
+  node.append('text')
+    .text(function(d) { return d.name.length > 20 ? d.name.slice(0,18) + '…' : d.name; })
+    .attr('font-size', '9px').attr('fill', '#e5e7eb').attr('dx', 10).attr('dy', 3)
+    .style('pointer-events', 'none');
   node.on('click', function(event, d) { showCodegraphImpactPanel(d.name); });
   simulation.on('tick', function() {
     link.attr('x1', function(d) { return d.source.x; }).attr('y1', function(d) { return d.source.y; })
         .attr('x2', function(d) { return d.target.x; }).attr('y2', function(d) { return d.target.y; });
-    node.attr('cx', function(d) { return d.x; }).attr('cy', function(d) { return d.y; });
-    label.attr('x', function(d) { return d.x; }).attr('y', function(d) { return d.y; });
+    node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
   });
   cgSimulation = { simulation: simulation, svg: svg, zoom: zoom };
   renderCodegraphLegend();
@@ -12518,10 +12712,12 @@ async function showCodegraphArchitecturePanel() {
   try {
     var data = await fetch(BASE + '/api/codegraph/architecture?project=' + encodeURIComponent(project)).then(r => r.json());
     var h = '<div style="font-size:12px;font-weight:500;margin-bottom:8px;">Architecture Summary</div>';
-    if (data.languages) h += '<div class="stat-row"><span class="stat-label">Languages</span><span>' + esc(String(data.languages)) + '</span></div>';
+    h += '<div class="stat-row"><span class="stat-label">Nodes</span><span>' + (data.node_count || 0) + '</span></div>';
+    h += '<div class="stat-row"><span class="stat-label">Edges</span><span>' + (data.edge_count || 0) + '</span></div>';
+    if (data.languages) h += '<div class="stat-row"><span class="stat-label">Languages</span><span>' + Object.keys(data.languages).length + '</span></div>';
     if (data.packages) h += '<div class="stat-row"><span class="stat-label">Packages</span><span>' + (data.packages.length || 0) + '</span></div>';
     if (data.entryPoints) h += '<div class="stat-row"><span class="stat-label">Entry Points</span><span>' + (data.entryPoints.length || 0) + '</span></div>';
-    if (data.circularDeps && data.circularDeps.length > 0) h += '<div style="color:var(--accent-red);font-size:11px;margin-top:8px;">⚠ Circular dependencies detected</div>';
+    if (data.hotspots && data.hotspots.length > 0) h += '<div class="stat-row"><span class="stat-label">Hotspots</span><span>' + data.hotspots.length + '</span></div>';
     el.innerHTML = h;
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load architecture</div>'; }
 }

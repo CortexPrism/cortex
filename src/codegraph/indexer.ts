@@ -65,18 +65,16 @@ interface TreeSitterQuery {
 }
 
 let _parser: TreeSitterParser | null = null;
-let _ParserClass: unknown = null;
+let _Language: TreeSitterLanguage | null = null;
 const _languageCache = new Map<string, TreeSitterLanguage>();
 
 async function getParser(): Promise<TreeSitterParser> {
   if (_parser) return _parser;
 
   const mod = await import('npm:web-tree-sitter');
-  // deno-lint-ignore no-explicit-any
-  _ParserClass = (mod as any).default as unknown;
-  await (mod as unknown as { init(): Promise<void> }).init();
-  // deno-lint-ignore no-explicit-any
-  _parser = new (mod as any).default() as TreeSitterParser;
+  await (mod as any).default.init();
+  _Language = (mod as any).default.Language as TreeSitterLanguage;
+  _parser = new ((mod as any).default)() as TreeSitterParser;
   return _parser;
 }
 
@@ -87,45 +85,44 @@ async function loadLanguage(langName: string): Promise<TreeSitterLanguage | null
 
   const grammarPaths: Record<string, string> = {
     'typescript':
-      'https://cdn.jsdelivr.net/npm/tree-sitter-typescript@0.23.2/wasm/tree-sitter-typescript.wasm',
-    'tsx': 'https://cdn.jsdelivr.net/npm/tree-sitter-typescript@0.23.2/wasm/tree-sitter-tsx.wasm',
+      'https://cdn.jsdelivr.net/npm/tree-sitter-typescript@0.23.2/tree-sitter-typescript.wasm',
+    'tsx': 'https://cdn.jsdelivr.net/npm/tree-sitter-typescript@0.23.2/tree-sitter-tsx.wasm',
     'javascript':
-      'https://cdn.jsdelivr.net/npm/tree-sitter-javascript@0.23.1/wasm/tree-sitter-javascript.wasm',
-    'python': 'https://cdn.jsdelivr.net/npm/tree-sitter-python@0.23.6/wasm/tree-sitter-python.wasm',
-    'go': 'https://cdn.jsdelivr.net/npm/tree-sitter-go@0.23.4/wasm/tree-sitter-go.wasm',
-    'rust': 'https://cdn.jsdelivr.net/npm/tree-sitter-rust@0.23.2/wasm/tree-sitter-rust.wasm',
-    'java': 'https://cdn.jsdelivr.net/npm/tree-sitter-java@0.23.5/wasm/tree-sitter-java.wasm',
-    'cpp': 'https://cdn.jsdelivr.net/npm/tree-sitter-cpp@0.23.4/wasm/tree-sitter-cpp.wasm',
-    'c': 'https://cdn.jsdelivr.net/npm/tree-sitter-c@0.24.0/wasm/tree-sitter-c.wasm',
+      'https://cdn.jsdelivr.net/npm/tree-sitter-javascript@0.23.1/tree-sitter-javascript.wasm',
+    'python': 'https://cdn.jsdelivr.net/npm/tree-sitter-python@0.23.6/tree-sitter-python.wasm',
+    'go': 'https://cdn.jsdelivr.net/npm/tree-sitter-go@0.23.4/tree-sitter-go.wasm',
+    'rust': 'https://cdn.jsdelivr.net/npm/tree-sitter-rust@0.23.2/tree-sitter-rust.wasm',
+    'java': 'https://cdn.jsdelivr.net/npm/tree-sitter-java@0.23.5/tree-sitter-java.wasm',
+    'cpp': 'https://cdn.jsdelivr.net/npm/tree-sitter-cpp@0.23.4/tree-sitter-cpp.wasm',
+    'c': 'https://cdn.jsdelivr.net/npm/tree-sitter-c@0.24.0/tree-sitter-c.wasm',
     'c_sharp':
-      'https://cdn.jsdelivr.net/npm/tree-sitter-c-sharp@0.23.1/wasm/tree-sitter-c_sharp.wasm',
-    'php': 'https://cdn.jsdelivr.net/npm/tree-sitter-php@0.23.12/wasm/tree-sitter-php.wasm',
-    'ruby': 'https://cdn.jsdelivr.net/npm/tree-sitter-ruby@0.23.1/wasm/tree-sitter-ruby.wasm',
-    'swift': 'https://cdn.jsdelivr.net/npm/tree-sitter-swift@0.23.0/wasm/tree-sitter-swift.wasm',
-    'kotlin': 'https://cdn.jsdelivr.net/npm/tree-sitter-kotlin@0.0.1/wasm/tree-sitter-kotlin.wasm',
+      'https://cdn.jsdelivr.net/npm/tree-sitter-c-sharp@0.23.1/tree-sitter-c_sharp.wasm',
+    'php': 'https://cdn.jsdelivr.net/npm/tree-sitter-php@0.23.12/tree-sitter-php.wasm',
+    'ruby': 'https://cdn.jsdelivr.net/npm/tree-sitter-ruby@0.23.1/tree-sitter-ruby.wasm',
   };
 
   const url = grammarPaths[langName];
-  if (!url) return null;
+  if (!url) { console.error('[codegraph] loadLanguage: no grammar URL for ' + langName); return null; }
 
   try {
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) { console.error('[codegraph] loadLanguage: HTTP ' + response.status + ' for ' + langName + ' — ' + url); return null; }
     const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > MAX_GRAMMAR_SIZE) return null;
+    if (contentLength && parseInt(contentLength) > MAX_GRAMMAR_SIZE) { console.error('[codegraph] loadLanguage: grammar too large for ' + langName + ' (' + contentLength + ' bytes)'); return null; }
     const wasmBytes = await response.arrayBuffer();
-    if (wasmBytes.byteLength > MAX_GRAMMAR_SIZE) return null;
+    if (wasmBytes.byteLength > MAX_GRAMMAR_SIZE) { console.error('[codegraph] loadLanguage: grammar too large for ' + langName + ' (' + wasmBytes.byteLength + ' bytes)'); return null; }
 
     const parser = await getParser();
-    // deno-lint-ignore no-explicit-any
-    const lang = await ((parser as any).constructor.Language as any).load(
+    const lang = await (_Language as any).load(
       new Uint8Array(wasmBytes),
     ) as TreeSitterLanguage;
-    if (!lang) return null;
+    if (!lang) { console.error('[codegraph] loadLanguage: Language.load returned null for ' + langName); return null; }
 
     _languageCache.set(langName, lang);
+    console.error('[codegraph] loadLanguage: loaded ' + langName + ' (' + wasmBytes.byteLength + ' bytes)');
     return lang;
-  } catch {
+  } catch (e) {
+    console.error('[codegraph] loadLanguage: exception for ' + langName + ' — ' + (e as Error).message);
     return null;
   }
 }

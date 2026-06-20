@@ -20,6 +20,7 @@ interface ResolutionContext {
   nodeMap: Map<string, number>;
   importMaps: Map<string, ImportMapEntry[]>;
   nodeIndex: Map<string, number[]>;
+  fileNodeMap: Map<string, number>;
 }
 
 function parseImportMap(source: string, language: string): ImportMapEntry[] {
@@ -124,6 +125,7 @@ export async function buildResolutionContext(
 ): Promise<ResolutionContext> {
   const importMaps = new Map<string, ImportMapEntry[]>();
   const nodeIndex = new Map<string, number[]>();
+  const fileNodeMap = new Map<string, number>();
 
   for (const file of parsedFiles) {
     importMaps.set(file.filePath, parseImportMap(file.source, file.language));
@@ -134,9 +136,13 @@ export async function buildResolutionContext(
     const existing = nodeIndex.get(simpleName) ?? [];
     existing.push(id);
     nodeIndex.set(simpleName, existing);
+    const filePath = qname.split(':')[0] || '';
+    if (filePath && !fileNodeMap.has(filePath)) {
+      fileNodeMap.set(filePath, id);
+    }
   }
 
-  return { projectId, nodeMap: nodeIdMap, importMaps, nodeIndex };
+  return { projectId, nodeMap: nodeIdMap, importMaps, nodeIndex, fileNodeMap };
 }
 
 function resolveTarget(
@@ -155,18 +161,20 @@ function resolveTarget(
     const parts = targetQName.split('.');
     const prefix = parts.slice(0, -1).join('.');
 
-    for (const id of candidates) {
-      return { targetId: id, confidence: 0.9 };
-    }
-
     const importMap = ctx.importMaps.get(sourceFile) ?? [];
+    let importResolved = false;
     for (const entry of importMap) {
       if (entry.alias === prefix || targetQName.startsWith(entry.alias + '.')) {
         for (const id of candidates) {
           return { targetId: id, confidence: 0.85 };
         }
-        return { targetId: null, confidence: 0 };
+        importResolved = true;
+        break;
       }
+    }
+
+    if (!importResolved && candidates.length > 0) {
+      return { targetId: candidates[0], confidence: 0.7 };
     }
   }
 
@@ -188,8 +196,11 @@ export async function resolveEdges(
   const resolved: ResolvedEdge[] = [];
 
   for (const edge of edges) {
-    const sourceId = ctx.nodeMap.get(edge.sourceQName);
-    if (!sourceId) continue;
+    let sourceId = ctx.nodeMap.get(edge.sourceQName);
+    if (sourceId === undefined) {
+      sourceId = ctx.fileNodeMap.get(edge.sourceFilePath) ?? undefined;
+    }
+    if (sourceId === undefined) continue;
 
     let { targetId, confidence } = resolveTarget(
       edge.targetQName,
