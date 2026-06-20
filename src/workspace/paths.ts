@@ -24,8 +24,8 @@ export function resolveWorkspacePath(
   if (workspace === 'config') {
     const configDir = normalize(resolve(PATHS.configDir));
     const candidate = isAbsolute(rawPath)
-      ? normalize(resolve(rawPath))
-      : normalize(resolve(join(configDir, rawPath)));
+      ? normalize(rawPath)
+      : normalize(join(configDir, rawPath));
     const filename = candidate.split('/').pop() ?? '';
     if (!candidate.startsWith(configDir + '/') || !CONFIG_SOUL_FILES.has(filename)) {
       throw new Error(
@@ -40,8 +40,8 @@ export function resolveWorkspacePath(
   const rootDir = workspace === 'agent' ? agentDir : globalDir;
 
   const candidate = isAbsolute(rawPath)
-    ? normalize(resolve(rawPath))
-    : normalize(resolve(join(rootDir, rawPath)));
+    ? normalize(rawPath)
+    : normalize(join(rootDir, rawPath));
 
   const allowed = workspace === 'agent'
     ? [normalize(resolve(agentDir)), normalize(resolve(globalDir))]

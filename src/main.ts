@@ -47,6 +47,8 @@ import { a2aCommand } from './cli/a2a-cmd.ts';
 import { memoriCommand } from './cli/memori-cmd.ts';
 import { agentlintCommand } from './cli/agentlint-cmd.ts';
 import { mcpGatewayCommand } from './cli/mcp-gateway-cmd.ts';
+import { complianceCommand } from './cli/compliance-cmd.ts';
+import { debugCmd } from './cli/debug-cmd.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
 import { runScheduler } from './processes/scheduler-process.ts';
@@ -135,6 +137,8 @@ const program = new Command()
   .command('a2a', a2aCommand)
   .command('memori', memoriCommand)
   .command('agentlint', agentlintCommand)
-  .command('mcp-gateway', mcpGatewayCommand);
+  .command('mcp-gateway', mcpGatewayCommand)
+  .command('compliance', complianceCommand)
+  .command('debug', debugCmd);
 
 await program.parse(Deno.args);

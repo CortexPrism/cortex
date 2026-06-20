@@ -6,6 +6,7 @@ import { logEvent } from '../db/lens.ts';
 import { incrementTurn } from '../db/sessions.ts';
 import type { ToolRegistry } from '../tools/registry.ts';
 import type { ToolContext } from '../tools/types.ts';
+import type { ToolCallRequest } from '../tools/types.ts';
 import {
   executeTool,
   formatToolResults,
@@ -87,7 +88,7 @@ async function detectAndPersistPreference(userMessage: string): Promise<void> {
   }
 }
 
-const DEFAULT_MAX_TOOL_ROUNDS = 8;
+const DEFAULT_MAX_TOOL_ROUNDS = 12;
 
 const FALLBACK_SYSTEM_PROMPT =
   'You are Cortex, an intelligent agentic assistant. Be helpful, precise, and honest.';
@@ -118,6 +119,8 @@ export interface AgentTurnOptions {
   keepAlive?: string;
   dropParams?: boolean;
   includeVeniceSystemPrompt?: boolean;
+  persistUserMessage?: boolean;
+  persistAssistantMessage?: boolean;
   userContentBlocks?: ContentBlock[];
   /**
    * Maximum tool-call rounds before the loop is halted.
@@ -327,7 +330,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   effectiveInput = preAssessCtx.input ?? effectiveInput;
   _log.debug(`Pre-assess completed`, { turnId, inputModified: effectiveInput !== userMessage });
 
-  await persistMessage(sessionDb, 'user', effectiveInput);
+  if (options.persistUserMessage !== false) {
+    await persistMessage(sessionDb, 'user', effectiveInput);
+  }
 
   import('../quartermaster/mod.ts').then(({ recordUserMessage }) => {
     recordUserMessage(sessionId, effectiveInput);
@@ -342,6 +347,17 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     turnId,
     historyLength: history.length,
     totalMessages: messages.length,
+  });
+
+  const hasDocumentContext = messages.some((message) => {
+    const content = typeof message.content === 'string'
+      ? message.content
+      : message.content
+        .map((block) => block.type === 'text' ? block.text : block.type)
+        .join(' ');
+    return /=== BEGIN DOCUMENT:|=== END DOCUMENT:|\[File:|file_read\(|Document\(s\) uploaded/i.test(
+      content,
+    );
   });
 
   if (
@@ -385,7 +401,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     hasToolCtx: !!toolCtx,
   });
 
-  const metaAssessment = assessTask(effectiveInput);
+  const metaAssessment = assessTask(effectiveInput, { hasDocumentContext });
 
   if (metaAssessment.escalated) {
     import('../db/lens.ts').then(({ logEvent }) => {
@@ -716,6 +732,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         includeVeniceSystemPrompt: options.includeVeniceSystemPrompt,
       };
 
+      const pendingToolCalls = new Map<number, { name: string; jsonFragments: string[] }>();
+      let hasStructuredToolCalls = false;
+
       if (useDirectStream) {
         _log.debug(`Using direct stream`, { round });
         for await (
@@ -754,13 +773,17 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
             })
           ) {
             if (!chunk.done) {
-              roundResponse += chunk.delta;
-              // Emit chunks to client in real-time even in buffered mode.
-              // This provides live feedback while still buffering the full response
-              // for tool call parsing. The WebSocket handler will strip any tool calls
-              // before sending to the client.
-              if (onChunk && chunk.delta.trim()) {
-                onChunk(chunk.delta);
+              if (chunk.event === 'tool_use_start' && chunk.blockIndex !== undefined && chunk.blockName) {
+                hasStructuredToolCalls = true;
+                pendingToolCalls.set(chunk.blockIndex, { name: chunk.blockName, jsonFragments: [] });
+              } else if (chunk.event === 'input_json_delta' && chunk.blockIndex !== undefined) {
+                const entry = pendingToolCalls.get(chunk.blockIndex);
+                if (entry) entry.jsonFragments.push(chunk.delta);
+              } else {
+                roundResponse += chunk.delta;
+                if (onChunk && chunk.delta.trim()) {
+                  onChunk(chunk.delta);
+                }
               }
             } else {
               tokensIn += chunk.tokensIn ?? 0;
@@ -772,6 +795,7 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
                 tokensOut,
                 costUsd,
                 responseLength: roundResponse.length,
+                structuredToolCalls: hasStructuredToolCalls ? pendingToolCalls.size : undefined,
               });
             }
           }
@@ -831,7 +855,25 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       if (!registry || !toolCtx) break;
 
-      const toolCalls = parseToolCalls(roundResponse);
+      let toolCalls: ToolCallRequest[];
+      if (hasStructuredToolCalls && pendingToolCalls.size > 0) {
+        toolCalls = [...pendingToolCalls.entries()].map(([_idx, entry]) => {
+          const raw = entry.jsonFragments.join('');
+          try {
+            const args = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+            return { toolName: entry.name, args };
+          } catch {
+            return { toolName: entry.name, args: {} };
+          }
+        });
+        _log.debug(`tool calls from structured blocks`, {
+          round,
+          count: toolCalls.length,
+          names: toolCalls.map((t) => t.toolName).join(','),
+        });
+      } else {
+        toolCalls = parseToolCalls(roundResponse);
+      }
       _log.debug(`tool calls parsed`, {
         round,
         count: toolCalls.length,
@@ -877,7 +919,6 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           fullResponse: roundResponse.slice(0, 1000),
         });
 
-        // Try to extract the search query and execute web search automatically
         const searchQueryMatch = roundResponse.match(
           /(?:search|look up|find|check for)\s+(.+?)(?:\.|$|\n)/i,
         );
@@ -901,7 +942,6 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
                 round,
                 outputLength: webSearchResult.output.length,
               });
-              // Add the search result to the tool results and continue
               const autoToolResults = [webSearchResult];
               const resultText = formatToolResults(autoToolResults);
               currentMessages = [
@@ -914,21 +954,95 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
                 },
               ];
               round++;
-              continue; // Continue to next round with search results
-            } else {
-              _log.warn(`Auto web search failed`, { turnId, round, error: webSearchResult.error });
+              continue;
             }
+
+            _log.warn(`Auto web search failed`, { turnId, round, error: webSearchResult.error });
           } catch (err) {
             _log.error(`Auto web search error`, { turnId, round, error: (err as Error).message });
           }
         }
 
-        // If auto-execution fails, force completion with explanation
-        const forcedResponse = roundResponse +
-          '\n\n[Note: I had difficulty executing the web search automatically. Let me provide a response based on my knowledge instead.]';
-        if (onChunk) onChunk(stripToolCallMarkup(forcedResponse));
-        response = forcedResponse;
-        break;
+      const shouldListWorkspace =
+        /\bfile_list\b/i.test(roundResponse) ||
+        /(?:check|inspect|list|scan) (?:what already exists in |the )?workspace/i.test(roundResponse) ||
+        /what already exists in the workspace/i.test(roundResponse);
+        if (shouldListWorkspace && registry && toolCtx) {
+          _log.info(`Auto-executing workspace list`, { turnId, round });
+          try {
+            const workspaceListResult = await executeTool(
+              {
+                toolName: 'file_list',
+                args: { workspace: 'agent' },
+              },
+              registry,
+              toolCtx,
+            );
+
+            if (workspaceListResult.success) {
+              const resultText = formatToolResults([workspaceListResult]);
+              currentMessages = [
+                ...currentMessages,
+                { role: 'assistant' as const, content: roundResponse },
+                {
+                  role: 'user' as const,
+                  content:
+                    `${resultText}\n\nBased on the workspace listing above, continue with the task and make the recommendations.`,
+                },
+              ];
+              round++;
+              continue;
+            }
+
+            _log.warn(`Auto workspace list failed`, {
+              turnId,
+              round,
+              error: workspaceListResult.error,
+            });
+          } catch (err) {
+            _log.error(`Auto workspace list error`, { turnId, round, error: (err as Error).message });
+          }
+        }
+      }
+
+      const continuationRe = /\b(?:i['’]ll|i will|i am going to|let me|first,|next,|then,|i need to|i need to first|i'll start|i’m going to|i will first)\b/i;
+      const completionRe = /\b(?:done|finished|complete|completed|implemented|created|built|updated|fixed)\b/i;
+      const needsContinuation = toolCalls.length === 0 && continuationRe.test(roundResponse) && !completionRe.test(roundResponse);
+      if (needsContinuation) {
+        _log.debug(`Plan without tool call, prompting continuation`, {
+          round,
+          responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
+        });
+        currentMessages = [
+          ...currentMessages,
+          { role: 'assistant' as const, content: roundResponse },
+          {
+            role: 'user' as const,
+            content:
+              'Continue with the next concrete step now. Do not restate the plan; execute it or produce the next result.',
+          },
+        ];
+        round++;
+        continue;
+      }
+
+      if (toolCalls.length === 0 && hasToolPromises) {
+        _log.debug(`Promise without tool call, prompting another round`, {
+          round,
+          responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
+        });
+
+        currentMessages = [
+          ...currentMessages,
+          { role: 'assistant' as const, content: roundResponse },
+          {
+            role: 'user' as const,
+            content:
+              'You indicated you would take action, but no tool call was emitted. Please do it now and then continue with the result.',
+          },
+        ];
+        round++;
+        continue;
       }
 
       if (toolCalls.length === 0) {
@@ -1041,19 +1155,53 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           params: redactParams(tc.args),
           result: result.output || result.error || '',
         });
+
+        import('../quartermaster/mod.ts').then(({ observe }) => {
+          observe({
+            turnId,
+            sessionId,
+            toolCall: tc,
+            toolResult: result,
+            toolIndex: index,
+            totalToolsInTurn: toolCalls.length,
+          }).catch(() => {});
+        });
       }
       _log.debug(`Tool execution loop completed`, { round, resultsCount: toolResults.length });
 
       const resultText = formatToolResults(toolResults);
-      // Tool results are internal context fed back to the LLM — never send raw
-      // XML to the client UI.
+
+      let qmHint = '';
+      try {
+        const { predict } = await import('../quartermaster/mod.ts');
+        const prediction = await predict({
+          turnId,
+          sessionId,
+          userMessage: effectiveInput,
+          assessment: metaAssessment,
+          recentToolCalls: toolCalls.map((t) => t.toolName),
+          toolCallIndex: toolCalls.length,
+          totalToolsInTurn: toolCalls.length,
+        });
+        if (prediction) {
+          qmHint = prediction.mode === 'suggest'
+            ? `\nHint: The Quartermaster suggests using "${prediction.suggestedTool}" next (confidence: ${(prediction.confidence * 100).toFixed(0)}%).`
+            : '';
+          _log.debug(`Quartermaster prediction`, {
+            round,
+            suggestedTool: prediction.suggestedTool,
+            confidence: prediction.confidence,
+            mode: prediction.mode,
+          });
+        }
+      } catch (e) {
+        _log.debug(`Quartermaster predict skipped`, { round, error: (e as Error).message });
+      }
 
       const roundsLeft = maxToolRounds - round - 1;
-      const followUpInstruction = roundsLeft <= 1
-        ? `${resultText}\n\nYou have used ${
-          round + 1
-        } of ${maxToolRounds} allowed tool rounds. Provide your final response now. If the task is genuinely incomplete, summarise what has been done and what remains so it can be continued in the next turn.`
-        : `${resultText}\n\nBased on the tool output above, provide your complete response to the user. Only call another tool if the current output is genuinely insufficient — prefer summarising what you have.`;
+      const followUpInstruction = roundsLeft <= 2
+        ? `${resultText}\n\nYou have ${roundsLeft} tool round(s) remaining. Your next response must be your final answer. If the user asked you to create a file, use file_write NOW. Do not make more research calls — produce the deliverable.${qmHint}`
+        : `${resultText}\n\nBased on the tool output above, continue the task. If you have gathered enough context to act, do so now — prefer producing artifacts (files, code, plans) over further research. Only read more files if absolutely necessary.${qmHint}`;
 
       currentMessages = [
         ...currentMessages,
@@ -1153,7 +1301,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     }`;
     // Critical operations that must complete before returning
     await Promise.all([
-      persistMessage(sessionDb, 'assistant', finalOutput, tokensOut),
+      (options.persistAssistantMessage === false)
+        ? Promise.resolve()
+        : persistMessage(sessionDb, 'assistant', finalOutput, tokensOut),
       incrementTurn(sessionId),
     ]);
 

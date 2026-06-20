@@ -40,6 +40,10 @@ interface TaskSignals {
   wordCount: number;
 }
 
+interface TaskContext {
+  hasDocumentContext?: boolean;
+}
+
 const AMBIGUITY_PATTERNS = [
   /^(do it|fix it|run it|check it)\s*$/i,
   /\byou know (what to do|the drill|how)\b/i,
@@ -182,7 +186,12 @@ function countMultiStepWords(text: string): number {
   return MULTI_STEP_WORDS.filter((w) => lower.includes(w)).length;
 }
 
-function analyseTask(message: string): TaskSignals {
+function isInterrogative(message: string): boolean {
+  const trimmed = message.trim();
+  return /\?$/.test(trimmed) || /^(what|who|when|where|why|how|did|do|does|is|are|can|could|would|should|will|have|has|had|may|might|must)\b/i.test(trimmed);
+}
+
+function analyseTask(message: string, context: TaskContext = {}): TaskSignals {
   const lower = message.toLowerCase();
   const wordCount = message.split(/\s+/).length;
 
@@ -207,7 +216,8 @@ function analyseTask(message: string): TaskSignals {
     requiresUserInput: hasPattern(message, MISSING_INFO_PATTERNS) && wordCount < 15,
     isSimple: wordCount < 12 && multiStepWordCount < 2,
     isAmbiguous: hasPattern(message, AMBIGUITY_PATTERNS) ||
-      (wordCount < 8 && PRONOUN_PATTERN.test(message.trim()) && codeScore === 0),
+      (wordCount < 8 && PRONOUN_PATTERN.test(message.trim()) && codeScore === 0 &&
+        !isInterrogative(message) && !context.hasDocumentContext),
     isDestructive: hasPattern(message, DESTRUCTIVE_PATTERNS),
     isExploratory: exploreScore >= 2 || (exploreScore >= 1 && wordCount < 30),
     isCodeTask: codeScore >= 2 || (codeScore >= 1 && wordCount > 8),
@@ -419,8 +429,8 @@ function determineDecision(signals: TaskSignals): {
   }
 }
 
-export function assessTask(message: string): MetaAssessment {
-  const signals = analyseTask(message);
+export function assessTask(message: string, context: TaskContext = {}): MetaAssessment {
+  const signals = analyseTask(message, context);
   const result = determineDecision(signals);
 
   const CONFIDENCE_ESCALATION_THRESHOLD = 0.35;

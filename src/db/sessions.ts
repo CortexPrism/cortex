@@ -35,6 +35,15 @@ export async function createSession(
      VALUES (?, ?, ?, ?, 'active', 0, 'sensitive', datetime('now'), ?)`,
     [id, name ?? null, agentId ?? 'default', channel, parentSessionId ?? null],
   );
+
+  // Record compliance metadata for session start (fire-and-forget)
+  import('../security/compliance.ts').then(({ recordSessionCompliance }) => {
+    recordSessionCompliance({
+      sessionId: id,
+      agentId: agentId,
+      taskDescription: name,
+    }).catch(() => {});
+  }).catch(() => {});
 }
 
 export async function resumeSession(id: string): Promise<void> {
@@ -65,6 +74,11 @@ export async function closeSession(id: string): Promise<void> {
     `UPDATE sessions SET status = 'closed', closed_at = datetime('now') WHERE id = ?`,
     [id],
   );
+
+  // Finalize compliance metadata for session end (fire-and-forget)
+  import('../security/compliance.ts').then(({ finalizeSessionCompliance }) => {
+    finalizeSessionCompliance(id).catch(() => {});
+  }).catch(() => {});
 }
 
 export async function archiveSession(id: string): Promise<void> {
