@@ -49,6 +49,7 @@ function checkAuthRateLimit(ip: string): boolean {
 import { configureLogger } from '../utils/logger.ts';
 import type {
   AgentConfig,
+  AutoModelPoolEntry,
   CortexConfig,
   ProviderConfig,
   ProviderKind,
@@ -534,6 +535,104 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ status: 'ok', ts: new Date().toISOString() });
   }
 
+  // GET /api/debug/health — expanded health check with DB verification
+  if (req.method === 'GET' && path === '/api/debug/health') {
+    const checks: Record<string, string> = {};
+    try {
+      const { getCoreDb, getMemoryDb } = await import('../db/client.ts');
+      try {
+        await getCoreDb();
+        checks['core_db'] = 'ok';
+      } catch (e) {
+        checks['core_db'] = `fail: ${(e as Error).message}`;
+      }
+      try {
+        await getMemoryDb();
+        checks['memory_db'] = 'ok';
+      } catch (e) {
+        checks['memory_db'] = `fail: ${(e as Error).message}`;
+      }
+      const sysInfo = Deno.systemMemoryInfo();
+      checks['ram_free'] = `${(sysInfo.free / (1024 ** 3)).toFixed(1)} GB`;
+      checks['ram_total'] = `${(sysInfo.total / (1024 ** 3)).toFixed(1)} GB`;
+      checks['uptime_h'] = String(Math.floor(Deno.osUptime() / 3600));
+      return json({ status: Object.values(checks).every((v) => v === 'ok' || !v.startsWith('fail')) ? 'ok' : 'degraded', checks, ts: new Date().toISOString() });
+    } catch (e) {
+      return json({ status: 'error', error: (e as Error).message, ts: new Date().toISOString() }, 500);
+    }
+  }
+
+  // GET /api/debug/sessions — list active sessions with message counts
+  if (req.method === 'GET' && path === '/api/debug/sessions') {
+    try {
+      const { getCoreDb, getSessionDb } = await import('../db/client.ts');
+      const db = await getCoreDb();
+      const sessions = await db.all<Record<string, unknown>>(
+        `SELECT id, agent_id, status, created_at, turn_count FROM sessions WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`,
+      );
+      const results = [];
+      for (const s of sessions) {
+        let msgCount = 0;
+        try {
+          const sessDb = await getSessionDb(s.id as string);
+          const rows = await sessDb.all<{ c: number }>(`SELECT COUNT(*) as c FROM session_messages`);
+          msgCount = rows[0]?.c ?? 0;
+        } catch { /* session db may not exist yet */ }
+        results.push({ ...s, message_count: msgCount });
+      }
+      return json(results);
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
+  }
+
+  // GET /api/debug/sessions/:id — full session transcript
+  if (req.method === 'GET' && path.startsWith('/api/debug/sessions/')) {
+    const sessionId = path.split('/api/debug/sessions/')[1];
+    if (!sessionId) return json({ error: 'session id required' }, 400);
+    try {
+      const { getSessionDb } = await import('../db/client.ts');
+      const db = await getSessionDb(sessionId);
+      const messages = await db.all<Record<string, unknown>>(
+        `SELECT id, role, content, token_count, created_at FROM session_messages ORDER BY id`,
+      );
+      const events = await db.all<Record<string, unknown>>(
+        `SELECT id, event_type, payload, created_at FROM session_events ORDER BY id`,
+      );
+      return json({ sessionId, messages, events });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
+  }
+
+  // GET /api/debug/metrics — current Prometheus metrics text
+  if (req.method === 'GET' && path === '/api/debug/metrics') {
+    try {
+      const { renderPrometheus } = await import('../observability/metrics.ts');
+      return new Response(renderPrometheus(), {
+        headers: { 'content-type': 'text/plain; charset=utf-8' },
+      });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
+  }
+
+  // GET /api/debug/config — config with keys redacted but otherwise full
+  if (req.method === 'GET' && path === '/api/debug/config') {
+    try {
+      const cfg = await loadConfig();
+      const safe = JSON.parse(JSON.stringify(cfg));
+      if (safe.providers) {
+        for (const [k, v] of Object.entries(safe.providers)) {
+          if ((v as Record<string, unknown>).apiKey) (v as Record<string, unknown>).apiKey = '[REDACTED]';
+        }
+      }
+      return json(safe);
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
+  }
+
   // Phase 2 scaffolding endpoints (public, no auth required)
   // Six Phase-2 pages with four sub-endpoints each: content, config, state, stats
   // This provides a minimal surface area to bootstrap Phase 2 UI routing.
@@ -868,6 +967,49 @@ export async function handleApi(req: Request): Promise<Response | null> {
     params.push(String(limit));
     const events = await db.all(query, params);
     return json(events);
+  }
+
+  // GET /api/compliance/session/:id
+  const complianceSessionMatch = path.match(/^\/api\/compliance\/session\/([^/]+)$/);
+  if (req.method === 'GET' && complianceSessionMatch) {
+    const { getSessionCompliance } = await import('../security/compliance.ts');
+    const records = await getSessionCompliance(complianceSessionMatch[1]);
+    return json(records);
+  }
+
+  // GET /api/compliance/risk?level=high&since=2026-01-01
+  if (req.method === 'GET' && path === '/api/compliance/risk') {
+    const { getComplianceByRisk } = await import('../security/compliance.ts');
+    const level = (url.searchParams.get('level') ?? 'high') as
+      | 'low'
+      | 'medium'
+      | 'high'
+      | 'critical';
+    const since = url.searchParams.get('since') ?? undefined;
+    const records = await getComplianceByRisk(level, since);
+    return json(records);
+  }
+
+  // GET /api/compliance/export?framework=EU+AI+Act&since=2026-01-01
+  if (req.method === 'GET' && path === '/api/compliance/export') {
+    const { exportComplianceReport } = await import('../security/compliance.ts');
+    const framework = (url.searchParams.get('framework') ?? 'EU AI Act') as
+      | 'EU AI Act'
+      | 'GDPR'
+      | 'ISO 42001'
+      | 'SOC2'
+      | 'HIPAA'
+      | 'PCI DSS';
+    const since = url.searchParams.get('since') ?? undefined;
+    const report = await exportComplianceReport(framework, since);
+    return json(report);
+  }
+
+  // POST /api/compliance/retention — enforce data retention
+  if (req.method === 'POST' && path === '/api/compliance/retention') {
+    const { enforceRetention } = await import('../security/compliance.ts');
+    const deleted = await enforceRetention();
+    return json({ ok: true, deleted });
   }
 
   // GET /api/sessions/:id/messages
@@ -3689,6 +3831,36 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'POST' && path === '/api/qm/config') {
     const body = await req.json() as Record<string, unknown>;
     const config = await loadConfig();
+
+    const VALID_PROVIDERS: ProviderKind[] = [
+      'anthropic', 'openai', 'ollama', 'google', 'mistral', 'groq',
+      'deepseek', 'openrouter', 'xai', 'together', 'bedrock', 'cohere',
+      'kilo', 'cerebras', 'fireworks', 'perplexity', 'nvidia', 'moonshot',
+      'novita', 'lmstudio', 'litellm', 'huggingface', 'alibaba', 'venice',
+    ];
+
+    let autoModelPool: AutoModelPoolEntry[] | undefined;
+    if (Array.isArray(body.autoModelPool)) {
+      const seen = new Set<string>();
+      autoModelPool = [];
+      for (const entry of body.autoModelPool as Array<Record<string, unknown>>) {
+        const provider = entry.provider as ProviderKind | undefined;
+        const model = typeof entry.model === 'string' ? entry.model.trim() : '';
+        if (!provider || !VALID_PROVIDERS.includes(provider)) continue;
+        if (!model) continue;
+        const key = `${provider}:${model}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        autoModelPool.push({
+          provider,
+          model,
+          enabled: entry.enabled !== undefined ? Boolean(entry.enabled) : true,
+        });
+      }
+    } else if (body.autoModelPool !== undefined) {
+      autoModelPool = config.modelSelection?.autoModelPool ?? [];
+    }
+
     config.modelSelection = {
       enabled: body.enabled !== undefined
         ? Boolean(body.enabled)
@@ -3713,6 +3885,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
         config.modelSelection?.quartermasterProvider,
       quartermasterModel: (body.quartermasterModel as string | undefined) ??
         config.modelSelection?.quartermasterModel,
+      autoModelPool: autoModelPool !== undefined
+        ? autoModelPool
+        : config.modelSelection?.autoModelPool ?? [],
     };
     await saveConfig(config);
     return json({ success: true, modelSelection: config.modelSelection });

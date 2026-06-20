@@ -4,7 +4,7 @@ import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { initSessionDb } from '../db/migrate.ts';
-import { buildProvider, buildRouter, PROVIDER_DEFAULT_CONTEXT_WINDOWS } from '../llm/router.ts';
+import { buildProvider, buildProviderFromConfig, buildRouter, PROVIDER_DEFAULT_CONTEXT_WINDOWS } from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
 import type { ContentBlock } from '../llm/types.ts';
@@ -23,6 +23,7 @@ type WsMsg =
     sessionId?: string;
     agentId?: string;
     model?: string;
+    modelMode?: 'manual' | 'auto';
     reasoningEffort?: string;
     files?: Array<{ filename: string; mimeType: string; data: string }>;
   }
@@ -49,6 +50,23 @@ function send(ws: WebSocket, data: unknown): void {
 const pendingApprovals = new Map<string, (approved: boolean) => void>();
 
 const wsClients = new Map<WebSocket, { sessionId: string | null }>();
+
+function stripToolMarkup(text: string): string {
+  return text
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '')
+    .replace(/<tool_call_name>[\s\S]*?<\/tool_call_name>/g, '')
+    .replace(/<tool_call_name="[a-zA-Z0-9_-]+"\s*\/?>/g, '')
+    .replace(/<tool_call_args>[\s\S]*?<\/tool_call_args>/g, '')
+    .replace(/<tool_call_arg_key>[\s\S]*?<\/tool_call_arg_key>/g, '')
+    .replace(/<tool_call_arg_value>[\s\S]*?<\/tool_call_arg_value>/g, '')
+    .replace(/<parameter\s[^>]*>[\s\S]*?<\/parameter>/g, '')
+    .replace(/<tool_result[\s\S]*?<\/tool_result>/g, '')
+    .replace(/```[\s\S]*?```/g, (block) => /\{\s*"(tool|name)"\s*:/.test(block) ? '' : block)
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .trim();
+}
 
 function broadcast(msg: unknown, targetSessionId?: string): void {
   const data = JSON.stringify(msg);
@@ -142,6 +160,35 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
   let sessionId: string | null = null;
   let sessionDbRef: Awaited<ReturnType<typeof initSessionDb>> | null = null;
+  let turnInFlight = false;
+  let closeAfterTurn = false;
+  let assistantMessageId: number | null = null;
+  let assistantDraft = '';
+  let assistantFlushTimer: number | null = null;
+
+  function clearAssistantFlushTimer(): void {
+    if (assistantFlushTimer !== null) {
+      clearTimeout(assistantFlushTimer);
+      assistantFlushTimer = null;
+    }
+  }
+
+  async function flushAssistantDraft(finalText?: string, tokenCount?: number): Promise<void> {
+    if (!sessionDbRef || assistantMessageId === null) return;
+    const content = finalText ?? assistantDraft;
+    await sessionDbRef.run(
+      `UPDATE session_messages SET content = ?, token_count = COALESCE(?, token_count) WHERE id = ?`,
+      [content, tokenCount ?? null, assistantMessageId],
+    ).catch(() => {});
+  }
+
+  function scheduleAssistantFlush(): void {
+    if (assistantFlushTimer !== null || assistantMessageId === null) return;
+    assistantFlushTimer = setTimeout(() => {
+      assistantFlushTimer = null;
+      flushAssistantDraft().catch(() => {});
+    }, 250) as unknown as number;
+  }
 
   const unsubscribe = onFileChange((event) => {
     broadcast({ type: 'file_change', ...event }, sessionId ?? undefined);
@@ -152,20 +199,13 @@ export async function handleWebSocket(req: Request): Promise<Response> {
   ws.onclose = async () => {
     wsClients.delete(ws);
     unsubscribe();
-    if (sessionId && sessionDbRef) {
-      await Promise.allSettled([
-        closeSession(sessionId),
-        logEvent({
-          event_type: 'session_end',
-          session_id: sessionId,
-          actor: 'system',
-          action: 'session_end',
-          summary: 'WebSocket session closed',
-          started_at: new Date().toISOString(),
-        }),
-      ]);
-      sessionDbRef.close();
+    clearAssistantFlushTimer();
+    if (!sessionId || !sessionDbRef) return;
+    if (turnInFlight) {
+      closeAfterTurn = true;
+      return;
     }
+    sessionDbRef.close();
   };
 
   // Currently selected agent ID for this session
@@ -220,18 +260,44 @@ export async function handleWebSocket(req: Request): Promise<Response> {
     reasoningEffortOverride?: string,
     files?: Array<{ filename: string; mimeType: string; data: string }>,
     resumeSessionId?: string,
+    modelMode?: 'manual' | 'auto',
   ): Promise<void> {
     try {
       const config = await loadConfig();
       const agent = await resolveAgent(agentId);
       activeAgent = agent;
 
-      const providerKind = agent.provider || config.defaultProvider;
-      const provider = buildProvider({ ...config, defaultProvider: providerKind as never });
+      let providerKind: import('../config/config.ts').ProviderKind;
+      let model: string;
+      let autoFallback = false;
+      let autoFallbackReason: string | undefined;
+      let requestedModelMode: 'manual' | 'auto' = modelMode ?? 'manual';
+
+      if (modelMode === 'auto') {
+        const { resolveAutoModel } = await import('../model-quartermaster/auto-resolver.ts');
+        const resolution = await resolveAutoModel({
+          userMessage: message,
+          config,
+          sessionId: sessionId ?? `pending_${Date.now()}`,
+          turnId: `turn_${Date.now().toString(36)}`,
+          agentProvider: agent.provider,
+          agentModel: agent.model,
+        });
+        providerKind = resolution.provider;
+        model = resolution.model;
+        autoFallback = resolution.autoFallback;
+        autoFallbackReason = resolution.autoFallbackReason;
+      } else {
+        providerKind = agent.provider || config.defaultProvider;
+        model = modelOverride || agent.model || config.providers[providerKind]?.model || 'unknown';
+      }
+
+      const provider = buildProviderFromConfig(providerKind, config.providers[providerKind] ?? {
+        kind: providerKind,
+        model: model,
+      });
       const router = buildRouter(config);
       const effectiveProvider = router ?? provider;
-      const model = modelOverride || agent.model || config.providers[providerKind]?.model ||
-        'unknown';
       const provCfg = config.providers[providerKind];
       const reasoningEffort = reasoningEffortOverride ?? provCfg?.reasoningEffort;
       const providerSpecificOpts = {
@@ -458,6 +524,8 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         systemPrompt: effectiveSystemPrompt,
         stream: true,
         reasoningEffort,
+        persistUserMessage: false,
+        persistAssistantMessage: false,
         ...providerSpecificOpts,
         onChunk: (() => {
           // Buffer to accumulate chunks for proper tool call detection
@@ -479,6 +547,12 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
             // Remove <tool_call>...</tool_call> blocks (complete ones only)
             workingText = workingText.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '');
+            workingText = workingText.replace(/<tool_call_name>[\s\S]*?<\/tool_call_name>/g, '');
+            workingText = workingText.replace(/<tool_call_name="[a-zA-Z0-9_-]+"\s*\/?>/g, '');
+            workingText = workingText.replace(/<tool_call_args>[\s\S]*?<\/tool_call_args>/g, '');
+            workingText = workingText.replace(/<tool_call_arg_key>[\s\S]*?<\/tool_call_arg_key>/g, '');
+            workingText = workingText.replace(/<tool_call_arg_value>[\s\S]*?<\/tool_call_arg_value>/g, '');
+            workingText = workingText.replace(/<parameter\s[^>]*>[\s\S]*?<\/parameter>/g, '');
             workingText = workingText.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
 
             // Find and remove complete bare JSON tool calls
@@ -547,11 +621,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
               lastSentIndex = 0;
             }
 
-            // Clean up and send — only strip leading/trailing newlines, NOT spaces,
-            // to preserve word boundaries between consecutive chunks.
-            safeText = safeText.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+            // Preserve chunk boundary newlines so markdown paragraphs and lists
+            // survive incremental streaming. Only collapse excessive blank lines.
+            safeText = safeText.replace(/\n{3,}/g, '\n\n');
             if (safeText) {
               send(ws, { type: 'chunk', delta: safeText });
+              if (assistantMessageId !== null) {
+                assistantDraft += safeText;
+              }
             }
           };
         })(),
@@ -582,6 +659,23 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         userContentBlocks: contentBlocks,
       });
 
+      if (assistantMessageId !== null) {
+        const hadNoChunks = assistantDraft === 'Thinking…' || !assistantDraft;
+        const finalAssistantText = hadNoChunks
+          ? (result.response || assistantDraft)
+          : stripToolMarkup(
+            assistantDraft !== 'Thinking…'
+              ? assistantDraft
+              : (result.response || assistantDraft),
+          );
+        assistantDraft = finalAssistantText;
+        await flushAssistantDraft(finalAssistantText, result.tokensOut);
+
+        if (hadNoChunks && result.response) {
+          send(ws, { type: 'chunk', delta: result.response });
+        }
+      }
+
       // Send captured reasoning separately if it contains tool calls
       if (capturedReasoning && capturedReasoning.includes('"tool"')) {
         send(ws, { type: 'reasoning', content: capturedReasoning });
@@ -611,6 +705,12 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         durationMs: result.durationMs,
         model,
         reasoningEffort: reasoningEffort ?? null,
+        finalContent: assistantDraft,
+        requestedModelMode,
+        resolvedProvider: providerKind,
+        resolvedModel: model,
+        autoFallback,
+        autoFallbackReason: autoFallbackReason ?? null,
       });
 
       try {
@@ -648,6 +748,48 @@ export async function handleWebSocket(req: Request): Promise<Response> {
     } catch (e) {
       send(ws, { type: 'error', error: (e as Error).message });
     }
+  }
+
+  async function ensureChatSession(agentId?: string, resumeId?: string): Promise<void> {
+    if (resumeId) {
+      if (sessionId === resumeId) {
+        if (!sessionDbRef) {
+          sessionDbRef = await initSessionDb(sessionId);
+        }
+        return;
+      }
+      const agent = await resolveAgent(agentId);
+      activeAgent = agent;
+      sessionId = resumeId;
+      wsClients.set(ws, { sessionId });
+      sessionDbRef = await initSessionDb(sessionId);
+      await resumeSession(sessionId);
+      send(ws, { type: 'session', sessionId, agentId: agent.id, agentName: agent.name });
+      _log.info(`Resumed session after reconnect`, { sessionId, agentName: agent.name });
+      return;
+    }
+    if (sessionId) {
+      if (!sessionDbRef) {
+        sessionDbRef = await initSessionDb(sessionId);
+      }
+      return;
+    }
+
+    const agent = await resolveAgent(agentId);
+    activeAgent = agent;
+    sessionId = `sess_${Date.now().toString(36)}_ws`;
+    wsClients.set(ws, { sessionId });
+    sessionDbRef = await initSessionDb(sessionId);
+    await createSession(sessionId, 'web', undefined, agent.id);
+    await logEvent({
+      event_type: 'session_start',
+      session_id: sessionId,
+      actor: 'user',
+      action: 'session_start',
+      summary: `WebSocket session started with agent "${agent.name}"`,
+      started_at: new Date().toISOString(),
+    });
+    send(ws, { type: 'session', sessionId, agentId: agent.id, agentName: agent.name });
   }
 
   ws.onmessage = async (event: MessageEvent) => {
@@ -778,6 +920,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           undefined,
           undefined,
           sessionId ?? undefined,
+          undefined,
         );
       } catch (e) {
         send(ws, { type: 'error', error: `Transcription failed: ${(e as Error).message}` });
@@ -830,20 +973,52 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       return;
     }
 
-    if (msg.type === 'chat') {
-      if (!msg.message?.trim() && (!msg.files || msg.files.length === 0)) {
-        send(ws, { type: 'error', error: 'Empty message' });
-        return;
+      if (msg.type === 'chat') {
+        if (!msg.message?.trim() && (!msg.files || msg.files.length === 0)) {
+          send(ws, { type: 'error', error: 'Empty message' });
+          return;
+        }
+        await ensureChatSession(msg.agentId, msg.sessionId);
+        turnInFlight = true;
+        if (sessionDbRef && sessionId) {
+          const attachments = msg.files?.length
+            ? ` [Files: ${msg.files.map((f) => f.filename).join(', ')}]`
+            : '';
+        const pendingUserMessage = `${msg.message ?? ''}${attachments}`.trim() || '(attachment upload)';
+        await sessionDbRef.insert(
+          `INSERT INTO session_messages (role, content, token_count) VALUES (?, ?, ?)`,
+          ['user', pendingUserMessage, null],
+        ).catch(() => {});
+        assistantDraft = 'Thinking…';
+        assistantMessageId = await sessionDbRef.insert(
+          `INSERT INTO session_messages (role, content, token_count) VALUES (?, ?, ?)`,
+          ['assistant', assistantDraft, null],
+        ).catch(() => 0);
       }
-      await processChatMessage(
-        msg.message,
-        ws,
-        msg.agentId,
-        msg.model,
-        msg.reasoningEffort,
-        msg.files,
-        msg.sessionId,
-      );
+      try {
+        await processChatMessage(
+          msg.message,
+          ws,
+          msg.agentId,
+          msg.model,
+          msg.reasoningEffort,
+          msg.files,
+          msg.sessionId,
+          msg.modelMode,
+        );
+      } finally {
+        turnInFlight = false;
+        clearAssistantFlushTimer();
+        if (assistantMessageId !== null) {
+          await flushAssistantDraft(undefined, undefined);
+        }
+        if (closeAfterTurn && sessionId && sessionDbRef) {
+          closeAfterTurn = false;
+          sessionDbRef.close();
+        }
+        assistantMessageId = null;
+        assistantDraft = '';
+      }
       return;
     }
   };
