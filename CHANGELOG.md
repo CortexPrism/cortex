@@ -49,6 +49,36 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **ARCHITECT_KEYWORDS overlapped with PLANNING_KEYWORDS** — `'architecture'` appeared in both keyword sets, causing double-scoring for architecture-related tasks. Removed from `PLANNING_KEYWORDS` (retained in `ARCHITECT_KEYWORDS` where it's more precisely scoped). (`src/agent/metacog.ts`)
 
+- **Metacognition event-type / action mismatch** — `logPlan()` stored assessments as `event_type = 'plan_created'` with `action = 'plan:direct'` but the `/api/metacognition/history` and `/summary` endpoints queried `event_type = 'meta_assessment'`, returning empty results. The action prefix `plan:` also mismatched the UI's color map. Fixed to use `event_type = 'meta_assessment'`, `actor = 'metacognition'`, and bare action values. Escalation queries also corrected from `error IS NOT NULL` on wrong event_type to `event_type = 'escalation'`. (`src/agent/planner.ts`, `src/server/router.ts`)
+
+- **Metacognition test endpoint missing** — the "Task Assessment Tester" in the UI used a simplified client-side keyword stub that didn't match the real `assessTask()` engine. Added `POST /api/metacognition/test` and rewrote `testMetacognition()` to call it with full signal breakdown, confidence, suggested sub-agents, and escalation state. (`src/server/router.ts`, `src/server/ui.ts`)
+
+- **Skills export returned 400** — `skillsExport()` sent `POST /api/skills/export` with no body but the endpoint required `{ name }`. Fixed to prompt for skill name, fetch detail from `/api/skills/detail`, then POST the full skill data. Also removed the broken file-download that saved error JSON as a blob. (`src/server/ui.ts`)
+
+- **Skills merge sent wrong body format** — `skillsShowMerge()` sent raw file text as the POST body to `/api/skills/merge`, but the endpoint expects `{ target, source }`. Fixed to `JSON.parse()` and extract the correct fields with error handling for invalid JSON. (`src/server/ui.ts`)
+
+- **Skills dependency fallback used DB column name** — `skillsShowDeps()` fell back to `data.depends_on` (the DB column) instead of `data.dependents` (the API response field). (`src/server/ui.ts`)
+
+- **Skills prompt hardcoded dead skill names** — `formatSkillsAsAvailableList()` recommended `cortex-dev` and `frontend-design` by name, but both are legacy skills excluded from `BUILTIN_SKILLS` and never registered in the DB. Agents following the prompt would get `SKILL_NOT_FOUND` on `load_skill`. Fixed to dynamically generate tips based on which skills are actually available. (`src/memory/skills.ts`)
+
+- **Redundant dynamic import in skill_write** — `getSkillDependents` was already imported at the top of the file but was dynamically re-imported inline in the `dependents` operation. Removed the redundant `await import()`. (`src/tools/builtin/skill_write.ts`)
+
+- **Vault expiration stored as relative string** — the UI sent `"30d"`/`"90d"`/`"1y"` as expiration values, the router stored them verbatim, and `vaultGet()` compared them as ISO date strings (e.g. `"30d" > "2026-..."` because `'3' > '2'`), so entries never expired. Fixed by converting relative durations to ISO 8601 timestamps in the router before storage. (`src/server/router.ts`)
+
+- **Vault tags field silently dropped** — the UI sent a `tags` array, the router destructured but discarded it, the DB had no `tags` column, and the credential list tried to render `c.tags` (always undefined). Removed the dead tags input, form field, and rendering code from the UI. (`src/server/ui.ts`, `src/server/router.ts`)
+
+- **Vault service reset to 'vault' on every edit** — the store endpoint hardcoded `service: 'vault'`, overwriting the original service (e.g. `'tool'`) on credential edits. Fixed to preserve the existing service from the DB. (`src/server/router.ts`)
+
+- **MCP connect/disconnect/delete broken for HTTP transports** — all three endpoints (connect, disconnect, DELETE) only called `connectStdio`/`disconnectStdio`, never branching to the HTTP variants. HTTP connections could not be re-connected, disconnected, or deleted from the UI. Fixed by checking `conn.config.transport` and calling the correct function. (`src/server/router.ts`)
+
+- **MCP server endpoint was a hardcoded stub** — `/api/mcp/server` always returned `{ running: true, port: 0 }`. `/api/mcp/server/start` and `/stop` were 404. Fixed to read the real port from `CORTEX_PORT`/`PORT` env vars and added start/stop endpoints that return the current status. (`src/server/router.ts`)
+
+- **MCP Gateway page always failed** — `loadMcpGatewayPage()` called `GET /api/mcp-gateway/servers` which did not exist. Added the endpoint using `listServers()` from the gateway registry, returning `{ servers, healthy, degraded }`. Also fixed the UI fetch to use the `BASE` prefix consistently. (`src/server/router.ts`, `src/server/ui.ts`)
+
+- **code_search_symbol tool dropped language filter** — the tool captured `args.language` but never passed it to `ftsSearchNodes()`, silently ignoring the filter on the primary search path. (`src/tools/builtin/codegraph/code_search_symbol.ts`)
+
+- **Codegraph pilot had dead input fields** — the Pilot panel rendered "File Pattern" and "Exclude Patterns" inputs but `runCodegraphPilot()` never read their values. Wired `filePattern` → `fileAllowlist` and `excludePattern` → `fileBlocklist` through the router into `createCodePilotConfig`. (`src/server/ui.ts`, `src/server/router.ts`)
+
 ### Changed
 
 - **Sub-agent type system prompts enhanced** — all 11 types now have detailed protocols, output format specifications, and quality standards. Notable: `code` adds production-quality standards and "no TODOs" rule; `security` adds full OWASP checklist with CWE mapping; `debug` adds 6-step systematic protocol; `architect` adds ADR format and 9-part output template; `data` adds 7-step analysis protocol; `ui` adds WCAG 2.1 AA standards and 5 UI state requirements. (`src/agent/sub-agent-types.ts`)

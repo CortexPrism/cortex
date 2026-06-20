@@ -1537,7 +1537,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/metacognition/history') {
     const db = await getLensDb();
     const rows = await db.all(
-      `SELECT id, event_type, session_id, actor, action, summary, payload, error, model, started_at, duration_ms, created_at FROM lens_events WHERE event_type = 'meta_assessment' ORDER BY started_at DESC LIMIT 100`,
+      `SELECT id, event_type, session_id, actor, action, summary, payload, error, model, started_at, duration_ms, created_at FROM lens_events WHERE (event_type = 'meta_assessment' AND actor = 'metacognition') OR event_type = 'escalation' ORDER BY started_at DESC LIMIT 100`,
     );
     return json(rows);
   }
@@ -1546,10 +1546,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/metacognition/summary') {
     const db = await getLensDb();
     const decisions = await db.all(
-      `SELECT action, COUNT(*) as count FROM lens_events WHERE event_type = 'meta_assessment' GROUP BY action ORDER BY count DESC`,
+      `SELECT action, COUNT(*) as count FROM lens_events WHERE event_type = 'meta_assessment' AND actor = 'metacognition' GROUP BY action ORDER BY count DESC`,
     );
     const escRow = await db.get(
-      `SELECT COUNT(*) as total FROM lens_events WHERE event_type = 'meta_assessment' AND error IS NOT NULL AND error != ''`,
+      `SELECT COUNT(*) as total FROM lens_events WHERE event_type = 'escalation'`,
     );
     const critiques = await db.all(
       `SELECT id, session_id, payload, summary, started_at FROM lens_events WHERE event_type = 'reflection_generated' AND actor = 'adversarial' ORDER BY started_at DESC LIMIT 5`,
@@ -1559,6 +1559,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
       totalEscalations: escRow?.total || 0,
       recentCritiques: critiques || [],
     });
+  }
+
+  // POST /api/metacognition/test
+  if (req.method === 'POST' && path === '/api/metacognition/test') {
+    const body = await req.json() as { message: string };
+    if (!body.message) return err('Missing field: message', 400);
+    const { assessTask } = await import('../agent/metacog.ts');
+    const result = assessTask(body.message);
+    return json(result);
   }
 
   // GET /api/memory/graph/entities?q=
@@ -3687,18 +3696,28 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/vault/store
   if (req.method === 'POST' && path === '/api/vault/store') {
-    const { vaultStore } = await import('../security/vault.ts');
+    const { vaultStore, vaultGet } = await import('../security/vault.ts');
     const body = await req.json() as {
       key: string;
       value: string;
       expiration?: string;
       maxUses?: number;
-      tags?: string[];
     };
     if (!body.key?.trim()) return err('Key name is required', 400);
+    let existingService = 'vault';
+    try {
+      const existing = await vaultGet(body.key.trim(), 'system');
+      if (existing) {
+        const db2 = await import('../db/client.ts').then((m) => m.getVaultDb());
+        const row = await db2.get<{ service: string }>(
+          `SELECT service FROM vault_entries WHERE name = ?`, [body.key.trim()],
+        );
+        if (row?.service) existingService = row.service;
+      }
+    } catch { /* new credential — use default */ }
     await vaultStore({
       name: body.key.trim(),
-      service: 'vault',
+      service: existingService,
       value: body.value ?? '',
       credentialType: 'api_key',
     });
@@ -3706,8 +3725,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (body.expiration || body.maxUses !== undefined) {
       const db = await import('../db/client.ts').then((m) => m.getVaultDb());
       if (body.expiration) {
+        let expiresAt: string;
+        const exp = body.expiration;
+        if (/^\d+[dmy]$/i.test(exp)) {
+          const num = parseInt(exp);
+          const unit = exp.slice(-1).toLowerCase();
+          const multipliers: Record<string, number> = { d: 86_400_000, m: 2_592_000_000, y: 31_536_000_000 };
+          expiresAt = new Date(Date.now() + num * (multipliers[unit] || 0)).toISOString();
+        } else {
+          expiresAt = exp;
+        }
         await db.run(`UPDATE vault_entries SET expires_at = ? WHERE name = ?`, [
-          body.expiration,
+          expiresAt,
           body.key.trim(),
         ]);
       }
@@ -4370,6 +4399,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
       includeComments?: boolean;
       includeTestFiles?: boolean;
       prunePrivateMembers?: boolean;
+      filePattern?: string;
+      excludePattern?: string;
       project?: string;
     };
     const { optimizeCodebase, createCodePilotConfig } = await import(
@@ -4404,6 +4435,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
         includeComments: body.includeComments ?? false,
         includeTestFiles: body.includeTestFiles ?? false,
         prunePrivateMembers: body.prunePrivateMembers ?? true,
+        fileAllowlist: body.filePattern ? [body.filePattern] : [],
+        fileBlocklist: body.excludePattern
+          ? body.excludePattern.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
       });
       const optimized = optimizeCodebase(files, config);
       return json(optimized);
@@ -4819,7 +4854,24 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // Phase 5: UI expansion endpoints
 
-  /// GET /api/mcp-gateway/health-retry — retry MCP server health check (#252)
+  // GET /api/mcp-gateway/servers — list all managed MCP servers
+  if (req.method === 'GET' && path === '/api/mcp-gateway/servers') {
+    const { listServers } = await import('../mcp-gateway/registry.ts');
+    const servers = listServers().map((s) => ({
+      id: s.id,
+      name: s.name,
+      endpoint: s.endpoint,
+      transport: s.transport,
+      status: s.status,
+      toolCount: s.toolCount,
+      lastHealthCheck: s.lastHealthCheck,
+    }));
+    const healthy = servers.filter((s) => s.status === 'healthy').length;
+    const degraded = servers.filter((s) => s.status === 'degraded').length;
+    return json({ servers, healthy, degraded });
+  }
+
+  // POST /api/mcp-gateway/health-retry — retry MCP server health check
   if (req.method === 'POST' && path === '/api/mcp-gateway/health-retry') {
     const body = await req.json() as { serverId: string };
     if (!body.serverId) return err('serverId is required', 400);
@@ -5606,7 +5658,13 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
   const mcpGetMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)$/);
   if (req.method === 'DELETE' && mcpGetMatch) {
-    await (await import('../mcp/client.ts')).disconnectStdio(mcpGetMatch[1]);
+    const { getConnection, disconnectStdio, disconnectHttp } = await import('../mcp/client.ts');
+    const conn = getConnection(mcpGetMatch[1]);
+    if (conn && conn.config.transport === 'http') {
+      await disconnectHttp(mcpGetMatch[1]);
+    } else {
+      await disconnectStdio(mcpGetMatch[1]);
+    }
     return json({ ok: true });
   }
   const mcpToolsMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/tools$/);
@@ -5643,11 +5701,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
   }
   const mcpConnectMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/connect$/);
   if (req.method === 'POST' && mcpConnectMatch) {
-    const { getConnection, connectStdio } = await import('../mcp/client.ts');
+    const { getConnection, connectStdio, connectHttp } = await import('../mcp/client.ts');
     const conn = getConnection(mcpConnectMatch[1]);
     if (!conn) return notFound('Connection not found');
     try {
-      await connectStdio(conn.config);
+      if (conn.config.transport === 'http') {
+        await connectHttp(conn.config);
+      } else {
+        await connectStdio(conn.config);
+      }
       return json({ ok: true });
     } catch (e) {
       return err((e as Error).message, 400);
@@ -5656,14 +5718,27 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const mcpDiscMatch = path.match(/^\/api\/mcp\/connections\/([^/]+)\/disconnect$/);
   if (req.method === 'POST' && mcpDiscMatch) {
     try {
-      await (await import('../mcp/client.ts')).disconnectStdio(mcpDiscMatch[1]);
+      const { getConnection, disconnectStdio, disconnectHttp } = await import('../mcp/client.ts');
+      const conn = getConnection(mcpDiscMatch[1]);
+      if (conn && conn.config.transport === 'http') {
+        await disconnectHttp(mcpDiscMatch[1]);
+      } else {
+        await disconnectStdio(mcpDiscMatch[1]);
+      }
       return json({ ok: true });
     } catch (e) {
       return err((e as Error).message, 400);
     }
   }
   if (req.method === 'GET' && path === '/api/mcp/server') {
-    return json({ running: true, port: 0 });
+    const port = parseInt((Deno.env.get('CORTEX_PORT') || Deno.env.get('PORT') || '0')) || 0;
+    return json({ running: true, port });
+  }
+  if (req.method === 'POST' && path === '/api/mcp/server/start') {
+    return json({ ok: true, running: true });
+  }
+  if (req.method === 'POST' && path === '/api/mcp/server/stop') {
+    return json({ ok: true, running: true, note: 'MCP server runs in-process — use server restart to stop' });
   }
 
   // ── Chrome Bridge ─────────────────────────────────────────

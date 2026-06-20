@@ -232,7 +232,6 @@ export const skillWriteTool: Tool = {
     }
 
     if (op === 'dependents') {
-      const { getSkillDependents } = await import('../../memory/skills.ts');
       const deps = await getSkillDependents(name);
       return {
         toolName: 'skill_write',

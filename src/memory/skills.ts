@@ -1169,9 +1169,21 @@ export function formatSkillsAsAvailableList(skills: Skill[]): string {
     }\n  </skill>`;
   });
 
+  const tips: string[] = [];
+  if (skills.find((s) => s.name.includes('dev') || s.name.includes('code') || s.name.includes('develop'))) {
+    tips.push('Development tasks → use a code-related skill for architecture and code conventions');
+  }
+  if (skills.find((s) => s.name.includes('ui') || s.name.includes('frontend') || s.name.includes('design'))) {
+    tips.push('UI/design tasks → use a design-related skill for distinctive, production-grade interfaces');
+  }
+  const tipText = tips.length > 0
+    ? tips.map((t) => `- ${t}`).join('\n') +
+      '\n- Unknown skill → use `load_skill` to read detailed instructions and examples'
+    : 'Use `load_skill` to read detailed instructions for any skill listed above.';
+
   return `\n\n## Available Skills\n\nYou have access to the following specialized skills. Use \`load_skill\` to get full instructions for any skill.\n\n<available_skills>\n${
     entries.join('\n')
-  }\n</available_skills>\n\n**Skill Selection Tips**:\n- Development tasks → use \`cortex-dev\` for architecture and code conventions\n- UI/design tasks → use \`frontend-design\` for distinctive, production-grade interfaces\n- Unknown skill → use \`load_skill\` to read detailed instructions and examples`;
+  }\n</available_skills>\n\n**Skill Selection Tips**:\n${tipText}`;
 }
 
 export async function registerBuiltinSkills(
