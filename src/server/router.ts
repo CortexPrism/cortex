@@ -2973,6 +2973,27 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(workspaces);
   }
 
+  // POST /api/workspace/agents/:agentId/ensure — create workspace dir if missing
+  const wsEnsureMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)\/ensure$/);
+  if (req.method === 'POST' && wsEnsureMatch) {
+    const { ensureAgentWorkspace } = await import('../workspace/paths.ts');
+    const dir = await ensureAgentWorkspace(wsEnsureMatch[1]);
+    return json({ ok: true, workspaceDir: dir });
+  }
+
+  // GET /api/workspace/agents/:agentId — get single agent workspace info
+  const wsSingleMatch = path.match(/^\/api\/workspace\/agents\/([^/]+)$/);
+  if (req.method === 'GET' && wsSingleMatch) {
+    const { getAgentWorkspaceDir } = await import('../workspace/paths.ts');
+    const dir = getAgentWorkspaceDir(wsSingleMatch[1]);
+    let exists = false;
+    try {
+      await Deno.stat(dir);
+      exists = true;
+    } catch { /* doesn't exist */ }
+    return json({ agentId: wsSingleMatch[1], workspaceDir: dir, exists });
+  }
+
   // Workspace file routes for global workspace
   const wsGlobalFilesMatch = path.match(/^\/api\/workspace\/files(\/.*)?$/);
   if (wsGlobalFilesMatch && req.method === 'GET') {
@@ -5330,6 +5351,26 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // Category 6: Sandbox & Environment
   // ═══════════════════════════════════════════════════════════════
 
+  // GET /api/sandbox/debug — get sandbox debug status
+  if (req.method === 'GET' && path === '/api/sandbox/debug') {
+    const { isSandboxDebug } = await import('../sandbox/logger.ts');
+    return json({ enabled: isSandboxDebug() });
+  }
+
+  // PUT /api/sandbox/debug — toggle sandbox debug
+  if (req.method === 'PUT' && path === '/api/sandbox/debug') {
+    const body = await req.json() as { enabled?: boolean };
+    const { setSandboxDebug, toggleSandboxDebug, isSandboxDebug } = await import(
+      '../sandbox/logger.ts'
+    );
+    if (body.enabled !== undefined) {
+      setSandboxDebug(body.enabled);
+    } else {
+      toggleSandboxDebug();
+    }
+    return json({ enabled: isSandboxDebug() });
+  }
+
   const validateSandboxPath = async (
     inputPath: string,
     fieldName: string,
@@ -5340,7 +5381,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { normalize, resolve } = await import('@std/path');
     const { PATHS } = await import('../config/paths.ts');
     const normalized = normalize(resolve(inputPath));
-    const roots = [normalize(resolve(PATHS.workspacesDir)), normalize(resolve(PATHS.dataDir))];
+    const roots = [
+      normalize(resolve(PATHS.workspacesDir)),
+      normalize(resolve(PATHS.dataDir)),
+      normalize(resolve(Deno.cwd())),
+    ];
     const within = roots.some((r) =>
       normalized === r || (normalized.startsWith(r + '/') || normalized.startsWith(r + '\\'))
     );
@@ -5447,6 +5492,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       memoryContext?: string[];
       toolState?: Array<Record<string, unknown>>;
       tags?: string[];
+      includeContent?: boolean;
     };
     if (!body.sessionId) return err('sessionId required', 400);
     if (!body.workspacePath) return err('workspacePath required', 400);
@@ -5462,6 +5508,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
         memoryContext: body.memoryContext,
         toolState: body.toolState as any,
         tags: body.tags,
+        includeContent: body.includeContent,
       }),
       201,
     );

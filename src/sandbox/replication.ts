@@ -4,6 +4,14 @@ import { join } from '@std/path';
 import { PATHS } from '../config/paths.ts';
 import { captureGitState } from './git-capture.ts';
 import { detectDependencies } from './dependency-detect.ts';
+import {
+  debugLog,
+  errorLog,
+  infoLog,
+  snapshotLog,
+  validateSandboxPath,
+  warnLog,
+} from './logger.ts';
 import type { EnvironmentSnapshot } from './snapshot-types.ts';
 import type { SandboxRuntime } from './executor.ts';
 
@@ -62,9 +70,22 @@ export async function captureEnvironmentSnapshot(opts: {
   env?: Record<string, string>;
   tags?: string[];
 }): Promise<EnvironmentSnapshot> {
+  debugLog(snapshotLog, 'captureEnvironmentSnapshot: validating path', {
+    workspacePath: opts.workspacePath,
+  });
+  const pathCheck = validateSandboxPath(opts.workspacePath, 'workspacePath');
+  if (!pathCheck.valid) {
+    warnLog(snapshotLog, `path rejected by sandbox validation: ${pathCheck.error}`, pathCheck);
+  }
+
   await ensureDir(snapshotDir());
 
   const id = generateId();
+  debugLog(snapshotLog, `capturing environment snapshot: ${id}`, {
+    workspacePath: opts.workspacePath,
+    sessionId: opts.sessionId,
+    runtime: opts.runtime,
+  });
   const deps = await detectDependencies(opts.workspacePath);
   const gitState = await captureGitState(opts.workspacePath);
 
@@ -99,6 +120,10 @@ export async function captureEnvironmentSnapshot(opts: {
   };
 
   await Deno.writeTextFile(snapshotPath(id), JSON.stringify(snapshot, null, 2));
+  infoLog(snapshotLog, `environment snapshot saved: ${id}`, {
+    envVarCount: Object.keys(cleanEnv).length,
+    language: deps.language,
+  });
 
   const db = await getCoreDb();
   await db.run(
@@ -160,12 +185,17 @@ export async function listEnvironmentSnapshots(opts: {
 }
 
 export async function deleteEnvironmentSnapshot(id: string): Promise<boolean> {
+  debugLog(snapshotLog, `deleting environment snapshot: ${id}`);
   try {
     await Deno.remove(snapshotPath(id));
     const db = await getCoreDb();
     await db.run('DELETE FROM sandbox_snapshots WHERE id = ?', [id]);
+    infoLog(snapshotLog, `deleted environment snapshot: ${id}`);
     return true;
-  } catch {
+  } catch (e) {
+    warnLog(snapshotLog, `failed to delete environment snapshot: ${id}`, {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return false;
   }
 }
@@ -209,8 +239,22 @@ export async function replicateEnvironment(
   targetSessionId: string,
   targetWorkspacePath: string,
 ): Promise<{ ok: boolean; message: string }> {
+  debugLog(snapshotLog, 'replicateEnvironment: validating path', { targetWorkspacePath });
+  const pathCheck = validateSandboxPath(targetWorkspacePath, 'targetWorkspacePath');
+  if (!pathCheck.valid) {
+    warnLog(snapshotLog, `path rejected by sandbox validation: ${pathCheck.error}`, pathCheck);
+  }
+
+  debugLog(snapshotLog, `replicating environment from snapshot: ${snapshotId}`, {
+    targetWorkspacePath,
+    targetSessionId,
+  });
+
   const snap = await getEnvironmentSnapshot(snapshotId);
-  if (!snap) return { ok: false, message: 'Snapshot not found' };
+  if (!snap) {
+    warnLog(snapshotLog, `snapshot not found for replication: ${snapshotId}`);
+    return { ok: false, message: 'Snapshot not found' };
+  }
 
   await ensureDir(targetWorkspacePath);
 

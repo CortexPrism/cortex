@@ -5,6 +5,7 @@ import {
   type SandboxOptions,
   type SandboxResult,
 } from './executor.ts';
+import { autofixLog, debugLog, infoLog, warnLog } from './logger.ts';
 
 const MAX_FIX_ROUNDS = 4;
 
@@ -34,6 +35,10 @@ export async function autofix(opts: AutofixOptions): Promise<AutofixResult> {
   let code = opts.code;
   let lastResult: SandboxResult | null = null;
 
+  debugLog(autofixLog, `starting autofix: lang=${opts.language} maxRounds=${maxRounds}`, {
+    codeLength: opts.code.length,
+  });
+
   for (let round = 0; round < maxRounds; round++) {
     const sandboxOpts: SandboxOptions = { code, language: opts.language };
     const result = await runInSandbox(sandboxOpts);
@@ -42,8 +47,14 @@ export async function autofix(opts: AutofixOptions): Promise<AutofixResult> {
     opts.onProgress?.(round + 1, result, round > 0 ? code : undefined);
 
     if (result.exitCode === 0 && !result.timedOut) {
+      infoLog(autofixLog, `autofix succeeded on round ${round + 1}`);
       return { finalCode: code, finalResult: result, rounds: round + 1, success: true };
     }
+
+    debugLog(autofixLog, `autofix round ${round + 1} failed, requesting fix`, {
+      exitCode: result.exitCode,
+      timedOut: result.timedOut,
+    });
 
     if (round === maxRounds - 1) break;
 

@@ -1,6 +1,8 @@
+import { debugLog, gitLog, warnLog } from './logger.ts';
 import type { GitSnapshot } from './snapshot-types.ts';
 
 export async function captureGitState(workspacePath: string): Promise<GitSnapshot> {
+  debugLog(gitLog, `capturing git state: ${workspacePath}`);
   const result: GitSnapshot = {
     branch: '',
     headCommit: '',

@@ -2,6 +2,7 @@ import { getCoreDb } from '../db/client.ts';
 import { ensureDir } from '@std/fs';
 import { join } from '@std/path';
 import { detectDependencies } from './dependency-detect.ts';
+import { debugLog, devEnvLog, infoLog, validateSandboxPath, warnLog } from './logger.ts';
 import type { DevEnvManifest } from './snapshot-types.ts';
 import type { SandboxRuntime } from './executor.ts';
 
@@ -26,6 +27,18 @@ export async function generateDevEnvManifest(opts: {
   name?: string;
   runtime?: SandboxRuntime;
 }): Promise<DevEnvManifest> {
+  debugLog(devEnvLog, 'generateDevEnvManifest: validating path', {
+    workspacePath: opts.workspacePath,
+  });
+  const pathCheck = validateSandboxPath(opts.workspacePath, 'workspacePath');
+  if (!pathCheck.valid) {
+    warnLog(devEnvLog, `path rejected by sandbox validation: ${pathCheck.error}`, pathCheck);
+  }
+
+  debugLog(devEnvLog, 'generating dev env manifest', {
+    workspacePath: opts.workspacePath,
+    runtime: opts.runtime,
+  });
   const deps = await detectDependencies(opts.workspacePath);
 
   const setupCommands: string[] = [];
@@ -115,6 +128,10 @@ export async function saveDevEnvManifest(
   const filePath = join(workspacePath, MANIFEST_FILE);
   manifest.meta.updatedAt = new Date().toISOString();
   manifest.meta.source = 'manual';
+  debugLog(devEnvLog, `saving dev env manifest: ${manifest.name}`, {
+    workspacePath,
+    version: manifest.version,
+  });
   await Deno.writeTextFile(filePath, JSON.stringify(manifest, null, 2));
 
   const db = await getCoreDb();
@@ -135,10 +152,17 @@ export async function saveDevEnvManifest(
 }
 
 export async function loadDevEnvManifest(workspacePath: string): Promise<DevEnvManifest | null> {
+  debugLog(devEnvLog, `loading dev env manifest from: ${workspacePath}`);
   try {
     const content = await Deno.readTextFile(join(workspacePath, MANIFEST_FILE));
-    return JSON.parse(content) as DevEnvManifest;
-  } catch {
+    const manifest = JSON.parse(content) as DevEnvManifest;
+    infoLog(devEnvLog, `loaded dev env manifest: ${manifest.name}`);
+    return manifest;
+  } catch (e) {
+    warnLog(devEnvLog, `failed to load dev env manifest`, {
+      workspacePath,
+      error: e instanceof Error ? e.message : String(e),
+    });
     return null;
   }
 }

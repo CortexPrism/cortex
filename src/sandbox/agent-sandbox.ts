@@ -1,6 +1,8 @@
+import { debugLog, execLog } from './logger.ts';
+
 export { isDockerAvailable, isGVisorAvailable } from './executor.ts';
 
-export interface SandboxOptions {
+export interface AgentSandboxOptions {
   image?: string;
   workspaceMount: string;
   networkMode: 'none' | 'restricted' | 'full';
@@ -10,7 +12,13 @@ export interface SandboxOptions {
   env?: Record<string, string>;
 }
 
-export function buildSandboxCommand(opts: SandboxOptions): string[] {
+export function buildSandboxCommand(opts: AgentSandboxOptions): string[] {
+  debugLog(execLog, 'building sandbox command', {
+    image: opts.image,
+    networkMode: opts.networkMode,
+    memoryLimitMb: opts.memoryLimitMb,
+    cpuLimit: opts.cpuLimit,
+  });
   const args: string[] = [
     'docker',
     'run',
@@ -49,7 +57,7 @@ export function buildSandboxCommand(opts: SandboxOptions): string[] {
   return args;
 }
 
-export function buildGVisorCommand(opts: SandboxOptions): string[] {
+export function buildGVisorCommand(opts: AgentSandboxOptions): string[] {
   const args: string[] = [
     'docker',
     'run',

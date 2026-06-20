@@ -151,10 +151,22 @@ export const serveCommand = new Command()
   .option('-d, --daemon', 'Run the server in the background')
   .option('-r, --restart', 'Restart an existing background server (only with --daemon)')
   .option('-s, --stop', 'Stop a background server')
+  .option('--sandbox-debug', 'Enable sandbox debug logging')
   .action(
     async (
-      opts: { port: number; host: string; daemon?: boolean; restart?: boolean; stop?: boolean },
+      opts: {
+        port: number;
+        host: string;
+        daemon?: boolean;
+        restart?: boolean;
+        stop?: boolean;
+        sandboxDebug?: boolean;
+      },
     ) => {
+      if (opts.sandboxDebug) {
+        const { setSandboxDebug } = await import('../sandbox/logger.ts');
+        setSandboxDebug(true);
+      }
       if (opts.stop) {
         const stopped = await stopBackgroundServer(opts.port);
         if (!stopped) {

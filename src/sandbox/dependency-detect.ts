@@ -1,7 +1,9 @@
 import { join } from '@std/path';
+import { debugLog, depsLog } from './logger.ts';
 import type { DependencyManifest } from './snapshot-types.ts';
 
 export async function detectDependencies(workspacePath: string): Promise<DependencyManifest> {
+  debugLog(depsLog, `detecting dependencies in: ${workspacePath}`);
   let first: DependencyManifest | null = null;
 
   try {
@@ -52,7 +54,14 @@ export async function detectDependencies(workspacePath: string): Promise<Depende
     }
   }
 
-  return first ?? { language: 'unknown', packages: {}, lockFileExists: false, managerHint: 'none' };
+  const result = first ??
+    { language: 'unknown', packages: {}, lockFileExists: false, managerHint: 'none' };
+  debugLog(depsLog, `dependency detection complete`, {
+    language: result.language,
+    manager: result.managerHint,
+    packageCount: Object.keys(result.packages).length,
+  });
+  return result;
 }
 
 async function resolveJsManager(wsPath: string): Promise<string> {
