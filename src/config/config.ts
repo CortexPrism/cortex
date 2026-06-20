@@ -169,6 +169,12 @@ export interface RouterConfig {
   threshold?: RouterThresholdConfig;
 }
 
+export interface AutoModelPoolEntry {
+  provider: ProviderKind;
+  model: string;
+  enabled?: boolean;
+}
+
 export interface ModelSelectionConfig {
   enabled: boolean;
   mode: 'conservative' | 'balanced' | 'aggressive';
@@ -182,6 +188,8 @@ export interface ModelSelectionConfig {
   quartermasterProvider?: ProviderKind;
   /** Dedicated model for Quartermaster model-selection decisions */
   quartermasterModel?: string;
+  /** Explicit model pool for Auto chat selection mode */
+  autoModelPool?: AutoModelPoolEntry[];
 }
 
 export type AgentCategory =
@@ -427,12 +435,27 @@ export interface CortexConfig {
   server?: ServerConfig;
   /** Security supervisor model override */
   supervisor?: SupervisorConfig;
+  /** Compliance metadata configuration */
+  compliance?: ComplianceConfig;
 }
 
 export interface SupervisorConfig {
   provider: ProviderKind;
   model: string;
   cacheTTL?: number;
+}
+
+export interface ComplianceConfig {
+  /** LLM-based two-stage data category classifier */
+  llmClassifier?: {
+    enabled: boolean;
+    /** Provider to use (defaults to 'openai') */
+    provider?: ProviderKind;
+    /** Model to use (defaults to 'gpt-4o-mini') */
+    model?: string;
+  };
+  /** Webhook URL for critical-risk turn alerts */
+  alertWebhook?: string;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -481,6 +504,7 @@ const DEFAULT_CONFIG: CortexConfig = {
     observeThreshold: 50,
     enforceConfidence: 0.85,
     suggestConfidence: 0.65,
+    autoModelPool: [],
   },
   agents: {},
   defaultAgent: 'default',

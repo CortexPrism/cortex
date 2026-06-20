@@ -2266,6 +2266,36 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div class="card" style="padding:18px;max-width:560px;">
+        <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Auto Model Pool</h3>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:14px;">Define a pool of provider/model pairs. When <b>Auto</b> is selected in chat, Cortex picks the best model from this pool each turn. This does <b>not</b> affect manual model selection or non-chat flows.</p>
+        <div id="auto-pool-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Provider</label>
+            <select id="auto-pool-provider" class="inp" style="width:160px;font-size:12px;">
+              <option value="">— select —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Model</label>
+            <input type="text" id="auto-pool-model" class="inp" placeholder="e.g. claude-sonnet-4-20250514" list="auto-pool-model-list" style="width:200px;font-size:12px;">
+            <datalist id="auto-pool-model-list"></datalist>
+          </div>
+          <button class="btn btn-primary" onclick="autoPoolAdd()" style="font-size:12px;">+ Add</button>
+          <button class="btn btn-ghost" onclick="autoPoolFetchModels()" style="font-size:11px;" title="Fetch models for selected provider">↻ Fetch</button>
+        </div>
+        <div id="auto-pool-import-section" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;display:none;">
+          <p style="font-size:11px;color:var(--text3);margin-bottom:8px;">Import from fetched models — select one or more to add to the pool:</p>
+          <div id="auto-pool-import-list" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:10px;"></div>
+          <button class="btn btn-primary" onclick="autoPoolImportSelected()" style="font-size:12px;">Import Selected</button>
+          <button class="btn btn-ghost" onclick="autoPoolCancelImport()" style="font-size:12px;">Cancel</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding-top:12px;">
+          <button class="btn btn-primary" id="auto-pool-save" onclick="autoPoolSave()" style="font-size:12px;">Save Pool</button>
+          <span id="auto-pool-status" style="font-size:11px;color:var(--text3);"></span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px;max-width:560px;">
         <h3 style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Reset</h3>
         <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">Clear all learned patterns, decisions, tool stats, and signal weights. This cannot be undone.</p>
         <button class="btn" style="font-size:12px;background:var(--bg3);color:#f87171;border-color:#f87171;" onclick="qmResetAll()">Reset All QM Data</button>
@@ -3170,6 +3200,7 @@ const BASE = window.location.origin;
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws';
 async function fetchJSON(url,fallback){try{return await fetch(url).then(function(r){return r.json()})}catch(e){console.log("[fetchJSON] error",url,e);return fallback}}
 let ws, sessionId = null, agentBubble = null, agentRaw = '';
+try { sessionId = localStorage.getItem('cortex_session_id'); } catch {}
 let currentPage = 'chat';
 let currentReasoningData = '';
 let reasoningPanelOpen = false;
@@ -3271,6 +3302,7 @@ function newChat() {
 
 // ── Agent selector ──────────────────────────────
 let currentAgentId = null;
+try { currentAgentId = localStorage.getItem('cortex_agent_id'); } catch {}
 
 async function loadAgentSelector() {
   const sel = document.getElementById('chat-agent-select');
@@ -3302,6 +3334,7 @@ function switchChatAgent(agentId) {
 }
 
 let currentModel = null;
+let currentModelMode = 'manual';
 let currentReasoning = null;
 
 async function loadModelSelector() {
@@ -3323,23 +3356,35 @@ async function loadModelSelector() {
     } catch { models = []; }
 
     sel.innerHTML = '<option value="">Default (' + esc(current || 'auto') + ')</option>';
+    sel.innerHTML += '<option value="__auto__"' + (currentModelMode === 'auto' ? ' selected' : '') + ' style="color:var(--accent);font-weight:600;">🐙 Auto — let Cortex choose</option>';
     const seen = new Set();
     for (const m of models) {
       const id = m.id || m;
       if (seen.has(id)) continue;
       seen.add(id);
       const label = m.name ? m.name + ' (' + id + ')' : id;
-      sel.innerHTML += '<option value="' + esc(id) + '"' + (id === currentModel ? ' selected' : '') + '>' + esc(label) + '</option>';
+      sel.innerHTML += '<option value="' + esc(id) + '"' + (id === currentModel && currentModelMode === 'manual' ? ' selected' : '') + '>' + esc(label) + '</option>';
     }
     if (!models.length && current) {
-      sel.innerHTML += '<option value="' + esc(current) + '" selected>' + esc(current) + '</option>';
+      sel.innerHTML += '<option value="' + esc(current) + '"' + (current === currentModel && currentModelMode === 'manual' ? ' selected' : '') + '>' + esc(current) + '</option>';
     }
-    if (currentModel) sel.value = currentModel;
+    if (currentModelMode === 'auto') {
+      sel.value = '__auto__';
+    } else if (currentModel) {
+      sel.value = currentModel;
+    }
   } catch {}
 }
 
 function onModelChange() {
-  currentModel = document.getElementById('chat-model-select').value || null;
+  const val = document.getElementById('chat-model-select').value;
+  if (val === '__auto__') {
+    currentModelMode = 'auto';
+    currentModel = null;
+  } else {
+    currentModelMode = 'manual';
+    currentModel = val || null;
+  }
 }
 
 function onReasoningChange() {
@@ -3390,9 +3435,9 @@ async function restoreSession() {
   try {
     const sid = localStorage.getItem('cortex_session_id');
     const aid = localStorage.getItem('cortex_agent_id');
-    if (sid && aid) {
+    if (sid) {
       sessionId = sid;
-      currentAgentId = aid;
+      if (aid) currentAgentId = aid;
       document.getElementById('chat-session-id').textContent = sid.slice(-12);
       // Reopen the session server-side
       const resumeRes = await fetch(BASE + '/api/sessions/' + encodeURIComponent(sid) + '/resume', { method: 'POST' });
@@ -3590,6 +3635,7 @@ function connect() {
     switch (msg.type) {
       case 'session':
         sessionId = msg.sessionId;
+        if (msg.agentId) currentAgentId = msg.agentId;
         document.getElementById('chat-session-id').textContent = sessionId ? sessionId.slice(-12) : '';
         if (msg.agentName) {
           document.getElementById('chat-agent-name').textContent = msg.agentName;
@@ -3641,13 +3687,13 @@ function connect() {
                if (reasoningPanelOpen) renderReasoningPanel(document.getElementById('reasoning-panel'));
              }
              if (agentBubble) {
-               agentBubble.innerHTML = afterThink ? md(afterThink) : '<span style="opacity:0.4;font-size:12px;">Thinking…</span>';
+                agentBubble.innerHTML = afterThink ? md(afterThink) : '<span style="opacity:0.4;font-size:12px;">Thinking…</span>';
                requestAnimationFrame(() => scrollChat());
              }
            } else if (agentBubble) {
              // No complete <think> block yet — render as-is but strip any partial opening tag
              const display = agentRaw.replace(/^\\s*<(?:think|thinking)>\\s*/i, '');
-             agentBubble.innerHTML = md(display || agentRaw);
+              agentBubble.innerHTML = md(display || agentRaw);
              requestAnimationFrame(() => scrollChat());
            }
          }
@@ -3673,6 +3719,9 @@ function connect() {
           finalizeSubAgent(msg.id, msg.result, msg.success, msg.error);
           break;
         case 'done':
+          if (agentBubble && msg.finalContent) {
+            agentBubble.innerHTML = md(msg.finalContent);
+          }
           document.getElementById('thinking-bar').style.display = 'none';
           agentBubble = null;
           appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
@@ -3680,7 +3729,26 @@ function connect() {
          if (currentPage === 'lens') loadLens();
          loadAgentPanel();
           const ml = document.getElementById('model-label');
-          if (ml && msg.model) ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+          if (ml) {
+            if (msg.resolvedProvider && msg.resolvedModel) {
+              ml.textContent = msg.resolvedModel + ' · ' + msg.resolvedProvider +
+                (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+            } else if (msg.model) {
+              ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+            }
+          }
+          if (msg.autoFallback && msg.autoFallbackReason) {
+            const reasonLabels = {
+              empty_pool: 'No models in Auto pool — using default model',
+              invalid_pool: 'No valid models in Auto pool — using default model',
+              selection_failed: 'Auto selection failed — using default model',
+              agent_override: 'Agent override active — Auto bypassed',
+              mqm_deferred: 'MQM deferred — using heuristic selection',
+              heuristic_fallback: 'Using heuristic selection from pool',
+            };
+            const label = reasonLabels[msg.autoFallbackReason] || 'Auto fallback — using default model';
+            toast(label, 'warning', 5000);
+          }
           break;
        case 'approval_request':
          showApprovalModal(msg.request, msg.reasoning, msg.requestId);
@@ -3930,7 +3998,7 @@ async function sendMessage() {
       chatLog.appendChild(previewEl);
     }
   }
-  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId, model: currentModel || undefined, reasoningEffort: currentReasoning || undefined, files: filesData || undefined }));
+  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId, model: currentModelMode === 'manual' ? (currentModel || undefined) : undefined, modelMode: currentModelMode, reasoningEffort: currentReasoning || undefined, files: filesData || undefined }));
   // Auto-name session from first message
   if (text && sessionId && !sessionNamed) {
     sessionNamed = true;
@@ -10090,9 +10158,10 @@ async function editorOpenFile(fileName) {
   }
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   var relPath = editorCurrentPath ? editorCurrentPath + '/' + fileName : fileName;
+  var encPath = relPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
   const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(relPath)
-    : BASE + '/api/workspace/files/' + encodeURIComponent(relPath);
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encPath
+    : BASE + '/api/workspace/files/' + encPath;
   try {
     const res = await fetch(url);
     if (!res.ok) { toast('Failed to open file', 'error'); return; }
@@ -10233,9 +10302,10 @@ async function editorSave() {
   if (!editorCurrentFile || !editorInstance) return;
   const content = editorInstance.getValue();
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encFile = editorCurrentFile.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
   const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(editorCurrentFile)
-    : BASE + '/api/workspace/files/' + encodeURIComponent(editorCurrentFile);
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encFile
+    : BASE + '/api/workspace/files/' + encFile;
   try {
     const res = await fetch(url, {
       method: 'PUT',
@@ -10260,9 +10330,10 @@ async function editorDeleteFile() {
   const ok = await confirmAction('Delete File', 'Delete ' + editorCurrentFile + '?', 'Delete');
   if (!ok) return;
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encFileD = editorCurrentFile.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
   const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(editorCurrentFile)
-    : BASE + '/api/workspace/files/' + encodeURIComponent(editorCurrentFile);
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encFileD
+    : BASE + '/api/workspace/files/' + encFileD;
   try {
     const res = await fetch(url, { method: 'DELETE' });
     if (res.ok) {
@@ -10330,9 +10401,10 @@ async function editorNewFile() {
   if (!name) return;
   const content = '';
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encName = name.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
   const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(name)
-    : BASE + '/api/workspace/files/' + encodeURIComponent(name);
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encName
+    : BASE + '/api/workspace/files/' + encName;
   try {
     const res = await fetch(url, {
       method: 'PUT',
@@ -10355,9 +10427,10 @@ async function editorNewFolder() {
   const name = prompt('Folder name:');
   if (!name) return;
   const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encName2 = name.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
   const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encodeURIComponent(name)
-    : BASE + '/api/workspace/files/' + encodeURIComponent(name);
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encName2
+    : BASE + '/api/workspace/files/' + encName2;
   try {
     const res = await fetch(url, {
       method: 'PUT',
@@ -11865,6 +11938,16 @@ async function loadQmSettings() {
 
   // Pre-load models if a provider is already selected
   if (cfg.quartermasterProvider) qmFetchModels(true);
+
+  // Populate auto pool provider dropdown and load pool entries
+  const autoProvSel = el('auto-pool-provider');
+  if (autoProvSel && config?.providers) {
+    const configured = Object.keys(config.providers).filter(k => config.providers[k]?.model || config.providers[k]?.apiKey);
+    autoProvSel.innerHTML = '<option value="">— select —</option>'
+      + configured.map(k => '<option value="' + k + '">' + providerLabel(k) + '</option>').join('');
+  }
+  autoPoolEntries = Array.isArray(cfg.autoModelPool) ? [...cfg.autoModelPool] : [];
+  autoPoolListUI();
 }
 
 let _qmFetchingModels = false;
@@ -11941,6 +12024,149 @@ async function qmResetAll() {
   }
 }
 // ── End Quartermaster ────────────────────────────────────────────────────────
+
+// ── Auto Model Pool management ──────────────────────────────────────────────
+let autoPoolEntries = [];
+let autoPoolFetchedModels = [];
+
+function autoPoolLoad() {
+  autoPoolListUI();
+}
+
+function autoPoolListUI() {
+  const list = document.getElementById('auto-pool-list');
+  if (!list) return;
+  if (!autoPoolEntries.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 12px;background:var(--bg3);border-radius:6px;">No models in pool yet. Add provider/model pairs below.</div>';
+    return;
+  }
+  list.innerHTML = autoPoolEntries.map((e, i) => {
+    const label = providerLabel(e.provider);
+    const enabledIcon = e.enabled !== false ? '●' : '○';
+    const color = e.enabled !== false ? '#4ade80' : 'var(--text3)';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg3);border-radius:6px;font-size:12px;">' +
+      '<span style="cursor:pointer;font-size:14px;color:' + color + ';" title="Toggle enabled" onclick="autoPoolToggle(' + i + ')">' + enabledIcon + '</span>' +
+      '<span style="flex:1;color:var(--text);"><b>' + label + '</b> / ' + esc(e.model) + '</span>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:2px 6px;color:#f87171;" onclick="autoPoolRemove(' + i + ')" title="Remove">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+function autoPoolAdd() {
+  const provider = document.getElementById('auto-pool-provider')?.value;
+  const model = document.getElementById('auto-pool-model')?.value?.trim();
+  if (!provider) { toast('Select a provider', 'error'); return; }
+  if (!model) { toast('Enter a model name', 'error'); return; }
+  const dup = autoPoolEntries.find(e => e.provider === provider && e.model === model);
+  if (dup) { toast('This provider/model pair is already in the pool', 'warning'); return; }
+  autoPoolEntries.push({ provider, model, enabled: true });
+  document.getElementById('auto-pool-model').value = '';
+  autoPoolListUI();
+}
+
+function autoPoolRemove(index) {
+  autoPoolEntries.splice(index, 1);
+  autoPoolListUI();
+}
+
+function autoPoolToggle(index) {
+  autoPoolEntries[index].enabled = !(autoPoolEntries[index].enabled !== false);
+  autoPoolListUI();
+}
+
+let _autoPoolFetching = false;
+async function autoPoolFetchModels() {
+  if (_autoPoolFetching) return;
+  const provSel = document.getElementById('auto-pool-provider');
+  const kind = provSel?.value;
+  if (!kind) { toast('Select a provider first', 'warning'); return; }
+  _autoPoolFetching = true;
+  try {
+    const res = await fetch(BASE + '/api/providers/' + kind + '/models');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    autoPoolFetchedModels = await res.json();
+    const dl = document.getElementById('auto-pool-model-list');
+    if (dl) dl.innerHTML = autoPoolFetchedModels.map(m => '<option value="' + (m.id || m) + '">' + (m.name || m.id || m) + '</option>').join('');
+    const importSection = document.getElementById('auto-pool-import-section');
+    const importList = document.getElementById('auto-pool-import-list');
+    if (importSection && importList) {
+      importSection.style.display = 'block';
+      importList.innerHTML = autoPoolFetchedModels.map(m => {
+        const id = m.id || m;
+        const label = m.name ? m.name + ' (' + id + ')' : id;
+        const alreadyIn = autoPoolEntries.find(e => e.provider === kind && e.model === id);
+        return '<label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;">' +
+          '<input type="checkbox" value="' + esc(id) + '" ' + (alreadyIn ? 'checked disabled' : '') + '>' +
+          '<span>' + esc(label) + '</span>' +
+          (alreadyIn ? '<span style="font-size:10px;color:var(--text3);">(already in pool)</span>' : '') +
+          '</label>';
+      }).join('');
+    }
+    toast(autoPoolFetchedModels.length + ' models fetched', 'success', 2000);
+  } catch(e) {
+    toast('Could not fetch models: ' + e.message, 'error');
+  } finally {
+    _autoPoolFetching = false;
+  }
+}
+
+function autoPoolImportSelected() {
+  const provider = document.getElementById('auto-pool-provider')?.value;
+  if (!provider) return;
+  const checks = document.querySelectorAll('#auto-pool-import-list input[type="checkbox"]:checked:not([disabled])');
+  let added = 0;
+  checks.forEach(cb => {
+    const model = cb.value;
+    if (!autoPoolEntries.find(e => e.provider === provider && e.model === model)) {
+      autoPoolEntries.push({ provider, model, enabled: true });
+      added++;
+    }
+  });
+  if (added) {
+    autoPoolListUI();
+    toast('Added ' + added + ' model(s) to pool', 'success');
+  }
+  autoPoolCancelImport();
+}
+
+function autoPoolCancelImport() {
+  const section = document.getElementById('auto-pool-import-section');
+  if (section) section.style.display = 'none';
+  autoPoolFetchedModels = [];
+}
+
+async function autoPoolSave() {
+  const btn = document.getElementById('auto-pool-save');
+  const status = document.getElementById('auto-pool-status');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Saving…';
+  try {
+    const cfg = await fetch(BASE + '/api/qm/config').then(r => r.json()).catch(() => ({}));
+    const body = {
+      enabled: cfg.enabled,
+      quartermasterProvider: cfg.quartermasterProvider,
+      quartermasterModel: cfg.quartermasterModel,
+      mode: cfg.mode,
+      observeThreshold: cfg.observeThreshold,
+      autoModelPool: autoPoolEntries,
+    };
+    const res = await fetch(BASE + '/api/qm/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+    if (res.success) {
+      if (status) { status.textContent = '✓ Pool saved'; status.style.color = '#4ade80'; }
+      setTimeout(() => { if (status) { status.textContent = ''; status.style.color = 'var(--text3)'; } }, 2500);
+    } else {
+      if (status) { status.textContent = 'Error saving'; status.style.color = '#f87171'; }
+    }
+  } catch(e) {
+    if (status) { status.textContent = 'Error: ' + e.message; status.style.color = '#f87171'; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 
 // ── Model Quartermaster UI ──────────────────────────────────────────────────
 let mqmChart = null;

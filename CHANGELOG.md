@@ -7,6 +7,66 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **Auto model selection with explicit model pool** — new `Auto` chat model mode that uses a backend-native runtime selector to pick the best LLM per turn from a configurable global pool. The pool is managed in the Quartermaster `Model Intelligence` settings UI. Auto resolution integrates with the Model Quartermaster (MQM) for learned predictions and falls back to heuristic complexity-based selection. Per-turn resolved model metadata (provider, model, fallback reason) is reported through the WebSocket `done` payload and surfaced in the chat UI header and warning toast. Agent-level explicit `provider`/`model` overrides bypass Auto mode.
+  - `AutoModelPoolEntry` type and `autoModelPool` field added to `ModelSelectionConfig` in `src/config/config.ts`
+  - `POST /api/qm/config` extended to persist and validate the pool with provider validation and de-duplication
+  - New `src/model-quartermaster/auto-resolver.ts` module with `resolveAutoModel()` performing pool filtering, MQM prediction, and heuristic fallback
+  - WebSocket `modelMode` field on chat messages (`'manual'` | `'auto'`); `done` payload extended with `requestedModelMode`, `resolvedProvider`, `resolvedModel`, `autoFallback`, `autoFallbackReason`
+  - Chat UI `#chat-model-select` gains an `Auto` option; `loadModelSelector()` and `sendMessage()` track `currentModelMode`
+  - Quartermaster settings UI gains an "Auto Model Pool" card with add/remove/enable/disable/fetch-import workflows
+
+- **Quartermaster wired into agent loop** — `observe()` now records every tool execution and `predict()` runs before each LLM round, injecting a tool suggestion hint into the follow-up instruction. Threshold lowered from 50 to 10 observations for faster activation. This enables the system to learn tool-success patterns and nudge the model toward productive actions (e.g. suggesting `file_write` when the model is stuck reading files).
+
+- **Structured content block support in LLM providers** — `CompletionChunk` extended with `event`, `blockIndex`, `blockName`, `blockIsToolInput` fields. Anthropic provider now preserves `content_block_start` / `input_json_delta` / `content_block_stop` events instead of flattening to text. OpenAI-compatible providers (18 total including DeepSeek) now handle `delta.tool_calls` arrays. The agent loop accumulates tool calls from structured events directly, bypassing regex parsing for providers that support it.
+
+- **Tool call parser: direct-tool-name-as-tag format** — `parseToolCallsFromFragments` now recognizes `<file_read_enhanced><path>x</path></file_read_enhanced>` format where the tool name is used directly as an XML tag with child parameter tags. Handles 14 tool names.
+
+- **Tool call parser: JSON sanitization** — `sanitizeModelJson()` pre-processes model-emitted JSON to fix common errors before `JSON.parse`: raw unescaped newlines in string values, unquoted property names, and trailing commas. This is the fix for DeepSeek emitting multi-paragraph content with literal newlines in JSON strings.
+
+- **Tool call parser: `<parameter>` tag support** — `parseToolArgsFromXml` now parses `<parameter name="key" string="true">value</parameter>` format in addition to `<tool_call_arg_key>`/`<tool_call_arg_value>` pairs.
+
+- **Agent loop: urgency nudge** — the follow-up instruction now triggers at `roundsLeft <= 2` (was `<= 1`), explicitly tells the model to use `file_write` for file creation tasks, and says "produce the deliverable" instead of "summarise." `maxToolRounds` increased from 8 to 12.
+
+- **Test infrastructure: coverage, helpers, error types** — added `deno task coverage` and `deno task coverage:ci` for HTML/LCov+JUnit coverage reports. Created `tests/test_helpers.ts` with shared utilities (temp DB, session schema init, mock session/turn IDs, log capture). Created `src/utils/errors.ts` with 10 typed error classes (`ValidationError`, `NotFoundError`, `AuthError`, `RateLimitError`, `TimeoutError`, `ConfigurationError`, `DatabaseError`, `LLMProviderError`, `ToolExecutionError`) plus `isRetryable()` and `errorToResponse()` helpers.
+
+- **`cortex debug` CLI command** — new command tree for live introspection: `sessions` (list active), `session <id>` (full inspect), `turn <turnId> --session <id>` (transcript), `health` (DB/disk checks), `metrics` (Prometheus output), `memory` (episodic/semantic counts).
+
+- **Debug HTTP endpoints** — `GET /api/debug/health` (live DB verification), `GET /api/debug/sessions` (active sessions with message counts), `GET /api/debug/sessions/:id` (full transcript), `GET /api/debug/metrics` (Prometheus text), `GET /api/debug/config` (safe config dump).
+
+- **Logging enhancements** — request ID propagation via `setLogRequestId()` / `getLogRequestId()`, automatic stack-trace capture on `Logger.error()` calls, `reqId` and `stack` fields added to `LogEntry`.
+
+### Fixed
+
+- **Tool call parsing: multiple formats not recognized** — the parser now handles five model output formats: (1) JSON inside `<tool_call>` tags, (2) `<tool_call_name>`/`<tool_call_args>` nested XML, (3) `<tool_call_name="name">` attribute syntax, (4) `<file_read_enhanced><path>x</path></file_read_enhanced>` direct-tool-name-as-tag, and (5) `<parameter name="key">value</parameter>` format. Previously only formats 1–2 were recognized; formats 3–5 caused tool calls to be silently dropped.
+
+- **Tool call parsing: JSON rejected due to raw newlines in strings** — DeepSeek emits JSON inside `<tool_call>` tags with literal newlines in string values (e.g. multi-paragraph `content` fields). `JSON.parse` rejects this as invalid JSON. Added `sanitizeModelJson()` to escape newlines, unquote bare keys, and remove trailing commas before parsing.
+
+- **Agent loop: infinite research without writing** — the model would spend all 8 tool rounds reading files and never reach `file_write`. Fixed by wiring Quartermaster tool prediction into the follow-up instruction, increasing max rounds to 12, and triggering the urgency nudge at 2 rounds remaining instead of 1 with explicit "use file_write NOW" language.
+
+- **Workspace file_write: `Is a directory` error for root-level paths** — `resolveWorkspacePath()` wrapped its output through `resolve()` from `@std/path`, which collapsed a joined absolute file path back to the directory prefix in some CWD-relative edge cases. Removed the unnecessary `resolve()` call; workspace directories are already absolute and only need `join` + `normalize`.
+
+- **Web UI chat refresh created duplicate sessions and showed raw tool markup** — the chat page now hydrates the active session id from `localStorage` before the first send, so reloads stay on the same session. The websocket now sends cleaned final content on completion and the UI swaps the in-progress bubble for the final markdown, preventing tool-call XML from leaking into the rendered transcript.
+
+- **Web UI chat refresh lost the in-flight request** — the first user turn now initializes the per-session DB before sending the message, and the session/chat state is restored from the saved session id after reload. This keeps the active request visible instead of disappearing on refresh.
+
+- **Chat bubble formatting collapsed paragraph breaks** — `stripToolMarkup()` used `/\s{3,}/g` (match any 3+ whitespace including newlines) which collapsed paragraph separators into single spaces. Changed to `/\n{3,}/g` (collapse excess newlines only) and `/[ \t]{2,}/g` (collapse runs of spaces/tabs).
+
+- **Web UI file editor: 404 opening files in subdirectories** — the editor used `encodeURIComponent()` on full file paths (e.g., `cortex/CHANGELOG.md`), which encoded `/` as `%2F`. The server's route regex expects literal `/` separators, so requests like `/api/workspace/agents/jenna/files/cortex%2FCHANGELOG.md` failed to match any route. Path segments are now encoded individually, matching the existing tree-listing pattern.
+
+- **InjectionDetectorHook flagged tool result content as prompt injection** — the hook checked the last `role:'user'` message for injection patterns, but after tool execution the agent loop injects tool results as `role:'user'` follow-up instructions. Large file content (e.g. a 24K development plan) would match patterns like "you are a" or "system:" and abort the turn silently. Fixed by filtering out system-generated tool result messages before checking injection patterns.
+
+- **WebSocket reconnect on new tab created duplicate sessions** — `ensureChatSession()` only checked the per-connection `sessionId` variable, which is `null` on a new WebSocket. The client sends `msg.sessionId` with chat messages but it was ignored. Fixed by passing `msg.sessionId` to `ensureChatSession`, which now resumes the session via `resumeSession()` when the client provides an existing session ID.
+
+- **Pipeline abort showed "Thinking…" forever instead of the reason** — when a pipeline hook aborted the turn before any chunks streamed, the `done` event sent `finalContent: 'Thinking…'` and never displayed `result.response` (the abort message). Fixed by sending the abort message as a `chunk` to the client when no previous chunks were delivered.
+
+- **Injection guard falsely blocked follow-up turns using tool results** — the `InjectionDetectorHook` examined the last `role:'user'` message, but the agent loop injects tool results back as synthetic user messages. Large trusted file content (for example a generated development plan) could contain phrases like `you are a` or `system:` and trigger a false-positive prompt-injection abort. The hook now skips system-generated tool-result follow-up messages and only evaluates actual user input.
+
+- **OpenAI-compatible streaming tool calls could leave the UI stuck at `Thinking…`** — some providers emit `tool_calls` deltas where the tool call entry is created before the function name arrives in a later chunk. The stream adapter created an entry with an empty name and never updated it, so no `tool_use_start` event was emitted and the agent loop saw zero tool calls. The adapters in `src/llm/openai.ts` and `src/llm/openai-compatible.ts` now update the cached entry name when later chunks provide it and emit the start event as soon as the name becomes available.
+
+- **Chat response formatting collapsed into a single paragraph** — the websocket stream sanitizer trimmed leading and trailing newlines from every chunk and collapsed whitespace too aggressively, flattening markdown paragraph boundaries in the visible chat bubble. Streaming and final-output cleanup now preserve normal newlines, only collapsing excessive blank lines and repeated spaces.
+
 ---
 
 ## [0.45.4] — 2026-06-20
