@@ -51,9 +51,9 @@ async function executeOnce(
           })()
           : typeDef?.tools ?? undefined,
         maxTurns: typeDef?.maxTurns,
+        inheritedModel: context.model,
+        inheritedProvider: context.provider,
       },
-      inheritedModel: context.model,
-      inheritedProvider: context.provider,
       subAgentType,
     });
 
