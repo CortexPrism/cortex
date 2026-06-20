@@ -51,25 +51,27 @@ export function checkRateLimit(triggerName: string, limit?: RateLimit): boolean 
 export async function handleTriggerEvent(
   event: TriggerEvent,
   createJob: (agentId: string, prompt: string) => Promise<unknown>,
-): Promise<void> {
+): Promise<{ job: unknown } | undefined> {
   const trigger = triggers.get(event.triggerName);
-  if (!trigger || !trigger.enabled) return;
+  if (!trigger || !trigger.enabled) return undefined;
 
   if (!checkRateLimit(event.triggerName, trigger.rateLimit)) {
-    return;
+    return undefined;
   }
 
   const prompt = renderTemplate(trigger.action.promptTemplate, event.data);
 
   try {
-    await createJob(
+    const job = await createJob(
       trigger.action.agent ?? 'default',
       prompt,
     );
+    return { job };
   } catch (e) {
     console.error(
       `[triggers] Failed to create job for ${event.triggerName}: ${(e as Error).message}`,
     );
+    return undefined;
   }
 }
 
@@ -108,7 +110,13 @@ export async function verifyWebhookSignature(
   if (!provider || !trigger.webhook.secretEnv) return true;
 
   const secret = trigger.webhook.secret ?? Deno.env.get(trigger.webhook.secretEnv ?? '');
-  if (!secret || !signatureHeader) return false;
+  if (!secret) {
+    console.warn(
+      `[triggers] Webhook secret env var "${trigger.webhook.secretEnv}" not set for "${triggerName}" — signature verification skipped`,
+    );
+    return true;
+  }
+  if (!signatureHeader) return false;
 
   const prefix = provider.signaturePrefix;
   const expectedSig = signatureHeader.startsWith(prefix)
@@ -116,22 +124,23 @@ export async function verifyWebhookSignature(
     : signatureHeader;
 
   const encoder = new TextEncoder();
-  const key = encoder.encode(secret);
+  const keyData = encoder.encode(secret);
   const data = encoder.encode(body);
 
   try {
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      key.buffer as ArrayBuffer,
+      keyData,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['verify'],
     );
+    const sigBytes = new Uint8Array(hexToBytes(expectedSig));
     return await crypto.subtle.verify(
       'HMAC',
       cryptoKey,
-      hexToBytes(expectedSig).buffer as ArrayBuffer,
-      data.buffer as ArrayBuffer,
+      sigBytes,
+      data,
     );
   } catch {
     return false;

@@ -11,6 +11,10 @@ import { configureLogger } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
 import { hasPassword, parseCookies, requireAuth } from './auth.ts';
 import { startAutoServices } from '../services/manager.ts';
+import { setWebhookJobCreator } from '../triggers/webhook.ts';
+import { setWatcherJobCreator, startWatchers } from '../triggers/watcher.ts';
+import { createTriggerJobCreator } from '../triggers/job-creator.ts';
+import { setGitHookServerPort } from '../triggers/git-hooks.ts';
 import { SECURITY_HEADERS } from './security-headers.ts';
 
 const _log = logger('server');
@@ -110,6 +114,18 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     _log.info('Skill Bus initialized');
   } catch (e) {
     _log.warn(`Failed to initialize Skill Bus`, { error: (e as Error).message });
+  }
+
+  // Wire trigger job creators and start file watchers
+  try {
+    const jobCreator = createTriggerJobCreator();
+    setWebhookJobCreator(jobCreator);
+    setWatcherJobCreator(jobCreator);
+    setGitHookServerPort(opts.port);
+    await startWatchers();
+    _log.info('Trigger job creators wired and watchers started');
+  } catch (e) {
+    _log.warn(`Failed to initialize trigger job creators`, { error: (e as Error).message });
   }
 
   // Start dependency guardian periodic check (every 6 hours)

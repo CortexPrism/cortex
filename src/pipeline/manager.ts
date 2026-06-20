@@ -142,10 +142,14 @@ function applyResult(ctx: PipelineContext, result: HookResult, _stage: PipelineS
           break;
         case 'store': {
           const sp = se.payload as { key?: string; value?: unknown };
-          if (sp?.key) storedSideEffects.set(sp.key, sp.value);
+          if (sp?.key) {
+            const scopedKey = `${ctx.sessionId}:${sp.key}`;
+            storedSideEffects.set(scopedKey, sp.value);
+          }
           break;
         }
         case 'notify':
+          console.log(`[hook:${ctx.sessionId}] notify: ${JSON.stringify(se.payload)}`);
           break;
       }
     }
@@ -154,13 +158,14 @@ function applyResult(ctx: PipelineContext, result: HookResult, _stage: PipelineS
 
 const storedSideEffects = new Map<string, unknown>();
 
-export function getStoredSideEffect(key: string): unknown | undefined {
-  return storedSideEffects.get(key);
+export function getStoredSideEffect(sessionId: string, key: string): unknown | undefined {
+  return storedSideEffects.get(`${sessionId}:${key}`);
 }
 
 export function clearSessionSideEffects(sessionId: string): void {
+  const prefix = `${sessionId}:`;
   for (const key of storedSideEffects.keys()) {
-    if (key.includes(sessionId)) storedSideEffects.delete(key);
+    if (key.startsWith(prefix)) storedSideEffects.delete(key);
   }
 }
 

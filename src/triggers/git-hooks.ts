@@ -1,6 +1,12 @@
 import { listTriggers } from './manager.ts';
 import { makeExecutable } from '../utils/permissions.ts';
 
+let serverPort = 3000;
+
+export function setGitHookServerPort(port: number): void {
+  serverPort = port;
+}
+
 export async function installGitHooks(repoPath: string): Promise<string[]> {
   const installed: string[] = [];
   const triggers = listTriggers().filter(
@@ -33,7 +39,9 @@ PAYLOAD=$(cat <<EOF
 EOF
 )
 
-curl -s -X POST "http://localhost:3000/api/webhooks/${trigger.name}" \\
+CORTEX_PORT=\${CORTEX_PORT:-${serverPort}}
+
+curl -s -X POST "http://localhost:\${CORTEX_PORT}/api/webhooks/${trigger.name}" \\
   -H "Content-Type: application/json" \\
   -H "X-Event-Type: git-${hookName}" \\
   -d "$PAYLOAD"

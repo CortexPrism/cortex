@@ -32,7 +32,7 @@ export const voiceAutoTTSHook: PipelineHook = {
           {
             type: 'store',
             payload: {
-              key: `voice_audio_${ctx.sessionId}_${ctx.turnId}`,
+              key: `voice_audio_${ctx.turnId}`,
               value: { url: audioDataUrl, format: audio.format },
             },
           },

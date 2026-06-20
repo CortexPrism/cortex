@@ -29,7 +29,7 @@ export async function startWatchers(): Promise<void> {
   }
 }
 
-async function startWatcher(triggerName: string): Promise<void> {
+export async function startWatcher(triggerName: string): Promise<void> {
   if (watchers.has(triggerName)) return;
 
   const trigger = listTriggers().find((t) => t.name === triggerName);

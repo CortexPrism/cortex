@@ -696,7 +696,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       // Check for auto-TTS audio from pipeline hook
       try {
         const { getStoredSideEffect } = await import('../pipeline/manager.ts');
-        const audioEffect = getStoredSideEffect(`voice_audio_${sessionId}_${result.turnId}`);
+        const audioEffect = getStoredSideEffect(sessionId, `voice_audio_${result.turnId}`);
         if (audioEffect) {
           const ae = audioEffect as { url: string; format: string };
           // Extract base64 data from data URL
