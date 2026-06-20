@@ -73,8 +73,8 @@ enterprise-grade security — all running locally on your machine or server.
 - **Tool use with approval gates** — every tool call is reviewed by the security policy before
   execution; agents can request human approval for sensitive operations
 - **Sub-agent orchestration** — agents can spawn 11 specialized child agents (Explorer, Coder,
-  Researcher, Planner, Generalist, Security Auditor, Debugger, Architect, DevOps, Data Analyst,
-  UI Designer) for parallel and delegated work
+  Researcher, Planner, Generalist, Security Auditor, Debugger, Architect, DevOps, Data Analyst, UI
+  Designer) for parallel and delegated work
 - **Per-turn reflection** — LLM self-assessment of confidence and quality after each response; meta-
   pattern consolidation over time
 - **Voice pipeline** — speech-to-text (OpenAI Whisper), text-to-speech (OpenAI TTS / ElevenLabs),
