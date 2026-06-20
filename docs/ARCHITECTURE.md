@@ -6,7 +6,7 @@ This document describes the implemented architecture of CortexPrism as of v0.45.
 
 ## Overview
 
-CortexPrism is a single-process agentic harness written in TypeScript/Deno. It exposes a CLI, a REST API + WebSocket server, and a web UI. All state is persisted in SQLite databases using WAL mode via `@libsql/client`.
+CortexPrism is a single-process AI agent operating system written in TypeScript/Deno. It exposes a CLI, a REST API + WebSocket server, and a web UI. All state is persisted in SQLite databases using WAL mode via `@libsql/client`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
