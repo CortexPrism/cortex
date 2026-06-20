@@ -17,7 +17,7 @@
 > **The open-source AI agent operating system — autonomous agents with memory, tools, a web UI, and
 > layered security, powered by Deno.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
 [![Version](https://img.shields.io/badge/version-0.45.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
@@ -30,7 +30,7 @@ enterprise-grade security — all running locally on your machine or server.
 
 - Works with **24 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
 - Ships as a **single Deno binary** — no Docker required to get started
-- **100% open source** — MIT licensed, no telemetry, data stays on your machine
+- **100% open source** — Apache 2.0 licensed, no telemetry, data stays on your machine
 
 ---
 
@@ -992,8 +992,8 @@ submission standards.
 
 ## Architecture
 
-CortexPrism is a single-process AI agent operating system built on Deno. All state is persisted in SQLite (WAL mode) via
-`@libsql/client`.
+CortexPrism is a single-process AI agent operating system built on Deno. All state is persisted in
+SQLite (WAL mode) via `@libsql/client`.
 
 ```
 CLI / Web UI / REST API
