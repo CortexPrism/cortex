@@ -300,6 +300,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '034_sandbox_snapshots.sql',
       label: 'cortex.db (sandbox snapshots)',
     },
+    {
+      db: lensDb,
+      sqlFile: '035_compliance.sql',
+      label: 'lens.db (compliance metadata)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

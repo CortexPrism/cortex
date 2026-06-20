@@ -63,7 +63,11 @@ export type EventType =
   | 'isolation_violation'
   | 'supply_chain_verification'
   | 'guardian_report'
-  | 'escalation';
+  | 'escalation'
+  | 'compliance_session_start'
+  | 'compliance_session_end'
+  | 'compliance_turn_recorded'
+  | 'compliance_export';
 
 export interface LensEvent {
   id: string;
