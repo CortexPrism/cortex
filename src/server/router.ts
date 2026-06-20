@@ -7,8 +7,8 @@ import {
   getSessionTree,
   listSessions,
   resumeSession,
-  updateSessionProgress,
   updateSessionName,
+  updateSessionProgress,
 } from '../db/sessions.ts';
 import { getSessionEvents } from '../db/lens.ts';
 import { getLensDb, type InValue } from '../db/client.ts';
@@ -1042,7 +1042,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { initSessionDb } = await import('../db/migrate.ts');
     const db = await initSessionDb(msgsMatch[1]);
     const rows = await db.all<
-      { id: number; role: string; content: string; tool_calls: string | null; token_count: number; created_at: string }
+      {
+        id: number;
+        role: string;
+        content: string;
+        tool_calls: string | null;
+        token_count: number;
+        created_at: string;
+      }
     >(
       `SELECT id, role, content, tool_calls, token_count, created_at FROM session_messages ORDER BY id ASC`,
     );
@@ -3710,7 +3717,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
       if (existing) {
         const db2 = await import('../db/client.ts').then((m) => m.getVaultDb());
         const row = await db2.get<{ service: string }>(
-          `SELECT service FROM vault_entries WHERE name = ?`, [body.key.trim()],
+          `SELECT service FROM vault_entries WHERE name = ?`,
+          [body.key.trim()],
         );
         if (row?.service) existingService = row.service;
       }
@@ -3730,7 +3738,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
         if (/^\d+[dmy]$/i.test(exp)) {
           const num = parseInt(exp);
           const unit = exp.slice(-1).toLowerCase();
-          const multipliers: Record<string, number> = { d: 86_400_000, m: 2_592_000_000, y: 31_536_000_000 };
+          const multipliers: Record<string, number> = {
+            d: 86_400_000,
+            m: 2_592_000_000,
+            y: 31_536_000_000,
+          };
           expiresAt = new Date(Date.now() + num * (multipliers[unit] || 0)).toISOString();
         } else {
           expiresAt = exp;
@@ -4912,9 +4924,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const checkpoint = await loadCheckpoint(await getMemoryDb(), checkpointId);
     if (!checkpoint) return notFound('Checkpoint not found');
     const restored = restoreCheckpoint(checkpoint);
-    const resumePrompt = buildResumePrompt(restored)
-      + (restored.toolCallHistory.length > 0
-        ? `\n\n## Tool History\n${restored.toolCallHistory.map((t) => `- ${t.toolName}`).join('\n')}`
+    const resumePrompt = buildResumePrompt(restored) +
+      (restored.toolCallHistory.length > 0
+        ? `\n\n## Tool History\n${
+          restored.toolCallHistory.map((t) => `- ${t.toolName}`).join('\n')
+        }`
         : '');
 
     const session = await getSession(checkpoint.sessionId);
@@ -5731,14 +5745,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
     }
   }
   if (req.method === 'GET' && path === '/api/mcp/server') {
-    const port = parseInt((Deno.env.get('CORTEX_PORT') || Deno.env.get('PORT') || '0')) || 0;
+    const port = parseInt(Deno.env.get('CORTEX_PORT') || Deno.env.get('PORT') || '0') || 0;
     return json({ running: true, port });
   }
   if (req.method === 'POST' && path === '/api/mcp/server/start') {
     return json({ ok: true, running: true });
   }
   if (req.method === 'POST' && path === '/api/mcp/server/stop') {
-    return json({ ok: true, running: true, note: 'MCP server runs in-process — use server restart to stop' });
+    return json({
+      ok: true,
+      running: true,
+      note: 'MCP server runs in-process — use server restart to stop',
+    });
   }
 
   // ── Chrome Bridge ─────────────────────────────────────────

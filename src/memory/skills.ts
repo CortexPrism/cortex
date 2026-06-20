@@ -1170,11 +1170,21 @@ export function formatSkillsAsAvailableList(skills: Skill[]): string {
   });
 
   const tips: string[] = [];
-  if (skills.find((s) => s.name.includes('dev') || s.name.includes('code') || s.name.includes('develop'))) {
+  if (
+    skills.find((s) =>
+      s.name.includes('dev') || s.name.includes('code') || s.name.includes('develop')
+    )
+  ) {
     tips.push('Development tasks → use a code-related skill for architecture and code conventions');
   }
-  if (skills.find((s) => s.name.includes('ui') || s.name.includes('frontend') || s.name.includes('design'))) {
-    tips.push('UI/design tasks → use a design-related skill for distinctive, production-grade interfaces');
+  if (
+    skills.find((s) =>
+      s.name.includes('ui') || s.name.includes('frontend') || s.name.includes('design')
+    )
+  ) {
+    tips.push(
+      'UI/design tasks → use a design-related skill for distinctive, production-grade interfaces',
+    );
   }
   const tipText = tips.length > 0
     ? tips.map((t) => `- ${t}`).join('\n') +

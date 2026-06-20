@@ -643,14 +643,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
             // Preserve chunk boundary newlines so markdown paragraphs and lists
             // survive incremental streaming. Only collapse excessive blank lines.
-          safeText = safeText.replace(/\n{3,}/g, '\n\n');
-          if (safeText) {
-            send(ws, { type: 'chunk', delta: safeText });
-            if (assistantMessageId !== null) {
-              if (assistantDraft === 'Thinking…') assistantDraft = safeText;
-              else assistantDraft += safeText;
+            safeText = safeText.replace(/\n{3,}/g, '\n\n');
+            if (safeText) {
+              send(ws, { type: 'chunk', delta: safeText });
+              if (assistantMessageId !== null) {
+                if (assistantDraft === 'Thinking…') assistantDraft = safeText;
+                else assistantDraft += safeText;
+              }
             }
-          }
           };
         })(),
         registry,

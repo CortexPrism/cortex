@@ -141,8 +141,10 @@ async function tryRecover(dbPath: string): Promise<boolean> {
     await testClient.execute('SELECT 1');
     testClient.close();
   } catch (e) {
-    if ((e as Error).message?.includes('SQLITE_CORRUPT') ||
-        (e as Error).message?.includes('disk image is malformed')) {
+    if (
+      (e as Error).message?.includes('SQLITE_CORRUPT') ||
+      (e as Error).message?.includes('disk image is malformed')
+    ) {
       console.log(`  ⚠ ${basename(dbPath)} is corrupted (SQLITE_CORRUPT) — will recover`);
       isCorrupt = true;
     } else {

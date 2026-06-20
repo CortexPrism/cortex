@@ -235,13 +235,15 @@ When you need to do multiple independent things at once, make multiple \`sub_age
       {
         name: 'model',
         type: 'string',
-        description: 'Override the model for this sub-agent. Use only models from providers configured in Settings. Leave empty to inherit the current chat model.',
+        description:
+          'Override the model for this sub-agent. Use only models from providers configured in Settings. Leave empty to inherit the current chat model.',
         required: false,
       },
       {
         name: 'provider',
         type: 'string',
-        description: 'Override the provider. Use only providers configured in Settings. Leave empty to inherit from the current chat.',
+        description:
+          'Override the provider. Use only providers configured in Settings. Leave empty to inherit from the current chat.',
         required: false,
       },
       {
