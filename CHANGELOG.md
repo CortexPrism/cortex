@@ -7,44 +7,57 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
-### Fixed
-
-- **Webhook triggers always returned 500** — `setWebhookJobCreator()` was defined but never called at server startup. All `POST /api/webhooks/:name` requests failed with "Job creator not initialized". Added a shared trigger job creator module (`src/triggers/job-creator.ts`) that spawns fire-and-forget agent turns following the A2A executor pattern, and wired it into `startServer()`.
-
-- **File watcher triggers silently dropped all events** — `setWatcherJobCreator()` was never called, causing debounced filesystem change events to be discarded. Wired the same job creator implementation into the watcher subsystem at server startup.
-
-- **File watchers never activated** — `startWatchers()` was never called from `startServer()`, so `Deno.watchFs` loops were never created for configured watcher triggers. `startWatchers()` is now called during server initialization.
-
-- **Webhook response included `undefined` job** — `handleTriggerEvent()` returned `Promise<void>` but the webhook handler assigned its result to a `job` variable sent in the 202 response. Changed return type to `Promise<{ job: unknown } | undefined>` and spread the result into the response.
-
-- **Git hooks hardcoded port 3000** — generated hook scripts used `http://localhost:3000/api/webhooks/...`, breaking triggers when the server ran on a different port. Hook scripts now reference a `CORTEX_PORT` environment variable with the runtime port as fallback, and `setGitHookServerPort()` is called from server startup.
-
-- **Enabling/disabling a watcher trigger via API didn't manage the watcher** — `POST /api/triggers/:name/enable|disable` only flipped `config.enabled` without starting or stopping the actual filesystem watcher. The endpoint now calls `startWatcher()` or `stopWatcher()` for watcher-sourced triggers.
-
-- **Pipeline side effects not session-scoped** — `storedSideEffects` used raw keys from hooks, with `clearSessionSideEffects()` matching by substring (risking cross-session collisions). Store keys are now prefixed with `sessionId:`, using exact prefix matching for cleanup. The `notify` side effect type now logs output instead of being a no-op.
-
-- **Webhook signature verification buffer safety** — `verifyWebhookSignature()` accessed `.buffer` on `Uint8Array` instances, which may return a shared or offset `ArrayBuffer` in some runtimes. Buffer parameters are now passed directly as `Uint8Array` (accepted as `BufferSource` by the Web Crypto API).
-
-- **Missing secret env var rejected all webhook requests** — when `secretEnv` was configured but the environment variable was not set, `verifyWebhookSignature()` returned `false` for every request. Now logs a warning and returns `true` (skipping verification) when the secret cannot be resolved.
-
-- **Skill extraction created low-quality "test" skills** — `extractSkillFromSession()` fired on every turn with 2+ tool calls, with no naming guard or session throttle. The LLM could produce names like `test`, `debug`, or `helper`. Added a naming blocklist (`test`, `debug`, `temp`, generics, names under 5 chars), raised the minimum tool call threshold from 2 to 4, added a session throttle (max 1 extraction per session), and capped the throttle cache at 10K entries.
-
-- **Test suite leaked skill artifacts into the production database** — `cleanSkillsDb()` in `tests/skills_eval_test.ts` was defined but never called. Wired into setup and teardown steps so test skills are removed before and after the test run.
-
 ### Added
 
-- **Trigger job creator** — new `src/triggers/job-creator.ts` module that implements `WebhookJobCreator` and `WatcherJobCreator` interfaces. Creates ephemeral agent sessions and executes `agentTurn()` in a fire-and-forget background context, returning session metadata to the caller immediately.
+- **Sub-agent types expanded from 5 to 11** — the `sub_agent` tool schema, system prompt (`soul.ts`), and metacognition engine now support all 11 specialized types: `explore`, `general`, `plan`, `code`, `research`, `security`, `debug`, `architect`, `devops`, `data`, `ui`. Each type has an enhanced system prompt with domain-specific protocols, output formats, and constraints. (`src/tools/builtin/sub_agent.ts`, `src/agent/soul.ts`, `src/agent/sub-agent-types.ts`)
 
-- **Multi-lingual system (i18n)** — all human-readable text across CLI, web UI, tool descriptions, server errors, logs, and agent prompts is now localizable. 10 target languages (zh, es, fr, de, ja, ko, pt, ru, ar, hi) with English as the source of truth and fallback. 753 translation keys across 6 namespaces (`cli`, `ui`, `tools`, `server`, `agent`, `common`).
-  - New `src/i18n/` module: `I18nService` with `t()` dot-notation key lookup, `loadLocale()` with cache and fallback chain, `handleI18nApi()` serving `GET /api/i18n/:locale` (ui+common namespaces only), and `extractLocale()` middleware (env var → config → Accept-Language → `'en'`).
-  - `CortexConfig.locale` field with `CORTEX_LOCALE` env var override. Resolved per-request for the web UI via `serveUi(locale)` with `{LOCALE}` template replacement.
-  - `PATHS.localesDir` with `CORTEX_LOCALES_DIR` env var override and compiled-binary fallback to `Deno.cwd()/locales`.
-  - Frontend vanilla JS `t()` function with `initI18n()` loading translations via `/api/i18n/:locale`, cached in `localStorage`.
-  - Tool definitions extended with optional `displayNameKey`, `descriptionKey`, and param `descriptionKey` fields; `ToolRegistry` resolves via `i18n.t()`.
-  - Router `err()`/`notFound()` helpers pass messages through `i18n.t()` for backwards-compatible error localization.
-  - `LogEntry.i18nKey` for structured log aggregation. Agent system prompt includes locale hint when set.
-  - CI scripts: `deno task i18n:validate` (key parity across locales), `deno task i18n:sync` (add new English keys to all locales), `deno task i18n:extract` (scan source for `i18n.t()` calls).
-  - 11 locale files in `locales/` (ar includes `direction: "rtl"` in `_meta`).
+- **True parallel sub-agent execution** — multiple `sub_agent` tool calls in the same turn now execute concurrently via `Promise.all` instead of sequentially. Non-sub-agent tools still run in order. Progress is logged with per-batch timing, success/failure counts, and average duration. (`src/agent/loop.ts`)
+
+- **Metacognition engine domain expansion** — 6 new keyword sets added (security, debug, devops, data, ui, architect — 143 keywords total) to detect specialized task types. Signal breakdown includes all 10 domain scores. Suggested types are now score-sorted with a top-3 cap instead of hardcoded heuristics. (`src/agent/metacog.ts`)
+
+- **Sub-agent retry with fallback** — when a specialized sub-agent fails, the tool retries with the same type and configuration (pass-through to `executeOnce` via `executeWithRetry`). Recursive spawning is prevented by a depth guard that refuses spawns at depth ≥ 2. (`src/tools/builtin/sub_agent.ts`)
+
+- **Sub-agent usage metrics** — new `getSubAgentMetrics()` and `getSubAgentSuccessRate()` functions in the tracker provide per-type spawn/completion/failure counts and overall success ratio. Metrics use `structuredClone` to prevent mutation of internal state. `getSubAgentTaskBoard()` now includes the metrics object alongside active and recent tasks. (`src/agent/sub-agent-tracker.ts`)
+
+- **Chat retry action** — `↻ Retry` button in the chat input bar replays the last turn by truncating the session at the last user message via `POST /api/sessions/:id/retry`. Attachment metadata and model parameters are persisted alongside user turns in the `tool_calls` column so retry works correctly after page reload. The active chat model/provider is inherited by sub-agents through `ToolContext`, preventing sub-agents from selecting unsupported models. (`src/server/router.ts`, `src/server/ws.ts`, `src/server/ui.ts`, `src/tools/builtin/sub_agent.ts`)
+
+- **Checkpoint restore** — `POST /api/memori/checkpoints/:id/restore` rewinds a session to any saved Memori checkpoint, injecting a system message with the checkpoint's resume context (goals, tool history, workspace state). `Restore` button added to each checkpoint in the Memori browser. Message replay runs inside a transaction (`BEGIN IMMEDIATE`/`COMMIT`) for atomicity. `updateSessionProgress()` keeps `turn_count` and `last_turn_at` coherent across retry and restore operations. (`src/server/router.ts`, `src/db/sessions.ts`, `src/server/ui.ts`)
+
+### Fixed
+
+- **Sub-agent privilege-escalation fallback removed** — the automatic retry with `type="general"` that silently widened tool permissions (e.g. read-only security sub-agent → full shell/code_exec access) and hardcoded a bypass allow-list was removed. `executeWithRetry` is now a direct pass-through to `executeOnce`. (`src/tools/builtin/sub_agent.ts`)
+
+- **DB corruption recovery hardened** — the `tryRecover()` fallback that silently deleted and recreated corrupted databases with no backup was replaced with a fail-closed approach that logs an error and returns `false`, requiring manual operator recovery. (`src/db/migrate.ts`)
+
+- **Retry state drift after page reload** — user message metadata (attachments, agent, model, reasoning effort) is now persisted as JSON in the `tool_calls` column alongside user turns. `syncLastChatRequestFromMessages` reconstructs the full retry payload from persisted metadata instead of dropping attachments and resetting model settings. (`src/server/ws.ts`, `src/server/ui.ts`)
+
+- **lens.db multi-process corruption (SQLITE_CORRUPT)** — 5 OS processes (server, validator, executor, scheduler, sub-agents) were all opening and writing to the same WAL-mode `lens.db`. Concurrent `wal_checkpoint(TRUNCATE)` calls during backup raced with writes, corrupting btree pages and indexes. Fixed by preventing subprocesses from opening `lens.db` directly: `getLensDb()` returns a `NoopDb` stub when `CORTEX_NOLENS=1` is set in the environment, ensuring only the main server process writes to the audit log. Recovered 1836/2409 events from the corrupted DB via `sqlite3 .clone`. (`src/db/client.ts`, `src/db/lens.ts`, `src/processes/validator-process.ts`, `src/processes/executor-process.ts`, `src/processes/scheduler-process.ts`, `src/processes/sub-agent-entry.ts`, `src/processes/service-entry.ts`)
+
+- **claude-sonnet-4-5 hallucinated by LLM** — the `sub_agent` tool's `model` parameter description listed `"claude-sonnet-4-5"` as an example, which the LLM then copied verbatim into sub-agent calls. Since no Anthropic provider was configured, every sub-agent with that model failed with provider errors. Removed the specific model example from the tool description and replaced it with guidance to use only configured providers. (`src/tools/builtin/sub_agent.ts`)
+
+- **Metacognition delegate reason contradicted suggested types** — the `delegate` case used a hardcoded if-else chain that checked `security`/`debug`/`architect` before `research`/`code`/`explore`, causing the reason text to mismatch the score-sorted suggested types (e.g. "Security audit task" when `research=4` was the strongest signal). Changed to a `switch` on the score-sorted `primaryType`. (`src/agent/metacog.ts`)
+
+- **Malformed tool calls silently dropped** — when the LLM emitted tool calls in unrecognized XML formats (e.g. `<tool_call name="sub_agent">` with nested attributes), `parseToolCalls` returned 0 and the loop treated the response as final text. `stripToolCallMarkup` then removed all content, leaving the user with blank output. Added malformed-tool-call detection before the final-response break: if the response contains unparsed `<tool_call name=` or raw `{"tool":` patterns, the system injects a format correction and continues the loop. (`src/agent/loop.ts`)
+
+- **Empty final response after tool-call stripping** — when `stripToolCallMarkup` consumed the entire LLM response (e.g. all prose was inside tool blocks), the user received silence. Added a fallback: if the stripped response is empty and a `sub_agent` tool ran, surface the sub-agent's output directly; otherwise surface a summary of tools used. (`src/agent/loop.ts`)
+
+- **Retry preserved invalid model override** — when the LLM passed a model name unsupported by the provider (e.g. `claude-sonnet-4-5` to deepseek), the retry with `type="general"` kept the same invalid `model` arg. Retry now detects model-related errors via regex and strips the override. (`src/tools/builtin/sub_agent.ts`)
+
+- **Recursive sub-agent depth explosion** — a `general` retry sub-agent that succeeded could itself spawn more sub-agents, creating unbounded recursive chains (observed: 4 grandchild sub-agents from one retry). Added a depth guard that counts `sub_` prefixes in the session ID and refuses spawns at depth ≥ 2. Retry tool set also explicitly excludes `sub_agent`. (`src/tools/builtin/sub_agent.ts`)
+
+- **Parallel state tracking race** — the `toolCallsMade` count in pipeline hook state used `toolResults.filter(Boolean).length` during parallel execution, causing non-deterministic counts. Replaced with `state.toolCallsMade` snapshots read before and after tool execution. (`src/agent/loop.ts`)
+
+- **ARCHITECT_KEYWORDS overlapped with PLANNING_KEYWORDS** — `'architecture'` appeared in both keyword sets, causing double-scoring for architecture-related tasks. Removed from `PLANNING_KEYWORDS` (retained in `ARCHITECT_KEYWORDS` where it's more precisely scoped). (`src/agent/metacog.ts`)
+
+### Changed
+
+- **Sub-agent type system prompts enhanced** — all 11 types now have detailed protocols, output format specifications, and quality standards. Notable: `code` adds production-quality standards and "no TODOs" rule; `security` adds full OWASP checklist with CWE mapping; `debug` adds 6-step systematic protocol; `architect` adds ADR format and 9-part output template; `data` adds 7-step analysis protocol; `ui` adds WCAG 2.1 AA standards and 5 UI state requirements. (`src/agent/sub-agent-types.ts`)
+
+- **Sub-agent tool description expanded** — the `sub_agent` tool's `description` field now documents all 11 types with one-line summaries, up from the previous 5. (`src/tools/builtin/sub_agent.ts`)
+
+- **Soul prompt sub-agent guidance rewritten** — the `## Sub-Agents` section in `soul.ts` now covers all 11 types with "Best for:" usage guidance, explicit anti-patterns (e.g. "fewer than 2 tool calls"), and notes that sub-agents execute in true parallel. (`src/agent/soul.ts`)
+
+- **Sub-agent model/provider inherits from chat** — `ToolContext` now carries optional `model` and `provider` fields, populated by all chat/caller entry points (WS, CLI, A2A, triggers, services). `spawnSubAgent` prefers type-specific overrides, then context values, then agent defaults, so sub-agents use the active chat model unless a sub-agent type explicitly pins its own. Nested sub-agents preserve the inherited context. (`src/tools/types.ts`, `src/agent/sub-agent.ts`, `src/tools/builtin/sub_agent.ts`, `src/processes/sub-agent-entry.ts`)
 
 ---
 

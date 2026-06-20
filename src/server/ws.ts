@@ -40,7 +40,8 @@ type WsMsg =
   | { type: 'speak'; text: string; voice?: string }
   | { type: 'audio'; data: string; format?: string }
   | { type: 'voice_state'; speaking: boolean }
-  | { type: 'approval_response'; requestId: string; approved: boolean };
+  | { type: 'approval_response'; requestId: string; approved: boolean }
+  | { type: 'stop' };
 
 function send(ws: WebSocket, data: unknown): void {
   if (ws.readyState === WebSocket.OPEN) {
@@ -53,6 +54,9 @@ function send(ws: WebSocket, data: unknown): void {
  * Maps request IDs to promise resolvers for async approval flow
  */
 const pendingApprovals = new Map<string, (approved: boolean) => void>();
+
+/** Per-session AbortControllers for user-initiated stop */
+const sessionAbortControllers = new Map<string, AbortController>();
 
 const wsClients = new Map<WebSocket, { sessionId: string | null }>();
 
@@ -266,6 +270,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
     files?: Array<{ filename: string; mimeType: string; data: string }>,
     resumeSessionId?: string,
     modelMode?: 'manual' | 'auto',
+    signal?: AbortSignal,
   ): Promise<void> {
     try {
       const config = await loadConfig();
@@ -534,6 +539,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         reasoningEffort,
         persistUserMessage: false,
         persistAssistantMessage: false,
+        signal,
         ...providerSpecificOpts,
         onChunk: (() => {
           // Buffer to accumulate chunks for proper tool call detection
@@ -637,13 +643,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
 
             // Preserve chunk boundary newlines so markdown paragraphs and lists
             // survive incremental streaming. Only collapse excessive blank lines.
-            safeText = safeText.replace(/\n{3,}/g, '\n\n');
-            if (safeText) {
-              send(ws, { type: 'chunk', delta: safeText });
-              if (assistantMessageId !== null) {
-                assistantDraft += safeText;
-              }
+          safeText = safeText.replace(/\n{3,}/g, '\n\n');
+          if (safeText) {
+            send(ws, { type: 'chunk', delta: safeText });
+            if (assistantMessageId !== null) {
+              if (assistantDraft === 'Thinking…') assistantDraft = safeText;
+              else assistantDraft += safeText;
             }
+          }
           };
         })(),
         registry,
@@ -651,6 +658,8 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           workingDir,
           agentId: agent.id,
           workspaceDir,
+          model,
+          provider: providerKind,
           approvalGate: async (tool: string, command: string, sampleData?: string) => {
             return await requestWebUIApproval(
               ws,
@@ -709,6 +718,15 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         // Voice audio not available
       }
 
+      // Use the actual agent response (already stripped of tool calls by loop.ts)
+      // as the final displayed content. Fall back to accumulated draft.
+      const finalContent = result.response?.trim()
+        ? result.response
+        : (assistantDraft !== 'Thinking…' ? assistantDraft : result.response || '');
+      if (finalContent && finalContent !== assistantDraft) {
+        assistantDraft = finalContent;
+      }
+
       send(ws, {
         type: 'done',
         tokensIn: result.tokensIn,
@@ -717,7 +735,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         durationMs: result.durationMs,
         model,
         reasoningEffort: reasoningEffort ?? null,
-        finalContent: assistantDraft,
+        finalContent,
         requestedModelMode,
         resolvedProvider: providerKind,
         resolvedModel: model,
@@ -763,18 +781,29 @@ export async function handleWebSocket(req: Request): Promise<Response> {
   }
 
   async function ensureChatSession(agentId?: string, resumeId?: string): Promise<void> {
+    const ensureCoreSessionRow = async (sid: string, agent: AgentConfig): Promise<void> => {
+      const existing = await getSession(sid);
+      if (!existing) {
+        await createSession(sid, 'web', undefined, agent.id);
+      }
+    };
+
     if (resumeId) {
+      const agent = await resolveAgent(agentId);
+      activeAgent = agent;
+
       if (sessionId === resumeId) {
         if (!sessionDbRef) {
           sessionDbRef = await initSessionDb(sessionId);
         }
+        await ensureCoreSessionRow(sessionId, agent);
         return;
       }
-      const agent = await resolveAgent(agentId);
-      activeAgent = agent;
+
       sessionId = resumeId;
       wsClients.set(ws, { sessionId });
       sessionDbRef = await initSessionDb(sessionId);
+      await ensureCoreSessionRow(sessionId, agent);
       await resumeSession(sessionId);
       send(ws, { type: 'session', sessionId, agentId: agent.id, agentName: agent.name });
       _log.info(`Resumed session after reconnect`, { sessionId, agentName: agent.name });
@@ -985,6 +1014,16 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       return;
     }
 
+    if (msg.type === 'stop') {
+      const ctrl = sessionAbortControllers.get(sessionId ?? '');
+      if (ctrl) {
+        ctrl.abort();
+        sessionAbortControllers.delete(sessionId ?? '');
+        send(ws, { type: 'stopped' });
+      }
+      return;
+    }
+
     if (msg.type === 'chat') {
       if (!msg.message?.trim() && (!msg.files || msg.files.length === 0)) {
         send(ws, { type: 'error', error: 'Empty message' });
@@ -992,15 +1031,28 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       }
       await ensureChatSession(msg.agentId, msg.sessionId);
       turnInFlight = true;
+
+      // Create AbortController for this turn — user can stop via WS message
+      const abortCtrl = new AbortController();
+      if (sessionId) {
+        sessionAbortControllers.set(sessionId, abortCtrl);
+      }
       if (sessionDbRef && sessionId) {
         const attachments = msg.files?.length
           ? ` [Files: ${msg.files.map((f) => f.filename).join(', ')}]`
           : '';
         const pendingUserMessage = `${msg.message ?? ''}${attachments}`.trim() ||
           '(attachment upload)';
+        const requestMeta = JSON.stringify({
+          agentId: msg.agentId ?? null,
+          model: msg.model ?? null,
+          modelMode: msg.modelMode ?? null,
+          reasoningEffort: msg.reasoningEffort ?? null,
+          files: msg.files ?? null,
+        });
         await sessionDbRef.insert(
-          `INSERT INTO session_messages (role, content, token_count) VALUES (?, ?, ?)`,
-          ['user', pendingUserMessage, null],
+          `INSERT INTO session_messages (role, content, tool_calls, token_count) VALUES (?, ?, ?, ?)`,
+          ['user', pendingUserMessage, requestMeta, null],
         ).catch(() => {});
         assistantDraft = 'Thinking…';
         assistantMessageId = await sessionDbRef.insert(
@@ -1018,8 +1070,22 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           msg.files,
           msg.sessionId,
           msg.modelMode,
+          abortCtrl.signal,
         );
+      } catch (e) {
+        const errMsg = (e as Error).message || 'An unexpected error occurred';
+        _log.error(`Chat processing failed`, { sessionId, error: errMsg });
+        send(ws, {
+          type: 'error',
+          error: errMsg.includes('timed out')
+            ? `${errMsg}. Try a simpler query or break it into smaller steps.`
+            : errMsg,
+        });
+        if (assistantMessageId !== null) {
+          await flushAssistantDraft(`Error: ${errMsg}`, undefined);
+        }
       } finally {
+        sessionAbortControllers.delete(sessionId ?? '');
         turnInFlight = false;
         clearAssistantFlushTimer();
         if (assistantMessageId !== null) {

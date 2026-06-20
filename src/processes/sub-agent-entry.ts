@@ -79,6 +79,10 @@ async function main(): Promise<void> {
   const instruction = config.instruction;
 
   try {
+    // Prevent sub-agent processes from opening shared databases that the
+    // main server owns — avoids WAL checkpoint races and SQLITE_CORRUPT.
+    Deno.env.set('CORTEX_NOLENS', '1');
+
     // Ensure migrations
     await runMigrations();
 
@@ -110,6 +114,8 @@ async function main(): Promise<void> {
     }
 
     const systemPrompt = buildSystemPrompt(soul, config.config.systemPrompt, user, memory);
+    const inheritedProvider = config.config.provider || agentConfig.provider || cortexConfig.defaultProvider;
+    const inheritedModel = config.config.model || agentConfig.model || cortexConfig.providers[inheritedProvider]?.model || 'unknown';
 
     // Build tool registry (centralized registration)
     const registry = new ToolRegistry();
@@ -163,6 +169,8 @@ async function main(): Promise<void> {
         workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(
           config.config.agentId ?? config.subAgentType ?? agentConfig.id ?? 'default',
         ),
+        model: inheritedModel,
+        provider: inheritedProvider,
         approvalGate: async (tool: string, command: string, sampleData?: string) => {
           return await requestHumanApproval(
             {

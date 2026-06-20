@@ -61,3 +61,4 @@ docs/marketing/
 AGENTS.md
 
 .playwright-mcp/
+cortex.code-workspace

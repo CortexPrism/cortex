@@ -25,6 +25,10 @@ export interface SubAgentConfig {
   maxTurns?: number;
   /** Execution timeout in ms (default 120000) */
   timeout?: number;
+  /** Inherited model from the active chat context */
+  inheritedModel?: string;
+  /** Inherited provider from the active chat context */
+  inheritedProvider?: ProviderKind;
 }
 
 /** Task sent to a sub-agent */
@@ -100,8 +104,8 @@ export async function* spawnSubAgent(
   const effectiveAgent: AgentConfig = {
     ...agent,
     name: task.config.name || agent.name,
-    provider: task.config.provider || typeDef?.provider || agent.provider,
-    model: task.config.model || typeDef?.model || agent.model,
+    provider: task.config.provider || typeDef?.provider || task.config.inheritedProvider || agent.provider,
+    model: task.config.model || typeDef?.model || task.config.inheritedModel || agent.model,
     systemPrompt: typeDef?.systemPrompt || task.config.systemPrompt || agent.systemPrompt,
     tools: task.config.tools || (typeDef?.tools?.length ? typeDef.tools : agent.tools),
     maxTurns: task.config.maxTurns || typeDef?.maxTurns || agent.maxTurns,

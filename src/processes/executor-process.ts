@@ -114,6 +114,7 @@ async function handleExecute(
 
 export async function runExecutor(): Promise<void> {
   console.log('[executor] Starting Cortex Executor process...');
+  Deno.env.set('CORTEX_NOLENS', '1');
   await runMigrations();
   console.log('[executor] Ready.');
 

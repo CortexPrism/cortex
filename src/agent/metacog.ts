@@ -37,6 +37,12 @@ interface TaskSignals {
   exploreScore: number;
   codeScore: number;
   planningScore: number;
+  securityScore: number;
+  debugScore: number;
+  devopsScore: number;
+  dataScore: number;
+  uiScore: number;
+  architectScore: number;
   wordCount: number;
 }
 
@@ -143,9 +149,146 @@ const DESTRUCTIVE_PATTERNS = [
   /\bmigration\b/i,
 ];
 
+const SECURITY_KEYWORDS = [
+  'security',
+  'vulnerability',
+  'vulnerable',
+  'audit',
+  'owasp',
+  'injection',
+  'xss',
+  'csrf',
+  'secret',
+  'api key',
+  'token leak',
+  'permission',
+  'access control',
+  'auth',
+  'authentication',
+  'authorization',
+  'encrypt',
+  'crypto',
+  'penetration test',
+  'compliance',
+  'gdpr',
+  'hipaa',
+  'soc2',
+  'threat model',
+  'exploit',
+  'cve',
+];
+
+const DEBUG_KEYWORDS = [
+  'debug',
+  'bug',
+  'error',
+  'crash',
+  'stack trace',
+  'exception',
+  'fix this',
+  'not working',
+  'broken',
+  'fails',
+  'failing',
+  'regression',
+  'reproduce',
+  'root cause',
+  'troubleshoot',
+  'investigate why',
+  'why is.*not',
+  'why does.*fail',
+];
+
+const DEVOPS_KEYWORDS = [
+  'deploy',
+  'deployment',
+  'docker',
+  'container',
+  'kubernetes',
+  'k8s',
+  'ci/cd',
+  'ci cd',
+  'pipeline',
+  'jenkins',
+  'github actions',
+  'terraform',
+  'infrastructure',
+  'provision',
+  'monitoring',
+  'logging',
+  'alert',
+  'scaling',
+  'load balancer',
+  'nginx',
+  'reverse proxy',
+  'backup',
+  'restore',
+  'ssl',
+  'tls',
+  'certificate',
+  'domain',
+  'dns',
+];
+
+const DATA_KEYWORDS = [
+  'query',
+  'sql',
+  'database',
+  'analytics',
+  'data',
+  'report',
+  'chart',
+  'graph',
+  'visualization',
+  'statistics',
+  'metrics',
+  'aggregate',
+  'dashboard',
+  'etl',
+  'extract',
+  'transform',
+  'dataset',
+  'schema',
+  'table',
+  'column',
+  'row',
+  'join',
+  'index',
+  'performance',
+  'optimize query',
+];
+
+const UI_KEYWORDS = [
+  'ui',
+  'ux',
+  'interface',
+  'frontend',
+  'front-end',
+  'html',
+  'css',
+  'style',
+  'layout',
+  'component',
+  'responsive',
+  'accessibility',
+  'wcag',
+  'screen reader',
+  'aria',
+  'animation',
+  'design system',
+  'color',
+  'font',
+  'typography',
+  'button',
+  'form',
+  'modal',
+  'navigation',
+  'landing page',
+  'dashboard',
+];
+
 const PLANNING_KEYWORDS = [
   'plan',
-  'architecture',
   'design',
   'approach',
   'how should i',
@@ -155,6 +298,29 @@ const PLANNING_KEYWORDS = [
   'blueprint',
   'proposal',
   'outline',
+];
+
+const ARCHITECT_KEYWORDS = [
+  'architecture',
+  'system design',
+  'microservice',
+  'monolith',
+  'scalability',
+  'trade-off',
+  'tradeoff',
+  'data model',
+  'entity',
+  'relationship',
+  'api design',
+  'endpoint',
+  'rest',
+  'graphql',
+  'grpc',
+  'message queue',
+  'event driven',
+  'c4 model',
+  'sequence diagram',
+  'component diagram',
 ];
 
 const MISSING_INFO_PATTERNS = [
@@ -201,6 +367,12 @@ function analyseTask(message: string, context: TaskContext = {}): TaskSignals {
   const exploreScore = countKeywords(lower, EXPLORE_KEYWORDS);
   const codeScore = countKeywords(lower, CODE_KEYWORDS);
   const planningScore = countKeywords(lower, PLANNING_KEYWORDS);
+  const securityScore = countKeywords(lower, SECURITY_KEYWORDS);
+  const debugScore = countKeywords(lower, DEBUG_KEYWORDS);
+  const devopsScore = countKeywords(lower, DEVOPS_KEYWORDS);
+  const dataScore = countKeywords(lower, DATA_KEYWORDS);
+  const uiScore = countKeywords(lower, UI_KEYWORDS);
+  const architectScore = countKeywords(lower, ARCHITECT_KEYWORDS);
 
   const multiStepWordCount = countMultiStepWords(lower);
 
@@ -231,6 +403,12 @@ function analyseTask(message: string, context: TaskContext = {}): TaskSignals {
     exploreScore,
     codeScore,
     planningScore,
+    securityScore,
+    debugScore,
+    devopsScore,
+    dataScore,
+    uiScore,
+    architectScore,
     wordCount,
   };
 }
@@ -302,6 +480,14 @@ function determineDecision(signals: TaskSignals): {
   if (signals.researchScore >= 2) delegateScore += 1;
   if (signals.researchScore >= 3) delegateScore += 1;
 
+  // Specialized domain signals — strong indicators for delegation
+  if (signals.securityScore >= 2) delegateScore += 2;
+  if (signals.debugScore >= 2) delegateScore += 2;
+  if (signals.devopsScore >= 2) delegateScore += 1;
+  if (signals.dataScore >= 2) delegateScore += 1;
+  if (signals.uiScore >= 2) delegateScore += 1;
+  if (signals.architectScore >= 2) delegateScore += 1;
+
   // Parallelization opportunities
   if (signals.isResearchHeavy && signals.hasIndependentSubtasks) parallelizeScore += 3;
   if (signals.researchScore >= 2 && signals.codeScore >= 1 && signals.wordCount > 30) {
@@ -332,21 +518,42 @@ function determineDecision(signals: TaskSignals): {
   // ── Calculate suggested sub-agent types based on signals ──
   function computeSuggestedTypes(): SubAgentType[] {
     const types: SubAgentType[] = [];
-    if (signals.isExploratory && signals.exploreScore >= signals.codeScore) {
-      types.push('explore');
+
+    // Score-based type suggestion: strongest signal wins, with a cap of 3 types
+    const candidates: Array<{ type: SubAgentType; score: number }> = [
+      { type: 'explore', score: signals.exploreScore },
+      { type: 'research', score: signals.researchScore },
+      { type: 'plan', score: signals.planningScore },
+      { type: 'code', score: signals.codeScore },
+      { type: 'security', score: signals.securityScore },
+      { type: 'debug', score: signals.debugScore },
+      { type: 'devops', score: signals.devopsScore },
+      { type: 'data', score: signals.dataScore },
+      { type: 'ui', score: signals.uiScore },
+      { type: 'architect', score: signals.architectScore },
+    ];
+
+    // Sort by score descending — handles debug-over-code preference naturally
+    candidates.sort((a, b) => b.score - a.score);
+
+    // Take top types that have a meaningful score
+    for (const { type, score } of candidates) {
+      if (score >= 1 && types.length < 3) {
+        types.push(type);
+      }
     }
-    if (signals.isResearchHeavy || signals.researchScore >= 2) {
-      types.push('research');
+
+    // Fallback heuristics for edge cases
+    if (types.length === 0) {
+      if (signals.isCodeTask) types.push('code');
+      else if (signals.isExploratory) types.push('explore');
+      else if (signals.isResearchHeavy) types.push('research');
     }
-    if (signals.isPlanningTask || signals.planningScore >= 2) {
-      types.push('plan');
-    }
-    if (signals.isCodeTask || signals.codeScore >= 1) {
-      types.push('code');
-    }
+
     if (types.length === 0) {
       types.push('general');
     }
+
     return types;
   }
 
@@ -371,22 +578,64 @@ function determineDecision(signals: TaskSignals): {
       let prefix: string;
       let reason: string;
 
-      if (signals.isCodeTask && signals.isExploratory) {
-        reason = 'Complex code task requiring exploration — delegating to specialized sub-agent';
-        prefix = 'I need to explore the codebase and implement changes. Let me delegate this:\n\n';
-      } else if (signals.isCodeTask && signals.isMultiStep) {
-        reason =
-          'Multi-step code task — delegating to a coding sub-agent for thorough implementation';
-        prefix = 'This requires multiple steps. Let me delegate the implementation:\n\n';
-      } else if (signals.isExploratory && !signals.isCodeTask) {
-        reason = 'Complex exploration task — delegating to explorer sub-agent';
-        prefix = "I'll search the codebase thoroughly for this. Let me launch an explorer:\n\n";
-      } else if (signals.isResearchHeavy) {
-        reason = 'In-depth research task — delegating to research sub-agent';
-        prefix = 'This requires thorough research. Let me delegate the investigation:\n\n';
-      } else {
-        reason = `Complex task — delegating to ${primaryType} sub-agent`;
-        prefix = 'This is complex and benefits from a focused sub-agent. Let me delegate:\n\n';
+      // Reason from the highest-scored type (not hardcoded order)
+      switch (primaryType) {
+        case 'security':
+          reason = 'Security audit task — delegating to security auditor sub-agent';
+          prefix =
+            'I need to audit this for security issues. Let me launch a security auditor:\n\n';
+          break;
+        case 'debug':
+          reason = 'Bug diagnosis task — delegating to debugger sub-agent';
+          prefix = 'I need to diagnose this issue. Let me start a debugger:\n\n';
+          break;
+        case 'architect':
+          reason = 'System design task — delegating to architect sub-agent';
+          prefix = 'This requires architectural analysis. Let me engage the architect:\n\n';
+          break;
+        case 'devops':
+          reason = 'Infrastructure/DevOps task — delegating to devops sub-agent';
+          prefix = 'This involves infrastructure work. Let me spin up a devops agent:\n\n';
+          break;
+        case 'data':
+          reason = 'Data analysis task — delegating to data analyst sub-agent';
+          prefix = 'I need to analyze this data. Let me start a data analyst:\n\n';
+          break;
+        case 'ui':
+          reason = 'UI/UX task — delegating to UI designer sub-agent';
+          prefix = 'This needs interface work. Let me launch a UI designer:\n\n';
+          break;
+        case 'research':
+          reason = 'In-depth research task — delegating to research sub-agent';
+          prefix = 'This requires thorough research. Let me delegate the investigation:\n\n';
+          break;
+        case 'explore':
+          reason = 'Complex exploration task — delegating to explorer sub-agent';
+          prefix = "I'll search the codebase thoroughly for this. Let me launch an explorer:\n\n";
+          break;
+        case 'code':
+          if (signals.isExploratory) {
+            reason =
+              'Complex code task requiring exploration — delegating to specialized sub-agent';
+            prefix =
+              'I need to explore the codebase and implement changes. Let me delegate this:\n\n';
+          } else if (signals.isMultiStep) {
+            reason =
+              'Multi-step code task — delegating to a coding sub-agent for thorough implementation';
+            prefix = 'This requires multiple steps. Let me delegate the implementation:\n\n';
+          } else {
+            reason = 'Code task — delegating to coder sub-agent';
+            prefix = 'Let me write this code in a focused sub-agent:\n\n';
+          }
+          break;
+        case 'plan':
+          reason = 'Multi-step planning task — delegating to planner sub-agent';
+          prefix = 'This requires careful planning. Let me create a plan:\n\n';
+          break;
+        default:
+          reason = `Complex task — delegating to ${primaryType} sub-agent`;
+          prefix = 'This is complex and benefits from a focused sub-agent. Let me delegate:\n\n';
+          break;
       }
 
       return {
@@ -455,6 +704,12 @@ export function assessTask(message: string, context: TaskContext = {}): MetaAsse
         research: signals.researchScore,
         explore: signals.exploreScore,
         planning: signals.planningScore,
+        security: signals.securityScore,
+        debug: signals.debugScore,
+        devops: signals.devopsScore,
+        data: signals.dataScore,
+        ui: signals.uiScore,
+        architect: signals.architectScore,
         wordCount: signals.wordCount,
       },
       escalated: true,
@@ -471,6 +726,12 @@ export function assessTask(message: string, context: TaskContext = {}): MetaAsse
       research: signals.researchScore,
       explore: signals.exploreScore,
       planning: signals.planningScore,
+      security: signals.securityScore,
+      debug: signals.debugScore,
+      devops: signals.devopsScore,
+      data: signals.dataScore,
+      ui: signals.uiScore,
+      architect: signals.architectScore,
       wordCount: signals.wordCount,
     },
   };

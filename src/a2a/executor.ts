@@ -17,12 +17,14 @@ import { closeSession, createSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { logger } from '../utils/logger.ts';
 import type { Db } from '../db/client.ts';
+import type { ProviderKind } from '../config/config.ts';
 
 const _log = logger('a2a:executor');
 
 async function createEphemeralSession(agentId: string): Promise<{
   sessionId: string;
   db: Db;
+  providerKind: ProviderKind;
   provider: ReturnType<typeof buildProvider>;
   model: string;
   systemPrompt: string;
@@ -66,6 +68,7 @@ async function createEphemeralSession(agentId: string): Promise<{
   return {
     sessionId,
     db,
+    providerKind,
     provider: effectiveProvider,
     model,
     systemPrompt,
@@ -151,6 +154,8 @@ export function createA2AExecutor() {
             workingDir: Deno.cwd(),
             agentId: 'default',
             workspaceDir: Deno.cwd(),
+            model: sess.model,
+            provider: sess.providerKind,
           },
           embedder: sess.embedder,
           enableReflection: false,

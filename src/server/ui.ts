@@ -1141,7 +1141,9 @@ const HTML = `<!DOCTYPE html>
           <button class="btn" onclick="document.getElementById('file-input').click()" style="height:44px;width:44px;padding:0;font-size:18px;" title="Attach files">📎</button>
           <textarea id="chat-input" class="inp" placeholder="Message Cortex… (Enter to send, Shift+Enter for newline)" style="flex:1;"></textarea>
           <button id="voice-mic-btn" class="btn" onclick="toggleMic()" style="height:44px;width:44px;padding:0;font-size:18px;display:none;" title="Voice input">🎤</button>
-          <button class="btn btn-primary" onclick="sendMessage()" style="height:44px;padding:0 18px;white-space:nowrap;">Send ↵</button>
+          <button id="send-btn" class="btn btn-primary" onclick="sendMessage()" style="height:44px;padding:0 18px;white-space:nowrap;">Send ↵</button>
+          <button id="retry-btn" class="btn btn-ghost" onclick="retryLastTurn()" style="display:none;height:44px;padding:0 18px;white-space:nowrap;">↻ Retry</button>
+          <button id="stop-btn" class="btn btn-danger" onclick="stopGeneration()" style="display:none;height:44px;padding:0 18px;white-space:nowrap;">⏹ Stop</button>
         </div>
         <div id="thinking-bar" style="display:none;max-width:900px;margin:8px auto 0;gap:6px;align-items:center;">
           <div style="display:flex;gap:4px;">
@@ -3256,6 +3258,8 @@ const BASE = window.location.origin;
 const WS_URL = BASE.replace(/^http/, 'ws') + '/ws';
 async function fetchJSON(url,fallback){try{return await fetch(url).then(function(r){return r.json()})}catch(e){console.log("[fetchJSON] error",url,e);return fallback}}
 let ws, sessionId = null, agentBubble = null, agentRaw = '';
+let lastChatRequest = null;
+let lastTurnDomStart = null;
 try { sessionId = localStorage.getItem('cortex_session_id'); } catch {}
 let currentPage = 'chat';
 let currentReasoningData = '';
@@ -3347,6 +3351,8 @@ function newChat() {
   sessionNamed = false;
   agentBubble = null;
   agentRaw = '';
+  setLastChatRequest(null);
+  lastTurnDomStart = null;
   document.getElementById('chat-session-id').textContent = '';
   document.getElementById('thinking-bar').style.display = 'none';
   updateContextBar(0, 200000, 0);
@@ -3500,6 +3506,7 @@ async function restoreSession() {
       if (!resumeRes.ok) {
         sessionId = null;
         currentAgentId = null;
+        setLastChatRequest(null);
         try { localStorage.removeItem('cortex_session_id'); } catch {}
         try { localStorage.removeItem('cortex_agent_id'); } catch {}
         document.getElementById('chat-session-id').textContent = '';
@@ -3509,6 +3516,7 @@ async function restoreSession() {
       if (!res.ok) {
         sessionId = null;
         currentAgentId = null;
+        setLastChatRequest(null);
         try { localStorage.removeItem('cortex_session_id'); } catch {}
         try { localStorage.removeItem('cortex_agent_id'); } catch {}
         document.getElementById('chat-session-id').textContent = '';
@@ -3533,6 +3541,7 @@ async function restoreSession() {
           lastRole = 'assistant';
         }
       }
+      syncLastChatRequestFromMessages(msgs);
       scrollChat();
       // Ensure scroll after all messages render
       setTimeout(() => scrollChat(), 100);
@@ -3707,6 +3716,7 @@ function connect() {
         break;
       case 'session_ended':
         sessionId = null;
+        setLastChatRequest(null);
         document.getElementById('chat-session-id').textContent = '';
         loadAgentPanel();
         break;
@@ -3724,8 +3734,12 @@ function connect() {
            reasoningPanel.style.display = 'none';
            reasoningPanel.remove();
          }
+          document.getElementById('retry-btn').style.display = 'none';
          agentBubble = appendBubble('agent', '');
          document.getElementById('thinking-bar').style.display = 'flex';
+         document.getElementById('stop-btn').style.display = '';
+         document.getElementById('send-btn').style.display = 'none';
+         document.getElementById('chat-input').disabled = true;
          break;
       case 'chunk':
          agentRaw += msg.delta;
@@ -3779,6 +3793,10 @@ function connect() {
             agentBubble.innerHTML = md(msg.finalContent);
           }
           document.getElementById('thinking-bar').style.display = 'none';
+          document.getElementById('stop-btn').style.display = 'none';
+          document.getElementById('send-btn').style.display = '';
+          document.getElementById('retry-btn').style.display = lastChatRequest ? '' : 'none';
+          document.getElementById('chat-input').disabled = false;
           agentBubble = null;
           appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
          saveSession();
@@ -3806,14 +3824,32 @@ function connect() {
             toast(label, 'warning', 5000);
           }
           break;
-       case 'approval_request':
+        case 'stopped':
+          if (agentBubble) {
+            const current = agentBubble.innerHTML;
+            agentBubble.innerHTML = (current && current !== 'Thinking…')
+              ? current + '<br><br><em>⏹ Stopped</em>'
+              : '<em>⏹ Stopped</em>';
+          }
+          document.getElementById('thinking-bar').style.display = 'none';
+          document.getElementById('stop-btn').style.display = 'none';
+          document.getElementById('send-btn').style.display = '';
+          document.getElementById('retry-btn').style.display = lastChatRequest ? '' : 'none';
+          document.getElementById('chat-input').disabled = false;
+          agentBubble = null;
+          saveSession();
+          break;
+        case 'approval_request':
          showApprovalModal(msg.request, msg.reasoning, msg.requestId);
          break;
-       case 'error':
-        document.getElementById('thinking-bar').style.display = 'none';
-        appendBubble('error', msg.error);
-        loadAgentPanel();
-        break;
+        case 'error':
+         document.getElementById('thinking-bar').style.display = 'none';
+         document.getElementById('stop-btn').style.display = 'none';
+         document.getElementById('send-btn').style.display = '';
+         document.getElementById('chat-input').disabled = false;
+         appendBubble('error', msg.error);
+         loadAgentPanel();
+         break;
       case 'audio':
         playAudio(msg.data, msg.format || 'mp3');
         break;
@@ -4030,16 +4066,64 @@ async function checkVoiceEnabled() {
 
 function scrollChat() { chatLog.scrollTop = chatLog.scrollHeight; }
 
-async function sendMessage() {
-  const el = document.getElementById('chat-input');
-  const text = el.value.trim();
-  if ((!text && !attachedFiles.length) || !ws || ws.readyState !== WebSocket.OPEN) return;
-  let filesData = null;
-  if (attachedFiles.length) {
-    try { filesData = await readFilesAsBase64(); } catch (e) { showToast('Failed to read files: ' + (e.message || e), 'error'); return; }
+function setLastChatRequest(request) {
+  lastChatRequest = request;
+  const retryBtn = document.getElementById('retry-btn');
+  if (retryBtn) retryBtn.style.display = request ? '' : 'none';
+}
+
+function syncLastChatRequestFromMessages(messages) {
+  if (!messages || !messages.length) {
+    setLastChatRequest(null);
+    return;
   }
-  if (text) appendBubble('user', text);
-  if (filesData && filesData.length) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === 'user') {
+      let meta = {};
+      try {
+        meta = msg.tool_calls ? JSON.parse(msg.tool_calls) : {};
+      } catch {
+        meta = {};
+      }
+      setLastChatRequest({
+        message: msg.content,
+        files: meta.files || null,
+        agentId: meta.agentId ?? currentAgentId,
+        model: meta.model ?? currentModel,
+        modelMode: meta.modelMode ?? currentModelMode,
+        reasoningEffort: meta.reasoningEffort ?? currentReasoning,
+      });
+      return;
+    }
+  }
+  setLastChatRequest(null);
+}
+
+async function stopGeneration() {
+  ws.send(JSON.stringify({ type: 'stop' }));
+}
+
+async function sendChatRequest(request, options = {}) {
+  const { appendUserBubble = true, clearComposer = false } = options;
+  const text = (request.message || '').trim();
+  const filesData = request.files || null;
+
+  if ((!text && !filesData?.length) || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  lastTurnDomStart = chatLog.children.length;
+
+  setLastChatRequest({
+    message: text,
+    files: filesData,
+    agentId: request.agentId,
+    model: request.model,
+    modelMode: request.modelMode,
+    reasoningEffort: request.reasoningEffort,
+  });
+
+  if (appendUserBubble && text) appendBubble('user', text);
+  if (appendUserBubble && filesData && filesData.length) {
     for (const f of filesData) {
       const previewEl = document.createElement('div');
       if (f.mimeType.startsWith('image/')) {
@@ -4054,8 +4138,18 @@ async function sendMessage() {
       chatLog.appendChild(previewEl);
     }
   }
-  ws.send(JSON.stringify({ type: 'chat', message: text, sessionId, agentId: currentAgentId, model: currentModelMode === 'manual' ? (currentModel || undefined) : undefined, modelMode: currentModelMode, reasoningEffort: currentReasoning || undefined, files: filesData || undefined }));
-  // Auto-name session from first message
+
+  ws.send(JSON.stringify({
+    type: 'chat',
+    message: text,
+    sessionId,
+    agentId: request.agentId,
+    model: request.model,
+    modelMode: request.modelMode,
+    reasoningEffort: request.reasoningEffort,
+    files: filesData || undefined,
+  }));
+
   if (text && sessionId && !sessionNamed) {
     sessionNamed = true;
     const title = text.slice(0, 60).replace(/\\n/g, ' ').trim() + (text.length > 60 ? '…' : '');
@@ -4067,10 +4161,55 @@ async function sendMessage() {
     document.getElementById('chat-session-name').textContent = title;
     loadSessionsSidebar();
   }
-  el.value = '';
-  el.style.height = 'auto';
-  attachedFiles = [];
-  renderFilePreview();
+
+  if (clearComposer) {
+    const el = document.getElementById('chat-input');
+    el.value = '';
+    el.style.height = 'auto';
+    attachedFiles = [];
+    renderFilePreview();
+  }
+}
+
+async function sendMessage() {
+  const el = document.getElementById('chat-input');
+  const text = el.value.trim();
+  if ((!text && !attachedFiles.length) || !ws || ws.readyState !== WebSocket.OPEN) return;
+  let filesData = null;
+  if (attachedFiles.length) {
+    try { filesData = await readFilesAsBase64(); } catch (e) { showToast('Failed to read files: ' + (e.message || e), 'error'); return; }
+  }
+  await sendChatRequest({
+    message: text,
+    files: filesData,
+    agentId: currentAgentId,
+    model: currentModelMode === 'manual' ? (currentModel || undefined) : undefined,
+    modelMode: currentModelMode,
+    reasoningEffort: currentReasoning || undefined,
+  }, { appendUserBubble: true, clearComposer: true });
+}
+
+async function retryLastTurn() {
+  if (!sessionId || !lastChatRequest) {
+    toast('No turn available to retry', 'warning');
+    return;
+  }
+  const request = lastChatRequest;
+  const res = await fetch(BASE + '/api/sessions/' + encodeURIComponent(sessionId) + '/retry', {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    toast('Retry failed', 'error');
+    return;
+  }
+  if (typeof lastTurnDomStart === 'number' && chatLog.children.length > lastTurnDomStart) {
+    while (chatLog.children.length > lastTurnDomStart) {
+      chatLog.lastElementChild?.remove();
+    }
+  } else {
+    await loadSessionMessages(sessionId);
+  }
+  await sendChatRequest(request, { appendUserBubble: true, clearComposer: false });
 }
 
 document.getElementById('chat-input').addEventListener('keydown', (e) => {
@@ -11161,6 +11300,7 @@ async function loadSessionMessages(id) {
       if (m.token_count) appendMeta(0, m.token_count, 0, 0);
     }
   }
+  syncLastChatRequestFromMessages(msgs);
   scrollChat();
   return true;
 }
@@ -15600,9 +15740,12 @@ async function loadMemoriPage() {
       html += '<div style="display:flex;flex-direction:column;gap:8px;">';
       checkpoints.forEach(function(cp) {
         html += '<div class="card" style="padding:12px;">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">';
         html += '<div><div style="font-size:12px;font-weight:500;">Turn ' + cp.turnNumber + '</div><div style="font-size:10px;color:var(--text3);">' + esc(cp.sessionId || '') + ' • ' + new Date(cp.timestamp).toLocaleString() + '</div></div>';
+        html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">';
         html += '<span class="badge">' + (cp.tokensUsed||0) + ' tokens</span>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" data-cp-id="' + esc(cp.id) + '" data-session-id="' + esc(cp.sessionId || '') + '" onclick="restoreCheckpointUI(this.dataset.cpId, this.dataset.sessionId)">Restore</button>';
+        html += '</div>';
         html += '</div>';
         if (cp.goalSnapshot) html += '<div style="font-size:11px;color:var(--text2);margin-top:6px;">' + esc(cp.goalSnapshot) + '</div>';
         html += '</div>';
@@ -15613,6 +15756,24 @@ async function loadMemoriPage() {
   } catch(e) {
     c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load checkpoints: ' + esc(String(e)) + '</div>';
   }
+}
+
+async function restoreCheckpointUI(checkpointId, checkpointSessionId) {
+  if (!checkpointId) return;
+  const ok = await confirmAction('Restore checkpoint', 'Revert this session to the selected checkpoint?', 'Restore');
+  if (!ok) return;
+  const res = await fetch(BASE + '/api/memori/checkpoints/' + encodeURIComponent(checkpointId) + '/restore', {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    toast('Checkpoint restore failed', 'error');
+    return;
+  }
+  toast('Checkpoint restored', 'success');
+  if (checkpointSessionId && checkpointSessionId === sessionId) {
+    await loadSessionMessages(checkpointSessionId);
+  }
+  await loadMemoriPage();
 }
 
 

@@ -109,6 +109,18 @@ export class Db {
   }
 }
 
+/** No-op database stub for subprocesses that must not touch a shared DB. */
+class NoopDb extends Db {
+  constructor() { super(':memory:'); }
+  override async init(): Promise<void> {}
+  override async exec(_sql: string): Promise<void> {}
+  override async get<T = Record<string, unknown>>(_sql: string, _args: InValue[] = []): Promise<T | undefined> { return undefined; }
+  override async all<T = Record<string, unknown>>(_sql: string, _args: InValue[] = []): Promise<T[]> { return []; }
+  override async run(_sql: string, _args: InValue[] = []): Promise<void> {}
+  override async insert(_sql: string, _args: InValue[] = []): Promise<number> { return 0; }
+  override close(): void {}
+}
+
 async function openDb(path: string): Promise<Db> {
   const db = new Db(path);
   await db.init();
@@ -132,6 +144,10 @@ export async function getMemoryDb(): Promise<Db> {
 }
 
 export async function getLensDb(): Promise<Db> {
+  if (Deno.env.get('CORTEX_NOLENS')) {
+    if (!_lensDb) _lensDb = new NoopDb();
+    return _lensDb;
+  }
   if (!_lensDb) _lensDb = await openDb(PATHS.lensDb);
   return _lensDb;
 }

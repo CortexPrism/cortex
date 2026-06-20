@@ -5,7 +5,7 @@ import type { Db } from '../db/client.ts';
 import { logEvent } from '../db/lens.ts';
 import { incrementTurn } from '../db/sessions.ts';
 import type { ToolRegistry } from '../tools/registry.ts';
-import type { ToolContext } from '../tools/types.ts';
+import type { ToolCallResult, ToolContext } from '../tools/types.ts';
 import type { ToolCallRequest } from '../tools/types.ts';
 import {
   executeTool,
@@ -140,6 +140,11 @@ export interface AgentTurnOptions {
    * Defaults to 5.
    */
   historySemanticK?: number;
+  /**
+   * Optional AbortSignal to cancel the turn mid-flight.
+   * When triggered, the turn returns a partial response gracefully.
+   */
+  signal?: AbortSignal;
 }
 
 export interface AgentTurnResult {
@@ -376,11 +381,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   }
 
   const maxToolRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
-  const overallTimeout = 300_000; // 5 minutes absolute timeout
-  const overallTimer = setTimeout(() => {
-    _log.error(`Agent turn timed out after 5 minutes`, { turnId, sessionId });
-    throw new Error('Agent turn timed out after 5 minutes - please try a simpler request');
-  }, overallTimeout);
+
+  const SUB_AGENT_TIMEOUT_MS = 120_000;
+  const STREAM_TIMEOUT_MS = 180_000;
 
   let response = '';
   let tokensIn = 0;
@@ -401,6 +404,23 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   });
 
   const metaAssessment = assessTask(effectiveInput, { hasDocumentContext });
+
+  // Dynamic overall timeout: sub-agent workloads need more time.
+  const usesSubAgents = metaAssessment.decision === 'delegate' ||
+    metaAssessment.decision === 'parallelize';
+  const overallTimeout = usesSubAgents
+    ? Math.max(300_000, SUB_AGENT_TIMEOUT_MS * 2 + STREAM_TIMEOUT_MS * 2)
+    : 300_000;
+  const overallTimer = setTimeout(() => {
+    _log.error(`Agent turn timed out after ${overallTimeout / 1000}s`, {
+      turnId,
+      sessionId,
+      decision: metaAssessment.decision,
+    });
+    throw new Error(
+      `Agent turn timed out after ${overallTimeout / 1000}s - please try a simpler request`,
+    );
+  }, overallTimeout);
 
   if (metaAssessment.escalated) {
     import('../db/lens.ts').then(({ logEvent }) => {
@@ -676,12 +696,28 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     });
   }
 
+  let round = 0;
+
   try {
-    let round = 0;
     let currentMessages = messages;
+
+    const externalSignal = options.signal;
+
+    const checkAborted = (): void => {
+      if (externalSignal?.aborted) {
+        const err = new Error('Turn cancelled by user');
+        err.name = 'AbortError';
+        throw err;
+      }
+    };
+
     _log.debug(`turn start`, { turnId, hasTools: !!registry, stream });
 
+    // Sticky flag: once sub-agents complete in any round, keep nudging to synthesize
+    let subAgentsCompleted = false;
+
     while (round < maxToolRounds) {
+      checkAborted();
       let roundResponse = '';
 
       const preReasonCtx = createPipelineContext({
@@ -766,6 +802,13 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         _log.debug(`Using buffered stream with timeout`, { round, timeoutMs: 180_000 });
         const abortCtrl = new AbortController();
         const abortTimer = setTimeout(() => abortCtrl.abort(), 180_000);
+
+        // Merge external signal: if user cancels, abort the LLM stream too
+        if (externalSignal) {
+          if (externalSignal.aborted) abortCtrl.abort();
+          else externalSignal.addEventListener('abort', () => abortCtrl.abort(), { once: true });
+        }
+
         try {
           for await (
             const chunk of effectiveProvider.stream({
@@ -1044,6 +1087,35 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         continue;
       }
 
+      // Detect malformed tool calls that parseToolCalls didn't recognize.
+      // Covers: nested <tool_call> tags, JSON missing "tool"/"name" keys,
+      // raw parameter-only JSON ({"task":...} without tool wrapper), etc.
+      const hasMalformedToolCall = toolCalls.length === 0 &&
+        (/<tool_call\s+name=/.test(roundResponse) ||
+          /<tool_call>[\s\S]*?<tool_call\s+name=/.test(roundResponse) ||
+          /<tool_call>[\s\S]*?<tool_call>/.test(roundResponse) ||
+          (/\{\s*"(?:task|prompt|type|description|query|path)"\s*:/.test(roundResponse) &&
+            !/\{\s*"(?:tool|name)"\s*:/.test(roundResponse) &&
+            /<tool_call>/.test(roundResponse)));
+
+      if (hasMalformedToolCall) {
+        _log.warn(`Malformed tool call detected, asking LLM to retry with correct format`, {
+          round,
+          responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
+        });
+        currentMessages = [
+          ...currentMessages,
+          { role: 'assistant' as const, content: roundResponse },
+          {
+            role: 'user' as const,
+            content:
+              'Your tool call was not recognized because the JSON format was wrong. Tool calls MUST use this exact format inside <tool_call> tags:\n\n<tool_call>\n{"tool": "TOOL_NAME", "args": {"param1": "value1", "param2": "value2"}}\n</tool_call>\n\nThe "tool" key must contain the tool name. All parameters go inside the "args" object. Re-emit your tool call(s) using this exact format.',
+          },
+        ];
+        round++;
+        continue;
+      }
+
       if (toolCalls.length === 0 && hasToolPromises) {
         _log.debug(`Promise without tool call, prompting another round`, {
           round,
@@ -1082,108 +1154,146 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       // Skip redundant emission here to avoid duplication.
 
       _log.debug(`Starting tool execution loop`, { round, toolCallsCount: toolCalls.length });
-      const toolResults = [];
-      for (const [index, tc] of toolCalls.entries()) {
-        _log.debug(`Executing tool ${index + 1}/${toolCalls.length}`, {
-          round,
-          toolName: tc.toolName,
-          argsCount: Object.keys(tc.args).length,
-        });
+      const toolResults: ToolCallResult[] = new Array(toolCalls.length);
+      const shouldRunInParallel = toolCalls.length > 1 && toolCalls.every((t) => t.toolName === 'sub_agent');
 
-        const preToolCtx = createPipelineContext({
-          stage: 'pre-tool',
-          sessionId,
-          turnId,
-          state: {
-            ...state,
-            tokensUsed: tokensIn + tokensOut,
-            costUsd,
-            toolCallsMade: toolResults.length,
-          },
-          toolCall: tc,
-        });
-        const preToolResult = await runHooksForStage('pre-tool', preToolCtx);
-        if (preToolResult.aborted) {
-          _log.warn(`Tool execution blocked by pre-tool hook`, {
+      const runToolCall = async (tc: ToolCallRequest, index: number): Promise<void> => {
+        try {
+          _log.debug(`Executing tool ${index + 1}/${toolCalls.length}`, {
             round,
             toolName: tc.toolName,
-            reason: preToolResult.abortMessage,
+            argsCount: Object.keys(tc.args).length,
           });
-          toolResults.push({
+
+          const preToolCtx = createPipelineContext({
+            stage: 'pre-tool',
+            sessionId,
+            turnId,
+            state: {
+              ...state,
+              tokensUsed: tokensIn + tokensOut,
+              costUsd,
+              toolCallsMade: index,
+            },
+            toolCall: tc,
+          });
+          const preToolResult = await runHooksForStage('pre-tool', preToolCtx);
+          if (preToolResult.aborted) {
+            _log.warn(`Tool execution blocked by pre-tool hook`, {
+              round,
+              toolName: tc.toolName,
+              reason: preToolResult.abortMessage,
+            });
+            toolResults[index] = {
+              toolName: tc.toolName,
+              success: false,
+              output: '',
+              error: preToolResult.abortMessage || 'Tool execution blocked by hook',
+              durationMs: 0,
+            };
+            collectedToolCalls[index] = {
+              tool: tc.toolName,
+              params: redactParams(tc.args),
+              result: preToolResult.abortMessage || 'Tool execution blocked by hook',
+            };
+            return;
+          }
+
+          _log.debug(`Executing tool`, {
+            tool: tc.toolName,
+            args: JSON.stringify(tc.args).slice(0, 120),
+          });
+          const toolSpanId = `${turnId}-tool-${round}-${tc.toolName}`;
+          if (langfuseConfigured()) {
+            spanCreate({
+              traceId: turnId,
+              id: toolSpanId,
+              name: `tool:${tc.toolName}`,
+              parentObservationId: `${turnId}-round-${round}`,
+              startTime: new Date().toISOString(),
+              input: tc.args,
+            });
+          }
+          const result = await executeTool(tc, registry, toolCtx);
+          if (langfuseConfigured()) {
+            spanUpdate(toolSpanId, turnId, {
+              endTime: new Date().toISOString(),
+              output: result.output.slice(0, 2000),
+              level: result.success ? 'DEFAULT' : 'ERROR',
+              statusMessage: result.error,
+            });
+          }
+          _log.debug(`Tool execution completed`, {
+            tool: tc.toolName,
+            success: result.success,
+            outputLen: result.output.length,
+            error: result.error ?? '',
+            durationMs: result.durationMs,
+          });
+          state.toolCallsMade++;
+
+          const postToolCtx = createPipelineContext({
+            stage: 'post-tool',
+            sessionId,
+            turnId,
+            state: {
+              ...state,
+              tokensUsed: tokensIn + tokensOut,
+              costUsd,
+              toolCallsMade: shouldRunInParallel ? index + 1 : state.toolCallsMade,
+            },
+            toolCall: tc,
+            toolResult: result,
+          });
+          await runHooksForStage('post-tool', postToolCtx);
+
+          toolResults[index] = result;
+          collectedToolCalls[index] = {
+            tool: tc.toolName,
+            params: redactParams(tc.args),
+            result: result.output || result.error || '',
+          };
+
+          import('../quartermaster/mod.ts').then(({ observe }) => {
+            observe({
+              turnId,
+              sessionId,
+              toolCall: tc,
+              toolResult: result,
+              toolIndex: index,
+              totalToolsInTurn: toolCalls.length,
+            }).catch(() => {});
+          });
+        } catch (e) {
+          const errMsg = (e as Error).message || 'Tool execution failed';
+          _log.warn(`Tool execution crashed`, {
+            round,
+            toolName: tc.toolName,
+            error: errMsg,
+          });
+          const result: ToolCallResult = {
             toolName: tc.toolName,
             success: false,
             output: '',
-            error: preToolResult.abortMessage || 'Tool execution blocked by hook',
+            error: errMsg,
             durationMs: 0,
-          });
-          continue;
+          };
+          toolResults[index] = result;
+          collectedToolCalls[index] = {
+            tool: tc.toolName,
+            params: redactParams(tc.args),
+            result: errMsg,
+          };
         }
+      };
 
-        _log.debug(`Executing tool`, {
-          tool: tc.toolName,
-          args: JSON.stringify(tc.args).slice(0, 120),
-        });
-        const toolSpanId = `${turnId}-tool-${round}-${tc.toolName}`;
-        if (langfuseConfigured()) {
-          spanCreate({
-            traceId: turnId,
-            id: toolSpanId,
-            name: `tool:${tc.toolName}`,
-            parentObservationId: `${turnId}-round-${round}`,
-            startTime: new Date().toISOString(),
-            input: tc.args,
-          });
+      if (shouldRunInParallel) {
+        await Promise.allSettled(toolCalls.map((tc, index) => runToolCall(tc, index)));
+        state.toolCallsMade = toolCalls.length;
+      } else {
+        for (const [index, tc] of toolCalls.entries()) {
+          await runToolCall(tc, index);
         }
-        const result = await executeTool(tc, registry, toolCtx);
-        if (langfuseConfigured()) {
-          spanUpdate(toolSpanId, turnId, {
-            endTime: new Date().toISOString(),
-            output: result.output.slice(0, 2000),
-            level: result.success ? 'DEFAULT' : 'ERROR',
-            statusMessage: result.error,
-          });
-        }
-        _log.debug(`Tool execution completed`, {
-          tool: tc.toolName,
-          success: result.success,
-          outputLen: result.output.length,
-          error: result.error ?? '',
-          durationMs: result.durationMs,
-        });
-        state.toolCallsMade++;
-
-        const postToolCtx = createPipelineContext({
-          stage: 'post-tool',
-          sessionId,
-          turnId,
-          state: {
-            ...state,
-            tokensUsed: tokensIn + tokensOut,
-            costUsd,
-            toolCallsMade: state.toolCallsMade,
-          },
-          toolCall: tc,
-          toolResult: result,
-        });
-        await runHooksForStage('post-tool', postToolCtx);
-
-        toolResults.push(result);
-        collectedToolCalls.push({
-          tool: tc.toolName,
-          params: redactParams(tc.args),
-          result: result.output || result.error || '',
-        });
-
-        import('../quartermaster/mod.ts').then(({ observe }) => {
-          observe({
-            turnId,
-            sessionId,
-            toolCall: tc,
-            toolResult: result,
-            toolIndex: index,
-            totalToolsInTurn: toolCalls.length,
-          }).catch(() => {});
-        });
       }
       _log.debug(`Tool execution loop completed`, { round, resultsCount: toolResults.length });
 
@@ -1219,9 +1329,22 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }
 
       const roundsLeft = maxToolRounds - round - 1;
+
+      // Sticky: once sub-agents have completed in any round, keep nudging to synthesize
+      if (!subAgentsCompleted) {
+        subAgentsCompleted = toolCalls.some((t) => t.toolName === 'sub_agent') &&
+          toolResults.some((r) => r?.toolName === 'sub_agent' && r.success);
+      }
+
+      let subAgentHint = '';
+      if (subAgentsCompleted) {
+        subAgentHint =
+          `\nSub-agents completed. Their full output is in the <tool_result> blocks above — READ IT and synthesize a comprehensive answer for the user. Do NOT narrate what the sub-agents did ("the first sub-agent completed..." etc). Do NOT promise to check on them. They are done. Deliver the final result NOW.`;
+      }
+
       const followUpInstruction = roundsLeft <= 2
-        ? `${resultText}\n\nYou have ${roundsLeft} tool round(s) remaining. Your next response must be your final answer. If the user asked you to create a file, use file_write NOW. Do not make more research calls — produce the deliverable.${qmHint}`
-        : `${resultText}\n\nBased on the tool output above, continue the task. If you have gathered enough context to act, do so now — prefer producing artifacts (files, code, plans) over further research. Only read more files if absolutely necessary.${qmHint}`;
+        ? `${resultText}\n\nYou have ${roundsLeft} tool round(s) remaining. Your next response must be your final answer. If the user asked you to create a file, use file_write NOW. Do not make more research calls — produce the deliverable.${subAgentHint}${qmHint}`
+        : `${resultText}\n\nBased on the tool output above, continue the task. If you have gathered enough context to act, do so now — prefer producing artifacts (files, code, plans) over further research. Only read more files if absolutely necessary.${subAgentHint}${qmHint}`;
 
       currentMessages = [
         ...currentMessages,
@@ -1251,7 +1374,27 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     });
   } catch (err) {
     errorMsg = (err as Error).message;
-    throw err;
+    if ((err as Error).name === 'AbortError') {
+      _log.info(`Agent turn cancelled`, { turnId, sessionId, round, message: errorMsg });
+      if (!response || response.trim().length === 0) {
+        if (collectedToolCalls.length > 0) {
+          const lastTool = collectedToolCalls[collectedToolCalls.length - 1];
+          if (lastTool.tool === 'sub_agent' && lastTool.result) {
+            response = `[Cancelled] Partial result from sub-agent:\n\n${lastTool.result.slice(0, 2000)}`;
+          } else {
+            response = `[Cancelled] Tools executed before cancellation: ${
+              collectedToolCalls.map((t) => t.tool).join(', ')
+            }.`;
+          }
+        } else {
+          response = '[Cancelled]';
+        }
+      } else {
+        response = `[Cancelled] ${response}`;
+      }
+    } else {
+      throw err;
+    }
   } finally {
     clearTimeout(overallTimer);
 

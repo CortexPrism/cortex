@@ -98,6 +98,7 @@ async function startIpc(): Promise<void> {
 
 export async function runScheduler(): Promise<void> {
   console.log('[scheduler] Starting Cortex Scheduler daemon...');
+  Deno.env.set('CORTEX_NOLENS', '1');
 
   startIpc().catch(() => {});
 

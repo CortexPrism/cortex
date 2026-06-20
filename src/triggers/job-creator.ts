@@ -22,6 +22,7 @@ async function createEphemeralAgentSession(agentId: string): Promise<{
   sessionId: string;
   turnId: string;
   db: Db;
+  providerKind: import('../config/config.ts').ProviderKind;
   provider: ReturnType<typeof buildProvider>;
   router: ReturnType<typeof buildRouter>;
   model: string;
@@ -66,6 +67,7 @@ async function createEphemeralAgentSession(agentId: string): Promise<{
     sessionId,
     turnId,
     db,
+    providerKind,
     provider: effectiveProvider,
     router,
     model,
@@ -85,6 +87,7 @@ function fireAndForgetAgentTurn(
     model: string;
     systemPrompt: string;
     embedder: ReturnType<typeof buildEmbedder>;
+    providerKind: import('../config/config.ts').ProviderKind;
   },
 ): void {
   (async () => {
@@ -110,6 +113,8 @@ function fireAndForgetAgentTurn(
           workingDir: Deno.cwd(),
           agentId,
           workspaceDir: Deno.cwd(),
+          model: opts.model,
+          provider: opts.providerKind,
         },
         embedder: opts.embedder,
         enableReflection: false,
@@ -155,6 +160,7 @@ export function createTriggerJobCreator() {
         model: sess.model,
         systemPrompt: sess.systemPrompt,
         embedder: sess.embedder,
+        providerKind: sess.providerKind,
       });
 
       return {

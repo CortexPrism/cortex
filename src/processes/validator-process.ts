@@ -63,6 +63,7 @@ async function handleIntent(
 
 export async function runValidator(): Promise<void> {
   console.log('[validator] Starting Cortex Validator process...');
+  Deno.env.set('CORTEX_NOLENS', '1');
   await runMigrations();
   console.log('[validator] Ready.');
 

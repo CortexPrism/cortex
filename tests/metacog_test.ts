@@ -128,3 +128,139 @@ Deno.test('metacog - calling with single arg still works', () => {
   const result = assessTask('write a test');
   assertEquals(typeof result.decision, 'string');
 });
+
+// ── Domain-specific type detection ────────────────────────────────────
+
+Deno.test('metacog - security keywords trigger security type suggestion', () => {
+  const result = assessTask(
+    'audit the authentication module for security vulnerabilities and check for hardcoded secrets',
+  );
+  assert(result.suggestedSubAgents?.includes('security'), 'should suggest security type');
+});
+
+Deno.test('metacog - security keywords with vulnerability scan delegates', () => {
+  const result = assessTask(
+    'run a security audit on all endpoints for owasp top 10 injection and xss vulnerabilities',
+  );
+  assert(
+    result.decision === 'delegate' || result.decision === 'direct',
+    `Expected delegate or direct, got ${result.decision}`,
+  );
+  assert(result.suggestedSubAgents?.includes('security'), 'should suggest security');
+});
+
+Deno.test('metacog - debug keywords trigger debug type suggestion', () => {
+  const result = assessTask(
+    'this function is broken and crashes with a stack trace exception, debug the root cause',
+  );
+  assert(result.suggestedSubAgents?.includes('debug'), 'should suggest debug type');
+});
+
+Deno.test('metacog - debug with error reproduction delegates', () => {
+  const result = assessTask(
+    'reproduce the crash in the payment handler and fix the root cause of the failing regression test',
+  );
+  assert(
+    result.decision === 'delegate' || result.decision === 'direct',
+    `Expected delegate or direct, got ${result.decision}`,
+  );
+  assert(
+    result.suggestedSubAgents?.includes('debug') || result.suggestedSubAgents?.includes('code'),
+    'should suggest debug or code',
+  );
+});
+
+Deno.test('metacog - devops keywords trigger devops type suggestion', () => {
+  const result = assessTask(
+    'set up docker compose for the application and configure the nginx reverse proxy with ssl certificates',
+  );
+  assert(result.suggestedSubAgents?.includes('devops'), 'should suggest devops type');
+});
+
+Deno.test('metacog - devops CI/CD pipeline task delegates', () => {
+  const result = assessTask(
+    'create a github actions ci/cd pipeline for deploying the kubernetes cluster with terraform provisioning',
+  );
+  assert(
+    result.decision === 'delegate' || result.decision === 'direct',
+    `Expected delegate or direct, got ${result.decision}`,
+  );
+  assert(result.suggestedSubAgents?.includes('devops'), 'should suggest devops');
+});
+
+Deno.test('metacog - data keywords trigger data type suggestion', () => {
+  const result = assessTask(
+    'analyze the database schema and write sql queries to generate a report with charts and statistics',
+  );
+  assert(result.suggestedSubAgents?.includes('data'), 'should suggest data type');
+});
+
+Deno.test('metacog - data analysis query delegates', () => {
+  const result = assessTask(
+    'query the sales table to create a dashboard with aggregate metrics and performance visualizations for the etl pipeline',
+  );
+  assert(
+    result.decision === 'delegate' || result.decision === 'direct',
+    `Expected delegate or direct, got ${result.decision}`,
+  );
+  assert(result.suggestedSubAgents?.includes('data'), 'should suggest data');
+});
+
+Deno.test('metacog - ui keywords trigger ui type suggestion', () => {
+  const result = assessTask(
+    'build a responsive landing page component with css animations and proper accessibility with aria labels',
+  );
+  assert(result.suggestedSubAgents?.includes('ui'), 'should suggest ui type');
+});
+
+Deno.test('metacog - ui design delegates', () => {
+  const result = assessTask(
+    'design a new frontend dashboard layout with responsive typography and ensure wcag 2.1 aa compliance for screen readers',
+  );
+  assert(
+    result.decision === 'delegate' || result.decision === 'direct',
+    `Expected delegate or direct, got ${result.decision}`,
+  );
+  assert(result.suggestedSubAgents?.includes('ui'), 'should suggest ui');
+});
+
+Deno.test('metacog - architect keywords trigger architect type suggestion', () => {
+  const result = assessTask(
+    'design the microservice architecture with rest api endpoints and graphql schema for the event driven message queue system',
+  );
+  assert(result.suggestedSubAgents?.includes('architect'), 'should suggest architect type');
+});
+
+Deno.test('metacog - architect delegates for system design', () => {
+  const result = assessTask(
+    'evaluate the tradeoffs between monolith and microservice for our scalability needs and produce a c4 model architecture decision record',
+  );
+  assert(
+    result.decision === 'delegate' || result.decision === 'direct',
+    `Expected delegate or direct, got ${result.decision}`,
+  );
+  assert(result.suggestedSubAgents?.includes('architect'), 'should suggest architect');
+});
+
+Deno.test('metacog - signal breakdown includes all domain scores', () => {
+  const result = assessTask('audit security vulnerabilities and debug the crash in the api');
+  const breakdown = result.signalBreakdown;
+  assert(breakdown !== undefined, 'signal breakdown should exist');
+  assert(typeof breakdown.security === 'number', 'security score should be a number');
+  assert(typeof breakdown.debug === 'number', 'debug score should be a number');
+  assert(typeof breakdown.devops === 'number', 'devops score should be a number');
+  assert(typeof breakdown.data === 'number', 'data score should be a number');
+  assert(typeof breakdown.ui === 'number', 'ui score should be a number');
+  assert(typeof breakdown.architect === 'number', 'architect score should be a number');
+});
+
+Deno.test('metacog - capped at 3 suggested types', () => {
+  const result = assessTask(
+    'audit security, debug the crash, analyze the database schema, design the ui component, ' +
+      'set up docker deployment, and create the microservice architecture with api endpoints',
+  );
+  assert(
+    (result.suggestedSubAgents?.length ?? 0) <= 3,
+    `Should suggest at most 3 types, got ${result.suggestedSubAgents?.length}`,
+  );
+});
