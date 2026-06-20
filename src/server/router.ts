@@ -2027,9 +2027,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const triggerEnableMatch = path.match(/^\/api\/triggers\/([^/]+)\/(enable|disable)$/);
   if (req.method === 'POST' && triggerEnableMatch) {
     const { getTrigger } = await import('../triggers/manager.ts');
+    const { startWatcher, stopWatcher } = await import('../triggers/watcher.ts');
     const config = getTrigger(triggerEnableMatch[1]);
     if (!config) return notFound('Trigger not found');
-    config.enabled = triggerEnableMatch[2] === 'enable';
+    const enabling = triggerEnableMatch[2] === 'enable';
+    config.enabled = enabling;
+    if (config.source === 'watcher') {
+      if (enabling) {
+        await startWatcher(config.name);
+      } else {
+        stopWatcher(config.name);
+      }
+    }
     return json({ ok: true, enabled: config.enabled });
   }
 

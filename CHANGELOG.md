@@ -5,6 +5,34 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Fixed
+
+- **Webhook triggers always returned 500** — `setWebhookJobCreator()` was defined but never called at server startup. All `POST /api/webhooks/:name` requests failed with "Job creator not initialized". Added a shared trigger job creator module (`src/triggers/job-creator.ts`) that spawns fire-and-forget agent turns following the A2A executor pattern, and wired it into `startServer()`.
+
+- **File watcher triggers silently dropped all events** — `setWatcherJobCreator()` was never called, causing debounced filesystem change events to be discarded. Wired the same job creator implementation into the watcher subsystem at server startup.
+
+- **File watchers never activated** — `startWatchers()` was never called from `startServer()`, so `Deno.watchFs` loops were never created for configured watcher triggers. `startWatchers()` is now called during server initialization.
+
+- **Webhook response included `undefined` job** — `handleTriggerEvent()` returned `Promise<void>` but the webhook handler assigned its result to a `job` variable sent in the 202 response. Changed return type to `Promise<{ job: unknown } | undefined>` and spread the result into the response.
+
+- **Git hooks hardcoded port 3000** — generated hook scripts used `http://localhost:3000/api/webhooks/...`, breaking triggers when the server ran on a different port. Hook scripts now reference a `CORTEX_PORT` environment variable with the runtime port as fallback, and `setGitHookServerPort()` is called from server startup.
+
+- **Enabling/disabling a watcher trigger via API didn't manage the watcher** — `POST /api/triggers/:name/enable|disable` only flipped `config.enabled` without starting or stopping the actual filesystem watcher. The endpoint now calls `startWatcher()` or `stopWatcher()` for watcher-sourced triggers.
+
+- **Pipeline side effects not session-scoped** — `storedSideEffects` used raw keys from hooks, with `clearSessionSideEffects()` matching by substring (risking cross-session collisions). Store keys are now prefixed with `sessionId:`, using exact prefix matching for cleanup. The `notify` side effect type now logs output instead of being a no-op.
+
+- **Webhook signature verification buffer safety** — `verifyWebhookSignature()` accessed `.buffer` on `Uint8Array` instances, which may return a shared or offset `ArrayBuffer` in some runtimes. Buffer parameters are now passed directly as `Uint8Array` (accepted as `BufferSource` by the Web Crypto API).
+
+- **Missing secret env var rejected all webhook requests** — when `secretEnv` was configured but the environment variable was not set, `verifyWebhookSignature()` returned `false` for every request. Now logs a warning and returns `true` (skipping verification) when the secret cannot be resolved.
+
+### Added
+
+- **Trigger job creator** — new `src/triggers/job-creator.ts` module that implements `WebhookJobCreator` and `WatcherJobCreator` interfaces. Creates ephemeral agent sessions and executes `agentTurn()` in a fire-and-forget background context, returning session metadata to the caller immediately.
+
+---
+
 ## [0.46.0] — 2026-06-20
 
 ### Added
@@ -67,13 +95,6 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Chat response formatting collapsed into a single paragraph** — the websocket stream sanitizer trimmed leading and trailing newlines from every chunk and collapsed whitespace too aggressively, flattening markdown paragraph boundaries in the visible chat bubble. Streaming and final-output cleanup now preserve normal newlines, only collapsing excessive blank lines and repeated spaces.
 
----
-
-## [Unreleased]
-
-### Added
-
-### Fixed
 
 ---
 

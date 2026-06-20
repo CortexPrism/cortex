@@ -72,12 +72,12 @@ export async function handleWebhookRequest(req: Request): Promise<Response | nul
     return new Response(JSON.stringify({ error: 'Job creator not initialized' }), { status: 500 });
   }
 
-  const job = await handleTriggerEvent(
+  const result = await handleTriggerEvent(
     event,
     (agentId, prompt) => jobCreator!.createJob(agentId, prompt),
   );
 
-  return new Response(JSON.stringify({ accepted: true, job }), {
+  return new Response(JSON.stringify({ accepted: true, ...(result ?? {}) }), {
     status: 202,
     headers: { 'Content-Type': 'application/json' },
   });
