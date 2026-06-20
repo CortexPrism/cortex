@@ -10,7 +10,13 @@ export async function makeTempDb(): Promise<{ db: Db; dir: string; close: () => 
   const dbPath = join(dir, 'test.db');
   const db = new Db(dbPath);
   await db.init();
-  return { db, dir, close: () => { db.close(); } };
+  return {
+    db,
+    dir,
+    close: () => {
+      db.close();
+    },
+  };
 }
 
 export async function initSessionSchema(db: Db): Promise<void> {
@@ -40,6 +46,8 @@ export function captureLogs(): { output: string[]; restore: () => void } {
   };
   return {
     output,
-    restore: () => { console.log = orig; },
+    restore: () => {
+      console.log = orig;
+    },
   };
 }

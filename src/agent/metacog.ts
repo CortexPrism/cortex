@@ -188,7 +188,9 @@ function countMultiStepWords(text: string): number {
 
 function isInterrogative(message: string): boolean {
   const trimmed = message.trim();
-  return /\?$/.test(trimmed) || /^(what|who|when|where|why|how|did|do|does|is|are|can|could|would|should|will|have|has|had|may|might|must)\b/i.test(trimmed);
+  return /\?$/.test(trimmed) ||
+    /^(what|who|when|where|why|how|did|do|does|is|are|can|could|would|should|will|have|has|had|may|might|must)\b/i
+      .test(trimmed);
 }
 
 function analyseTask(message: string, context: TaskContext = {}): TaskSignals {

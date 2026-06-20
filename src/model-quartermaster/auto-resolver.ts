@@ -1,4 +1,4 @@
-import type { CortexConfig, ProviderKind, AutoModelPoolEntry } from '../config/config.ts';
+import type { AutoModelPoolEntry, CortexConfig, ProviderKind } from '../config/config.ts';
 import type { ModelCandidate } from './types.ts';
 import { buildRequestContext } from './contexts.ts';
 import { predictModel } from './mod.ts';
@@ -61,9 +61,7 @@ function heuristicSelect(
 
   if (complexity < 0.3) {
     const cheaper = [...candidates].sort(() => Math.random() - 0.5);
-    const local = cheaper.find((c) =>
-      c.provider === 'ollama' || c.provider === 'lmstudio'
-    );
+    const local = cheaper.find((c) => c.provider === 'ollama' || c.provider === 'lmstudio');
     if (local) return local;
     return cheaper[0];
   }

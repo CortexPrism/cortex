@@ -71,7 +71,10 @@ export class RateLimitError extends CortexError {
 
 export class TimeoutError extends CortexError {
   constructor(operation: string, timeoutMs: number) {
-    super(`${operation} timed out after ${timeoutMs}ms`, 'TIMEOUT', 504, true, { operation, timeoutMs });
+    super(`${operation} timed out after ${timeoutMs}ms`, 'TIMEOUT', 504, true, {
+      operation,
+      timeoutMs,
+    });
   }
 }
 
@@ -107,7 +110,8 @@ export function isRetryable(err: unknown): boolean {
   if (err instanceof Error) {
     const msg = err.message.toLowerCase();
     return msg.includes('timeout') || msg.includes('econnrefused') || msg.includes('econnreset') ||
-      msg.includes('too many requests') || msg.includes('rate limit') || msg.includes('database is locked');
+      msg.includes('too many requests') || msg.includes('rate limit') ||
+      msg.includes('database is locked');
   }
   return false;
 }

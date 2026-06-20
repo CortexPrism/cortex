@@ -19,7 +19,11 @@ function cleanToolArgText(value: string): string {
 
 function parseToolArgsFromXml(raw: string): Record<string, unknown> {
   const args: Record<string, unknown> = {};
-  const pairs = [...raw.matchAll(/<tool_call_arg_key>([\s\S]*?)<\/tool_call_arg_key>[\s\S]*?<tool_call_arg_value>([\s\S]*?)<\/tool_call_arg_value>/g)];
+  const pairs = [
+    ...raw.matchAll(
+      /<tool_call_arg_key>([\s\S]*?)<\/tool_call_arg_key>[\s\S]*?<tool_call_arg_value>([\s\S]*?)<\/tool_call_arg_value>/g,
+    ),
+  ];
   for (const pair of pairs) {
     const key = cleanToolArgText(pair[1]);
     const valText = cleanToolArgText(pair[2]);
@@ -32,7 +36,9 @@ function parseToolArgsFromXml(raw: string): Record<string, unknown> {
   }
   if (Object.keys(args).length > 0) return args;
 
-  const paramPairs = [...raw.matchAll(/<parameter\s+name\s*=\s*"([^"]+)"[^>]*>([\s\S]*?)<\/parameter>/g)];
+  const paramPairs = [
+    ...raw.matchAll(/<parameter\s+name\s*=\s*"([^"]+)"[^>]*>([\s\S]*?)<\/parameter>/g),
+  ];
   for (const pair of paramPairs) {
     const key = pair[1].trim();
     const valText = pair[2].trim();
@@ -148,7 +154,8 @@ function parseToolCallsFromFragments(text: string): ToolCallRequest[] {
   const calls: ToolCallRequest[] = [];
 
   // Direct-tool-name-as-tag format: <file_read><path>...</path></file_read>
-  const directToolRe = /<(file_read_enhanced|file_read|file_write|file_tree|file_list|file_search|file_glob|file_edit|web_search|web_fetch|shell|shell_exec|search|memory_search|memory_write|workspace|execute)\b\s*((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\s*>([\s\S]*?)<\/\1>/g;
+  const directToolRe =
+    /<(file_read_enhanced|file_read|file_write|file_tree|file_list|file_search|file_glob|file_edit|web_search|web_fetch|shell|shell_exec|search|memory_search|memory_write|workspace|execute)\b\s*((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\s*>([\s\S]*?)<\/\1>/g;
   let dm: RegExpExecArray | null;
   while ((dm = directToolRe.exec(text)) !== null) {
     const toolName = dm[1];
@@ -159,7 +166,11 @@ function parseToolCallsFromFragments(text: string): ToolCallRequest[] {
     while ((pm = paramRe.exec(body)) !== null) {
       const key = pm[1];
       const val = pm[2].trim();
-      try { args[key] = JSON.parse(val); } catch { args[key] = val; }
+      try {
+        args[key] = JSON.parse(val);
+      } catch {
+        args[key] = val;
+      }
     }
     calls.push({ toolName, args });
   }

@@ -350,11 +350,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   });
 
   const hasDocumentContext = messages.some((message) => {
-    const content = typeof message.content === 'string'
-      ? message.content
-      : message.content
-        .map((block) => block.type === 'text' ? block.text : block.type)
-        .join(' ');
+    const content = typeof message.content === 'string' ? message.content : message.content
+      .map((block) => block.type === 'text' ? block.text : block.type)
+      .join(' ');
     return /=== BEGIN DOCUMENT:|=== END DOCUMENT:|\[File:|file_read\(|Document\(s\) uploaded/i.test(
       content,
     );
@@ -773,9 +771,15 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
             })
           ) {
             if (!chunk.done) {
-              if (chunk.event === 'tool_use_start' && chunk.blockIndex !== undefined && chunk.blockName) {
+              if (
+                chunk.event === 'tool_use_start' && chunk.blockIndex !== undefined &&
+                chunk.blockName
+              ) {
                 hasStructuredToolCalls = true;
-                pendingToolCalls.set(chunk.blockIndex, { name: chunk.blockName, jsonFragments: [] });
+                pendingToolCalls.set(chunk.blockIndex, {
+                  name: chunk.blockName,
+                  jsonFragments: [],
+                });
               } else if (chunk.event === 'input_json_delta' && chunk.blockIndex !== undefined) {
                 const entry = pendingToolCalls.get(chunk.blockIndex);
                 if (entry) entry.jsonFragments.push(chunk.delta);
@@ -963,10 +967,11 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           }
         }
 
-      const shouldListWorkspace =
-        /\bfile_list\b/i.test(roundResponse) ||
-        /(?:check|inspect|list|scan) (?:what already exists in |the )?workspace/i.test(roundResponse) ||
-        /what already exists in the workspace/i.test(roundResponse);
+        const shouldListWorkspace = /\bfile_list\b/i.test(roundResponse) ||
+          /(?:check|inspect|list|scan) (?:what already exists in |the )?workspace/i.test(
+            roundResponse,
+          ) ||
+          /what already exists in the workspace/i.test(roundResponse);
         if (shouldListWorkspace && registry && toolCtx) {
           _log.info(`Auto-executing workspace list`, { turnId, round });
           try {
@@ -1000,14 +1005,21 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
               error: workspaceListResult.error,
             });
           } catch (err) {
-            _log.error(`Auto workspace list error`, { turnId, round, error: (err as Error).message });
+            _log.error(`Auto workspace list error`, {
+              turnId,
+              round,
+              error: (err as Error).message,
+            });
           }
         }
       }
 
-      const continuationRe = /\b(?:i['’]ll|i will|i am going to|let me|first,|next,|then,|i need to|i need to first|i'll start|i’m going to|i will first)\b/i;
-      const completionRe = /\b(?:done|finished|complete|completed|implemented|created|built|updated|fixed)\b/i;
-      const needsContinuation = toolCalls.length === 0 && continuationRe.test(roundResponse) && !completionRe.test(roundResponse);
+      const continuationRe =
+        /\b(?:i['’]ll|i will|i am going to|let me|first,|next,|then,|i need to|i need to first|i'll start|i’m going to|i will first)\b/i;
+      const completionRe =
+        /\b(?:done|finished|complete|completed|implemented|created|built|updated|fixed)\b/i;
+      const needsContinuation = toolCalls.length === 0 && continuationRe.test(roundResponse) &&
+        !completionRe.test(roundResponse);
       if (needsContinuation) {
         _log.debug(`Plan without tool call, prompting continuation`, {
           round,
@@ -1185,7 +1197,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         });
         if (prediction) {
           qmHint = prediction.mode === 'suggest'
-            ? `\nHint: The Quartermaster suggests using "${prediction.suggestedTool}" next (confidence: ${(prediction.confidence * 100).toFixed(0)}%).`
+            ? `\nHint: The Quartermaster suggests using "${prediction.suggestedTool}" next (confidence: ${
+              (prediction.confidence * 100).toFixed(0)
+            }%).`
             : '';
           _log.debug(`Quartermaster prediction`, {
             round,
