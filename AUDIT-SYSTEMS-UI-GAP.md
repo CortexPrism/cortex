@@ -731,7 +731,7 @@ Sorted by impact (systems with significant backend investment but zero/poor UI):
 | Eval task categories               | 8                 |
 | MQM signals                        | 6                 |
 | Voice providers                    | 2 (STT) + 2 (TTS) |
-| Channel adapters                   | 1 (Discord)       |
+| Channel adapters                   | 9 (Discord, Slack, Telegram, Teams, Mattermost, RocketChat, WhatsApp, Google Chat, Lark) |
 | Desktop platforms                  | 3                 |
 | Sandbox runtimes                   | 3                 |
 | Fully covered systems              | 28                |

@@ -19,7 +19,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.45.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.46.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1515847007372181584?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wYxbmQeWY3)
 
@@ -72,8 +72,9 @@ enterprise-grade security — all running locally on your machine or server.
   session resume
 - **Tool use with approval gates** — every tool call is reviewed by the security policy before
   execution; agents can request human approval for sensitive operations
-- **Sub-agent orchestration** — agents can spawn 5 specialized child agents (Explorer, Coder,
-  Researcher, Planner, Generalist) for parallel and delegated work
+- **Sub-agent orchestration** — agents can spawn 11 specialized child agents (Explorer, Coder,
+  Researcher, Planner, Generalist, Security Auditor, Debugger, Architect, DevOps, Data Analyst,
+  UI Designer) for parallel and delegated work
 - **Per-turn reflection** — LLM self-assessment of confidence and quality after each response; meta-
   pattern consolidation over time
 - **Voice pipeline** — speech-to-text (OpenAI Whisper), text-to-speech (OpenAI TTS / ElevenLabs),
@@ -1060,7 +1061,7 @@ deno task test
 
 ## License
 
-[MIT](LICENSE) — free for personal and commercial use.
+[Apache 2.0](LICENSE) — free for personal and commercial use.
 
 ---
 
