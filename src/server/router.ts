@@ -289,7 +289,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     try {
       await setupPassword(password);
       const session = createSession();
-      return json({ success: true, sessionId: session.id }, 201, setSessionCookie(session.id));
+      return json({ success: true, sessionId: session.id }, 201, setSessionCookie(session.id, req));
     } catch (e) {
       return json({ error: (e as Error).message }, 400);
     }
@@ -305,7 +305,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const valid = await verifyPassword(password);
     if (!valid) return json({ error: 'Invalid password' }, 401);
     const session = createSession(clientIp);
-    return json({ success: true, sessionId: session.id }, 200, setSessionCookie(session.id));
+    return json({ success: true, sessionId: session.id }, 200, setSessionCookie(session.id, req));
   }
 
   // POST /api/auth/logout
@@ -313,7 +313,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const cookies = parseCookies(req.headers.get('cookie') || '');
     const sessionId = cookies['cortex_session'];
     if (sessionId) destroySession(sessionId);
-    return json({ success: true }, 200, clearSessionCookie());
+    return json({ success: true }, 200, clearSessionCookie(req));
   }
 
   // GET /api/auth/check — check current session validity
@@ -367,6 +367,166 @@ export async function handleApi(req: Request): Promise<Response | null> {
       hasSoul: !!((userProfile as Record<string, unknown>)?.completed),
       steps,
     });
+  }
+
+  // ── Onboarding API Endpoints (public, must precede auth middleware) ──
+
+  // POST /api/onboarding/provider
+  if (req.method === 'POST' && path === '/api/onboarding/provider') {
+    const body = await req.json() as {
+      kind: string;
+      apiKey?: string;
+      model: string;
+      baseUrl?: string;
+    };
+    const config = await loadConfig();
+    const kind = body.kind as ProviderKind;
+    config.defaultProvider = kind;
+    config.providers[kind] = {
+      kind,
+      model: body.model,
+      apiKey: body.apiKey,
+      baseUrl: body.baseUrl,
+    } as ProviderConfig;
+    await saveConfig(config);
+    return json({ success: true, connected: true });
+  }
+
+  // POST /api/onboarding/personality
+  if (req.method === 'POST' && path === '/api/onboarding/personality') {
+    const body = await req.json() as { personality: string; customSoul?: string };
+    const { PATHS } = await import('../config/paths.ts');
+    const { ensureDir } = await import('@std/fs');
+    if (body.personality !== 'custom') {
+      const soul = generatePersonalitySoul(body.personality);
+      await ensureDir(PATHS.configDir);
+      await Deno.writeTextFile(PATHS.soulFile, soul);
+    } else if (body.customSoul) {
+      await ensureDir(PATHS.configDir);
+      await Deno.writeTextFile(PATHS.soulFile, body.customSoul);
+    }
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/channels
+  if (req.method === 'POST' && path === '/api/onboarding/channels') {
+    const body = await req.json() as {
+      channels: string[];
+      credentials?: Record<string, Record<string, string>>;
+    };
+    const config = await loadConfig();
+    if (!config.plugins) config.plugins = {};
+    config.plugins['channels'] = {
+      enabled: body.channels,
+      ...(body.credentials ? { credentials: body.credentials } : {}),
+    };
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/advanced
+  if (req.method === 'POST' && path === '/api/onboarding/advanced') {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    if (body.embeddings) {
+      config.embeddings = body.embeddings as CortexConfig['embeddings'];
+    }
+    if (body.vectorStore) {
+      config.memory = {
+        ...config.memory,
+        vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V } ? V
+          : never,
+      };
+    }
+    if (body.chromeBridge) {
+      config.chromeBridge = body.chromeBridge as CortexConfig['chromeBridge'];
+    }
+    if (body.voice) {
+      config.voice = body.voice as CortexConfig['voice'];
+    }
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/telemetry
+  if (req.method === 'POST' && path === '/api/onboarding/telemetry') {
+    const body = await req.json() as { enabled: boolean };
+    const config = await loadConfig();
+    config.update = config.update ||
+      {
+        channel: 'stable',
+        checkOnStartup: true,
+        autoUpdate: false,
+        checkIntervalHours: 24,
+        githubToken: null,
+        gpgKeyPath: null,
+      };
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/complete
+  if (req.method === 'POST' && path === '/api/onboarding/complete') {
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    cfg.onboarding = {
+      completed: true,
+      completedAt: new Date().toISOString(),
+      version: '2.0',
+      skippedSteps: [],
+    };
+    await saveConfig(config);
+    await runMigrations();
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/progress — save partial progress
+  if (req.method === 'POST' && path === '/api/onboarding/progress') {
+    const body = await req.json() as Record<string, unknown>;
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    cfg.onboarding = {
+      ...(cfg.onboarding as Record<string, unknown> || {}),
+      ...body,
+      startedAt: (cfg.onboarding as Record<string, unknown>)?.startedAt || new Date().toISOString(),
+    };
+    await saveConfig(config);
+    return json({ success: true });
+  }
+
+  // POST /api/onboarding/profile/start
+  if (req.method === 'POST' && path === '/api/onboarding/profile/start') {
+    const config = await loadConfig();
+    return json({
+      question: 'What do you do? (work, study, hobby projects, etc.)',
+      questionId: 'intro_1',
+      questionNumber: 1,
+    });
+  }
+
+  // POST /api/onboarding/profile/answer
+  if (req.method === 'POST' && path === '/api/onboarding/profile/answer') {
+    const body = await req.json() as { questionId: string; answer: string };
+    try {
+      const profile = await savePartialProfile(body.answer);
+      return json({ done: true, profile });
+    } catch {
+      return json({ done: true });
+    }
+  }
+
+  // POST /api/onboarding/profile/skip
+  if (req.method === 'POST' && path === '/api/onboarding/profile/skip') {
+    const config = await loadConfig();
+    const cfg = config as unknown as Record<string, unknown>;
+    const onboarding = (cfg.onboarding as Record<string, unknown>) || {};
+    (onboarding as Record<string, unknown>).skippedSteps = [
+      ...((onboarding as Record<string, unknown>).skippedSteps as string[] || []),
+      'personalization',
+    ];
+    cfg.onboarding = onboarding;
+    await saveConfig(config);
+    return json({ success: true });
   }
 
   // GET /api/health — no auth required (used by daemon health checks)
@@ -1417,11 +1577,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
       } else {
         const config = await loadConfig();
         const stored = config.providers[kind];
+        if (!stored?.apiKey && kind !== 'ollama' && kind !== 'lmstudio') {
+          return json([]);
+        }
         models = await fetchModels(kind, stored?.apiKey ?? '', stored?.baseUrl ?? baseUrl);
       }
       return json(models);
     } catch (err) {
-      return json({ error: (err as Error).message }, 502);
+      return json([]);
     }
   }
 
@@ -1603,7 +1766,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // POST /api/projects/import-github — import GitHub repo as a project
   if (req.method === 'POST' && path === '/api/projects/import-github') {
-    const body = await req.json() as { fullName: string; projectName?: string };
+    const body = await req.json() as { fullName: string; projectName?: string; agentId?: string };
     if (!body.fullName) return err('fullName is required (owner/name)', 400);
     const { getGitHubToken, getRepo } = await import('../workspace/github.ts');
     const token = await getGitHubToken();
@@ -1614,7 +1777,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       if (/[^a-zA-Z0-9_-]/.test(name)) {
         return err('Project name may only contain letters, numbers, hyphens, and underscores', 400);
       }
-      const cloneDir = join(PATHS.dataDir, 'workspaces', name);
+      const agentId = body.agentId || 'default';
+      const cloneDir = join(PATHS.workspacesDir, agentId, name);
+      await Deno.mkdir(join(PATHS.workspacesDir, agentId), { recursive: true });
       const cmd = new Deno.Command('git', {
         args: ['clone', repo.html_url, cloneDir],
         stdout: 'null',
@@ -1625,12 +1790,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const { createProject: createFsProject } = await import('../projects/manager.ts');
       const project = await createFsProject(name, {
         description: repo.description || undefined,
-        agentId: 'default',
+        agentId: agentId,
         path: cloneDir,
       });
       try {
         await (await import('../codegraph/sync.ts')).indexRepository(cloneDir, name);
-      } catch { /* ok */ }
+      } catch (e) {
+        return json({ ...project, indexing_warning: (e as Error).message }, 201);
+      }
       return json(project, 201);
     } catch (e) {
       return err((e as Error).message, 400);
@@ -2600,7 +2767,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       if (stat.isDirectory) {
         const entries: string[] = [];
         for await (const entry of Deno.readDir(targetPath)) {
-          entries.push(entry.name);
+          entries.push(entry.isDirectory ? entry.name + '/' : entry.name);
         }
         return json(entries.sort());
       }
@@ -2650,7 +2817,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       if (stat.isDirectory) {
         const entries: string[] = [];
         for await (const entry of Deno.readDir(targetPath)) {
-          entries.push(entry.name);
+          entries.push(entry.isDirectory ? entry.name + '/' : entry.name);
         }
         return json(entries.sort());
       }
@@ -3219,6 +3386,204 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(rows);
   }
 
+  // ── Remote Agents (UI-facing aliases for Node Registry) ──
+
+  // GET /api/remote/agents — list registered nodes as remote agents
+  if (req.method === 'GET' && path === '/api/remote/agents') {
+    const { listNodes } = await import('../hub/node-registry.ts');
+    const nodes = await listNodes();
+    const agents = nodes.map((n) => ({
+      id: n.id,
+      name: n.name,
+      nodeId: n.id,
+      node: n.endpoint,
+      tier: n.tier,
+      status: n.status,
+      capabilities: n.capabilities,
+      lastHeartbeat: n.last_heartbeat,
+      registeredAt: n.registered_at,
+    }));
+    return json(agents);
+  }
+
+  // GET /api/remote/directives — pending directive queue
+  if (req.method === 'GET' && path === '/api/remote/directives') {
+    const directives = getPendingDirectives();
+    return json(directives);
+  }
+
+  // POST /api/remote/deploy — deploy an agent to a node
+  if (req.method === 'POST' && path === '/api/remote/deploy') {
+    const { getNode } = await import('../hub/node-registry.ts');
+    const { dispatchDirective } = await import('../hub/ws-node.ts');
+    const body = await req.json() as {
+      agentId: string;
+      nodeId: string;
+      tier?: string;
+    };
+    if (!body.agentId?.trim()) return err('Missing agentId', 400);
+    if (!body.nodeId?.trim()) return err('Missing nodeId', 400);
+    const node = await getNode(body.nodeId);
+    if (!node) return notFound('Node not found');
+
+    const directiveId = `dir_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    const result = await dispatchDirective(body.nodeId, {
+      id: directiveId,
+      sessionId: body.agentId,
+      action: 'deploy',
+      params: {
+        agentId: body.agentId,
+        tier: body.tier ?? node.tier,
+      },
+    });
+
+    if (!result.dispatched) {
+      return json({ ok: false, error: result.reason || 'Failed to dispatch' }, 409);
+    }
+    return json({ ok: true, directiveId });
+  }
+
+  // ── Computer Use API ─────────────────────────────────────
+
+  // GET /api/computer/screenshots
+  if (req.method === 'GET' && path === '/api/computer/screenshots') {
+    const screenshots = await listComputerScreenshots();
+    return json({ screenshots });
+  }
+
+  // GET /api/computer/actions
+  if (req.method === 'GET' && path === '/api/computer/actions') {
+    const actions = await listComputerActions();
+    return json(actions);
+  }
+
+  // GET /api/computer/config
+  if (req.method === 'GET' && path === '/api/computer/config') {
+    const { isComputerUseAvailable } = await import('../computer-use/display.ts');
+    const available = await isComputerUseAvailable();
+    const config = await loadConfig();
+    const cu = config.computerUse;
+    return json({
+      available,
+      resolution: `${cu?.displayWidth ?? 1024}x${cu?.displayHeight ?? 768}`,
+      dpi: 96,
+      displayWidth: cu?.displayWidth ?? 1024,
+      displayHeight: cu?.displayHeight ?? 768,
+      runtime: cu?.runtime ?? 'native',
+    });
+  }
+
+  // ── Vault API ───────────────────────────────────────────
+
+  // GET /api/vault/list
+  if (req.method === 'GET' && path === '/api/vault/list') {
+    const { vaultList } = await import('../security/vault.ts');
+    const entries = await vaultList();
+    return json(entries);
+  }
+
+  // POST /api/vault/store
+  if (req.method === 'POST' && path === '/api/vault/store') {
+    const { vaultStore } = await import('../security/vault.ts');
+    const body = await req.json() as {
+      key: string;
+      value: string;
+      expiration?: string;
+      maxUses?: number;
+      tags?: string[];
+    };
+    if (!body.key?.trim()) return err('Key name is required', 400);
+    await vaultStore({
+      name: body.key.trim(),
+      service: 'vault',
+      value: body.value ?? '',
+      credentialType: 'api_key',
+    });
+    // If expiration or maxUses were set, update those fields
+    if (body.expiration || body.maxUses !== undefined) {
+      const db = await import('../db/client.ts').then((m) => m.getVaultDb());
+      if (body.expiration) {
+        await db.run(`UPDATE vault_entries SET expires_at = ? WHERE name = ?`, [body.expiration, body.key.trim()]);
+      }
+      if (body.maxUses !== undefined && body.maxUses > 0) {
+        await db.run(`UPDATE vault_entries SET usage_limit = ? WHERE name = ?`, [body.maxUses, body.key.trim()]);
+      }
+    }
+    return json({ ok: true });
+  }
+
+  // DELETE /api/vault/delete/:key
+  const vaultDeleteMatch = path.match(/^\/api\/vault\/delete\/(.+)$/);
+  if (req.method === 'DELETE' && vaultDeleteMatch) {
+    const { vaultDelete } = await import('../security/vault.ts');
+    const key = decodeURIComponent(vaultDeleteMatch[1]);
+    const ok = await vaultDelete(key);
+    if (!ok) return notFound('Credential not found');
+    return json({ ok: true });
+  }
+
+  // GET /api/vault/audit
+  if (req.method === 'GET' && path === '/api/vault/audit') {
+    const db = await import('../db/client.ts').then((m) => m.getVaultDb());
+    const rows = await db.all<{
+      id: string;
+      credential_id: string;
+      requestor: string;
+      granted: number;
+      reason: string | null;
+      accessed_at: string;
+      name: string | null;
+    }>(
+      `SELECT al.id, al.credential_id, al.requestor, al.granted, al.reason, al.accessed_at, ve.name
+       FROM vault_access_log al
+       LEFT JOIN vault_entries ve ON ve.id = al.credential_id
+       ORDER BY al.accessed_at DESC
+       LIMIT 200`,
+    );
+    return json(rows.map((r) => ({
+      ...r,
+      key: r.name ?? r.credential_id,
+      granted: r.granted === 1,
+    })));
+  }
+
+  // POST /api/vault/export
+  if (req.method === 'POST' && path === '/api/vault/export') {
+    const { vaultList, vaultGet } = await import('../security/vault.ts');
+    const entries = await vaultList();
+    const exported = [];
+    for (const e of entries) {
+      try {
+        const value = await vaultGet(e.name, 'system');
+        exported.push({ name: e.name, service: e.service, value });
+      } catch {
+        exported.push({ name: e.name, service: e.service, value: null, error: 'decryption_failed' });
+      }
+    }
+    return json(exported);
+  }
+
+  // POST /api/vault/import
+  if (req.method === 'POST' && path === '/api/vault/import') {
+    const { vaultStore } = await import('../security/vault.ts');
+    const body = await req.json() as {
+      data: Array<{ name: string; service?: string; value: string }>;
+    };
+    if (!Array.isArray(body.data)) return err('data must be an array', 400);
+    let imported = 0;
+    for (const item of body.data) {
+      if (!item.name || !item.value) continue;
+      await vaultStore({
+        name: item.name,
+        service: item.service || 'imported',
+        value: item.value,
+        credentialType: 'api_key',
+      });
+      imported++;
+    }
+    return json({ ok: true, imported });
+  }
+
   // ── Quartermaster Monitoring API ──────────────────────────
 
   // GET /api/qm/summary?session=<id>
@@ -3400,182 +3765,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ success: true });
   }
 
-  // ── Onboarding API Endpoints ──────────────────────────────
-
-  // POST /api/onboarding/provider
-  if (req.method === 'POST' && path === '/api/onboarding/provider') {
-    const body = await req.json() as {
-      kind: string;
-      apiKey?: string;
-      model: string;
-      baseUrl?: string;
-    };
-    const config = await loadConfig();
-    const kind = body.kind as ProviderKind;
-    config.defaultProvider = kind;
-    config.providers[kind] = {
-      kind,
-      model: body.model,
-      apiKey: body.apiKey,
-      baseUrl: body.baseUrl,
-    } as ProviderConfig;
-    await saveConfig(config);
-    return json({ success: true, connected: true });
-  }
-
-  // POST /api/onboarding/personality
-  if (req.method === 'POST' && path === '/api/onboarding/personality') {
-    const body = await req.json() as { personality: string; customSoul?: string };
-    const { PATHS } = await import('../config/paths.ts');
-    const { ensureDir } = await import('@std/fs');
-    if (body.personality !== 'custom') {
-      const soul = generatePersonalitySoul(body.personality);
-      await ensureDir(PATHS.configDir);
-      await Deno.writeTextFile(PATHS.soulFile, soul);
-    } else if (body.customSoul) {
-      await ensureDir(PATHS.configDir);
-      await Deno.writeTextFile(PATHS.soulFile, body.customSoul);
-    }
-    return json({ success: true });
-  }
-
-  // POST /api/onboarding/channels
-  if (req.method === 'POST' && path === '/api/onboarding/channels') {
-    const body = await req.json() as {
-      channels: string[];
-      credentials?: Record<string, Record<string, string>>;
-    };
-    const config = await loadConfig();
-    if (!config.plugins) config.plugins = {};
-    config.plugins['channels'] = {
-      enabled: body.channels,
-      ...(body.credentials ? { credentials: body.credentials } : {}),
-    };
-    await saveConfig(config);
-    return json({ success: true });
-  }
-
-  // POST /api/onboarding/advanced
-  if (req.method === 'POST' && path === '/api/onboarding/advanced') {
-    const body = await req.json() as Record<string, unknown>;
-    const config = await loadConfig();
-    if (body.embeddings) {
-      config.embeddings = body.embeddings as CortexConfig['embeddings'];
-    }
-    if (body.vectorStore) {
-      config.memory = {
-        ...config.memory,
-        vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V } ? V
-          : never,
-      };
-    }
-    if (body.chromeBridge) {
-      config.chromeBridge = body.chromeBridge as CortexConfig['chromeBridge'];
-    }
-    if (body.voice) {
-      config.voice = body.voice as CortexConfig['voice'];
-    }
-    await saveConfig(config);
-    return json({ success: true });
-  }
-
-  // POST /api/onboarding/telemetry
-  if (req.method === 'POST' && path === '/api/onboarding/telemetry') {
-    const body = await req.json() as { enabled: boolean };
-    const config = await loadConfig();
-    config.update = config.update ||
-      {
-        channel: 'stable',
-        checkOnStartup: true,
-        autoUpdate: false,
-        checkIntervalHours: 24,
-        githubToken: null,
-        gpgKeyPath: null,
-      };
-    await saveConfig(config);
-    return json({ success: true });
-  }
-
-  // POST /api/onboarding/complete
-  if (req.method === 'POST' && path === '/api/onboarding/complete') {
-    const config = await loadConfig();
-    const cfg = config as unknown as Record<string, unknown>;
-    cfg.onboarding = {
-      completed: true,
-      completedAt: new Date().toISOString(),
-      version: '2.0',
-      skippedSteps: [],
-    };
-    await saveConfig(config);
-    await runMigrations();
-    return json({ success: true });
-  }
-
-  // POST /api/onboarding/progress — save partial progress
-  if (req.method === 'POST' && path === '/api/onboarding/progress') {
-    const body = await req.json() as Record<string, unknown>;
-    const config = await loadConfig();
-    const cfg = config as unknown as Record<string, unknown>;
-    cfg.onboarding = {
-      ...(cfg.onboarding as Record<string, unknown> || {}),
-      ...body,
-      startedAt: (cfg.onboarding as Record<string, unknown>)?.startedAt || new Date().toISOString(),
-    };
-    await saveConfig(config);
-    return json({ success: true });
-  }
-
   // POST /api/auth/password/change
   if (req.method === 'POST' && path === '/api/auth/password/change') {
     const body = await req.json() as { oldPassword: string; newPassword: string };
     const ok = await changePassword(body.oldPassword, body.newPassword);
     if (!ok) return json({ error: 'Current password is incorrect' }, 401);
-    return json({ success: true });
-  }
-
-  // ── AI Personalization API Endpoints ─────────────────────
-
-  // POST /api/onboarding/profile/start
-  if (req.method === 'POST' && path === '/api/onboarding/profile/start') {
-    const config = await loadConfig();
-    const providerKind = config.defaultProvider;
-    const providerCfg = config.providers[providerKind];
-    if (!providerCfg) {
-      return json({
-        question: 'What do you do? (work, study, hobby projects, etc.)',
-        questionId: 'intro_1',
-        questionNumber: 1,
-      });
-    }
-    return json({
-      question: 'What do you do? (work, study, hobby projects, etc.)',
-      questionId: 'intro_1',
-      questionNumber: 1,
-    });
-  }
-
-  // POST /api/onboarding/profile/answer
-  if (req.method === 'POST' && path === '/api/onboarding/profile/answer') {
-    const body = await req.json() as { questionId: string; answer: string };
-    try {
-      const profile = await savePartialProfile(body.answer);
-      return json({ done: true, profile });
-    } catch {
-      return json({ done: true });
-    }
-  }
-
-  // POST /api/onboarding/profile/skip
-  if (req.method === 'POST' && path === '/api/onboarding/profile/skip') {
-    const config = await loadConfig();
-    const cfg = config as unknown as Record<string, unknown>;
-    const onboarding = (cfg.onboarding as Record<string, unknown>) || {};
-    (onboarding as Record<string, unknown>).skippedSteps = [
-      ...((onboarding as Record<string, unknown>).skippedSteps as string[] || []),
-      'personalization',
-    ];
-    cfg.onboarding = onboarding;
-    await saveConfig(config);
     return json({ success: true });
   }
 
@@ -3737,10 +3931,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'POST' && path === '/api/codegraph/index') {
     const body = await req.json() as { rootPath: string; projectName?: string };
     if (!body.rootPath) return err('rootPath is required', 400);
+    console.error('[codegraph] index endpoint: path=' + body.rootPath + ' name=' + (body.projectName || '(auto)'));
     const { indexRepository } = await import('../codegraph/sync.ts');
     try {
-      await indexRepository(body.rootPath, body.projectName);
-      return json({ ok: true });
+      const result = await indexRepository(body.rootPath, body.projectName);
+      console.error('[codegraph] index endpoint: done — ' + result.nodeCount + ' nodes, ' + result.edgeCount + ' edges, ' + result.fileCount + ' files, ' + result.errorCount + ' errors');
+      return json({ ok: true, nodeCount: result.nodeCount, edgeCount: result.edgeCount, fileCount: result.fileCount, errorCount: result.errorCount, errorSample: result.errorSample });
     } catch (e) {
       return err((e as Error).message, 500);
     }
@@ -4027,6 +4223,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
     }
   }
 
+  // POST /api/codegraph/incremental-sync
+  if (req.method === 'POST' && path === '/api/codegraph/incremental-sync') {
+    const body = await req.json() as { projectName: string };
+    if (!body.projectName) return err('projectName is required', 400);
+    const { getProject } = await import('../codegraph/graph.ts');
+    const p = await getProject(body.projectName);
+    if (!p) return notFound('Project not found');
+    const { incrementalSync } = await import('../codegraph/sync.ts');
+    try {
+      const result = await incrementalSync(p.root_path, body.projectName);
+      return json({ addedNodes: result.addedNodes, addedEdges: result.addedEdges });
+    } catch (e) {
+      return err((e as Error).message, 500);
+    }
+  }
+
   // POST /api/codegraph/impact
   if (req.method === 'POST' && path === '/api/codegraph/impact') {
     const body = await req.json() as { file?: string; symbol?: string; project: string };
@@ -4036,7 +4248,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!p) return notFound('Project not found');
     const name = body.symbol || body.file || '';
     const trace = await tracePath(p.id, name, { direction: 'both' });
-    return json(trace);
+    return json({ nodes: trace.map(function(t) { return t.node; }) });
   }
 
   // GET /api/codegraph/architecture?project=
@@ -4045,17 +4257,37 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!project) return err('Missing project', 400);
     const { getProject, getArchitecture } = await import('../codegraph/graph.ts');
     let p = await getProject(project);
-    if (!p) {
+    if (!p || p.node_count === 0) {
       const { loadProject } = await import('../projects/manager.ts');
       const fsProj = await loadProject(project);
+      console.error('[codegraph] architecture endpoint: project=' + project + ' found_in_codegraph=' + !!p + ' node_count=' + (p?.node_count ?? 'N/A') + ' fsProj=' + !!fsProj + ' fsPath=' + (fsProj?.path || 'N/A'));
       if (fsProj?.path) {
-        const { indexRepository } = await import('../codegraph/sync.ts');
-        await indexRepository(fsProj.path, project);
-        p = await getProject(project);
+        console.error('[codegraph] architecture endpoint: auto-indexing ' + fsProj.path + ' as ' + project);
+        try {
+          const { indexRepository } = await import('../codegraph/sync.ts');
+          const result = await indexRepository(fsProj.path, project);
+          console.error('[codegraph] architecture endpoint: index complete — ' + result.nodeCount + ' nodes, ' + result.edgeCount + ' edges in ' + result.durationMs + 'ms');
+          p = await getProject(project);
+        } catch (e) {
+          console.error('[codegraph] architecture endpoint: index FAILED — ' + (e as Error).message);
+        }
+      } else {
+        console.error('[codegraph] architecture endpoint: no fsProj path to index');
       }
     }
     if (!p) return notFound('Project not found');
     const arch = await getArchitecture(p.id);
+    try {
+      const { detectFFIBridges, detectLanguage, normalizeCodeNode } = await import('../codegraph/polyglot.ts');
+      const allNodes = arch.nodes || [];
+      const normalized = allNodes.map(function(n) { return normalizeCodeNode(n); });
+      if (normalized.length > 0) {
+        const ffiBridges = detectFFIBridges(normalized);
+        if (ffiBridges.length > 0) {
+          (arch as unknown as Record<string, unknown>).ffiBridges = ffiBridges;
+        }
+      }
+    } catch { /* polyglot analysis is best-effort */ }
     return json(arch);
   }
 
@@ -4067,7 +4299,8 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const p = await getProject(body.project);
     if (!p) return notFound('Project not found');
     const trace = await tracePath(p.id, body.from, { direction: 'both' });
-    return json(trace);
+    const pathNodes = [body.from, ...trace.map(function(t) { return t.node.name; })];
+    return json({ paths: [pathNodes] });
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -4465,6 +4698,68 @@ export async function handleApi(req: Request): Promise<Response | null> {
       active: false,
       config: { chunkSize: 512, chunkOverlap: 64, batchSize: 32 },
     });
+  }
+
+  // ── Eval API ─────────────────────────────────────────────
+
+  // GET /api/eval/suites
+  if (req.method === 'GET' && path === '/api/eval/suites') {
+    const { listSuites } = await import('../eval/runner.ts');
+    const suites = await listSuites();
+    return json(suites.map((s) => ({ ...s, id: s.name })));
+  }
+
+  // POST /api/eval/run
+  if (req.method === 'POST' && path === '/api/eval/run') {
+    const { getSuite, runSuite } = await import('../eval/runner.ts');
+    const body = await req.json() as {
+      suiteId: string;
+      agentId?: string;
+      provider?: string;
+      baselineId?: string;
+      timeout?: number;
+    };
+    if (!body.suiteId) return err('Missing suiteId', 400);
+    const suite = await getSuite(body.suiteId);
+    if (!suite) return notFound('Suite not found');
+    const config = await loadConfig();
+    const provider = config.defaultProvider;
+    const run = await runSuite(suite, {
+      provider,
+      model: config.providers[provider]?.model ?? 'unknown',
+    } as never);
+    return json(run, 201);
+  }
+
+  // GET /api/eval/runs
+  if (req.method === 'GET' && path === '/api/eval/runs') {
+    const { listRuns } = await import('../eval/runner.ts');
+    const runs = await listRuns();
+    return json(runs);
+  }
+
+  // GET /api/eval/runs/:id
+  const evalRunDetailMatch = path.match(/^\/api\/eval\/runs\/(.+)$/);
+  if (req.method === 'GET' && evalRunDetailMatch) {
+    const { getRun } = await import('../eval/runner.ts');
+    const run = await getRun(evalRunDetailMatch[1]);
+    if (!run) return notFound('Run not found');
+    return json(run);
+  }
+
+  // GET /api/eval/baselines
+  if (req.method === 'GET' && path === '/api/eval/baselines') {
+    const { listBaselines } = await import('../eval/runner.ts');
+    const baselines = await listBaselines();
+    return json(baselines);
+  }
+
+  // DELETE /api/eval/baselines/:id
+  const evalBaselineDeleteMatch = path.match(/^\/api\/eval\/baselines\/(.+)$/);
+  if (req.method === 'DELETE' && evalBaselineDeleteMatch) {
+    const { deleteBaseline } = await import('../eval/runner.ts');
+    await deleteBaseline(evalBaselineDeleteMatch[1]);
+    return json({ ok: true });
   }
 
   // RAG Evaluation Framework (#178)

@@ -5,6 +5,7 @@ import {
   deleteFileNodes,
   getFileHash,
   getProject,
+  rebuildFtsIndex,
   setFileHash,
   updateProjectCounts,
   upsertProject,
@@ -42,7 +43,8 @@ async function discoverFiles(
       for await (const entry of Deno.readDir(dir)) {
         entries.push(entry);
       }
-    } catch {
+    } catch (e) {
+      console.error('[codegraph] discoverFiles: readDir failed for ' + dir + ' — ' + (e as Error).message);
       return false;
     }
 
@@ -88,7 +90,7 @@ async function indexFile(
     relPath: string;
     language: string;
     hash: string;
-  } | null
+  } | { error: string } | null
 > {
   try {
     const source = await Deno.readTextFile(filePath);
@@ -98,7 +100,12 @@ async function indexFile(
       : filePath;
 
     const result = await parseFile(filePath, source);
-    if (result.error || result.nodes.length === 0) return null;
+    if (result.error) {
+      if (result.error === 'Unsupported language' || result.error.startsWith('Grammar not available')) return null;
+      console.error('[codegraph] parse error: ' + filePath + ' — ' + result.error);
+      return { error: result.error };
+    }
+    if (result.nodes.length === 0) return null;
 
     return {
       nodes: result.nodes.map((n) => ({
@@ -113,7 +120,8 @@ async function indexFile(
       language: result.language,
       hash,
     };
-  } catch {
+  } catch (e) {
+    console.error('[codegraph] indexFile: failed for ' + filePath + ' — ' + (e as Error).message);
     return null;
   }
 }
@@ -121,14 +129,19 @@ async function indexFile(
 export async function indexRepository(
   rootPath: string,
   projectName?: string,
-): Promise<{ project: string; nodeCount: number; edgeCount: number; durationMs: number }> {
+): Promise<{ project: string; nodeCount: number; edgeCount: number; durationMs: number; fileCount: number; errorCount: number; errorSample: string[] }> {
   const start = Date.now();
   const name = projectName ?? rootPath.split('/').pop() ?? 'unknown';
+  let errorCount = 0;
+  const errorSample: string[] = [];
+
+  console.error('[codegraph] indexRepository starting: rootPath=' + rootPath + ' projectName=' + name);
 
   const project = await upsertProject(name, rootPath);
   await clearProjectNodes(project.id);
 
   const files = await discoverFiles(rootPath);
+  console.error('[codegraph] indexRepository: discovered ' + files.length + ' files');
   const languageStats: Record<string, number> = {};
 
   const allNodes: Array<ExtractedNode & { projectId: number }> = [];
@@ -155,7 +168,8 @@ export async function indexRepository(
     const results = await Promise.all(batch.map((f) => indexFile(f, rootPath)));
 
     for (const result of results) {
-      if (!result) continue;
+      if (!result) { errorCount++; continue; }
+      if ('error' in result) { errorCount++; if (errorSample.length < 5) errorSample.push(result.error); continue; }
       languageStats[result.language] = (languageStats[result.language] ?? 0) + 1;
 
       for (const node of result.nodes) {
@@ -190,6 +204,7 @@ export async function indexRepository(
     allNodes,
   );
 
+  const validNodeIds = new Set(nodeIds);
   const nodeIdMap = new Map<string, number>();
   for (let i = 0; i < allNodes.length; i++) {
     nodeIdMap.set(allNodes[i].qualifiedName, nodeIds[i]);
@@ -205,9 +220,16 @@ export async function indexRepository(
     })),
   );
 
+  const validEdges = resolvedEdges.filter(function(e) {
+    return validNodeIds.has(e.sourceId) && validNodeIds.has(e.targetId);
+  });
+  if (validEdges.length < resolvedEdges.length) {
+    console.error('[codegraph] filtered ' + (resolvedEdges.length - validEdges.length) + ' edges with invalid source/target IDs');
+  }
+
   const edgeIds = await chunkedBulkInsertEdges(
     project.id,
-    resolvedEdges,
+    validEdges,
   );
 
   await updateProjectCounts(project.id);
@@ -215,11 +237,20 @@ export async function indexRepository(
 
   await updateProjectCounts(project.id);
 
+  await rebuildFtsIndex();
+
+  const duration = Date.now() - start;
+  const languageStatsStr = Object.entries(languageStats).map(function(e) { return e[0] + ':' + e[1]; }).join(', ');
+  console.error('[codegraph] indexRepository complete: ' + nodeIds.length + ' nodes, ' + edgeIds.length + ' edges, ' + files.length + ' files, ' + errorCount + ' errors, lang=[' + languageStatsStr + '] in ' + duration + 'ms');
+
   return {
     project: name,
     nodeCount: nodeIds.length,
     edgeCount: edgeIds.length,
-    durationMs: Date.now() - start,
+    durationMs: duration,
+    fileCount: files.length,
+    errorCount: errorCount,
+    errorSample: errorSample,
   };
 }
 
@@ -314,7 +345,7 @@ export async function incrementalSync(
       await deleteFileNodes(project!.id, relPath);
 
       const result = await indexFile(filePath, rootPath);
-      if (!result || result.nodes.length === 0) continue;
+      if (!result || 'error' in result || result.nodes.length === 0) continue;
 
       const nodeIds = await bulkInsertNodes(
         result.nodes.map((n) => ({
@@ -383,6 +414,8 @@ export async function incrementalSync(
   }
 
   await updateProjectCounts(project.id);
+
+  await rebuildFtsIndex();
 
   return { project: name, addedNodes, addedEdges };
 }

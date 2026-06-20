@@ -187,14 +187,20 @@ export function parseCookies(cookieHeader: string): Record<string, string> {
   return cookies;
 }
 
-export function setSessionCookie(sessionId: string): string {
-  return `cortex_session=${sessionId}; HttpOnly; Secure; Path=/; Max-Age=${
+function isSecure(req: Request): boolean {
+  return new URL(req.url).protocol === 'https:';
+}
+
+export function setSessionCookie(sessionId: string, req?: Request): string {
+  const secure = req ? isSecure(req) : false;
+  return `cortex_session=${sessionId}; HttpOnly;${secure ? ' Secure;' : ''} Path=/; Max-Age=${
     Math.floor(SESSION_DURATION_MS / 1000)
   }; SameSite=Strict`;
 }
 
-export function clearSessionCookie(): string {
-  return 'cortex_session=; HttpOnly; Secure; Path=/; Max-Age=0; SameSite=Strict';
+export function clearSessionCookie(req?: Request): string {
+  const secure = req ? isSecure(req) : false;
+  return `cortex_session=; HttpOnly;${secure ? ' Secure;' : ''} Path=/; Max-Age=0; SameSite=Strict`;
 }
 
 export async function requireAuth(
