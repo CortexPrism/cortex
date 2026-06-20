@@ -7297,17 +7297,36 @@ async function exportSession(id) {
   toast('Session exported', 'success');
 }
 
-async function captureSessionWorkspaceSnapshot() {
+function getSandboxWorkspacePath() {
+  var agentId = window._selectedAgentId || 'default';
+  var wsMap = window._wsMap || {};
+  if (wsMap[agentId]) return wsMap[agentId];
+  if (wsMap['default']) return wsMap['default'];
+  if (Object.keys(wsMap).length > 0) return wsMap[Object.keys(wsMap)[0]];
+  return null;
+}
+
+function captureSessionWorkspaceSnapshot() {
   var sessionId = document.getElementById('session-detail-title')?.textContent || window._sessionId || '';
   if (!sessionId) { alert('No session selected'); return; }
-  try {
-    var r = await fetch(BASE + '/api/workspace/snapshots', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Session ' + sessionId.slice(0,8), sessionId: sessionId, agentId: '', workspacePath: '/workspace', tags: ['session'] })
-    });
-    if (r.ok) { toast('Workspace snapshot captured', 'success'); }
-    else { toast('Snapshot failed', 'error'); }
-  } catch(e) { toast('Error: ' + e, 'error'); }
+  showSandboxModal({
+    title: 'Capture Session Snapshot',
+    description: 'Quick-capture the workspace snapshot for session <code>' + esc(sessionId.slice(0, 8)) + '…</code>.',
+    fields: [
+      { label: 'Snapshot Name', value: 'Session ' + sessionId.slice(0, 8), hint: 'Pre-filled from the current session.' },
+      { label: 'Embed File Contents', type: 'checkbox', checked: true, hint: 'Store file contents for full restoration.' }
+    ],
+    submitLabel: 'Capture',
+    onSubmit: async function(result) {
+      if (!result.workspacePath) throw new Error('No workspace directory for the selected agent.');
+      var r = await fetch(BASE + '/api/workspace/snapshots', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: result.values[0] || ('Session ' + sessionId.slice(0, 8)), sessionId: sessionId, agentId: result.agentId, workspacePath: result.workspacePath, tags: ['session'], includeContent: result.values[1] === true })
+      });
+      if (r.ok) { toast('Workspace snapshot captured', 'success'); }
+      else { toast('Snapshot failed', 'error'); }
+    }
+  });
 }
 
 async function archiveSessionAction(id) {
@@ -8865,6 +8884,7 @@ async function loadAgents() {
     window._selectedAgentName = currentRes?.name || currentAgentId;
     const wsMap = {};
     for (const w of workspaces) wsMap[w.agentId] = w.workspaceDir;
+    window._wsMap = wsMap;
     const sessCount = {};
     for (const s of sessions) {
       const aid = s.agent_id || 'default';
@@ -15148,17 +15168,36 @@ async function loadSandboxConfig() {
   var el = document.getElementById('cr-config-panel');
   try {
     var data = await fetch(BASE + '/api/sandbox/config').then(r => r.json());
+    var debugData = await fetch(BASE + '/api/sandbox/debug').then(r => r.json()).catch(function() { return {enabled:false}; });
     el.innerHTML = '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Sandbox Configuration</h3>' +
       '<div class="stat-row"><span>Runtime</span><span>' + esc(data.runtime || 'subprocess') + '</span></div>' +
       '<div class="stat-row"><span>Docker</span><span>' + renderBadge(data.dockerAvailable ? 'Available' : 'Not Installed', data.dockerAvailable ? 'green' : 'red') + '</span></div>' +
       '<div class="stat-row"><span>gVisor</span><span>' + renderBadge(data.gvisorAvailable ? 'Available' : 'Not Installed', data.gvisorAvailable ? 'green' : 'red') + '</span></div>' +
       '<div class="stat-row"><span>Timeout</span><span>' + (data.timeout || 30) + 's</span></div>' +
       '<div class="stat-row"><span>Memory Limit</span><span>' + (data.memoryLimit || 256) + 'MB</span></div>' +
+      '<div class="stat-row"><span>Debug Logging</span><span>' +
+        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
+          '<input type="checkbox" id="sandbox-debug-toggle" ' + (debugData.enabled ? 'checked' : '') + ' onchange="toggleSandboxDebug(this.checked)">' +
+          '<span style="font-size:11px;">' + (debugData.enabled ? 'Enabled' : 'Disabled') + '</span>' +
+        '</label>' +
+      '</span></div>' +
       '<div style="font-size:12px;font-weight:500;margin:8px 0;">Languages</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:4px;">' + (data.languages || []).map(function(l) {
         return '<label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:2px;"><input type="checkbox" checked disabled>' + esc(l) + '</label>';
       }).join('') + '</div>';
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+
+async function toggleSandboxDebug(enabled) {
+  try {
+    var r = await fetch(BASE + '/api/sandbox/debug', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: enabled })
+    });
+    var result = await r.json();
+    var label = document.querySelector('#sandbox-debug-toggle + span');
+    if (label) label.textContent = result.enabled ? 'Enabled' : 'Disabled';
+  } catch(e) { /* ignore */ }
 }
 
 // ── Policies Extension: Classification Tab ──
@@ -15818,8 +15857,172 @@ function switchSandboxTab(name) {
   else if (name === 'bugrepro') loadBugReproPane();
 }
 
-function loadSandboxPage() {
+async function loadSandboxPage() {
+  if (!window._wsMap || Object.keys(window._wsMap).length === 0) {
+    try {
+      var wData = await fetch(BASE + '/api/workspace/agents').then(function(r) { return r.json(); }).catch(function() { return []; });
+      var wsMap = window._wsMap || {};
+      for (var i = 0; i < wData.length; i++) wsMap[wData[i].agentId] = wData[i].workspaceDir;
+      window._wsMap = wsMap;
+    } catch(e) {}
+  }
+  if (!window._selectedAgentId) {
+    try {
+      var cur = await fetch(BASE + '/api/agents/current').then(function(r) { return r.json(); }).catch(function() { return null; });
+      window._selectedAgentId = (cur && cur.id) || 'default';
+    } catch(e) { window._selectedAgentId = 'default'; }
+  }
   switchSandboxTab(currentSandboxTab);
+}
+
+// ── Sandbox Modal (shared by environment + workspace operations) ──
+
+var _sandboxModalCallback = null;
+
+function closeSandboxModal() {
+  var el = document.getElementById('sandbox-modal');
+  if (el) el.remove();
+  _sandboxModalCallback = null;
+}
+
+function showSandboxModal(opts) {
+  closeSandboxModal();
+  var title = opts.title || 'Sandbox Operation';
+  var description = opts.description || '';
+  var fields = opts.fields || [];
+  var submitLabel = opts.submitLabel || 'Submit';
+  var onSubmit = opts.onSubmit;
+  if (!onSubmit) return;
+
+  var overlay = document.createElement('div');
+  overlay.id = 'sandbox-modal';
+  overlay.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;';
+  overlay.onclick = function(e) { if (e.target === overlay) closeSandboxModal(); };
+
+  var agentId = window._selectedAgentId || 'default';
+  var wp = getSandboxWorkspacePath() || '';
+
+  var fieldsHtml = fields.map(function(f, i) {
+    var val = f.value !== undefined ? escAttr(String(f.value)) : '';
+    var hint = f.hint ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;">' + f.hint + '</div>' : '';
+    var attrs = f.attrs || '';
+    if (f.type === 'select') {
+      return '<div style="margin-bottom:10px;">' +
+        '<label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">' + esc(f.label) + '</label>' +
+        '<select id="sandbox-field-' + i + '" class="inp" style="font-size:12px;width:100%;" ' + attrs + '>' + (f.options || []).map(function(o) {
+          return '<option value="' + escAttr(o.value) + '"' + (o.value === val ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+        }).join('') + '</select>' +
+        hint + '</div>';
+    }
+    if (f.type === 'checkbox') {
+      return '<div style="margin-bottom:10px;">' +
+        '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">' +
+        '<input type="checkbox" id="sandbox-field-' + i + '" ' + (f.checked ? 'checked' : '') + ' ' + attrs + '>' +
+        '<span style="font-size:12px;color:var(--text2);">' + esc(f.label) + '</span></label>' +
+        hint + '</div>';
+    }
+    return '<div style="margin-bottom:10px;">' +
+      '<label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">' + esc(f.label) + (f.required ? ' <span style="color:var(--accent-red);">*</span>' : '') + '</label>' +
+      '<input id="sandbox-field-' + i + '" class="inp" placeholder="' + escAttr(f.placeholder || '') + '" value="' + val + '" style="font-size:12px;width:100%;" ' + attrs + '>' +
+      hint + '</div>';
+  }).join('');
+
+  overlay.innerHTML =
+    '<div class="card" style="width:480px;max-height:85vh;overflow-y:auto;padding:20px;" onclick="event.stopPropagation()">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+        '<span style="font-weight:600;font-size:14px;">' + esc(title) + '</span>' +
+        '<button class="btn btn-ghost" onclick="closeSandboxModal()" style="font-size:18px;padding:0 6px;">✕</button>' +
+      '</div>' +
+      (description ? '<div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.5;">' + description + '</div>' : '') +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Agent <span style="font-size:10px;color:var(--text3);">(select to set workspace path)</span></label>' +
+        '<select id="sandbox-modal-agent" class="inp" style="font-size:12px;width:100%;" onchange="onSandboxAgentChange()">' +
+          '<option value="">Loading…</option>' +
+        '</select>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:2px;">Workspace: <code id="sandbox-modal-ws" style="font-size:10px;">' + esc(wp || '(not set)') + '</code></div>' +
+      '</div>' +
+      fieldsHtml +
+      '<div style="display:flex;gap:8px;margin-top:16px;">' +
+        '<button class="btn btn-primary" id="sandbox-modal-submit" onclick="submitSandboxModal()">' + esc(submitLabel) + '</button>' +
+        '<button class="btn btn-ghost" onclick="closeSandboxModal()">Cancel</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+  _sandboxModalCallback = onSubmit;
+  loadSandboxModalAgents();
+}
+
+async function loadSandboxModalAgents() {
+  var sel = document.getElementById('sandbox-modal-agent');
+  if (!sel) return;
+  var currentId = window._selectedAgentId || 'default';
+  try {
+    var agents = await fetch(BASE + '/api/agents').then(function(r) { return r.json(); }).catch(function() { return []; });
+    var html = (Array.isArray(agents) ? agents : []).map(function(a) {
+      var sel = a.id === currentId ? ' selected' : '';
+      return '<option value="' + escAttr(a.id) + '"' + sel + '>' + esc(a.name || a.id) + '</option>';
+    }).join('');
+    if (!html) html = '<option value="default">default</option>';
+    sel.innerHTML = html;
+    onSandboxAgentChange();
+  } catch(e) { sel.innerHTML = '<option value="default">default</option>'; }
+}
+
+function onSandboxAgentChange() {
+  var sel = document.getElementById('sandbox-modal-agent');
+  var wsEl = document.getElementById('sandbox-modal-ws');
+  if (!sel || !wsEl) return;
+  var agentId = sel.value;
+  var wsMap = window._wsMap || {};
+  var wp = wsMap[agentId];
+  if (wp) {
+    wsEl.innerHTML = '<code style="font-size:10px;">' + esc(wp) + '</code>';
+  } else {
+    wsEl.innerHTML = '<span style="color:var(--accent-orange);font-size:10px;">No workspace yet. </span>' +
+      '<button class="btn btn-ghost" onclick="ensureAgentWorkspace(\\'' + escAttr(agentId) + '\\')" style="font-size:10px;padding:1px 8px;margin-left:4px;">+ Create Workspace</button>';
+  }
+}
+
+async function ensureAgentWorkspace(agentId) {
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  try {
+    var r = await fetch(BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/ensure', { method: 'POST' });
+    var data = await r.json();
+    if (data.ok) {
+      var wsMap = window._wsMap || {};
+      wsMap[agentId] = data.workspaceDir;
+      window._wsMap = wsMap;
+      onSandboxAgentChange();
+    }
+  } catch(e) { alert('Failed to create workspace: ' + (e && e.message ? e.message : String(e))); }
+  if (btn) { btn.disabled = false; btn.textContent = '+ Create Workspace'; }
+}
+
+function submitSandboxModal() {
+  if (!_sandboxModalCallback) return;
+  var sel = document.getElementById('sandbox-modal-agent');
+  var agentId = sel ? sel.value : (window._selectedAgentId || 'default');
+  var wsMap = window._wsMap || {};
+  var workspacePath = wsMap[agentId] || '';
+
+  var fields = document.querySelectorAll('[id^="sandbox-field-"]');
+  var values = [];
+  fields.forEach(function(el) {
+    if (el.type === 'checkbox') values.push(el.checked);
+    else values.push(el.value);
+  });
+
+  var submitBtn = document.getElementById('sandbox-modal-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Working…'; }
+
+  _sandboxModalCallback({ agentId: agentId, workspacePath: workspacePath, values: values })
+    .then(function() { closeSandboxModal(); })
+    .catch(function(e) {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.textContent.replace('Working…', 'Submit'); }
+      alert('Error: ' + (e && e.message ? e.message : String(e)));
+    });
 }
 
 // ── #79 Environment Replication: Snapshots tab ──
@@ -15859,17 +16062,29 @@ async function loadSandboxSnapshots() {
   } catch(e) { c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Error: ' + esc(String(e)) + '</div>'; }
 }
 
-async function captureSandboxSnapshot() {
-  var name = prompt('Snapshot name (optional):');
-  var sessionId = window._sessionId || prompt('Session ID:');
-  if (!sessionId) return;
-  try {
-    var r = await fetch(BASE + '/api/sandbox/snapshots', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || undefined, sessionId: sessionId, agentId: '', workspacePath: '/workspace', tags: [] })
-    });
-    if (r.ok) { loadSandboxSnapshots(); } else { alert('Failed: ' + (await r.text())); }
-  } catch(e) { alert('Error: ' + e); }
+function captureSandboxSnapshot() {
+  var sessionId = window._sessionId || '';
+  showSandboxModal({
+    title: 'Capture Environment Snapshot',
+    description: 'Save the current environment state including dependencies, git status, and sandbox configuration for later replication.',
+    fields: [
+      { label: 'Snapshot Name', placeholder: 'e.g. pre-refactor, v2.1-stable', value: '', hint: 'Optional. Auto-generated if left blank.' },
+      { label: 'Session ID', placeholder: 'Session identifier', value: sessionId, required: true, hint: 'Associates this snapshot with a session.' }
+    ],
+    submitLabel: 'Capture Snapshot',
+    onSubmit: async function(result) {
+      var name = result.values[0] || undefined;
+      var sid = result.values[1];
+      if (!sid) throw new Error('Session ID is required');
+      if (!result.workspacePath) throw new Error('No workspace directory for the selected agent. Create an agent workspace first.');
+      var r = await fetch(BASE + '/api/sandbox/snapshots', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, sessionId: sid, agentId: result.agentId, workspacePath: result.workspacePath, tags: [] })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      loadSandboxSnapshots();
+    }
+  });
 }
 
 function showSnapshotDetail(id) {
@@ -15887,17 +16102,26 @@ function showSnapshotDetail(id) {
   });
 }
 
-async function replicateSnapshot(id) {
-  var targetSessionId = prompt('Target session ID:');
-  if (!targetSessionId) return;
-  try {
-    var r = await fetch(BASE + '/api/sandbox/snapshots/' + id + '/replicate', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetSessionId: targetSessionId, targetWorkspacePath: '/workspace' })
-    });
-    var result = await r.json();
-    alert(result.message);
-  } catch(e) { alert('Error: ' + e); }
+function replicateSnapshot(id) {
+  showSandboxModal({
+    title: 'Replicate Environment',
+    description: 'Generate a shell script that replicates this environment snapshot to a target workspace. Source the generated <code>.cortex-env-replication.sh</code> file to apply it.',
+    fields: [
+      { label: 'Target Session ID', placeholder: 'e.g. sess_abc123', required: true, hint: 'The session to associate this replication with.' }
+    ],
+    submitLabel: 'Replicate',
+    onSubmit: async function(result) {
+      var targetSid = result.values[0];
+      if (!targetSid) throw new Error('Target Session ID is required');
+      if (!result.workspacePath) throw new Error('No workspace directory for the selected agent. Create an agent workspace first.');
+      var r = await fetch(BASE + '/api/sandbox/snapshots/' + id + '/replicate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetSessionId: targetSid, targetWorkspacePath: result.workspacePath })
+      });
+      var data = await r.json();
+      alert(data.message);
+    }
+  });
 }
 
 async function deleteSandboxSnapshot(id) {
@@ -15943,30 +16167,53 @@ async function loadWorkspaceSnapshots() {
   } catch(e) { c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Error: ' + esc(String(e)) + '</div>'; }
 }
 
-async function captureWorkspaceSnapshot() {
-  var name = prompt('Snapshot name (optional):');
-  var sessionId = window._sessionId || prompt('Session ID:');
-  if (!sessionId) return;
-  try {
-    var r = await fetch(BASE + '/api/workspace/snapshots', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || undefined, sessionId: sessionId, agentId: '', workspacePath: '/workspace', tags: [] })
-    });
-    if (r.ok) { loadWorkspaceSnapshots(); } else { alert('Failed: ' + (await r.text())); }
-  } catch(e) { alert('Error: ' + e); }
+function captureWorkspaceSnapshot() {
+  var sessionId = window._sessionId || '';
+  showSandboxModal({
+    title: 'Capture Workspace Snapshot',
+    description: 'Save a full file-tree snapshot of the selected agent workspace. Files up to 5 MB can be embedded for later restoration.',
+    fields: [
+      { label: 'Snapshot Name', placeholder: 'e.g. before-refactor, checkpoint-v2', value: '', hint: 'Optional. Auto-generated if left blank.' },
+      { label: 'Session ID', placeholder: 'Session identifier', value: sessionId, required: true, hint: 'Associates this snapshot with a session.' },
+      { label: 'Embed File Contents', type: 'checkbox', checked: true, hint: 'When enabled, file contents up to 5 MB are stored in the snapshot so they can be fully restored later.' }
+    ],
+    submitLabel: 'Capture Snapshot',
+    onSubmit: async function(result) {
+      var name = result.values[0] || undefined;
+      var sid = result.values[1];
+      var includeContent = result.values[2] === true;
+      if (!sid) throw new Error('Session ID is required');
+      if (!result.workspacePath) throw new Error('No workspace directory for the selected agent. Create an agent workspace first.');
+      var r = await fetch(BASE + '/api/workspace/snapshots', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, sessionId: sid, agentId: result.agentId, workspacePath: result.workspacePath, tags: [], includeContent: includeContent })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      loadWorkspaceSnapshots();
+    }
+  });
 }
 
-async function restoreWorkspaceSnapshot(id) {
-  var targetPath = prompt('Target workspace path:', '/workspace');
-  if (!targetPath) return;
-  try {
-    var r = await fetch(BASE + '/api/workspace/snapshots/' + id + '/restore', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetWorkspacePath: targetPath })
-    });
-    var result = await r.json();
-    alert(result.message);
-  } catch(e) { alert('Error: ' + e); }
+function restoreWorkspaceSnapshot(id) {
+  showSandboxModal({
+    title: 'Restore Workspace Snapshot',
+    description: 'Restore files from this workspace snapshot to the selected agent workspace. Only files with embedded content can be restored.',
+    fields: [
+      { label: 'Target Path', placeholder: 'e.g. /root/.cortex/data/workspaces/agent-xyz', value: getSandboxWorkspacePath() || '', required: true, hint: 'The workspace directory to restore files into. Selected agent workspace is pre-filled.' }
+    ],
+    submitLabel: 'Restore Files',
+    onSubmit: async function(result) {
+      var targetPath = result.values[0] || result.workspacePath;
+      if (!targetPath) throw new Error('Target workspace path is required');
+      var r = await fetch(BASE + '/api/workspace/snapshots/' + id + '/restore', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetWorkspacePath: targetPath })
+      });
+      var data = await r.json();
+      alert(data.message);
+      loadWorkspaceSnapshots();
+    }
+  });
 }
 
 async function deleteWorkspaceSnapshot(id) {

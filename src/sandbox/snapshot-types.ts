@@ -56,6 +56,7 @@ export interface FileTreeEntry {
   size: number;
   modifiedAt: string;
   hash: string;
+  content?: string;
 }
 
 export interface ToolStateEntry {

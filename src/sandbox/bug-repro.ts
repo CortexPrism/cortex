@@ -1,5 +1,6 @@
 import { getCoreDb } from '../db/client.ts';
 import { runInSandbox } from './executor.ts';
+import { bugReproLog, debugLog, errorLog, infoLog, warnLog } from './logger.ts';
 import type { BugReproRun } from './snapshot-types.ts';
 import type { SandboxRuntime } from './executor.ts';
 
@@ -18,6 +19,11 @@ export async function createBugRepro(opts: {
   tags?: string[];
 }): Promise<BugReproRun> {
   const id = generateId();
+  debugLog(bugReproLog, `creating bug repro: ${id}`, {
+    issueTitle: opts.issueTitle,
+    language: opts.language,
+    runtime: opts.runtime,
+  });
 
   const run: BugReproRun = {
     id,
@@ -68,6 +74,10 @@ export async function executeBugRepro(id: string): Promise<BugReproRun | null> {
   const language = row.language as string;
   const runtime = (row.runtime as SandboxRuntime) ?? 'docker';
 
+  debugLog(bugReproLog, `executing bug repro: ${id}`, {
+    language,
+    runtime,
+  });
   await db.run('UPDATE bug_repro_runs SET status = ? WHERE id = ?', ['running', id]);
 
   let status: BugReproRun['status'];

@@ -1,7 +1,8 @@
+import { buildSandboxCommand as buildSecureSandbox } from './agent-sandbox.ts';
+import { debugLog, errorLog, execLog, infoLog, sandboxLog, warnLog } from './logger.ts';
+
 const TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
-
-import { buildSandboxCommand as buildSecureSandbox } from './agent-sandbox.ts';
 
 export type SandboxRuntime = 'docker' | 'subprocess' | 'gvisor' | 'e2b' | 'daytona';
 
@@ -71,10 +72,14 @@ const SUBPROCESS_RUNNERS: Record<string, string[]> = (() => {
 
 export async function getAvailableRuntime(): Promise<SandboxRuntime> {
   const dockerOk = await isDockerAvailable();
+  debugLog(execLog, 'runtime probe', { docker: dockerOk });
   if (dockerOk) {
     const gvisorOk = await isGVisorAvailable();
-    return gvisorOk ? 'gvisor' : 'docker';
+    const runtime = gvisorOk ? 'gvisor' : 'docker';
+    infoLog(execLog, `runtime selected: ${runtime}`);
+    return runtime as SandboxRuntime;
   }
+  infoLog(execLog, 'runtime selected: subprocess (fallback)');
   return 'subprocess';
 }
 
@@ -139,6 +144,7 @@ async function runDockerCommand(
   const child = proc.spawn();
   let timedOut = false;
   const timer = setTimeout(() => {
+    warnLog(execLog, `execution timed out after ${timeout}ms, sending kill signal`);
     try {
       if (isWindows()) {
         child.kill();
@@ -147,10 +153,14 @@ async function runDockerCommand(
         setTimeout(() => {
           try {
             child.kill('SIGKILL');
-          } catch { /* gone */ }
+          } catch {
+            // already exited
+          }
         }, 2000);
       }
-    } catch { /* already exited */ }
+    } catch {
+      // already exited
+    }
   }, timeout);
 
   if (stdin) {
@@ -159,16 +169,16 @@ async function runDockerCommand(
     await writer.close();
   }
 
-  const { code, stdout, stderr } = await child.output().catch(() => {
+  const output = await child.output().catch(() => {
     timedOut = true;
     return { code: -1, stdout: new Uint8Array(), stderr: new Uint8Array() };
   });
   clearTimeout(timer);
 
   return {
-    stdout: new TextDecoder().decode(stdout.slice(0, MAX_OUTPUT_BYTES)),
-    stderr: new TextDecoder().decode(stderr.slice(0, MAX_OUTPUT_BYTES)),
-    exitCode: code,
+    stdout: new TextDecoder().decode(output.stdout.slice(0, MAX_OUTPUT_BYTES)),
+    stderr: new TextDecoder().decode(output.stderr.slice(0, MAX_OUTPUT_BYTES)),
+    exitCode: output.code,
     timedOut,
     durationMs: Date.now() - start,
     runtime: 'docker',
@@ -237,13 +247,14 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
   });
 
   const child = proc.spawn();
+  let timedOut = false;
   const timer = setTimeout(() => {
+    warnLog(execLog, `execution timed out after ${timeout}ms, sending kill signal`);
     try {
       if (isWindows()) {
         child.kill();
       } else {
         child.kill('SIGTERM');
-        // Give SIGTERM 2 seconds to work, then SIGKILL
         setTimeout(() => {
           try {
             child.kill('SIGKILL');
@@ -256,7 +267,6 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
       // already exited
     }
   }, timeout);
-  let timedOut = false;
 
   if (opts.stdin) {
     const writer = child.stdin.getWriter();
@@ -264,16 +274,16 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
     await writer.close();
   }
 
-  const { code, stdout, stderr } = await child.output().catch(() => {
+  const output = await child.output().catch(() => {
     timedOut = true;
     return { code: -1, stdout: new Uint8Array(), stderr: new Uint8Array() };
   });
   clearTimeout(timer);
 
   return {
-    stdout: new TextDecoder().decode(stdout.slice(0, MAX_OUTPUT_BYTES)),
-    stderr: new TextDecoder().decode(stderr.slice(0, MAX_OUTPUT_BYTES)),
-    exitCode: code,
+    stdout: new TextDecoder().decode(output.stdout.slice(0, MAX_OUTPUT_BYTES)),
+    stderr: new TextDecoder().decode(output.stderr.slice(0, MAX_OUTPUT_BYTES)),
+    exitCode: output.code,
     timedOut,
     durationMs: Date.now() - start,
     runtime: 'docker',
@@ -317,13 +327,14 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
   });
 
   const child = proc.spawn();
+  let timedOut = false;
   const timer = setTimeout(() => {
+    warnLog(execLog, `subprocess timed out after ${timeout}ms, sending kill signal`);
     try {
       if (isWindows()) {
         child.kill();
       } else {
         child.kill('SIGTERM');
-        // Give SIGTERM 2 seconds to work, then SIGKILL
         setTimeout(() => {
           try {
             child.kill('SIGKILL');
@@ -336,7 +347,6 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
       // already exited
     }
   }, timeout);
-  let timedOut = false;
 
   if (opts.stdin) {
     const writer = child.stdin.getWriter();
@@ -344,16 +354,16 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
     await writer.close();
   }
 
-  const { code, stdout, stderr } = await child.output().catch(() => {
+  const output = await child.output().catch(() => {
     timedOut = true;
     return { code: -1, stdout: new Uint8Array(), stderr: new Uint8Array() };
   });
   clearTimeout(timer);
 
   return {
-    stdout: new TextDecoder().decode(stdout.slice(0, MAX_OUTPUT_BYTES)),
-    stderr: new TextDecoder().decode(stderr.slice(0, MAX_OUTPUT_BYTES)),
-    exitCode: code,
+    stdout: new TextDecoder().decode(output.stdout.slice(0, MAX_OUTPUT_BYTES)),
+    stderr: new TextDecoder().decode(output.stderr.slice(0, MAX_OUTPUT_BYTES)),
+    exitCode: output.code,
     timedOut,
     durationMs: Date.now() - start,
     runtime: 'subprocess',
@@ -363,10 +373,48 @@ async function runSubprocess(opts: SandboxOptions): Promise<SandboxResult> {
 export async function runInSandbox(opts: SandboxOptions): Promise<SandboxResult> {
   const runtime = opts.runtime ?? (await isDockerAvailable() ? 'docker' : 'subprocess');
 
-  if (runtime === 'docker') {
-    return await runInDocker(opts);
+  debugLog(
+    execLog,
+    `runInSandbox: lang=${opts.language} runtime=${runtime} timeout=${
+      opts.timeoutMs ?? TIMEOUT_MS
+    }ms`,
+    {
+      codeLength: opts.code.length,
+      hasStdin: !!opts.stdin,
+      workingDir: opts.workingDir,
+      hasEnv: !!opts.env && Object.keys(opts.env).length > 0,
+    },
+  );
+
+  try {
+    const result = runtime === 'docker' || runtime === 'gvisor'
+      ? await runInDocker(opts)
+      : await runSubprocess(opts);
+
+    if (result.exitCode !== 0 || result.timedOut) {
+      warnLog(
+        execLog,
+        `execution result: exit=${result.exitCode} timedOut=${result.timedOut} duration=${result.durationMs}ms`,
+        {
+          stderr: result.stderr.slice(0, 200),
+          runtime: result.runtime,
+        },
+      );
+    } else {
+      debugLog(execLog, `execution success: duration=${result.durationMs}ms`, {
+        stdoutLen: result.stdout.length,
+        runtime: result.runtime,
+      });
+    }
+
+    return result;
+  } catch (e) {
+    errorLog(execLog, `execution error: ${e instanceof Error ? e.message : String(e)}`, {
+      language: opts.language,
+      runtime,
+    });
+    throw e;
   }
-  return await runSubprocess(opts);
 }
 
 export function formatSandboxResult(result: SandboxResult): string {

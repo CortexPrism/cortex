@@ -79,6 +79,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Codegraph pilot had dead input fields** — the Pilot panel rendered "File Pattern" and "Exclude Patterns" inputs but `runCodegraphPilot()` never read their values. Wired `filePattern` → `fileAllowlist` and `excludePattern` → `fileBlocklist` through the router into `createCodePilotConfig`. (`src/server/ui.ts`, `src/server/router.ts`)
 
+- **Workspace path validation rejected valid global workspace paths** — `validateSandboxPath()` allowed only `workspacesDir` and `dataDir` as roots, rejecting `Deno.cwd()` (the global workspace). Added `Deno.cwd()` as a third allowed root, matching `resolveWorkspacePath()` behavior. WebUI sandbox operations now resolve the actual agent workspace directory instead of hardcoding `'/workspace'`. (`src/server/router.ts`, `src/sandbox/logger.ts`, `src/server/ui.ts`)
+
+- **gVisor runtime fell through to subprocess** — `runInSandbox()` only routed `'docker'` to `runInDocker`; `'gvisor'` silently fell through to `runSubprocess`. Fixed to route both `'docker'` and `'gvisor'` through the Docker path. (`src/sandbox/executor.ts`)
+
+- **Duplicate `let timedOut` declarations in executor** — all three timeout handlers (`runDockerCommand`, `runInDocker`, `runSubprocess`) had a duplicate `let timedOut = false` declaration and orphaned code remnants. Cleaned up to single declarations. (`src/sandbox/executor.ts`)
+
+- **`_wsMap` not available on sandbox page** — workspace directory map was only populated when visiting the Agents page, causing "No workspace for this agent" on direct sandbox page navigation. `loadSandboxPage()` now fetches workspace and agent data independently. (`src/server/ui.ts`)
+
 ### Changed
 
 - **Sub-agent type system prompts enhanced** — all 11 types now have detailed protocols, output format specifications, and quality standards. Notable: `code` adds production-quality standards and "no TODOs" rule; `security` adds full OWASP checklist with CWE mapping; `debug` adds 6-step systematic protocol; `architect` adds ADR format and 9-part output template; `data` adds 7-step analysis protocol; `ui` adds WCAG 2.1 AA standards and 5 UI state requirements. (`src/agent/sub-agent-types.ts`)
@@ -90,6 +98,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Sub-agent model/provider inherits from chat** — `ToolContext` now carries optional `model` and `provider` fields, populated by all chat/caller entry points (WS, CLI, A2A, triggers, services). `spawnSubAgent` prefers type-specific overrides, then context values, then agent defaults, so sub-agents use the active chat model unless a sub-agent type explicitly pins its own. Nested sub-agents preserve the inherited context. (`src/tools/types.ts`, `src/agent/sub-agent.ts`, `src/tools/builtin/sub_agent.ts`, `src/processes/sub-agent-entry.ts`)
 
 - **Sidebar navigation consolidated** — merged "Remote Access" and "Computer Use" into a single "Remote & Computer" nav item (both pages already shared sub-nav tabs). Removed standalone "Tools" sidebar item — Tool Config, MCP Servers, MCP Gateway, Chrome Bridge, and Vault are now accessed via Settings → Tools & Integrations (which already highlighted `nav-settings` for these sub-pages). Fixed Quartermaster "Config" button to open the in-page settings pane instead of showing a prompt redirect to Settings. (`src/server/ui.ts`)
+
+- **Sandbox debug logging** — all sandbox modules now emit debug/warn/error logs through namespaced loggers (`sandbox:exec`, `sandbox:workspace`, `sandbox:snapshot`, `sandbox:provision`, etc.) built on the existing `logger()` infrastructure. Toggleable at runtime via `CORTEX_SANDBOX_DEBUG=true` env var, `CORTEX_SANDBOX_LOG_LEVEL=debug`, the `--sandbox-debug` CLI flag on `serve`/`chat` commands, the `GET/PUT /api/sandbox/debug` API, or the WebUI sandbox config panel checkbox. Debug output includes runtime detection probes, container lifecycle events, snapshot capture/restore progress, path validation diagnostics, and execution timeout/error details. (`src/sandbox/logger.ts`, `src/sandbox/*.ts`, `src/cli/serve.ts`, `src/cli/chat.ts`, `src/server/router.ts`, `src/server/ui.ts`)
+
+- **SandboxEnvironment class** — `SandboxEnvironment.create(opts)` provisions a persistent Docker container with workspace mount, resource limits, and optional gVisor isolation. `.setup()` auto-detects dependencies and runs install commands (`npm install`, `pip install -r requirements.txt`). `.exec(code, language)` runs code via `docker exec` in the live container with language-specific entrypoints for all 8 supported languages including Go/Rust compile-then-run pipelines. `.destroy()` stops and removes the container. (`src/sandbox/environment.ts`)
+
+- **Workspace snapshot restore with embedded content** — `captureWorkspaceSnapshot` accepts `includeContent: true` to embed file contents (≤5 MB) as base64 in the snapshot JSON. `restoreWorkspaceSnapshot` now writes files back to disk from embedded content, creating parent directories as needed. The restore manifest (`.cortex-ws-restore.json`) includes restore timestamp and omits content blobs. (`src/sandbox/workspace-snapshot.ts`, `src/sandbox/snapshot-types.ts`)
+
+- **Sandbox barrel export** — `src/sandbox/mod.ts` centralizes all sandbox public API exports (execution, snapshots, environments, logging, validation). (`src/sandbox/mod.ts`)
+
+- **Workspace ensure endpoint** — `POST /api/workspace/agents/:agentId/ensure` creates the agent workspace directory and initializes a git repo on demand. `GET /api/workspace/agents/:agentId` returns workspace info with existence check. Sandbox modal now shows a "Create Workspace" button inline when no workspace exists for the selected agent. (`src/server/router.ts`, `src/server/ui.ts`)
+
+- **Sandbox modal UI** — all sandbox operations (capture environment snapshot, capture workspace snapshot, replicate environment, restore workspace) now use a unified modal overlay with agent selector, workspace path display, form fields with help hints, and inline workspace creation. Replaces `prompt()`/`alert()` dialogs for a consistent UX. (`src/server/ui.ts`)
 
 ---
 

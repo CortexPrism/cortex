@@ -60,6 +60,7 @@ export const chatCommand = new Command()
   .option('-s, --resume <sessionId:string>', 'Resume an existing session')
   .option('--list-agents', 'List available agents and exit')
   .option('--no-stream', 'Disable streaming output')
+  .option('--sandbox-debug', 'Enable sandbox debug logging')
   .action(
     async (
       options: {
@@ -69,8 +70,13 @@ export const chatCommand = new Command()
         resume?: string;
         listAgents?: boolean;
         stream?: boolean;
+        sandboxDebug?: boolean;
       },
     ) => {
+      if (options.sandboxDebug) {
+        const { setSandboxDebug } = await import('../sandbox/logger.ts');
+        setSandboxDebug(true);
+      }
       let config = await loadConfig();
 
       const _loggingCfg = config.logging ?? { level: 'error', fileEnabled: true };
