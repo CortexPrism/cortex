@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.45.0.
+This document describes the implemented architecture of CortexPrism as of v0.46.0.
 
 ---
 
@@ -44,7 +44,7 @@ The core of CortexPrism. `agentTurn()` handles one complete user→agent exchang
 agentTurn(opts)
   1. injectMemory(systemPrompt, hits)   ← prepend relevant memory
   2. persistMessage(userMessage)
-  3. [TOOL LOOP — up to MAX_TOOL_ROUNDS=8]
+  3. [TOOL LOOP — up to MAX_TOOL_ROUNDS=12]
      a. LLM call (stream or complete)
      b. parseToolCalls(response)        ← extract <tool_call>{...}</tool_call>
      c. for each call:
@@ -96,6 +96,12 @@ Defined in `src/agent/sub-agent-types.ts`:
 | `plan` | Planner | Creates detailed execution plans | Read-only file tools | 8 |
 | `code` | Coder | Writes and edits code, runs shell commands | Full file system + shell + code_exec | 10 |
 | `research` | Researcher | Web research and information synthesis | web_search + read-only file tools | 8 |
+| `security` | Security Auditor | Audits code for vulnerabilities, reviews permissions | file_read, file_search, web_search + read-only | 10 |
+| `debug` | Debugger | Diagnoses and fixes bugs | Full file system + shell + code_exec | 12 |
+| `architect` | Architect | Designs system architecture, evaluates trade-offs | Read-only file tools | 10 |
+| `devops` | DevOps Engineer | Manages infrastructure, CI/CD, containers | Full file system + shell + web_search | 12 |
+| `data` | Data Analyst | Analyzes data, runs queries, produces insights | shell + code_exec + db_query + web_search | 12 |
+| `ui` | UI/UX Designer | Designs and builds user interfaces, evaluates accessibility | Full file system + shell + browser + web_search | 12 |
 
 Each type has a specialized system prompt, tool allow-list, and turn limit. When a type is selected via the `type` parameter on the `sub_agent` tool, these overrides flow through the entire spawning chain.
 
@@ -127,10 +133,13 @@ Parent receives streamed chunks → tool result
 
 `src/agent/metacog.ts` analyzes user messages to decide when delegation is appropriate:
 
-- **Complex code + exploration** → `delegate` with suggested types `[explore, code]`
-- **Research + independent subtasks** → `parallelize` with suggested types `[research]`
+- **Complex code + exploration** → `delegate` with suggested types `[explore, code, debug]`
+- **Research + independent subtasks** → `parallelize` with suggested types `[research, data]`
 - **Pure exploration** → `delegate` with suggested type `explore`
 - **Destructive multi-step** → `plan_with_rollback` with suggested type `plan`
+- **Security review** → `delegate` with suggested type `security`
+- **Architecture/design** → `delegate` with suggested type `architect`
+- **UI/UX work** → `delegate` with suggested type `ui`
 
 The `suggestedSubAgents` field is injected into the system prompt as meta-cognition guidance, helping the LLM choose the right sub-agent type.
 
@@ -149,7 +158,7 @@ Web UI session list shows channel type badges (explore, code, web) and `⤷ chil
 
 ### System Prompt Guidance
 
-The default agent soul (`src/agent/soul.ts`) includes a "Sub-Agents" section documenting all five types, describing when to use each, and listing anti-patterns for sub-agent usage. The `sub_agent` tool definition itself contains comprehensive guidance for the LLM on delegation strategy and parallel spawning.
+The default agent soul (`src/agent/soul.ts`) includes a "Sub-Agents" section documenting all eleven types, describing when to use each, and listing anti-patterns for sub-agent usage. The `sub_agent` tool definition itself contains comprehensive guidance for the LLM on delegation strategy and parallel spawning.
 
 ### Protocol
 
@@ -637,7 +646,7 @@ Token resolution order:
 | `github_issue_create` | Create an issue on GitHub |
 | `github_issue_list` | List issues for a repository |
 | `git_push` | Stage, commit, and push to remote |
-| `sub_agent` | Spawn a specialized sub-agent process (explore, plan, code, research, general) |
+| `sub_agent` | Spawn a specialized sub-agent process (explore, plan, code, research, general, security, debug, architect, devops, data, ui) |
 | `node_dispatch` | Delegate tasks to remote connected nodes |
 | `load_skill` | Load full skill instructions including lifecycle, trust, and quality scores |
 | `skill_read` | List/inspect skills with origin, lifecycle, and trust filtering |

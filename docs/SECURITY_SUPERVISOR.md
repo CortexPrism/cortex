@@ -276,7 +276,7 @@ The following tools are automatically protected:
 - **memory_search** — Searches personal memory (episodic/semantic)
 - **db_query** — Reads internal databases (cortex, memory, lens, plugins)
 
-### Future Tools (P1-P3)
+### P1-P3 Tools
 - **browser** — Screenshots may contain sensitive data
 - **structured_extract** — May extract PII from web content
 - **image_analyze** — Vision analysis of potentially sensitive images
@@ -414,5 +414,5 @@ deno task serve
 - [Data Privacy Guide](./PRIVACY.md)
 
 **Issue Tracking:**
-- Report security issues privately: security@cortexprism.ai
+- Report security issues privately: security@cortexprism.io
 - Report bugs: https://github.com/Cortex-Prism/cortex/issues
