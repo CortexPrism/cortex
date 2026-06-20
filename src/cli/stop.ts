@@ -1,30 +1,7 @@
 import { Command } from '@cliffy/command';
-import { bold, cyan, dim, green, red } from '@std/fmt/colors';
-import { killDenoProcesses } from '../utils/platform.ts';
+import { bold, dim, green } from '@std/fmt/colors';
+import { stopDaemons } from './daemon.ts';
 import { stopBackgroundServer } from './serve.ts';
-
-const DAEMON_PATTERNS = [
-  'supervisor-process',
-  'validator-process',
-  'executor-process',
-  'scheduler-process',
-];
-
-async function stopDaemons(): Promise<void> {
-  let anyStopped = false;
-  for (const pat of DAEMON_PATTERNS) {
-    try {
-      await killDenoProcesses(pat);
-      console.log(cyan(`  Stopped daemon: ${pat}`));
-      anyStopped = true;
-    } catch {
-      // not running
-    }
-  }
-  if (!anyStopped) {
-    console.log(dim('  No daemon processes running'));
-  }
-}
 
 export const stopCommand = new Command()
   .name('stop')

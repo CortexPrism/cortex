@@ -18,6 +18,49 @@ import {
 } from '../channels/store.ts';
 import { green, red, yellow } from '@std/fmt/colors';
 
+async function loadChannelPlugin(type: string) {
+  switch (type) {
+    case 'discord': {
+      const { DiscordChannelPlugin } = await import('../channels/discord.ts');
+      return new DiscordChannelPlugin();
+    }
+    case 'slack': {
+      const { SlackChannelPlugin } = await import('../channels/slack.ts');
+      return new SlackChannelPlugin();
+    }
+    case 'telegram': {
+      const { TelegramChannelPlugin } = await import('../channels/telegram.ts');
+      return new TelegramChannelPlugin();
+    }
+    case 'teams': {
+      const { TeamsChannelPlugin } = await import('../channels/teams.ts');
+      return new TeamsChannelPlugin();
+    }
+    case 'mattermost': {
+      const { MattermostChannelPlugin } = await import('../channels/mattermost.ts');
+      return new MattermostChannelPlugin();
+    }
+    case 'rocketchat': {
+      const { RocketChatChannelPlugin } = await import('../channels/rocketchat.ts');
+      return new RocketChatChannelPlugin();
+    }
+    case 'whatsapp': {
+      const { WhatsAppChannelPlugin } = await import('../channels/whatsapp.ts');
+      return new WhatsAppChannelPlugin();
+    }
+    case 'google-chat': {
+      const { GoogleChatChannelPlugin } = await import('../channels/google-chat.ts');
+      return new GoogleChatChannelPlugin();
+    }
+    case 'lark': {
+      const { LarkChannelPlugin } = await import('../channels/lark.ts');
+      return new LarkChannelPlugin();
+    }
+    default:
+      throw new Error(`Unknown channel type: ${type}`);
+  }
+}
+
 const channelsCommand = new Command()
   .name('channels')
   .description('Manage communication channels (Discord, Slack, Teams, Telegram, etc.)')
@@ -187,57 +230,7 @@ channelsCommand
       // Build config and load appropriate plugin
       const config = await buildChannelConfig(record);
 
-      // Load plugin dynamically based on record.channelType
-      let plugin;
-      switch (record.channelType) {
-        case 'discord': {
-          const { DiscordChannelPlugin } = await import('../channels/discord.ts');
-          plugin = new DiscordChannelPlugin();
-          break;
-        }
-        case 'slack': {
-          const { SlackChannelPlugin } = await import('../channels/slack.ts');
-          plugin = new SlackChannelPlugin();
-          break;
-        }
-        case 'telegram': {
-          const { TelegramChannelPlugin } = await import('../channels/telegram.ts');
-          plugin = new TelegramChannelPlugin();
-          break;
-        }
-        case 'teams': {
-          const { TeamsChannelPlugin } = await import('../channels/teams.ts');
-          plugin = new TeamsChannelPlugin();
-          break;
-        }
-        case 'mattermost': {
-          const { MattermostChannelPlugin } = await import('../channels/mattermost.ts');
-          plugin = new MattermostChannelPlugin();
-          break;
-        }
-        case 'rocketchat': {
-          const { RocketChatChannelPlugin } = await import('../channels/rocketchat.ts');
-          plugin = new RocketChatChannelPlugin();
-          break;
-        }
-        case 'whatsapp': {
-          const { WhatsAppChannelPlugin } = await import('../channels/whatsapp.ts');
-          plugin = new WhatsAppChannelPlugin();
-          break;
-        }
-        case 'google-chat': {
-          const { GoogleChatChannelPlugin } = await import('../channels/google-chat.ts');
-          plugin = new GoogleChatChannelPlugin();
-          break;
-        }
-        case 'lark': {
-          const { LarkChannelPlugin } = await import('../channels/lark.ts');
-          plugin = new LarkChannelPlugin();
-          break;
-        }
-        default:
-          throw new Error(`Unknown channel type: ${record.channelType}`);
-      }
+      const plugin = await loadChannelPlugin(record.channelType);
 
       registerChannel(id, plugin, config, record.agentId);
 
@@ -278,58 +271,7 @@ channelsCommand
       console.log(`Testing connection to ${record.name} (${record.channelType})...`);
 
       const config = await buildChannelConfig(record);
-
-      // Load plugin dynamically based on record.channelType
-      let plugin;
-      switch (record.channelType) {
-        case 'discord': {
-          const { DiscordChannelPlugin } = await import('../channels/discord.ts');
-          plugin = new DiscordChannelPlugin();
-          break;
-        }
-        case 'slack': {
-          const { SlackChannelPlugin } = await import('../channels/slack.ts');
-          plugin = new SlackChannelPlugin();
-          break;
-        }
-        case 'telegram': {
-          const { TelegramChannelPlugin } = await import('../channels/telegram.ts');
-          plugin = new TelegramChannelPlugin();
-          break;
-        }
-        case 'teams': {
-          const { TeamsChannelPlugin } = await import('../channels/teams.ts');
-          plugin = new TeamsChannelPlugin();
-          break;
-        }
-        case 'mattermost': {
-          const { MattermostChannelPlugin } = await import('../channels/mattermost.ts');
-          plugin = new MattermostChannelPlugin();
-          break;
-        }
-        case 'rocketchat': {
-          const { RocketChatChannelPlugin } = await import('../channels/rocketchat.ts');
-          plugin = new RocketChatChannelPlugin();
-          break;
-        }
-        case 'whatsapp': {
-          const { WhatsAppChannelPlugin } = await import('../channels/whatsapp.ts');
-          plugin = new WhatsAppChannelPlugin();
-          break;
-        }
-        case 'google-chat': {
-          const { GoogleChatChannelPlugin } = await import('../channels/google-chat.ts');
-          plugin = new GoogleChatChannelPlugin();
-          break;
-        }
-        case 'lark': {
-          const { LarkChannelPlugin } = await import('../channels/lark.ts');
-          plugin = new LarkChannelPlugin();
-          break;
-        }
-        default:
-          throw new Error(`Unknown channel type: ${record.channelType}`);
-      }
+      const plugin = await loadChannelPlugin(record.channelType);
 
       await plugin.connect(config);
       console.log(green('✓ Connection successful'));

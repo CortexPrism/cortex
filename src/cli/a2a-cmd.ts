@@ -1,5 +1,6 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan } from '@std/fmt/colors';
+import { loadConfig } from '../config/config.ts';
 
 export const a2aCommand = new Command()
   .name('a2a')
@@ -18,10 +19,16 @@ export const a2aCommand = new Command()
 a2aCommand
   .command('card')
   .description('Display the Cortex agent card')
-  .action(async () => {
+  .option('--url <url:string>', 'A2A server base URL (overrides CORTEX_A2A_URL and config)')
+  .action(async (opts: { url?: string }) => {
+    const config = await loadConfig();
+    const baseUrl = opts.url ??
+      Deno.env.get('CORTEX_A2A_URL') ??
+      (config as unknown as Record<string, unknown>).a2aUrl as string ??
+      `http://localhost:4220`;
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const card = getA2AAgentCard(
-      'http://localhost:4220',
+      baseUrl,
       'CortexPrism',
       'CortexPrism AI Coding Agent',
     );
@@ -31,10 +38,16 @@ a2aCommand
 a2aCommand
   .command('skills')
   .description('List registered agent skills')
-  .action(async () => {
+  .option('--url <url:string>', 'A2A server base URL (overrides CORTEX_A2A_URL and config)')
+  .action(async (opts: { url?: string }) => {
+    const config = await loadConfig();
+    const baseUrl = opts.url ??
+      Deno.env.get('CORTEX_A2A_URL') ??
+      (config as unknown as Record<string, unknown>).a2aUrl as string ??
+      `http://localhost:4220`;
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const card = getA2AAgentCard(
-      'http://localhost:4220',
+      baseUrl,
       'CortexPrism',
       'CortexPrism AI Coding Agent',
     );

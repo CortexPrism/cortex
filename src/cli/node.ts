@@ -90,30 +90,6 @@ nodeCommand
   });
 
 nodeCommand
-  .command('list')
-  .description('List registered Nodes')
-  .action(async () => {
-    const nodes = await listNodes();
-
-    if (nodes.length === 0) {
-      console.log('No nodes registered.');
-      return;
-    }
-
-    console.log(`\n${nodes.length} registered node(s):\n`);
-    for (const n of nodes) {
-      const statusColor = n.status === 'connected' ? green : n.status === 'error' ? red : yellow;
-      console.log(`  ${n.name} (${n.id}) — ${statusColor(n.status)}`);
-      console.log(`    Tier: ${cyan(n.tier)}  Endpoint: ${n.endpoint}`);
-      if (n.group_name) console.log(`    Group: ${n.group_name}`);
-      console.log(`    Version: ${n.version ?? 'unknown'}`);
-      console.log(`    Capabilities: ${n.capabilities.join(', ') || 'none'}`);
-      if (n.last_heartbeat) console.log(`    Last heartbeat: ${n.last_heartbeat}`);
-      console.log();
-    }
-  });
-
-nodeCommand
   .command('show <id:string>')
   .description('Show Node details')
   .action(async (_opts: void, id: string) => {

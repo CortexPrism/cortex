@@ -5,6 +5,82 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+---
+
+## [0.45.4] — 2026-06-20
+
+### Fixed
+
+- **`cortex stop`: duplicate `stopDaemons` logic** — removed the local `stopDaemons` function and `DAEMON_PATTERNS` constant from `stop.ts`; now imports the canonical `stopDaemons` from `daemon.ts`, eliminating divergent kill-pattern lists.
+
+- **`cortex agentlint check`: fabricated static config** — the `check` subcommand previously linted a hardcoded fake config (`Default Agent`, `gpt-4o`, empty tools). It now loads the real config via `loadConfig()` and uses actual provider/model/tools values.
+
+- **`cortex agentlint`: `description` field set to agent name** — `config.agent.name` was used for both `name` and `description` fields in both agentlint subcommands. The `description` field now derives a meaningful value from the agent name and provider.
+
+- **`cortex channels start/test`: duplicated switch block** — a 50-line `switch`/`case` block for loading channel plugins (Discord, Slack, Telegram, Teams, Mattermost, RocketChat, WhatsApp, Google Chat, Lark) was copy-pasted verbatim between the `start` and `test` subcommands. Extracted into a shared `loadChannelPlugin(type)` helper.
+
+- **`cortex mcp serve`: no-op stub** — the `serve` subcommand only printed a redirect message. It now starts a real HTTP server using `Deno.serve` + the existing `handleMcpHttpRequest` handler, with `--port` (default 9187) and `--host` options.
+
+- **`cortex tui`: hardcoded version string** — welcome message displayed `v0.20.0` unconditionally. Now calls `getVersion()` from `config/version.ts` to display the actual running version.
+
+- **`cortex a2a card/skills`: hardcoded `localhost:4220`** — the A2A base URL was hardcoded. Both subcommands now accept a `--url` flag, falling back to the `CORTEX_A2A_URL` environment variable, then a config field, then the default.
+
+- **`cortex voice set-speed`: no-op** — the `set-speed` subcommand printed a message but never saved the value. It now validates the rate (0.25–4.0), persists it to config via `saveConfig()`, and confirms the change.
+
+- **`cortex restart`: `fuser` called on all platforms** — `fuser -k <port>/tcp` is Linux-only. The restart command used try/catch as cross-platform control flow. It now checks `isLinux()` first and only attempts `fuser` on Linux, falling back directly to pid-based kill on macOS and Windows.
+
+- **`cortex hooks`: missing `enable` subcommand** — `hooks disable` had no symmetric counterpart. Added `hooks enable <name>` which re-registers a named built-in hook via the new `getBuiltinHook(name)` export from `pipeline/builtin.ts`.
+
+- **`cortex import`: unused `prefix` parameter** — `printSummary()` declared a `prefix = ''` parameter that was never referenced inside the function body. Removed.
+
+### Changed
+
+- **`cortex discord` deprecated** — the standalone `discord` command was a legacy implementation duplicating the `channels` system. It now prints a deprecation notice with migration instructions pointing to `cortex channels add --type discord`.
+
+- **`cortex remote` deprecated** — `remote` overlapped with the more capable `node` system (which adds tiers, groups, and capability enforcement). The command now prints a deprecation notice redirecting to `cortex node`.
+
+- **`cortex mcp-gateway` deprecated** — gateway subcommands (`status`, `health`) have been merged under `cortex mcp gateway`. The top-level `mcp-gateway` command now prints a deprecation notice.
+
+- **`cortex mcp gateway` added** — the MCP gateway `status` and `health` subcommands are now accessible as `cortex mcp gateway status` and `cortex mcp gateway health`, keeping all MCP management under one command tree.
+
+- **`cortex daemon install/uninstall` removed** — these duplicated the top-level `cortex install --daemon-only` / `cortex uninstall --daemon-only` commands. The top-level commands are the canonical path.
+
+- **`cortex serve install/uninstall` removed** — these duplicated the top-level `cortex install --server-only` / `cortex uninstall --server-only` commands. The top-level commands are the canonical path.
+
+- **`cortex node list` removed** — the `list` subcommand was identical to the default `cortex node` action. Running `cortex node` already lists all nodes.
+
+- **`cortex agentlint check` vs `config` differentiated** — `check` is now a compact, CI-friendly mode: prints only issues, no verbose header, exits with code 1 if errors are found. `config` remains the full verbose lint report with provider and model details.
+
+### Added
+
+- **`cortex workflow list`** — explicit `list` subcommand added for consistency with other commands. Previously, listing required running the bare `cortex workflow` command with no arguments.
+
+- **`getBuiltinHook(name)`** — new export from `pipeline/builtin.ts` returns a fresh instance of any named built-in pipeline hook, enabling `cortex hooks enable` to re-register individual hooks after they have been disabled.
+
+- **Web UI: AgentLint integrated into Agents page** — AgentLint is no longer a standalone page. It is now a **🔍 AgentLint** tab within the Agent Manager page alongside "Agents" and "Sub-Agent Types". The tab lazily fetches `/api/agentlint/check?agentId=<id>` for the currently active agent and renders the summary cards and issue list inline. A Re-run button allows on-demand re-execution.
+
+- **Web UI: Tools & Integrations sub-navigation** — Vault, MCP Servers, MCP Gateway, Chrome Bridge, and Tool Config are now grouped under a shared sub-nav bar when navigating into any of those pages, with a back button returning to the Settings → Tools & Integrations pane. These pages are no longer duplicated as standalone sidebar items.
+
+- **`GET /api/agentlint/check?agentId=`** — the endpoint now accepts an optional `agentId` query parameter. When provided, it fetches that agent's stored config (name, description, systemPrompt, tools, maxTurns, provider, model) from the database and lints it. Falls back to the global default agent config when omitted.
+
+### Fixed
+
+- **Web UI: `SyntaxError: Unexpected identifier 'tools'`** — the `injectToolsSubNav` function built `onclick` attribute strings using `\'` escape sequences inside a TypeScript template literal, producing malformed JavaScript in the rendered page. Changed to `&apos;` HTML entities, which are correctly interpreted by the browser when `innerHTML` is set at runtime.
+
+- **Web UI: `ReferenceError: showPage is not defined`** — cascading failure caused by the above `SyntaxError` preventing the script block from parsing. Resolved as a side-effect of the escaping fix.
+
+- **Web UI: duplicate sidebar entries for Vault, MCP, Chrome Bridge** — these pages were listed both as standalone sidebar nav items and as cards within the Settings → Tools & Integrations pane. The redundant top-level sidebar buttons were removed; the pages remain accessible via the Settings sub-navigation.
+
+- **Web UI: missing `/api/agentlint/check` endpoint** — the AgentLint UI page called this endpoint but the route handler was absent (commented-out placeholder). Implemented the handler to call `lintAgentConfig` with real config values.
+
+### Changed
+
+- **Web UI: standalone AgentLint page removed** — `page-agentlint`, the `nav-agentlint` sidebar button, the `agentlint` PAGES entry, the `agentlint` CMD_PAGES entry, and the `loadAgentLintPage` function have all been removed. AgentLint functionality is now accessed exclusively through the Agents page tab.
+
+---
+
 ## [0.45.3] — 2026-06-20
 
 ### Fixed

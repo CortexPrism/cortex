@@ -4658,8 +4658,38 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ ok: true });
   }
 
-  // GET /api/agentlint/check — already exists, add summary (#312)
-  // already implemented as /api/agentlint/check
+  // GET /api/agentlint/check?agentId=<id>
+  if (req.method === 'GET' && path === '/api/agentlint/check') {
+    const { lintAgentConfig } = await import('../agent/agentlint.ts');
+    const config = await loadConfig();
+    const agentId = url.searchParams.get('agentId');
+    let agentConfig;
+    if (agentId) {
+      const agent = await getAgent(agentId);
+      if (!agent) return notFound('Agent not found');
+      agentConfig = {
+        name: agent.name,
+        description: agent.description ?? `${agent.name} agent`,
+        systemPrompt: agent.systemPrompt ?? '',
+        tools: agent.tools ?? [],
+        maxTurns: agent.maxTurns ?? config.agent.maxTurns,
+        provider: agent.provider ?? config.defaultProvider,
+        model: agent.model ?? config.providers[config.defaultProvider]?.model ?? 'unknown',
+      };
+    } else {
+      agentConfig = {
+        name: config.agent.name,
+        description: `${config.agent.name} agent via ${config.defaultProvider}`,
+        systemPrompt: 'CortexPrism agent prompt',
+        tools: Object.keys(config.agents?.['default'] ?? {}),
+        maxTurns: config.agent.maxTurns,
+        provider: config.defaultProvider,
+        model: config.providers[config.defaultProvider]?.model ?? 'unknown',
+      };
+    }
+    const report = lintAgentConfig(agentConfig);
+    return json({ report });
+  }
 
   // GET /api/sessions/links — cross-session context bridge (#64)
   if (req.method === 'GET' && path === '/api/sessions/links') {

@@ -8,7 +8,6 @@ import {
   killProcessById,
 } from '../utils/platform.ts';
 import { startServer } from '../server/server.ts';
-import { installServerService, uninstallServerService } from './service-helper.ts';
 import { PATHS } from '../config/paths.ts';
 
 export async function findServerProcess(
@@ -186,24 +185,4 @@ export const serveCommand = new Command()
 
       await startServer({ port: opts.port, host: opts.host });
     },
-  )
-  .command(
-    'install',
-    new Command()
-      .description('Install server as a system service (systemd / launchd / NSSM)')
-      .option('-p, --port <port:number>', 'Server port', { default: 3000 })
-      .option('-H, --host <host:string>', 'Server bind host', { default: '127.0.0.1' })
-      .action(async (opts: { port: number; host: string }) => {
-        await installServerService({ port: opts.port, host: opts.host });
-        Deno.exit(0);
-      }),
-  )
-  .command(
-    'uninstall',
-    new Command()
-      .description('Uninstall server system service')
-      .action(async () => {
-        await uninstallServerService();
-        Deno.exit(0);
-      }),
   );
