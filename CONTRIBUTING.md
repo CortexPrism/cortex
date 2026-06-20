@@ -219,4 +219,5 @@ early to gather feedback before investing heavy implementation effort.
 
 ## License
 
-By contributing you agree that your contributions will be licensed under the [Apache License, Version 2.0](LICENSE).
+By contributing you agree that your contributions will be licensed under the
+[Apache License, Version 2.0](LICENSE).

@@ -1,23 +1,18 @@
+import { assert, assertEquals, assertGreater, assertStringIncludes } from '@std/assert';
 import {
-  assertEquals,
-  assert,
-  assertStringIncludes,
-  assertGreater,
-} from '@std/assert';
-import {
-  CortexError,
-  ValidationError,
-  NotFoundError,
   AuthError,
+  ConfigurationError,
+  CortexError,
+  DatabaseError,
+  errorToResponse,
+  isRetryable,
+  LLMProviderError,
+  NotFoundError,
   PermissionError,
   RateLimitError,
   TimeoutError,
-  ConfigurationError,
-  DatabaseError,
-  LLMProviderError,
   ToolExecutionError,
-  isRetryable,
-  errorToResponse,
+  ValidationError,
 } from '../src/utils/errors.ts';
 
 // ── Real production scenarios ────────────────────────────────────────

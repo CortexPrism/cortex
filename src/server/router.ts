@@ -556,9 +556,18 @@ export async function handleApi(req: Request): Promise<Response | null> {
       checks['ram_free'] = `${(sysInfo.free / (1024 ** 3)).toFixed(1)} GB`;
       checks['ram_total'] = `${(sysInfo.total / (1024 ** 3)).toFixed(1)} GB`;
       checks['uptime_h'] = String(Math.floor(Deno.osUptime() / 3600));
-      return json({ status: Object.values(checks).every((v) => v === 'ok' || !v.startsWith('fail')) ? 'ok' : 'degraded', checks, ts: new Date().toISOString() });
+      return json({
+        status: Object.values(checks).every((v) => v === 'ok' || !v.startsWith('fail'))
+          ? 'ok'
+          : 'degraded',
+        checks,
+        ts: new Date().toISOString(),
+      });
     } catch (e) {
-      return json({ status: 'error', error: (e as Error).message, ts: new Date().toISOString() }, 500);
+      return json(
+        { status: 'error', error: (e as Error).message, ts: new Date().toISOString() },
+        500,
+      );
     }
   }
 
@@ -575,7 +584,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
         let msgCount = 0;
         try {
           const sessDb = await getSessionDb(s.id as string);
-          const rows = await sessDb.all<{ c: number }>(`SELECT COUNT(*) as c FROM session_messages`);
+          const rows = await sessDb.all<{ c: number }>(
+            `SELECT COUNT(*) as c FROM session_messages`,
+          );
           msgCount = rows[0]?.c ?? 0;
         } catch { /* session db may not exist yet */ }
         results.push({ ...s, message_count: msgCount });
@@ -624,7 +635,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       const safe = JSON.parse(JSON.stringify(cfg));
       if (safe.providers) {
         for (const [k, v] of Object.entries(safe.providers)) {
-          if ((v as Record<string, unknown>).apiKey) (v as Record<string, unknown>).apiKey = '[REDACTED]';
+          if ((v as Record<string, unknown>).apiKey) {
+            (v as Record<string, unknown>).apiKey = '[REDACTED]';
+          }
         }
       }
       return json(safe);
@@ -3833,10 +3846,30 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const config = await loadConfig();
 
     const VALID_PROVIDERS: ProviderKind[] = [
-      'anthropic', 'openai', 'ollama', 'google', 'mistral', 'groq',
-      'deepseek', 'openrouter', 'xai', 'together', 'bedrock', 'cohere',
-      'kilo', 'cerebras', 'fireworks', 'perplexity', 'nvidia', 'moonshot',
-      'novita', 'lmstudio', 'litellm', 'huggingface', 'alibaba', 'venice',
+      'anthropic',
+      'openai',
+      'ollama',
+      'google',
+      'mistral',
+      'groq',
+      'deepseek',
+      'openrouter',
+      'xai',
+      'together',
+      'bedrock',
+      'cohere',
+      'kilo',
+      'cerebras',
+      'fireworks',
+      'perplexity',
+      'nvidia',
+      'moonshot',
+      'novita',
+      'lmstudio',
+      'litellm',
+      'huggingface',
+      'alibaba',
+      'venice',
     ];
 
     let autoModelPool: AutoModelPoolEntry[] | undefined;

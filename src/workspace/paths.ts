@@ -39,9 +39,7 @@ export function resolveWorkspacePath(
   const globalDir = getGlobalWorkspaceDir();
   const rootDir = workspace === 'agent' ? agentDir : globalDir;
 
-  const candidate = isAbsolute(rawPath)
-    ? normalize(rawPath)
-    : normalize(join(rootDir, rawPath));
+  const candidate = isAbsolute(rawPath) ? normalize(rawPath) : normalize(join(rootDir, rawPath));
 
   const allowed = workspace === 'agent'
     ? [normalize(resolve(agentDir)), normalize(resolve(globalDir))]

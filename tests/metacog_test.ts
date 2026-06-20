@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes, assert } from '@std/assert';
+import { assert, assertEquals, assertStringIncludes } from '@std/assert';
 import { assessTask } from '../src/agent/metacog.ts';
 import type { MetaAssessment } from '../src/agent/metacog.ts';
 
@@ -89,7 +89,11 @@ Deno.test('metacog - empty message is simple/direct', () => {
 
 Deno.test('metacog - missing info pattern asks first', () => {
   const result = assessTask('fix my server');
-  assertEquals(result.decision, 'ask_first', 'should ask for clarification about unspecified resources');
+  assertEquals(
+    result.decision,
+    'ask_first',
+    'should ask for clarification about unspecified resources',
+  );
   assertStringIncludes(result.requiresClarification ?? '', 'specifics');
 });
 

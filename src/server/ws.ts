@@ -4,7 +4,12 @@ import { buildSystemPrompt, loadSoulContext } from '../agent/soul.ts';
 import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
 import { logEvent } from '../db/lens.ts';
 import { initSessionDb } from '../db/migrate.ts';
-import { buildProvider, buildProviderFromConfig, buildRouter, PROVIDER_DEFAULT_CONTEXT_WINDOWS } from '../llm/router.ts';
+import {
+  buildProvider,
+  buildProviderFromConfig,
+  buildRouter,
+  PROVIDER_DEFAULT_CONTEXT_WINDOWS,
+} from '../llm/router.ts';
 import { loadConfig } from '../config/config.ts';
 import type { AgentConfig } from '../config/config.ts';
 import type { ContentBlock } from '../llm/types.ts';
@@ -292,10 +297,13 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         model = modelOverride || agent.model || config.providers[providerKind]?.model || 'unknown';
       }
 
-      const provider = buildProviderFromConfig(providerKind, config.providers[providerKind] ?? {
-        kind: providerKind,
-        model: model,
-      });
+      const provider = buildProviderFromConfig(
+        providerKind,
+        config.providers[providerKind] ?? {
+          kind: providerKind,
+          model: model,
+        },
+      );
       const router = buildRouter(config);
       const effectiveProvider = router ?? provider;
       const provCfg = config.providers[providerKind];
@@ -550,8 +558,14 @@ export async function handleWebSocket(req: Request): Promise<Response> {
             workingText = workingText.replace(/<tool_call_name>[\s\S]*?<\/tool_call_name>/g, '');
             workingText = workingText.replace(/<tool_call_name="[a-zA-Z0-9_-]+"\s*\/?>/g, '');
             workingText = workingText.replace(/<tool_call_args>[\s\S]*?<\/tool_call_args>/g, '');
-            workingText = workingText.replace(/<tool_call_arg_key>[\s\S]*?<\/tool_call_arg_key>/g, '');
-            workingText = workingText.replace(/<tool_call_arg_value>[\s\S]*?<\/tool_call_arg_value>/g, '');
+            workingText = workingText.replace(
+              /<tool_call_arg_key>[\s\S]*?<\/tool_call_arg_key>/g,
+              '',
+            );
+            workingText = workingText.replace(
+              /<tool_call_arg_value>[\s\S]*?<\/tool_call_arg_value>/g,
+              '',
+            );
             workingText = workingText.replace(/<parameter\s[^>]*>[\s\S]*?<\/parameter>/g, '');
             workingText = workingText.replace(/<tool_result[\s\S]*?<\/tool_result>/g, '');
 
@@ -664,9 +678,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         const finalAssistantText = hadNoChunks
           ? (result.response || assistantDraft)
           : stripToolMarkup(
-            assistantDraft !== 'Thinking…'
-              ? assistantDraft
-              : (result.response || assistantDraft),
+            assistantDraft !== 'Thinking…' ? assistantDraft : (result.response || assistantDraft),
           );
         assistantDraft = finalAssistantText;
         await flushAssistantDraft(finalAssistantText, result.tokensOut);
@@ -973,18 +985,19 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       return;
     }
 
-      if (msg.type === 'chat') {
-        if (!msg.message?.trim() && (!msg.files || msg.files.length === 0)) {
-          send(ws, { type: 'error', error: 'Empty message' });
-          return;
-        }
-        await ensureChatSession(msg.agentId, msg.sessionId);
-        turnInFlight = true;
-        if (sessionDbRef && sessionId) {
-          const attachments = msg.files?.length
-            ? ` [Files: ${msg.files.map((f) => f.filename).join(', ')}]`
-            : '';
-        const pendingUserMessage = `${msg.message ?? ''}${attachments}`.trim() || '(attachment upload)';
+    if (msg.type === 'chat') {
+      if (!msg.message?.trim() && (!msg.files || msg.files.length === 0)) {
+        send(ws, { type: 'error', error: 'Empty message' });
+        return;
+      }
+      await ensureChatSession(msg.agentId, msg.sessionId);
+      turnInFlight = true;
+      if (sessionDbRef && sessionId) {
+        const attachments = msg.files?.length
+          ? ` [Files: ${msg.files.map((f) => f.filename).join(', ')}]`
+          : '';
+        const pendingUserMessage = `${msg.message ?? ''}${attachments}`.trim() ||
+          '(attachment upload)';
         await sessionDbRef.insert(
           `INSERT INTO session_messages (role, content, token_count) VALUES (?, ?, ?)`,
           ['user', pendingUserMessage, null],

@@ -11,7 +11,7 @@
  */
 import { Command } from '@cliffy/command';
 import { logger } from '../utils/logger.ts';
-import { getCoreDb, getSessionDb, getMemoryDb } from '../db/client.ts';
+import { getCoreDb, getMemoryDb, getSessionDb } from '../db/client.ts';
 
 const _log = logger('cli:debug');
 
@@ -41,7 +41,9 @@ debugCmd
       for (const s of sessions) {
         const created = new Date(s.created_at as string).toISOString().split('T')[0];
         console.log(
-          `  ${s.id}  agent=${s.agent_id ?? 'default'}  turns=${s.turn_count ?? 0}  created=${created}`,
+          `  ${s.id}  agent=${s.agent_id ?? 'default'}  turns=${
+            s.turn_count ?? 0
+          }  created=${created}`,
         );
       }
     } catch (e) {
