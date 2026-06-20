@@ -121,7 +121,6 @@ function printSummary(
     policies?: number;
     errors?: number;
   },
-  prefix = '',
 ): void {
   if (result.sessions !== undefined) {
     console.log(`    ${cyan('Sessions:')}      ${result.sessions}`);

@@ -974,6 +974,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote Access
     </button>
+    <button class="nav-item" onclick="showPage('computer');closeMobileSidebar()" id="nav-computer">
+      <span class="icon">🖥</span> Computer Use
+    </button>
     <button class="nav-item" onclick="showPage('extensions');closeMobileSidebar()" id="nav-extensions">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span> Extensions
     </button>
@@ -2521,19 +2524,6 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: AgentLint -->
-  <div id="page-agentlint" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">AgentLint</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Automated auditing — agent configs, tools, plugins, prompts</p>
-      </div>
-      <button class="btn btn-primary" onclick="loadAgentLintPage()" style="font-size:11px;">Run Checks</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;" id="agentlint-content">
-      <div class="widget-loading">Loading…</div>
-    </div>
-  </div>
 
   <!-- Page: Alcove (#294) — Private Documentation Search -->
   <div id="page-alcove" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
@@ -4075,7 +4065,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','agentlint','pluginpanels','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','pluginpanels','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -4116,11 +4106,11 @@ function showPage(name) {
     skills: () => { loadSkills(); extendSkillsPage(); }, policies: () => { loadPolicies(); extendCPLEditor(); }, analytics: loadAnalytics,
     sessions: () => { loadSessionAgentFilter(); loadSessionsList(); },
     settings: () => { loadSettings(); extendObservability(); extendMetricsPage(); injectSettingsSubNav(); },
-    tools: () => { loadTools(); injectSettingsSubNav(); },
-    'chrome-bridge': () => { loadChromeBridgePage(); injectSettingsSubNav(); },
-    mcp: () => { loadMCPPage(); injectSettingsSubNav(); },
-    'mcp-gateway': () => { loadMcpGatewayPage(); injectSettingsSubNav(); },
-    vault: () => { loadVaultPage(); injectSettingsSubNav(); },
+    tools: () => { loadTools(); injectToolsSubNav('tools'); },
+    'chrome-bridge': () => { loadChromeBridgePage(); injectToolsSubNav('chrome-bridge'); },
+    mcp: () => { loadMCPPage(); injectToolsSubNav('mcp'); },
+    'mcp-gateway': () => { loadMcpGatewayPage(); injectToolsSubNav('mcp-gateway'); },
+    vault: () => { loadVaultPage(); injectToolsSubNav('vault'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: () => { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: () => { loadPluginPanelsTabs(); },
     promptlab: loadPromptLab,
@@ -4143,9 +4133,12 @@ function showPage(name) {
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
     sandbox: loadSandboxPage,
-    agentlint: loadAgentLintPage,
   };
   if (loaders[name]) loaders[name]();
+  // Highlight nav-settings for all settings-group pages
+  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1};
+  var navSettings = document.getElementById('nav-settings');
+  if (navSettings) navSettings.classList.toggle('active', !!settingsGroup[name]);
   // Hide global subnav for non-tabbed pages
   var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
@@ -4194,6 +4187,25 @@ function injectSettingsSubNav() {
   bar.setAttribute('data-active', act);
   bar.innerHTML = tabs.map(function(t) {
     return '<button class="btn btn-ghost' + (t[0] === act ? ' active' : '') + '" onclick="showSettingsTab(\\'' + t[0] + '\\')" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (t[0] === act ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
+  }).join('');
+  bar.style.display = 'flex';
+}
+function injectToolsSubNav(active) {
+  var bar = document.getElementById('global-subnav');
+  if (!bar) return;
+  var tabs = [
+    ['tools', 'Tool Config'],
+    ['mcp', 'MCP Servers'],
+    ['mcp-gateway', 'MCP Gateway'],
+    ['chrome-bridge', 'Chrome Bridge'],
+    ['vault', 'Vault'],
+  ];
+  bar.setAttribute('data-group', 'tools');
+  bar.setAttribute('data-active', active);
+  var settingsBtn = '<button class="btn btn-ghost" onclick="showSettingsTab(&apos;tools&apos;)" style="font-size:11px;padding:4px 12px;border-radius:0;border-right:1px solid var(--border);margin-right:4px;opacity:0.7;">&#8592; Settings</button>';
+  bar.innerHTML = settingsBtn + tabs.map(function(t) {
+    var isAct = t[0] === active;
+    return '<button class="btn btn-ghost' + (isAct ? ' active' : '') + '" onclick="showPage(&apos;' + t[0] + '&apos;)" style="font-size:11px;padding:4px 12px;border-radius:0;border-bottom:2px solid ' + (isAct ? 'var(--accent)' : 'transparent') + ';">' + t[1] + '</button>';
   }).join('');
   bar.style.display = 'flex';
 }
@@ -8591,6 +8603,8 @@ async function loadAgents() {
       fetch(BASE + '/api/workspace/agents').then(r => r.json()).catch(() => []),
     ]);
     const currentAgentId = currentRes?.id || 'default';
+    window._selectedAgentId = currentAgentId;
+    window._selectedAgentName = currentRes?.name || currentAgentId;
     const wsMap = {};
     for (const w of workspaces) wsMap[w.agentId] = w.workspaceDir;
     const sessCount = {};
@@ -8651,8 +8665,11 @@ async function loadAgents() {
 
 async function selectAgent(id) {
   const res = await fetch(BASE + '/api/agents/' + encodeURIComponent(id) + '/select', { method: 'POST' });
-  if (res.ok) { toast('Agent activated', 'success'); loadAgents(); }
-  else { toast('Failed to activate agent', 'error'); }
+  if (res.ok) {
+    window._selectedAgentId = id;
+    toast('Agent activated', 'success');
+    loadAgents();
+  } else { toast('Failed to activate agent', 'error'); }
 }
 
 async function deleteAgent(id) {
@@ -9714,13 +9731,21 @@ const CMD_PAGES = [
   { id:'lens', label:'Activity', icon:'🔭', desc:'Filterable audit log with cost tracking and auto-refresh' },
   { id:'agents', label:'Agents', icon:'👥', desc:'Manage agent identities and selection' },
   { id:'services', label:'Services', icon:'⚙', desc:'Micro-service lifecycle management' },
-  { id:'jobs', label:'Jobs', icon:'⏱', desc:'Scheduled cron, interval, and one-shot jobs' },
   { id:'sessions', label:'Sessions', icon:'📁', desc:'Browse, search, export sessions' },
   { id:'settings', label:'Settings', icon:'⚙', desc:'Configure providers, API keys, router' },
   { id:'soul', label:'Soul', icon:'❤', desc:'Agent identity (SOUL.md, USER.md, MEMORY.md)' },
   { id:'policies', label:'Policies', icon:'🛡', desc:'Security policy rules' },
   { id:'extensions', label:'Extensions', icon:'🧩', desc:'Installed plugins and marketplace discovery' },
   { id:'analytics', label:'Analytics', icon:'📈', desc:'Token usage, cost, session statistics' },
+  { id:'vault', label:'Vault', icon:'🔐', desc:'Encrypted credential and secret storage' },
+  { id:'mcp', label:'MCP Servers', icon:'🔌', desc:'Connect to and manage MCP protocol servers' },
+  { id:'chrome-bridge', label:'Chrome Bridge', icon:'🌐', desc:'Browser automation via Chrome DevTools Protocol' },
+  { id:'computer', label:'Computer Use', icon:'🖥', desc:'AI-driven computer use and screenshot capture' },
+  { id:'nodes', label:'Nodes', icon:'🖧', desc:'Remote Cortex node registry and management' },
+  { id:'daemons', label:'Daemons', icon:'⚡', desc:'Validator, executor, and scheduler process status' },
+  { id:'workflow', label:'Workflows', icon:'🔁', desc:'Registered workflow pipelines' },
+  { id:'eval', label:'Eval', icon:'📐', desc:'Agent evaluation suites and benchmark runs' },
+  { id:'jobs', label:'Jobs', icon:'⏱', desc:'Scheduled cron, interval, and one-shot jobs' },
 ];
 
 let cmdPaletteCache = { agents: [], sessions: [] };
@@ -14563,7 +14588,8 @@ function extendAgentsPage() {
   tabBar.id = 'agents-sub-tab';
   tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
   tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchAgentsSubTab(this,\\'agents\\')" style="font-size:11px;padding:4px 10px;">Agents</button>' +
-    '<button class="btn btn-ghost" onclick="switchAgentsSubTab(this,\\'types\\')" style="font-size:11px;padding:4px 10px;">Sub-Agent Types</button>';
+    '<button class="btn btn-ghost" onclick="switchAgentsSubTab(this,\\'types\\')" style="font-size:11px;padding:4px 10px;">Sub-Agent Types</button>' +
+    '<button class="btn btn-ghost" onclick="switchAgentsSubTab(this,\\'lint\\')" style="font-size:11px;padding:4px 10px;">🔍 AgentLint</button>';
   container.insertBefore(tabBar, container.children[1]);
   var typesPanel = document.createElement('div');
   typesPanel.id = 'agents-types-panel';
@@ -14573,8 +14599,70 @@ function extendAgentsPage() {
 function switchAgentsSubTab(btn, tab) {
   var list = document.getElementById('agents-content');
   var types = document.getElementById('agents-types-panel');
+  var lint = document.getElementById('agents-lint-panel');
+  document.querySelectorAll('#agents-sub-tab .btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  if (tab === 'agents') {
+    if (list) list.style.display = 'flex';
+    if (types) types.style.display = 'none';
+    if (lint) lint.style.display = 'none';
+    return;
+  }
+  if (list) list.style.display = 'none';
+  if (tab === 'lint') {
+    if (types) types.style.display = 'none';
+    if (!lint) {
+      var container = document.getElementById('page-agents');
+      var lintPanel = document.createElement('div');
+      lintPanel.id = 'agents-lint-panel';
+      lintPanel.style.cssText = 'flex:1;overflow-y:auto;padding:16px;';
+      lintPanel.innerHTML = '<div class="widget-loading">Loading…</div>';
+      container.appendChild(lintPanel);
+    } else { lint.style.display = 'block'; }
+    runAgentLintTab();
+    return;
+  }
+  if (lint) lint.style.display = 'none';
+  if (tab === 'types') { if (types) types.style.display = 'block'; }
   if (tab === 'agents') { if (list) list.style.display = 'flex'; types.style.display = 'none'; }
   else { if (list) list.style.display = 'none'; types.style.display = 'block'; loadSubAgentTypes(); }
+}
+async function runAgentLintTab() {
+  var panel = document.getElementById('agents-lint-panel');
+  if (!panel) return;
+  panel.innerHTML = '<div class="widget-loading">Running AgentLint…</div>';
+  var agentId = window._selectedAgentId || '';
+  var qs = agentId ? '?agentId=' + encodeURIComponent(agentId) : '';
+  try {
+    var data = await fetch(BASE + '/api/agentlint/check' + qs).then(function(r) { return r.json(); });
+    var report = data.report;
+    var agentLabel = agentId ? (window._selectedAgentName || agentId) : 'Default Agent';
+    var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+    html += '<div><div style="font-size:13px;font-weight:600;">' + esc(agentLabel) + '</div><div style="font-size:11px;color:var(--text3);">AgentLint Report</div></div>';
+    html += '<button class="btn btn-ghost" onclick="runAgentLintTab()" style="font-size:11px;">↻ Re-run</button></div>';
+    html += '<div style="display:flex;gap:10px;margin-bottom:14px;">';
+    html += '<div class="card" style="flex:1;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:600;">' + (report.totalChecks||0) + '</div><div style="font-size:10px;color:var(--text3);">Checks</div></div>';
+    html += '<div class="card" style="flex:1;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:600;color:var(--accent-green);">' + (report.passCount||0) + '</div><div style="font-size:10px;color:var(--text3);">Passed</div></div>';
+    html += '<div class="card" style="flex:1;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:600;color:var(--accent-amber);">' + (report.warningCount||0) + '</div><div style="font-size:10px;color:var(--text3);">Warnings</div></div>';
+    html += '<div class="card" style="flex:1;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:600;color:var(--accent-red);">' + (report.errorCount||0) + '</div><div style="font-size:10px;color:var(--text3);">Errors</div></div>';
+    html += '</div>';
+    if (report.passed) {
+      html += '<div class="card" style="padding:14px;text-align:center;"><span style="color:var(--accent-green);font-size:13px;font-weight:600;">✓ All checks passed</span></div>';
+    } else {
+      (report.issues || []).forEach(function(issue) {
+        var color = issue.severity === 'error' ? 'var(--accent-red)' : issue.severity === 'warning' ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+        html += '<div class="card" style="padding:10px;margin-bottom:6px;border-left:3px solid ' + color + '">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span class="badge" style="background:' + color + ';color:#000;font-size:9px;">' + esc(issue.severity).toUpperCase() + '</span>';
+        html += '<span style="font-size:11px;color:var(--text2);">' + esc(issue.category) + '</span></div>';
+        html += '<div style="font-size:12px;">' + esc(issue.message) + '</div>';
+        if (issue.suggestion) html += '<div style="font-size:10px;color:var(--text2);margin-top:4px;">💡 ' + esc(issue.suggestion) + '</div>';
+        html += '</div>';
+      });
+    }
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = '<div style="color:var(--accent-red);padding:16px;">Failed: ' + esc(String(e)) + '</div>';
+  }
 }
 async function loadSubAgentTypes() {
   var el = document.getElementById('agents-types-panel');
@@ -15245,43 +15333,6 @@ async function loadMemoriPage() {
   }
 }
 
-// ── AgentLint Page ──────────────────────────────────────
-async function loadAgentLintPage() {
-  var c = document.getElementById('page-agentlint')?.querySelector('[style*="overflow-y:auto"]');
-  if (!c) return;
-  c.innerHTML = '<div class="widget-loading">Running AgentLint checks…</div>';
-  try {
-    var r = await fetch('/api/agentlint/check');
-    var data = await r.json();
-    var report = data.report;
-    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">';
-    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + (report.totalChecks||0) + '</div><div style="font-size:11px;color:var(--text3);">Checks</div></div>';
-    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-green);">' + (report.passCount||0) + '</div><div style="font-size:11px;color:var(--text3);">Passed</div></div>';
-    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-amber);">' + (report.warningCount||0) + '</div><div style="font-size:11px;color:var(--text3);">Warnings</div></div>';
-    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-red);">' + (report.errorCount||0) + '</div><div style="font-size:11px;color:var(--text3);">Errors</div></div>';
-    html += '</div>';
-    if (report.passed) {
-      html += '<div class="card" style="padding:16px;text-align:center;"><span style="color:var(--accent-green);font-size:14px;font-weight:600;">✓ All checks passed</span></div>';
-    } else {
-      html += '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Issues</h3>';
-      var issues = report.issues || [];
-      issues.forEach(function(issue) {
-        var color = issue.severity === 'error' ? 'var(--accent-red)' : issue.severity === 'warning' ? 'var(--accent-amber)' : 'var(--accent-cyan)';
-        html += '<div class="card" style="padding:10px;margin-bottom:6px;border-left:3px solid ' + color + ';">';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
-        html += '<span class="badge" style="background:' + color + ';color:#000;font-size:9px;">' + esc(issue.severity).toUpperCase() + '</span>';
-        html += '<span style="font-size:11px;color:var(--text2);">' + esc(issue.category) + '</span>';
-        html += '</div>';
-        html += '<div style="font-size:12px;">' + esc(issue.message) + '</div>';
-        if (issue.suggestion) html += '<div style="font-size:10px;color:var(--text2);margin-top:4px;">💡 ' + esc(issue.suggestion) + '</div>';
-        html += '</div>';
-      });
-    }
-    c.innerHTML = html;
-  } catch(e) {
-    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to run AgentLint: ' + esc(String(e)) + '</div>';
-  }
-}
 
 function esc(s) {
   if (!s) return '';

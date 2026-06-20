@@ -7,12 +7,6 @@ import { checkForUpdates } from '../update/mod.ts';
 import { loadConfig } from '../config/config.ts';
 import { applyPluginUpdate, checkAllUpdates } from '../plugins/update.ts';
 import { runMigrations } from '../db/migrate.ts';
-import {
-  installDaemonService,
-  installServerService,
-  startLinuxService,
-  uninstallDaemonService,
-} from './service-helper.ts';
 
 const PROCESS_DEFS = [
   { name: 'validator', label: 'Cortex Validator', sock: VALIDATOR_SOCK },
@@ -237,62 +231,5 @@ export const daemonCommand = new Command()
           const status = alive ? green('● running') : red('○ stopped');
           console.log(`  ${status}  ${bold(proc.label)}  ${dim(proc.sock)}`);
         }
-      }),
-  )
-  .command(
-    'install',
-    new Command()
-      .description('Install daemon as a system service (systemd / launchd / NSSM)')
-      .option(
-        '--with-server',
-        'Also install the web UI server as a system service',
-      )
-      .option('-p, --port <port:number>', 'Server port (when used with --with-server)', {
-        default: 3000,
-      })
-      .option('-H, --host <host:string>', 'Server bind host (when used with --with-server)', {
-        default: '127.0.0.1',
-      })
-      .option('--no-start', 'Install service files but do not start them immediately')
-      .action(
-        async (opts: { withServer?: boolean; port: number; host: string; noStart?: boolean }) => {
-          console.log(bold('Installing Cortex daemon service…'));
-          console.log('');
-          await installDaemonService({ noStart: opts.noStart });
-
-          if (opts.withServer) {
-            console.log('');
-            await installServerService({ port: opts.port, host: opts.host, noStart: opts.noStart });
-          }
-
-          if (!opts.noStart && Deno.build.os === 'linux') {
-            console.log('');
-            console.log(dim('Starting services…'));
-            await startLinuxService('cortex-daemon');
-            if (opts.withServer) {
-              await startLinuxService('cortex-server');
-            }
-            console.log(green('  ✓ Services started'));
-          } else if (!opts.noStart) {
-            console.log('');
-            const platform = Deno.build.os === 'darwin' ? 'macOS' : 'Windows';
-            console.log(
-              dim(
-                `  No manual start needed on ${platform} (services auto-init via launchd / NSSM)`,
-              ),
-            );
-          }
-
-          Deno.exit(0);
-        },
-      ),
-  )
-  .command(
-    'uninstall',
-    new Command()
-      .description('Uninstall daemon system service')
-      .action(async () => {
-        await uninstallDaemonService();
-        Deno.exit(0);
       }),
   );

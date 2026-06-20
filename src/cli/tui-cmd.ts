@@ -1,6 +1,7 @@
 import { Command } from '@cliffy/command';
 import { TerminalUI } from '../tui/terminal.ts';
 import { loadConfig } from '../config/config.ts';
+import { getVersion } from '../config/version.ts';
 import { buildProvider } from '../llm/router.ts';
 import { agentTurn } from '../agent/loop.ts';
 import { closeSession, createSession } from '../db/sessions.ts';
@@ -61,7 +62,8 @@ const tuiCommand = new Command()
 
     tui.addMessage({
       role: 'system',
-      content: `Cortex TUI v0.20.0 — ${config.defaultProvider}/${model}. Type /help for commands.`,
+      content:
+        `Cortex TUI v${await getVersion()} — ${config.defaultProvider}/${model}. Type /help for commands.`,
     });
 
     tui.addMessage({

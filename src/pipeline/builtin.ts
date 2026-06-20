@@ -563,6 +563,24 @@ class ResponsibleAIHook implements PipelineHook {
   }
 }
 
+export function getBuiltinHook(name: string): PipelineHook | undefined {
+  const allHooks: PipelineHook[] = [
+    new ContentSafetyHook(),
+    new InjectionDetectorHook(),
+    new SummarizationMiddleware(),
+    new ModelQuartermasterHook(),
+    new QuartermasterHook(),
+    new ToolOutputSandboxHook(),
+    new PreCompletionChecklistMiddleware(),
+    new LoopDetectionMiddleware(),
+    new CostTrackerHook(),
+    new AuditLogHook(),
+    new DLPGuardHook(),
+    new ResponsibleAIHook(),
+  ];
+  return allHooks.find((h) => h.name === name);
+}
+
 export function registerBuiltinHooks(): void {
   registerHook(new ContentSafetyHook(), 'core');
   registerHook(new InjectionDetectorHook(), 'core');

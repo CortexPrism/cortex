@@ -10,29 +10,49 @@ export const agentlintCommand = new Command()
     console.log(bold('Cortex AgentLint'));
     console.log('');
     console.log(bold('Actions'));
-    console.log(`  ${cyan('cortex agentlint check')}    — Run checks on default agent config`);
-    console.log(`  ${cyan('cortex agentlint config')}   — Lint current agent configuration`);
+    console.log(
+      `  ${cyan('cortex agentlint check')}    — Run AgentLint checks on current agent config`,
+    );
+    console.log(
+      `  ${cyan('cortex agentlint config')}   — Verbose lint report with provider/model details`,
+    );
     console.log('');
   });
 
 agentlintCommand
   .command('check')
-  .description('Run AgentLint checks on default agent config')
+  .description('Quick lint check — prints issues only, exits 1 if errors found (CI-friendly)')
   .action(async () => {
     const { lintAgentConfig } = await import('../agent/agentlint.ts');
+    const config = await loadConfig();
 
-    const config = {
-      name: 'Default Agent',
-      description: 'Default CortexPrism agent',
-      systemPrompt: 'You are a helpful AI coding assistant.',
-      tools: ['file_read', 'file_write', 'shell', 'web_search', 'code_exec'],
-      maxTurns: 8,
-      provider: 'openai',
-      model: 'gpt-4o',
+    const agentConfig = {
+      name: config.agent.name,
+      description: `${config.agent.name} agent via ${config.defaultProvider}`,
+      systemPrompt: 'CortexPrism agent prompt',
+      tools: Object.keys(config.agents?.['default'] ?? {}),
+      maxTurns: config.agent.maxTurns,
+      provider: config.defaultProvider,
+      model: config.providers[config.defaultProvider]?.model ?? 'unknown',
     };
 
-    const report = lintAgentConfig(config);
-    printLintReport(report);
+    const report = lintAgentConfig(agentConfig);
+
+    if (report.passed) {
+      console.log(green(`✓ ${agentConfig.name}: all ${report.totalChecks} checks passed`));
+      Deno.exit(0);
+    }
+
+    for (const issue of report.issues) {
+      const color = issue.severity === 'error' ? red : issue.severity === 'warning' ? yellow : cyan;
+      console.log(
+        `${color(`[${issue.severity.toUpperCase()}]`)} ${issue.category}: ${issue.message}`,
+      );
+      if (issue.suggestion) console.log(`  Fix: ${issue.suggestion}`);
+    }
+    console.log('');
+    console.log(red(`✗ ${report.errorCount} error(s), ${report.warningCount} warning(s)`));
+    Deno.exit(report.errorCount > 0 ? 1 : 0);
   });
 
 agentlintCommand
@@ -44,7 +64,7 @@ agentlintCommand
 
     const agentConfig = {
       name: config.agent.name,
-      description: config.agent.name,
+      description: `${config.agent.name} agent via ${config.defaultProvider}`,
       systemPrompt: 'CortexPrism agent prompt',
       tools: Object.keys(config.agents?.['default'] ?? {}),
       maxTurns: config.agent.maxTurns,

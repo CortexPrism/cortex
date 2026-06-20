@@ -93,8 +93,16 @@ voiceCommand
 
 voiceCommand
   .command('set-speed')
-  .description('Set speech rate')
+  .description('Set default speech rate (0.25–4.0)')
   .arguments('<rate:number>')
   .action(async (_options: unknown, rate: number) => {
-    console.log(`Speech rate set to ${rate}. (Apply per-session via tools.)`);
+    if (rate < 0.25 || rate > 4.0) {
+      console.error('Speech rate must be between 0.25 and 4.0');
+      Deno.exit(1);
+    }
+    const config = await loadConfig();
+    ensureVoiceConfig(config);
+    (config.voice as unknown as Record<string, unknown>).speed = rate;
+    await saveConfig(config);
+    console.log(`Speech rate set to ${rate}.`);
   });

@@ -19,6 +19,22 @@ const workflowCommand = new Command()
   });
 
 workflowCommand
+  .command('list')
+  .description('List all registered workflows')
+  .action(() => {
+    const wfs = listWorkflows();
+    if (wfs.length === 0) {
+      console.log('No workflows registered.');
+      return;
+    }
+    console.log(`\n${wfs.length} workflow(s) registered:\n`);
+    for (const w of wfs) {
+      console.log(`  ${bold(w.name)}`);
+    }
+    console.log();
+  });
+
+workflowCommand
   .command('run <name:string>')
   .description('Execute a workflow')
   .action(async (_opts: void, name: string) => {

@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
-import { killProcessById } from '../utils/platform.ts';
+import { isLinux, killProcessById } from '../utils/platform.ts';
 import { startDaemonCore, stopDaemons } from './daemon.ts';
 import { findServerProcess, startServerBackground, stopBackgroundServer } from './serve.ts';
 
@@ -80,17 +80,22 @@ export const restartCommand = new Command()
 
       if (restartServer) {
         console.log(dim('Stopping server…'));
-        // Kill the process actually holding the port (handles sh-wrapper spawns correctly)
-        try {
-          const fuserProc = new Deno.Command('fuser', {
-            args: ['-k', `${opts.port}/tcp`],
-            stdout: 'null',
-            stderr: 'null',
-          });
-          await fuserProc.output();
-          console.log(cyan(`  Stopped server (port ${opts.port})`));
-        } catch {
-          // fuser not available — fall back to pid-based kill
+        let serverStopped = false;
+        if (isLinux()) {
+          try {
+            const fuserProc = new Deno.Command('fuser', {
+              args: ['-k', `${opts.port}/tcp`],
+              stdout: 'null',
+              stderr: 'null',
+            });
+            await fuserProc.output();
+            console.log(cyan(`  Stopped server (port ${opts.port})`));
+            serverStopped = true;
+          } catch {
+            // fuser not installed, fall through to pid-based kill
+          }
+        }
+        if (!serverStopped) {
           const existing = await findServerProcess(opts.port);
           if (existing) {
             killProcessById(existing.pid);

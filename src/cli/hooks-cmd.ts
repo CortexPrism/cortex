@@ -1,6 +1,6 @@
 import { Command } from '@cliffy/command';
 import { getHookCount, listHooks, registerHook, unregisterHook } from '../pipeline/manager.ts';
-import { registerBuiltinHooks } from '../pipeline/builtin.ts';
+import { getBuiltinHook, registerBuiltinHooks } from '../pipeline/builtin.ts';
 
 const hooksCommand = new Command()
   .name('hooks')
@@ -31,6 +31,21 @@ hooksCommand
     registerBuiltinHooks();
     const after = getHookCount();
     console.log(`Registered ${after - before} built-in hooks (${after} total).`);
+  });
+
+hooksCommand
+  .command('enable <name:string>')
+  .description('Re-register a built-in hook by name')
+  .action((_opts: void, name: string) => {
+    const hook = getBuiltinHook(name);
+    if (!hook) {
+      console.error(
+        `Built-in hook "${name}" not found. Run "cortex hooks" to see registered hooks.`,
+      );
+      return;
+    }
+    registerHook(hook, 'core');
+    console.log(`Hook "${name}" enabled.`);
   });
 
 hooksCommand
