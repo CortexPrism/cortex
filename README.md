@@ -14,8 +14,8 @@
  </picture>
 </a>
 
-> **The open-source AI agent harness with memory, tools, a web UI, and layered security — powered by
-> Deno.**
+> **The open-source AI agent operating system — autonomous agents with memory, tools, a web UI, and
+> layered security, powered by Deno.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
@@ -23,9 +23,10 @@
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1515847007372181584?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wYxbmQeWY3)
 
-**CortexPrism** is a self-hosted, open-source agentic AI harness that turns any LLM into a capable
-autonomous agent. It provides persistent memory, a rich tool ecosystem, sandboxed code execution, a
-full-featured web UI, and enterprise-grade security — all running locally on your machine or server.
+**CortexPrism** is a self-hosted, open-source **AI agent operating system** — an autonomous agent
+runtime that turns any LLM into a capable digital agent. It provides persistent memory, a rich tool
+ecosystem, sandboxed code execution, multi-agent orchestration, a full-featured web UI, and
+enterprise-grade security — all running locally on your machine or server.
 
 - Works with **24 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
 - Ships as a **single Deno binary** — no Docker required to get started
@@ -991,7 +992,7 @@ submission standards.
 
 ## Architecture
 
-CortexPrism is a single-process Deno application. All state is persisted in SQLite (WAL mode) via
+CortexPrism is a single-process AI agent operating system built on Deno. All state is persisted in SQLite (WAL mode) via
 `@libsql/client`.
 
 ```

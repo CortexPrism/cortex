@@ -3271,7 +3271,7 @@ sudo pacman -S xorg-server-xvfb xdotool scrot xorg-utils
 
 ## [0.9.0] — 2026-06-14
 
-Initial release of CortexPrism — open-source agentic harness system with multi-provider LLM support,
+Initial release of CortexPrism — open-source AI agent operating system with multi-provider LLM support,
 5-tier memory, parallax security, plugin system, and web UI.
 
 ### What's included
