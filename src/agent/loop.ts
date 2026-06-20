@@ -1155,7 +1155,8 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       _log.debug(`Starting tool execution loop`, { round, toolCallsCount: toolCalls.length });
       const toolResults: ToolCallResult[] = new Array(toolCalls.length);
-      const shouldRunInParallel = toolCalls.length > 1 && toolCalls.every((t) => t.toolName === 'sub_agent');
+      const shouldRunInParallel = toolCalls.length > 1 &&
+        toolCalls.every((t) => t.toolName === 'sub_agent');
 
       const runToolCall = async (tc: ToolCallRequest, index: number): Promise<void> => {
         try {
@@ -1380,7 +1381,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         if (collectedToolCalls.length > 0) {
           const lastTool = collectedToolCalls[collectedToolCalls.length - 1];
           if (lastTool.tool === 'sub_agent' && lastTool.result) {
-            response = `[Cancelled] Partial result from sub-agent:\n\n${lastTool.result.slice(0, 2000)}`;
+            response = `[Cancelled] Partial result from sub-agent:\n\n${
+              lastTool.result.slice(0, 2000)
+            }`;
           } else {
             response = `[Cancelled] Tools executed before cancellation: ${
               collectedToolCalls.map((t) => t.tool).join(', ')

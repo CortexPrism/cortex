@@ -114,8 +114,10 @@ async function main(): Promise<void> {
     }
 
     const systemPrompt = buildSystemPrompt(soul, config.config.systemPrompt, user, memory);
-    const inheritedProvider = config.config.provider || agentConfig.provider || cortexConfig.defaultProvider;
-    const inheritedModel = config.config.model || agentConfig.model || cortexConfig.providers[inheritedProvider]?.model || 'unknown';
+    const inheritedProvider = config.config.provider || agentConfig.provider ||
+      cortexConfig.defaultProvider;
+    const inheritedModel = config.config.model || agentConfig.model ||
+      cortexConfig.providers[inheritedProvider]?.model || 'unknown';
 
     // Build tool registry (centralized registration)
     const registry = new ToolRegistry();

@@ -104,7 +104,8 @@ export async function* spawnSubAgent(
   const effectiveAgent: AgentConfig = {
     ...agent,
     name: task.config.name || agent.name,
-    provider: task.config.provider || typeDef?.provider || task.config.inheritedProvider || agent.provider,
+    provider: task.config.provider || typeDef?.provider || task.config.inheritedProvider ||
+      agent.provider,
     model: task.config.model || typeDef?.model || task.config.inheritedModel || agent.model,
     systemPrompt: typeDef?.systemPrompt || task.config.systemPrompt || agent.systemPrompt,
     tools: task.config.tools || (typeDef?.tools?.length ? typeDef.tools : agent.tools),
