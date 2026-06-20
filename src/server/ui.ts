@@ -3230,8 +3230,6 @@ Example 2" onchange="sdUpdateMetadataFromUI()"></textarea>
         </select></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Max Uses (0 = unlimited)</label>
         <input id="vault-max-uses" class="inp" type="number" value="0" min="0" style="font-size:12px;width:120px;"></div>
-        <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Tags</label>
-        <input id="vault-tags-input" class="inp" placeholder="api, openai" style="font-size:12px;"></div>
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button class="btn btn-primary" type="submit">Save</button>
         <button class="btn btn-ghost" type="button" onclick="hideModal('vault-credential-modal')">Cancel</button>
@@ -13336,6 +13334,8 @@ async function runCodegraphPilot() {
       includeComments: document.getElementById('cg-pilot-comments').checked,
       includeTestFiles: document.getElementById('cg-pilot-tests').checked,
       prunePrivateMembers: document.getElementById('cg-pilot-prune').value === 'prune-private',
+      filePattern: document.getElementById('cg-pilot-files').value.trim() || undefined,
+      excludePattern: document.getElementById('cg-pilot-exclude').value.trim() || undefined,
       project: project
     };
     var body = JSON.stringify(config);
@@ -14075,8 +14075,7 @@ async function loadVaultCredentials() {
         var exp = c.expires_at ? new Date(c.expires_at) : null;
         var expired = exp && exp < new Date();
         return '<tr style="border-bottom:1px solid var(--border);">' +
-          '<td style="padding:6px 0;"><span style="font-weight:500;">' + esc(c.name) + '</span>' +
-          (c.tags ? '<div style="font-size:10px;color:var(--text3);">' + esc(String(c.tags)) + '</div>' : '') + '</td>' +
+          '<td style="padding:6px 0;"><span style="font-weight:500;">' + esc(c.name) + '</span></td>' +
           '<td style="padding:6px 0;color:var(--text2);">' + esc(c.service || '—') + '</td>' +
           '<td style="padding:6px 0;color:var(--text2);">' + timeAgo(c.created_at) + '</td>' +
           '<td style="padding:6px 0;color:var(--text2);">' + (c.usage_count || 0) + '/' + (c.usage_limit || '∞') + '</td>' +
@@ -14095,7 +14094,6 @@ function showVaultCredentialModal(key) {
   document.getElementById('vault-value-input').value = '';
   document.getElementById('vault-expiration').value = '';
   document.getElementById('vault-max-uses').value = '0';
-  document.getElementById('vault-tags-input').value = '';
   document.getElementById('vault-credential-modal').style.display = 'flex';
 }
 function editVaultCredential(key) { showVaultCredentialModal(key); }
@@ -14106,8 +14104,7 @@ async function saveVaultCredential() {
   var body = {
     key: key, value: value,
     expiration: document.getElementById('vault-expiration').value || undefined,
-    maxUses: parseInt(document.getElementById('vault-max-uses').value) || undefined,
-    tags: document.getElementById('vault-tags-input').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
+    maxUses: parseInt(document.getElementById('vault-max-uses').value) || undefined
   };
   try {
     var res = await fetch(BASE + '/api/vault/store', {
@@ -14396,16 +14393,32 @@ async function toggleTool(name) {
 
 // ── Metacognition Page ──
 function loadMetacognition() { loadMetacognitionHistory(); loadMetacognitionSummary(); }
-function testMetacognition() {
+async function testMetacognition() {
   var input = document.getElementById('mc-test-input').value.trim();
   if (!input) return;
   var el = document.getElementById('mc-test-result');
-  // Simple keyword-based assessment (matches metacog.ts logic)
-  var signals = { isAmbiguous: /\\?$/.test(input), isComplex: input.split(' ').length > 20, isCodeTask: /code|function|class|bug|fix|implement|refactor/i.test(input), isDestructive: /rm|delete|remove|purge|drop/i.test(input), hasIndependentSubtasks: /and.*also|then.*after|first.*second|step/i.test(input) };
-  var decision = signals.isDestructive ? 'ask_first' : signals.hasIndependentSubtasks ? 'parallelize' : signals.isAmbiguous ? 'ask_first' : signals.isCodeTask ? 'plan_with_rollback' : 'direct';
-  var colors = { direct: 'var(--accent-green)', ask_first: 'var(--accent-amber)', delegate: 'var(--accent)', plan_with_rollback: 'var(--accent2)', parallelize: '#8b5cf6' };
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><span>Decision:</span><span style="font-weight:500;color:' + (colors[decision] || '') + '">' + decision + '</span></div>' +
-    '<div style="font-size:10px;color:var(--text3);margin-top:4px;">Signals: ' + Object.entries(signals).filter(function(e) { return e[1]; }).map(function(e) { return e[0]; }).join(', ') || 'none' + '</div>';
+  el.innerHTML = 'Assessing...';
+  try {
+    var result = await fetch(BASE + '/api/metacognition/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: input })
+    }).then(function(r) { return r.json(); });
+    var colors = { direct: 'var(--accent-green)', ask_first: 'var(--accent-amber)', delegate: 'var(--accent)', plan_with_rollback: 'var(--accent2)', parallelize: '#8b5cf6' };
+    var sigs = '';
+    if (result.signalBreakdown) {
+      sigs = Object.entries(result.signalBreakdown).filter(function(e) { return e[1] > 0; }).map(function(e) { return e[0] + ':' + e[1]; }).join(', ') || 'none';
+    }
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><span>Decision:</span><span style="font-weight:500;color:' + (colors[result.decision] || '') + '">' + esc(result.decision || '') + '</span>' +
+      (result.confidence !== undefined ? '<span style="font-size:10px;color:var(--text3);">(' + Math.round(result.confidence * 100) + '% confidence)</span>' : '') +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--text2);margin-top:4px;">' + esc(result.reason || '') + '</div>' +
+      (result.suggestedSubAgents && result.suggestedSubAgents.length ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;">Suggested sub-agents: ' + result.suggestedSubAgents.join(', ') + '</div>' : '') +
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px;">Signals: ' + sigs + '</div>' +
+      (result.escalated ? '<div style="margin-top:4px;color:#f87171;font-size:10px;">&#9888; Escalated: ' + esc(result.escalationReason || '') + '</div>' : '');
+  } catch(e) {
+    el.innerHTML = '<span style="color:var(--red);">Error: ' + esc(e.message) + '</span>';
+  }
 }
 var mcDecisionColors = { direct: '#4ade80', ask_first: '#fbbf24', delegate: '#818cf8', plan_with_rollback: '#22d3ee', parallelize: '#a78bfa', escalated: '#f87171' };
 async function loadMetacognitionSummary() {
@@ -15237,14 +15250,19 @@ function extendSkillsPage() {
   }
 }
 async function skillsExport() {
+  var name = prompt('Enter skill name to export:');
+  if (!name) return;
   try {
-    var res = await fetch(BASE + '/api/skills/export', { method: 'POST' });
+    var skill = await fetch(BASE + '/api/skills/detail?name=' + encodeURIComponent(name)).then(function(r) { return r.json(); });
+    if (!skill || skill.error) { toast(skill?.error || 'Skill not found', 'error'); return; }
+    var res = await fetch(BASE + '/api/skills/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: skill.name, description: skill.description, triggerPattern: skill.trigger_pattern, content: skill.content || '' })
+    });
     var data = await res.json();
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a'); a.href = url; a.download = 'skills-export.json'; a.click();
-    URL.revokeObjectURL(url);
-    toast('Skills exported', 'success');
+    if (data.error) { toast(data.error, 'error'); return; }
+    toast('Skill exported to ' + (data.path || ''), 'success');
   } catch(e) { toast('Export failed', 'error'); }
 }
 function skillsShowMerge() {
@@ -15256,13 +15274,17 @@ function skillsShowMerge() {
     if (!file) return;
     try {
       var text = await file.text();
+      var parsed = JSON.parse(text);
+      var body = parsed.target && parsed.source
+        ? JSON.stringify({ target: parsed.target, source: parsed.source })
+        : text;
       var res = await fetch(BASE + '/api/skills/merge', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: text
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: body
       });
       if (!res.ok) { var e = await res.json().catch(function(){ return {}; }); toast(e.error || 'Merge failed', 'error'); return; }
       toast('Skills merged', 'success');
       loadSkills();
-    } catch(e) { toast('Merge failed', 'error'); }
+    } catch(err) { toast('Merge failed: ' + (err.message || 'Invalid JSON'), 'error'); }
   };
   input.click();
 }
@@ -15272,7 +15294,7 @@ function skillsShowDeps() {
   fetch(BASE + '/api/skills/dependencies?name=' + encodeURIComponent(name))
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      var deps = data.dependencies || data.depends_on || [];
+      var deps = data.dependencies || data.dependents || [];
       toast(name + ' depends on: ' + (deps.length ? deps.join(', ') : 'none'), 'success');
     }).catch(function() { toast('Failed', 'error'); });
 }
@@ -15691,7 +15713,7 @@ async function loadMcpGatewayPage() {
   if (!c) return;
   c.innerHTML = '<div class="widget-loading">Loading MCP Gateway…</div>';
   try {
-    var r = await fetch('/api/mcp-gateway/servers');
+    var r = await fetch(BASE + '/api/mcp-gateway/servers');
     var data = await r.json();
     var servers = data.servers || [];
     var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">';

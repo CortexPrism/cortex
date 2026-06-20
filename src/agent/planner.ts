@@ -19,10 +19,10 @@ export async function logPlan(plan: Omit<PlanArtifact, 'id' | 'createdAt'>): Pro
   const id = `plan_${Date.now().toString(36)}`;
 
   await logEvent({
-    event_type: 'plan_created',
+    event_type: 'meta_assessment',
     session_id: plan.sessionId,
-    actor: 'planner',
-    action: `plan:${plan.decision}`,
+    actor: 'metacognition',
+    action: plan.decision,
     started_at: new Date().toISOString(),
     summary: plan.reason.slice(0, 500),
     payload: {

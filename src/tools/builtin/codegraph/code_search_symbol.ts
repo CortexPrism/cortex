@@ -98,6 +98,7 @@ export const codeSearchSymbolTool: Tool = {
 
       const results = await ftsSearchNodes(projectId, query, {
         label: label ? [label] : undefined,
+        language,
         limit,
       });
 
