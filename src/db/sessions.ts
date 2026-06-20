@@ -112,6 +112,32 @@ export async function incrementTurn(id: string): Promise<void> {
   );
 }
 
+export async function updateSessionProgress(
+  id: string,
+  turnCount: number,
+  lastTurnAt?: string | null,
+  agentId?: string,
+): Promise<void> {
+  const db = await getCoreDb();
+  const nextLastTurnAt = lastTurnAt ?? null;
+  if (agentId) {
+    await db.run(
+      `UPDATE sessions
+       SET turn_count = ?, last_turn_at = ?, status = 'active', closed_at = NULL, agent_id = ?
+       WHERE id = ?`,
+      [turnCount, nextLastTurnAt, agentId, id],
+    );
+    return;
+  }
+
+  await db.run(
+    `UPDATE sessions
+     SET turn_count = ?, last_turn_at = ?, status = 'active', closed_at = NULL
+     WHERE id = ?`,
+    [turnCount, nextLastTurnAt, id],
+  );
+}
+
 export async function listSessions(limit = 20, agentId?: string): Promise<SessionRow[]> {
   const db = await getCoreDb();
   let query =

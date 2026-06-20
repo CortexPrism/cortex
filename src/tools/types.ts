@@ -1,3 +1,5 @@
+import type { ProviderKind } from '../config/config.ts';
+
 export type ToolCapability =
   | 'fs:read'
   | 'fs:write'
@@ -72,6 +74,8 @@ export interface ToolContext {
   workingDir: string;
   agentId: string;
   workspaceDir: string;
+  model?: string;
+  provider?: ProviderKind;
   approvalGate?: (
     tool: string,
     command: string,

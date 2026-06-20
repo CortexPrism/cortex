@@ -285,6 +285,8 @@ export const chatCommand = new Command()
               approvalGate,
               agentId: 'default',
               workspaceDir: Deno.cwd(),
+              model,
+              provider: config.defaultProvider,
             },
             embedder,
           });

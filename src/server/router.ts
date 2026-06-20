@@ -7,6 +7,7 @@ import {
   getSessionTree,
   listSessions,
   resumeSession,
+  updateSessionProgress,
   updateSessionName,
 } from '../db/sessions.ts';
 import { getSessionEvents } from '../db/lens.ts';
@@ -1041,9 +1042,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { initSessionDb } = await import('../db/migrate.ts');
     const db = await initSessionDb(msgsMatch[1]);
     const rows = await db.all<
-      { id: number; role: string; content: string; token_count: number; created_at: string }
+      { id: number; role: string; content: string; tool_calls: string | null; token_count: number; created_at: string }
     >(
-      `SELECT id, role, content, token_count, created_at FROM session_messages ORDER BY id ASC`,
+      `SELECT id, role, content, tool_calls, token_count, created_at FROM session_messages ORDER BY id ASC`,
     );
     return json(rows);
   }
@@ -1062,6 +1063,36 @@ export async function handleApi(req: Request): Promise<Response | null> {
       [messageId],
     );
     return json({ success: true, messageId });
+  }
+
+  // POST /api/sessions/:id/retry — truncate the last user turn so the UI can replay it
+  const retryMsgMatch = path.match(/^\/api\/sessions\/([^/]+)\/retry$/);
+  if (req.method === 'POST' && retryMsgMatch) {
+    const sessionId = retryMsgMatch[1];
+    const session = await getSession(sessionId);
+    if (!session) return notFound('Session not found');
+
+    const { initSessionDb } = await import('../db/migrate.ts');
+    const db = await initSessionDb(sessionId);
+    const lastUser = await db.get<{ id: number; content: string }>(
+      `SELECT id, content FROM session_messages WHERE role = 'user' ORDER BY id DESC LIMIT 1`,
+    );
+    if (!lastUser) return json({ error: 'No user message available to retry' }, 400);
+
+    await db.run(`DELETE FROM session_messages WHERE id >= ?`, [lastUser.id]);
+    await updateSessionProgress(
+      sessionId,
+      Math.max(0, (session.turn_count ?? 0) - 1),
+      new Date().toISOString(),
+      session.agent_id,
+    );
+
+    return json({
+      success: true,
+      sessionId,
+      message: lastUser.content,
+      lastUserMessageId: lastUser.id,
+    });
   }
 
   // POST /api/upload — file upload for chat attachments
@@ -4818,6 +4849,61 @@ export async function handleApi(req: Request): Promise<Response | null> {
     } catch {
       return json({ checkpoints: [] });
     }
+  }
+
+  // POST /api/memori/checkpoints/:id/restore — restore a session from a checkpoint
+  const restoreCheckpointMatch = path.match(/^\/api\/memori\/checkpoints\/([^/]+)\/restore$/);
+  if (req.method === 'POST' && restoreCheckpointMatch) {
+    const checkpointId = restoreCheckpointMatch[1];
+    const { loadCheckpoint } = await import('../memori/store.ts');
+    const { buildResumePrompt, restoreCheckpoint } = await import('../memori/restore.ts');
+    const checkpoint = await loadCheckpoint(await getMemoryDb(), checkpointId);
+    if (!checkpoint) return notFound('Checkpoint not found');
+    const restored = restoreCheckpoint(checkpoint);
+    const resumePrompt = buildResumePrompt(restored)
+      + (restored.toolCallHistory.length > 0
+        ? `\n\n## Tool History\n${restored.toolCallHistory.map((t) => `- ${t.toolName}`).join('\n')}`
+        : '');
+
+    const session = await getSession(checkpoint.sessionId);
+    if (!session) return notFound('Session not found');
+
+    const { initSessionDb } = await import('../db/migrate.ts');
+    const db = await initSessionDb(checkpoint.sessionId);
+    await db.exec('BEGIN IMMEDIATE');
+    try {
+      await db.run('DELETE FROM session_messages');
+      await db.run(
+        `INSERT INTO session_messages (role, content, token_count, created_at)
+         VALUES (?, ?, ?, ?)`,
+        ['system', resumePrompt, null, checkpoint.timestamp],
+      );
+      for (const message of checkpoint.conversation.messages) {
+        await db.run(
+          `INSERT INTO session_messages (role, content, token_count, created_at)
+           VALUES (?, ?, ?, ?)`,
+          [message.role, message.content, null, message.timestamp ?? checkpoint.timestamp],
+        );
+      }
+      await db.exec('COMMIT');
+    } catch (e) {
+      await db.exec('ROLLBACK').catch(() => {});
+      throw e;
+    }
+
+    await updateSessionProgress(
+      checkpoint.sessionId,
+      checkpoint.turnNumber,
+      checkpoint.timestamp,
+      checkpoint.agentId,
+    );
+
+    return json({
+      success: true,
+      sessionId: checkpoint.sessionId,
+      checkpointId,
+      turnNumber: checkpoint.turnNumber,
+    });
   }
 
   // POST /api/security/approvals/bulk — bulk approve/deny (#254)

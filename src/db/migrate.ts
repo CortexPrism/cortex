@@ -10,6 +10,7 @@ import {
   getVaultDb,
 } from './client.ts';
 import { PATHS } from '../config/paths.ts';
+import { createClient } from 'npm:@libsql/client';
 import type { Db } from './client.ts';
 
 interface MigrationTarget {
@@ -132,9 +133,26 @@ async function pruneBackups(): Promise<void> {
 async function tryRecover(dbPath: string): Promise<boolean> {
   if (!await exists(dbPath)) return false;
 
-  const stat = await Deno.stat(dbPath);
-  const walExists = await exists(dbPath + '-wal');
-  if (stat.size > 4096 || walExists) return false;
+  // Try opening the DB. SQLite auto-recovers WAL from unclean shutdown.
+  // Only treat as corrupt if it throws SQLITE_CORRUPT.
+  let isCorrupt = false;
+  try {
+    const testClient = createClient({ url: `file:${dbPath}` });
+    await testClient.execute('SELECT 1');
+    testClient.close();
+  } catch (e) {
+    if ((e as Error).message?.includes('SQLITE_CORRUPT') ||
+        (e as Error).message?.includes('disk image is malformed')) {
+      console.log(`  ⚠ ${basename(dbPath)} is corrupted (SQLITE_CORRUPT) — will recover`);
+      isCorrupt = true;
+    } else {
+      // Other errors (permission, etc.) — don't try to recover
+      console.error(`  ✗ ${basename(dbPath)} open failed: ${(e as Error).message}`);
+      return false;
+    }
+  }
+
+  if (!isCorrupt) return false;
 
   const entries: Deno.DirEntry[] = [];
   for await (const entry of Deno.readDir(PATHS.backupsDir)) {
@@ -151,7 +169,7 @@ async function tryRecover(dbPath: string): Promise<boolean> {
     if (backupStat.size <= 4096) continue;
 
     console.log(
-      `  ⚠ ${basename(dbPath)} appears freshly created — restoring from backup ${entry.name}`,
+      `  ⚠ ${basename(dbPath)} is corrupted — restoring from backup ${entry.name}`,
     );
 
     for (const suffix of ['', '-wal', '-shm']) {
@@ -168,6 +186,12 @@ async function tryRecover(dbPath: string): Promise<boolean> {
     }
 
     return true;
+  }
+
+  if (isCorrupt) {
+    console.error(
+      `  ✗ ${basename(dbPath)} is corrupted and no backup exists — manual recovery required`,
+    );
   }
 
   return false;

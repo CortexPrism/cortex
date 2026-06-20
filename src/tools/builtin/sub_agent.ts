@@ -1,8 +1,168 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
+import { logger } from '../../utils/logger.ts';
 import { spawnSubAgent } from '../../agent/sub-agent.ts';
 import type { ProviderKind } from '../../config/config.ts';
 import { getSubAgentType, type SubAgentType } from '../../agent/sub-agent-types.ts';
 import { trackSubAgentEnd, trackSubAgentStart } from '../../agent/sub-agent-tracker.ts';
+
+const _log = logger('tool:sub_agent');
+
+async function executeOnce(
+  args: Record<string, unknown>,
+  context: ToolContext,
+  task: string,
+  startTime: number,
+  subAgentType: SubAgentType | undefined,
+  retryId?: string,
+): Promise<ToolCallResult> {
+  const subAgentId = retryId ||
+    `sa_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const chunks: string[] = [];
+  const typeDef = subAgentType ? getSubAgentType(subAgentType) : undefined;
+
+  // Notify client
+  if (context.onProgress) {
+    context.onProgress({
+      type: 'sub_agent_start',
+      id: subAgentId,
+      task,
+      subAgentType,
+    });
+  }
+  if (!retryId) {
+    trackSubAgentStart(subAgentId, context.sessionId, task, subAgentType);
+  }
+
+  try {
+    const iter = spawnSubAgent({
+      parentSessionId: context.sessionId,
+      instruction: task,
+      config: {
+        agentId: args.agent as string | undefined,
+        model: args.model as string | undefined,
+        provider: args.provider as ProviderKind | undefined,
+        systemPrompt: args.system_prompt as string | undefined,
+        tools: args.tools
+          ? (() => {
+            const requested = String(args.tools).split(',').map((s) => s.trim()).filter(Boolean);
+            const allowed = typeDef?.tools;
+            if (!allowed || allowed.length === 0) return requested;
+            return requested.filter((t) => allowed.includes(t));
+          })()
+          : typeDef?.tools ?? undefined,
+        maxTurns: typeDef?.maxTurns,
+      },
+      inheritedModel: context.model,
+      inheritedProvider: context.provider,
+      subAgentType,
+    });
+
+    for await (const event of iter) {
+      switch (event.type) {
+        case 'chunk':
+          chunks.push(event.delta);
+          if (context.onProgress) {
+            context.onProgress({
+              type: 'sub_agent_chunk',
+              id: subAgentId,
+              delta: event.delta,
+            });
+          }
+          break;
+        case 'done': {
+          const duration = Date.now() - startTime;
+          const result = event.result.response || chunks.join('');
+          if (!retryId) {
+            trackSubAgentEnd(subAgentId, event.result.success, result, undefined, subAgentType);
+          }
+          if (context.onProgress) {
+            context.onProgress({
+              type: 'sub_agent_end',
+              id: subAgentId,
+              result,
+              success: event.result.success,
+            });
+          }
+          return {
+            toolName: 'sub_agent',
+            success: event.result.success,
+            output: result,
+            durationMs: duration,
+          };
+        }
+        case 'error':
+          if (!retryId) {
+            trackSubAgentEnd(subAgentId, false, chunks.join(''), event.error, subAgentType);
+          }
+          if (context.onProgress) {
+            context.onProgress({
+              type: 'sub_agent_end',
+              id: subAgentId,
+              result: chunks.join(''),
+              success: false,
+              error: event.error,
+            });
+          }
+          return {
+            toolName: 'sub_agent',
+            success: false,
+            output: chunks.join(''),
+            error: event.error,
+            durationMs: Date.now() - startTime,
+          };
+      }
+    }
+
+    const errMsg = 'Sub-agent finished without returning a result';
+    if (context.onProgress) {
+      context.onProgress({
+        type: 'sub_agent_end',
+        id: subAgentId,
+        result: chunks.join(''),
+        success: false,
+        error: errMsg,
+      });
+    }
+    if (!retryId) {
+      trackSubAgentEnd(subAgentId, false, chunks.join(''), errMsg, subAgentType);
+    }
+    return {
+      toolName: 'sub_agent',
+      success: false,
+      output: chunks.join(''),
+      error: errMsg,
+      durationMs: Date.now() - startTime,
+    };
+  } catch (e) {
+    const errMsg = `Sub-agent error: ${(e as Error).message}`;
+    if (context.onProgress) {
+      context.onProgress({
+        type: 'sub_agent_end',
+        id: subAgentId,
+        result: chunks.join(''),
+        success: false,
+        error: errMsg,
+      });
+    }
+    return {
+      toolName: 'sub_agent',
+      success: false,
+      output: chunks.join(''),
+      error: errMsg,
+      durationMs: Date.now() - startTime,
+    };
+  }
+}
+
+async function executeWithRetry(
+  args: Record<string, unknown>,
+  context: ToolContext,
+  task: string,
+  startTime: number,
+  subAgentType: SubAgentType | undefined,
+): Promise<ToolCallResult> {
+  return await executeOnce(args, context, task, startTime, subAgentType);
+}
 
 export const subAgentTool: Tool = {
   definition: {
@@ -29,6 +189,12 @@ Use the "type" parameter to select a specialized agent:
 - **plan** — Plans complex tasks into detailed step-by-step execution plans. Read-only, no modifications.
 - **code** — Writes and edits code. Full file system access for reading, writing, and editing.
 - **research** — Web research agent. Searches, reads documentation, synthesizes findings. Cannot modify files.
+- **security** — Audits code for vulnerabilities (OWASP Top 10), secrets, and insecure patterns. Read-only.
+- **debug** — Diagnoses and fixes bugs. Reproduces, isolates root cause, applies minimal fix, verifies.
+- **architect** — Designs system architecture with trade-off analysis, data models, and API design. Read-only.
+- **devops** — Manages infrastructure, CI/CD, containers, and deployment. Has shell access.
+- **data** — Analyzes data, runs queries, produces insights and visualizations. Database and code execution access.
+- **ui** — Designs and builds user interfaces. Creates HTML/CSS/JS with accessibility and responsive design.
 
 ## Parallel Usage
 When you need to do multiple independent things at once, make multiple \`sub_agent\` tool calls in the same message. Each runs concurrently.`,
@@ -43,9 +209,21 @@ When you need to do multiple independent things at once, make multiple \`sub_age
         name: 'type',
         type: 'string',
         description:
-          'Sub-agent type: "explore", "general", "plan", "code", or "research". Choose based on the task nature. Defaults to "general".',
+          'Sub-agent type. Choose based on the task nature. Defaults to "general". Available types: explore (codebase search), general (multi-step tasks), plan (execution planning), code (writing/editing), research (web research), security (vulnerability audit), debug (bug diagnosis/fix), architect (system design), devops (infrastructure/CI/CD), data (analytics/queries), ui (interface design/build).',
         required: false,
-        enum: ['explore', 'general', 'plan', 'code', 'research'],
+        enum: [
+          'explore',
+          'general',
+          'plan',
+          'code',
+          'research',
+          'security',
+          'debug',
+          'architect',
+          'devops',
+          'data',
+          'ui',
+        ],
       },
       {
         name: 'agent',
@@ -57,13 +235,13 @@ When you need to do multiple independent things at once, make multiple \`sub_age
       {
         name: 'model',
         type: 'string',
-        description: 'Override the model for this sub-agent (e.g. "gpt-4o", "claude-sonnet-4-5")',
+        description: 'Override the model for this sub-agent. Use only models from providers configured in Settings. Leave empty to inherit the current chat model.',
         required: false,
       },
       {
         name: 'provider',
         type: 'string',
-        description: 'Override the provider (anthropic, openai, ollama)',
+        description: 'Override the provider. Use only providers configured in Settings. Leave empty to inherit from the current chat.',
         required: false,
       },
       {
@@ -99,137 +277,30 @@ When you need to do multiple independent things at once, make multiple \`sub_age
     }
 
     const startTime = Date.now();
-    const subAgentId = `sa_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const chunks: string[] = [];
-
-    // Resolve sub-agent type configuration
     const subAgentType = args.type as SubAgentType | undefined;
-    const typeDef = subAgentType ? getSubAgentType(subAgentType) : undefined;
 
-    // Notify client that a sub-agent has started
-    if (context.onProgress) {
-      context.onProgress({
-        type: 'sub_agent_start',
-        id: subAgentId,
-        task,
-        subAgentType,
+    // Prevent recursive sub-agent depth explosion.
+    // Sub-agents can spawn 1 level deep (the retry fallback for general type).
+    // Beyond that, refuse — the retry's tool set already excludes sub_agent.
+    const depth = (context.sessionId.match(/sub_/g) || []).length;
+    if (depth >= 2) {
+      _log.warn(`Refusing sub-agent spawn at depth ${depth} to prevent recursion`, {
+        sessionId: context.sessionId,
+        requestedType: subAgentType,
       });
-    }
-    trackSubAgentStart(subAgentId, context.sessionId, task, subAgentType);
-
-    try {
-      const iter = spawnSubAgent({
-        parentSessionId: context.sessionId,
-        instruction: task,
-        config: {
-          agentId: args.agent as string | undefined,
-          model: args.model as string | undefined,
-          provider: args.provider as ProviderKind | undefined,
-          systemPrompt: args.system_prompt as string | undefined,
-          tools: args.tools
-            ? (() => {
-              const requested = String(args.tools).split(',').map((s) => s.trim()).filter(Boolean);
-              const allowed = typeDef?.tools;
-              if (!allowed || allowed.length === 0) return requested;
-              return requested.filter((t) => allowed.includes(t));
-            })()
-            : typeDef?.tools ?? undefined,
-          maxTurns: typeDef?.maxTurns,
-        },
-        subAgentType,
-      });
-
-      for await (const event of iter) {
-        switch (event.type) {
-          case 'chunk':
-            chunks.push(event.delta);
-            if (context.onProgress) {
-              context.onProgress({
-                type: 'sub_agent_chunk',
-                id: subAgentId,
-                delta: event.delta,
-              });
-            }
-            break;
-          case 'done': {
-            const duration = Date.now() - startTime;
-            const result = event.result.response || chunks.join('');
-            trackSubAgentEnd(subAgentId, event.result.success, result);
-            if (context.onProgress) {
-              context.onProgress({
-                type: 'sub_agent_end',
-                id: subAgentId,
-                result,
-                success: event.result.success,
-              });
-            }
-            return {
-              toolName: 'sub_agent',
-              success: event.result.success,
-              output: result,
-              durationMs: duration,
-            };
-          }
-          case 'error':
-            trackSubAgentEnd(subAgentId, false, chunks.join(''), event.error);
-            if (context.onProgress) {
-              context.onProgress({
-                type: 'sub_agent_end',
-                id: subAgentId,
-                result: chunks.join(''),
-                success: false,
-                error: event.error,
-              });
-            }
-            return {
-              toolName: 'sub_agent',
-              success: false,
-              output: chunks.join(''),
-              error: event.error,
-              durationMs: Date.now() - startTime,
-            };
-        }
-      }
-
-      if (context.onProgress) {
-        context.onProgress({
-          type: 'sub_agent_end',
-          id: subAgentId,
-          result: chunks.join(''),
-          success: false,
-          error: 'Sub-agent finished without returning a result',
-        });
-      }
-      trackSubAgentEnd(
-        subAgentId,
-        false,
-        chunks.join(''),
-        'Sub-agent finished without returning a result',
-      );
       return {
         toolName: 'sub_agent',
         success: false,
-        output: chunks.join(''),
-        error: 'Sub-agent finished without returning a result',
-        durationMs: Date.now() - startTime,
-      };
-    } catch (e) {
-      if (context.onProgress) {
-        context.onProgress({
-          type: 'sub_agent_end',
-          id: subAgentId,
-          result: chunks.join(''),
-          success: false,
-          error: `Sub-agent error: ${(e as Error).message}`,
-        });
-      }
-      return {
-        toolName: 'sub_agent',
-        success: false,
-        output: chunks.join(''),
-        error: `Sub-agent error: ${(e as Error).message}`,
-        durationMs: Date.now() - startTime,
+        output: '',
+        error:
+          `Sub-agent recursion limit reached (depth ${depth}). Task must be completed directly.`,
+        durationMs: 0,
       };
     }
+
+    // Execute with retry: if a specialized type fails, fall back to 'general'
+    const result = await executeWithRetry(args, context, task, startTime, subAgentType);
+
+    return result;
   },
 };

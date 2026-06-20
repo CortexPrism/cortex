@@ -38,6 +38,7 @@ async function main(): Promise<void> {
 
   const port = Number(flags['port'] || 0);
 
+  Deno.env.set('CORTEX_NOLENS', '1');
   await runMigrations();
   const def = await getService(serviceId);
   if (!def) {
@@ -129,6 +130,8 @@ async function main(): Promise<void> {
               workingDir: Deno.cwd(),
               agentId: agent.id,
               workspaceDir: Deno.cwd(),
+              model,
+              provider: providerKind as import('../config/config.ts').ProviderKind,
               approvalGate: async (tool: string, command: string, sampleData?: string) => {
                 return await requestHumanApproval(
                   {
