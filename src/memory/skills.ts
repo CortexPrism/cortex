@@ -882,6 +882,45 @@ Tool calls:
 Response: {"skip": true}
 `;
 
+const SKILL_EXTRACTION_MIN_TOOL_CALLS = 4;
+
+const SKILL_NAME_BLOCKLIST = new Set([
+  'test', 'debug', 'temp', 'tmp', 'foo', 'bar', 'example', 'sample',
+  'untitled', 'new_skill', 'test_skill', 'debug_skill', 'temp_skill',
+  'helper', 'util', 'misc', 'stuff', 'thing', 'untitled_skill',
+]);
+
+const SKILL_NAME_BLOCKED_PREFIXES = [
+  'test_', 'debug_', 'temp_', 'tmp_', 'test-', 'debug-', 'temp-',
+];
+
+const lastExtractedSession = new Set<string>();
+const MAX_EXTRACTED_SESSION_CACHE = 10_000;
+
+function markSessionExtracted(sessionId: string): void {
+  if (lastExtractedSession.size >= MAX_EXTRACTED_SESSION_CACHE) {
+    const iter = lastExtractedSession.values();
+    for (let i = 0; i < 1000; i++) {
+      const next = iter.next();
+      if (next.done) break;
+      lastExtractedSession.delete(next.value);
+    }
+  }
+  lastExtractedSession.add(sessionId);
+}
+
+export function resetSkillExtractionThrottle(): void {
+  lastExtractedSession.clear();
+}
+
+function isRejectedSkillName(name: string): boolean {
+  const normalized = name.toLowerCase().trim();
+  if (normalized.length < 5) return true;
+  if (SKILL_NAME_BLOCKLIST.has(normalized)) return true;
+  if (SKILL_NAME_BLOCKED_PREFIXES.some((p) => normalized.startsWith(p))) return true;
+  return false;
+}
+
 export async function extractSkillFromSession(
   sessionId: string,
   taskDescription: string,
@@ -889,7 +928,12 @@ export async function extractSkillFromSession(
   provider: LLMProvider,
   model: string,
 ): Promise<string | null> {
-  if (toolCalls.length < 2) return null;
+  if (toolCalls.length < SKILL_EXTRACTION_MIN_TOOL_CALLS) return null;
+
+  if (lastExtractedSession.has(sessionId)) return null;
+
+  const uniqueTools = new Set(toolCalls.map((tc) => tc.tool));
+  if (uniqueTools.size < 2) return null;
 
   const toolSummary = toolCalls
     .map((tc, i) =>
@@ -945,6 +989,10 @@ Important rules:
       return null;
     }
 
+    if (isRejectedSkillName(parsed.name)) {
+      return null;
+    }
+
     const steps: SkillStep[] = parsed.steps.map((
       s: Record<string, unknown>,
       i: number,
@@ -989,6 +1037,8 @@ Important rules:
           : undefined,
       },
     });
+
+    markSessionExtracted(sessionId);
 
     return skillId;
   } catch {
