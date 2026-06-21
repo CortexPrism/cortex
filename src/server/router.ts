@@ -1066,12 +1066,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
     const dbFiles: Record<string, number> = {};
     try {
-      for (const [name, fname] of Object.entries({
-        core: 'cortex.db',
-        lens: 'lens.db',
-        memory: 'memory.db',
-        sessions: 'sessions.db',
-      })) {
+      for (
+        const [name, fname] of Object.entries({
+          core: 'cortex.db',
+          lens: 'lens.db',
+          memory: 'memory.db',
+          sessions: 'sessions.db',
+        })
+      ) {
         try {
           const fi = await Deno.stat(join(PATHS.dataDir, fname));
           dbFiles[name] = fi.size;
@@ -1083,7 +1085,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
       try {
         const m = Deno.memoryUsage();
         return { heapUsed: m.heapUsed, heapTotal: m.heapTotal, external: m.external, rss: m.rss };
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     })();
 
     return json({

@@ -87,8 +87,10 @@ export const jobsCommand = cortexCommand('jobs')
               console.log(`    recent runs:`);
               for (const r of runs) {
                 const dur = r.duration_ms ? ` (${r.duration_ms}ms)` : '';
-                const status = r.status === 'completed' ? green(r.status)
-                  : r.status === 'failed' ? red(r.status)
+                const status = r.status === 'completed'
+                  ? green(r.status)
+                  : r.status === 'failed'
+                  ? red(r.status)
                   : cyan(r.status);
                 console.log(`      ${dim(r.id)} ${status}${dur}`);
                 if (r.message && verbose) console.log(`        ${dim(r.message.slice(0, 200))}`);
@@ -145,7 +147,11 @@ export const jobsCommand = cortexCommand('jobs')
     'recover',
     cortexCommand('recover')
       .description('Recover stale/stuck running jobs (mark as failed or requeue for retry)')
-      .option('--timeout-mins <n:number>', 'Timeout in minutes for a running job to be considered stale', { default: 10 })
+      .option(
+        '--timeout-mins <n:number>',
+        'Timeout in minutes for a running job to be considered stale',
+        { default: 10 },
+      )
       .needs('migrations')
       .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
         const timeoutMs = (opts.timeoutMins as number) * 60_000;

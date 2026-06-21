@@ -1,4 +1,10 @@
-import { getDueJobs, markJobDone, markJobFailed, markJobRunning, recoverStaleJobs } from '../scheduler/scheduler.ts';
+import {
+  getDueJobs,
+  markJobDone,
+  markJobFailed,
+  markJobRunning,
+  recoverStaleJobs,
+} from '../scheduler/scheduler.ts';
 import { runConsolidation } from '../memory/consolidate.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { nextCronDate } from '../scheduler/cron.ts';
@@ -53,7 +59,12 @@ async function runDueJobs(): Promise<void> {
         await runConsolidation(kind);
         const elapsed = Date.now() - t0;
         await markJobDone(job.id, runId, { durationMs: elapsed });
-        _log.info(`job completed`, { jobId: job.id, name: job.name, duration: formatDuration(elapsed), kind: 'consolidate' });
+        _log.info(`job completed`, {
+          jobId: job.id,
+          name: job.name,
+          duration: formatDuration(elapsed),
+          kind: 'consolidate',
+        });
 
         if (job.kind === 'cron' && job.schedule) {
           await reschedule(job.id, job.schedule);
