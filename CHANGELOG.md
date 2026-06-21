@@ -5,6 +5,17 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.48.1] — 2026-06-21
+
+### Fixed
+
+- **VSplit/HSplit key dispatch** — split-pane layouts weren't adding children to the component tree, blocking keyboard input in nested panels.
+- **TUI enter key decoded as Ctrl+M** — reordered byte checks so the Enter key (0x0A/0x0D) is recognized before the Ctrl+M control range, fixing message submission and approval gate input.
+- **TUI enter key input clearing** — `onSubmit` handler now unconditionally clears text, added missing `await` on key handler, and wrapped handling in try/catch for robustness.
+- **TUI logging pollution** — silenced agent-loop stdout output during interactive sessions while preserving file logs.
+- **TUI duplicate render path** — root renderer was traversing nested children after splits had already rendered them, causing flicker. Root now only paints top-level mounted components once.
+- **I18n key sync** — synced `cli.tui` i18n keys across all 10 locales to ensure consistent fallback behavior.
+
 ## [0.48.0] — 2026-06-21
 
 ### Added
