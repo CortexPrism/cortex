@@ -31,6 +31,7 @@ import type {
   Message,
 } from './types.ts';
 import type { CortexConfig, ProviderConfig, ProviderKind } from '../config/config.ts';
+import { wrapProvider } from '../observability/provider-wrapper.ts';
 
 // ═══════════════════════════════════════════════════════════════════
 // Default context windows by provider (in tokens)
@@ -187,14 +188,14 @@ export function buildProvider(config: CortexConfig): LLMProvider {
     );
   }
 
-  return createProvider(kind, providerConfig);
+  return wrapProvider(createProvider(kind, providerConfig));
 }
 
 export function buildProviderFromConfig(
   kind: ProviderKind,
   cfg: ProviderConfig,
 ): LLMProvider {
-  return createProvider(kind, cfg);
+  return wrapProvider(createProvider(kind, cfg));
 }
 
 // ═══════════════════════════════════════════════════════════════════

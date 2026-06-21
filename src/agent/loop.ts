@@ -1,8 +1,7 @@
 import { logger } from '../utils/logger.ts';
 import type { LLMProvider } from '../llm/types.ts';
-import type { ContentBlock, Message } from '../llm/types.ts';
+import type { CompletionOptions, ContentBlock, Message } from '../llm/types.ts';
 import type { Db } from '../db/client.ts';
-import { logEvent } from '../db/lens.ts';
 import { incrementTurn } from '../db/sessions.ts';
 import type { ToolRegistry } from '../tools/registry.ts';
 import type { ToolCallResult, ToolContext } from '../tools/types.ts';
@@ -34,12 +33,12 @@ import {
 import { buildNodeContextSection, injectNodeContext } from './node-context.ts';
 import type { ProviderKind } from '../config/config.ts';
 import {
-  generationCreate,
   isConfigured as langfuseConfigured,
   spanCreate,
   spanUpdate,
   traceCreate,
 } from '../observability/langfuse.ts';
+import { OBS_CONTEXT } from '../observability/provider-wrapper.ts';
 import { i18n } from '../i18n/service.ts';
 
 const _log = logger('agent:loop');
@@ -772,18 +771,27 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         includeVeniceSystemPrompt: options.includeVeniceSystemPrompt,
       };
 
+      const streamObsCtx = {
+        sessionId,
+        turnId,
+        actor: 'agent',
+        parentTraceId: turnId,
+      };
+
       const pendingToolCalls = new Map<number, { name: string; jsonFragments: string[] }>();
       let hasStructuredToolCalls = false;
 
       if (useDirectStream) {
         _log.debug(`Using direct stream`, { round });
+        const streamOpts: Record<string | symbol, unknown> = {
+          messages: currentMessages,
+          model: effectiveModel,
+          systemPrompt: nodeAwareSystemPrompt,
+          ...providerOpts,
+        };
+        streamOpts[OBS_CONTEXT] = streamObsCtx;
         for await (
-          const chunk of effectiveProvider.stream({
-            messages: currentMessages,
-            model: effectiveModel,
-            systemPrompt: nodeAwareSystemPrompt,
-            ...providerOpts,
-          })
+          const chunk of effectiveProvider.stream(streamOpts as unknown as CompletionOptions)
         ) {
           if (!chunk.done) {
             roundResponse += chunk.delta;
@@ -810,14 +818,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         }
 
         try {
+          const bufferedOpts: Record<string | symbol, unknown> = {
+            messages: currentMessages,
+            model: effectiveModel,
+            systemPrompt: nodeAwareSystemPrompt,
+            ...providerOpts,
+            signal: abortCtrl.signal,
+          };
+          bufferedOpts[OBS_CONTEXT] = streamObsCtx;
           for await (
-            const chunk of effectiveProvider.stream({
-              messages: currentMessages,
-              model: effectiveModel,
-              systemPrompt: nodeAwareSystemPrompt,
-              ...providerOpts,
-              signal: abortCtrl.signal,
-            })
+            const chunk of effectiveProvider.stream(bufferedOpts as unknown as CompletionOptions)
           ) {
             if (!chunk.done) {
               if (
@@ -935,23 +945,6 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         count: toolCalls.length,
         names: toolCalls.map((t) => t.toolName).join(','),
       });
-      if (langfuseConfigured()) {
-        generationCreate({
-          traceId: turnId,
-          id: `${turnId}-round-${round}`,
-          name: `llm-round-${round}`,
-          parentObservationId: turnId,
-          startTime: startedAt,
-          endTime: new Date().toISOString(),
-          model: effectiveModel,
-          input: currentMessages.slice(-2).map((m) => ({
-            role: m.role,
-            content: typeof m.content === 'string' ? m.content.slice(0, 500) : m.content,
-          })),
-          output: roundResponse.slice(0, 2000),
-          usage: { input: tokensIn, output: tokensOut, unit: 'TOKENS' },
-        });
-      }
 
       // Detect if agent is stuck promising to use tools but not actually calling them
       const hasToolPromises =
@@ -1106,13 +1099,13 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
             !/\{\s*"(?:tool|name)"\s*:/.test(roundResponse) &&
             /<tool_call>/.test(roundResponse)));
 
-        if (hasMalformedToolCall) {
+      if (hasMalformedToolCall) {
         _log.warn(`Malformed tool call detected, asking LLM to retry with correct format`, {
           round,
           responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
         });
         const blockHint = hasToolCallBlock
-          ? ' The JSON inside your <tool_call> block could not be parsed — this is usually because the string values contain unescaped double quotes (\") or other special characters. Make sure ALL double quotes INSIDE string values are escaped as \\".'
+          ? ' The JSON inside your <tool_call> block could not be parsed — this is usually because the string values contain unescaped double quotes (") or other special characters. Make sure ALL double quotes INSIDE string values are escaped as \\".'
           : '';
         currentMessages = [
           ...currentMessages,
@@ -1496,21 +1489,6 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
           }),
           extractAndStoreEntities(`${userMessage} ${response}`, sessionId),
           detectAndPersistPreference(userMessage),
-          logEvent({
-            event_type: 'llm_call',
-            session_id: sessionId,
-            turn_id: turnId,
-            actor: 'agent',
-            action: 'llm_call',
-            summary: userMessage.slice(0, 120),
-            model: effectiveModel,
-            tokens_in: tokensIn,
-            tokens_out: tokensOut,
-            cost_usd: costUsd,
-            started_at: startedAt,
-            duration_ms: durationMs,
-            error: errorMsg,
-          }),
         ]);
 
         // Handle reflection separately since it has additional dependencies
