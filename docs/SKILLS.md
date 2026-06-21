@@ -601,7 +601,7 @@ deno task migrate
 deno test --allow-all tests/skills_eval_test.ts
 
 # Start the server to access the Skills Web UI
-cortex serve
+cortex server start
 # Then open http://127.0.0.1:3000 → Skills tab
 ```
 

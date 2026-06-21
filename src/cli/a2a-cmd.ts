@@ -11,8 +11,8 @@ export const a2aCommand = cortexCommand('a2a')
     console.log('  Google Agent2Agent (A2A) v1.0 protocol for cross-framework agent interop.');
     console.log('');
     console.log(bold('Actions'));
-    console.log(`  ${cyan('cortex a2a card')}     — Display the Cortex agent card`);
-    console.log(`  ${cyan('cortex a2a skills')}   — List registered agent skills`);
+    console.log(`  ${cyan('cortex mcp a2a card')}     — Display the Cortex agent card`);
+    console.log(`  ${cyan('cortex mcp a2a skills')}   — List registered agent skills`);
     console.log('');
   });
 

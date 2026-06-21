@@ -1,9 +1,8 @@
 {
   "_meta": {
-    "locale": "ar",
+    "locale": "en",
     "version": "1.0.0",
-    "lastUpdated": "2026-06-20T00:00:00Z",
-    "direction": "rtl"
+    "lastUpdated": "2026-06-20T00:00:00Z"
   },
   "cli": {
     "serve": {
@@ -47,7 +46,7 @@
       },
       "sessionClosed": "Session closed.",
       "cost": {
-        "withCost": "[{durationMs}ms · ${costUsd}]",
+        "withCost": "[{durationMs}ms \u00b7 ${costUsd}]",
         "withoutCost": "[{durationMs}ms]"
       },
       "help": {
@@ -72,12 +71,12 @@
         "prompt": "{tool} action requires approval:\n  {command}\n  Sample: {sample}\n  Allow? [y/N] "
       },
       "prompt": {
-        "you": "You › ",
-        "agent": "Cortex › "
+        "you": "You \u203a ",
+        "agent": "Cortex \u203a "
       }
     },
     "setup": {
-      "commandDescription": "Configure Cortex — LLM provider, channels, personality, voice, vector memory, and more",
+      "commandDescription": "Configure Cortex \u2014 LLM provider, channels, personality, voice, vector memory, and more",
       "noTerminal": "Interactive setup requires a terminal.",
       "noTerminalHint": "Run `cortex setup` in a terminal to configure your LLM provider.",
       "welcomeBanner": "Welcome to Cortex!",
@@ -90,16 +89,16 @@
       "ready": "Cortex is ready!",
       "quickCommandsTitle": "Quick commands:",
       "quick": {
-        "startChat": "{command} → Start interactive chat",
-        "oneShot": "{command} → One-shot command",
-        "status": "{command} → View agent status",
-        "help": "{command} → See all commands"
+        "startChat": "{command} \u2192 Start interactive chat",
+        "oneShot": "{command} \u2192 One-shot command",
+        "status": "{command} \u2192 View agent status",
+        "help": "{command} \u2192 See all commands"
       },
       "nextStepsTitle": "Next steps:",
       "next": {
-        "pluginList": "{command} → Browse available plugins",
-        "configEdit": "{command} → Customize settings",
-        "docs": "{command} → Open documentation"
+        "pluginList": "{command} \u2192 Browse available plugins",
+        "configEdit": "{command} \u2192 Customize settings",
+        "docs": "{command} \u2192 Open documentation"
       },
       "web": {
         "starting": "Starting web server for browser-based setup...",
@@ -236,40 +235,40 @@
         "huggingface": "Hugging Face",
         "alibaba": "Alibaba (Qwen)",
         "venice": "Venice AI",
-        "skip": "Skip — I'll configure later"
+        "skip": "Skip \u2014 I'll configure later"
       },
       "channel": {
-        "web": "Web UI — Dashboard on port 3000",
-        "discord": "Discord — Agent on your server",
-        "slack": "Slack — Team collaboration",
-        "telegram": "Telegram — Instant messaging",
-        "teams": "Microsoft Teams — Enterprise chat",
-        "mattermost": "Mattermost — Self-hosted messaging",
-        "rocketchat": "Rocket.Chat — Open-source chat",
-        "whatsapp": "WhatsApp — Business messaging",
-        "googleChat": "Google Chat — Workspace integration",
-        "lark": "Lark — All-in-one collaboration"
+        "web": "Web UI \u2014 Dashboard on port 3000",
+        "discord": "Discord \u2014 Agent on your server",
+        "slack": "Slack \u2014 Team collaboration",
+        "telegram": "Telegram \u2014 Instant messaging",
+        "teams": "Microsoft Teams \u2014 Enterprise chat",
+        "mattermost": "Mattermost \u2014 Self-hosted messaging",
+        "rocketchat": "Rocket.Chat \u2014 Open-source chat",
+        "whatsapp": "WhatsApp \u2014 Business messaging",
+        "googleChat": "Google Chat \u2014 Workspace integration",
+        "lark": "Lark \u2014 All-in-one collaboration"
       },
       "personality": {
-        "professional": "Professional — Concise, precise, business-ready",
-        "friendly": "Friendly — Warm, helpful, casual",
-        "developer": "Developer — Technical, direct, code-aware",
-        "creative": "Creative — Imaginative, expressive, lateral",
-        "analyst": "Analyst — Logical, structured, evidence-based",
-        "teacher": "Teacher — Patient, explanatory, mentoring",
-        "minimalist": "Minimalist — Brief, concise, no fluff",
-        "custom": "Custom — I'll write my own SOUL.md"
+        "professional": "Professional \u2014 Concise, precise, business-ready",
+        "friendly": "Friendly \u2014 Warm, helpful, casual",
+        "developer": "Developer \u2014 Technical, direct, code-aware",
+        "creative": "Creative \u2014 Imaginative, expressive, lateral",
+        "analyst": "Analyst \u2014 Logical, structured, evidence-based",
+        "teacher": "Teacher \u2014 Patient, explanatory, mentoring",
+        "minimalist": "Minimalist \u2014 Brief, concise, no fluff",
+        "custom": "Custom \u2014 I'll write my own SOUL.md"
       },
       "embedding": {
-        "openai": "OpenAI (text-embedding-3-small) — Best quality",
-        "ollama": "Ollama (local) — Free, private",
-        "stub": "Stub — Minimal memory (default)"
+        "openai": "OpenAI (text-embedding-3-small) \u2014 Best quality",
+        "ollama": "Ollama (local) \u2014 Free, private",
+        "stub": "Stub \u2014 Minimal memory (default)"
       },
       "vector": {
-        "sqlite": "SQLite (built-in) — No setup required",
-        "qdrant": "Qdrant — Self-hosted or cloud",
-        "chromadb": "ChromaDB — Open-source",
-        "pinecone": "Pinecone — Managed cloud"
+        "sqlite": "SQLite (built-in) \u2014 No setup required",
+        "qdrant": "Qdrant \u2014 Self-hosted or cloud",
+        "chromadb": "ChromaDB \u2014 Open-source",
+        "pinecone": "Pinecone \u2014 Managed cloud"
       },
       "voice": {
         "stt": {
@@ -295,13 +294,13 @@
       }
     },
     "sessions": {
-      "empty": "No sessions yet. Run `cortex agent chat` to start one.",
+      "empty": "No sessions yet. Run `cortex chat` to start one.",
       "heading": "Recent Sessions",
       "oneTurn": "1 turn",
       "turnCount": "{count} turns",
       "childOf": "child of",
-      "subAgent": "⤷ {count} sub-agent",
-      "subAgents": "⤷ {count} sub-agents",
+      "subAgent": "\u2937 {count} sub-agent",
+      "subAgents": "\u2937 {count} sub-agents",
       "stillActive": "{count} session(s) still active (process may have crashed)",
       "commandDescription": "List recent chat sessions",
       "option": {
@@ -312,13 +311,13 @@
       "empty": "No jobs found.",
       "heading": "Jobs",
       "attempts": "{ratio} attempts",
-      "created": "✓ Job created: {id}",
-      "cancelled": "✓ Cancelled: {id}",
+      "created": "\u2713 Job created: {id}",
+      "cancelled": "\u2713 Cancelled: {id}",
       "noDue": "No jobs due.",
-      "running": "Running: {name} — {command}",
-      "done": "✓ Done: {name}",
-      "failedWithExit": "✗ Failed (exit {code}): {name}",
-      "error": "✗ Error: {message}",
+      "running": "Running: {name} \u2014 {command}",
+      "done": "\u2713 Done: {name}",
+      "failedWithExit": "\u2717 Failed (exit {code}): {name}",
+      "error": "\u2717 Error: {message}",
       "commandDescription": "Manage scheduled jobs",
       "listDescription": "List all jobs",
       "addDescription": "Schedule a new shell command job",
@@ -335,14 +334,14 @@
       "cannotReadFile": "Error: cannot read file: {file}",
       "running": "Running: {file}",
       "languageRuntime": "Language: {lang}  Runtime: {runtime}",
-      "failed": "✗ Failed (exit {code})",
+      "failed": "\u2717 Failed (exit {code})",
       "tipAutoFix": "Tip: use --fix to enable LLM auto-fix loop",
-      "success": "✓ Success",
+      "success": "\u2713 Success",
       "autoFixEnabled": "Auto-fix enabled (max {rounds} rounds)",
-      "llmProposedFix": "→ LLM proposed fix ({chars} chars)",
-      "succeededAfter": "✓ Succeeded after {rounds} round(s)",
+      "llmProposedFix": "\u2192 LLM proposed fix ({chars} chars)",
+      "succeededAfter": "\u2713 Succeeded after {rounds} round(s)",
       "finalCode": "Final code:",
-      "stillFailing": "✗ Still failing after {rounds} round(s)",
+      "stillFailing": "\u2717 Still failing after {rounds} round(s)",
       "finalError": "Final error:",
       "commandDescription": "Execute code in a sandbox with optional LLM auto-fix loop",
       "option": {
@@ -355,12 +354,12 @@
     "reflect": {
       "empty": "No reflection patterns yet. Run some chat sessions first.",
       "heading": "Reflection Patterns",
-      "consolidating": "Running reflection consolidation…",
-      "extracted": "✓ Extracted {count} meta-pattern(s)",
+      "consolidating": "Running reflection consolidation\u2026",
+      "extracted": "\u2713 Extracted {count} meta-pattern(s)",
       "noNewPatterns": "No new meta-patterns found (need more data or patterns already consolidated)",
       "commandDescription": "Inspect and consolidate agent reflection memory",
       "listDescription": "List stored reflection patterns",
-      "consolidateDescription": "Run LLM consolidation pass — extract meta-patterns from observed patterns",
+      "consolidateDescription": "Run LLM consolidation pass \u2014 extract meta-patterns from observed patterns",
       "option": {
         "limit": "Max results",
         "category": "Filter by category"
@@ -368,10 +367,10 @@
     },
     "vault": {
       "emptyValue": "Error: value cannot be empty",
-      "stored": "✓ Stored: {name} [{id}]",
+      "stored": "\u2713 Stored: {name} [{id}]",
       "empty": "No vault entries.",
       "heading": "Vault Entries",
-      "deleted": "✓ Deleted: {name}",
+      "deleted": "\u2713 Deleted: {name}",
       "notFound": "Not found: {name}",
       "commandDescription": "Manage encrypted credential vault",
       "storeDescription": "Store a secret in the vault (prompts for value)",
@@ -386,18 +385,18 @@
     "policy": {
       "empty": "No policy rules.",
       "heading": "Policy Rules",
-      "added": "✓ Policy rule added: {id}",
-      "removed": "✓ Removed: {id}",
+      "added": "\u2713 Policy rule added: {id}",
+      "removed": "\u2713 Removed: {id}",
       "notFound": "Not found: {id}",
       "noCplFile": "No CPL file found. Create .cortex/policy.yaml or pass a file path.",
       "runInit": "Run: cortex policy init  to create a starter file",
-      "imported": "✓ Imported {count} rules",
+      "imported": "\u2713 Imported {count} rules",
       "alreadyExist": "({count} already exist)",
       "alreadyExists": "Already exists: {path}",
-      "created": "✓ Created: {path}",
+      "created": "\u2713 Created: {path}",
       "editThenImport": "Edit the file then run: cortex policy import",
-      "allowed": "✓ ALLOWED",
-      "denied": "✗ DENIED",
+      "allowed": "\u2713 ALLOWED",
+      "denied": "\u2717 DENIED",
       "reason": "reason:",
       "matchedRule": "matched rule:",
       "commandDescription": "Manage Cortex security policy rules",
@@ -416,9 +415,9 @@
     },
     "memory": {
       "noResults": "No results found.",
-      "stored": "✓ Semantic memory stored: {id}",
+      "stored": "\u2713 Semantic memory stored: {id}",
       "healthReport": "Memory Health Report",
-      "heuristicCycle": "Running heuristic learning cycle…",
+      "heuristicCycle": "Running heuristic learning cycle\u2026",
       "results": "Results:",
       "importanceBoosted": "importance boosted:",
       "decaySlowed": "decay slowed:",
@@ -449,12 +448,12 @@
       "noAgentsRegistered": "  No agents registered.",
       "registeredAgents": "\n  Registered Agents",
       "agentNotFound": "  Agent \"{id}\" not found.",
-      "createdAgent": "  ✓ Created agent \"{name}\" ({id})",
-      "updatedAgent": "  ✓ Updated agent \"{name}\" ({id})",
-      "deletedAgent": "  ✓ Deleted agent \"{id}\"",
-      "activeAgentSet": "  ✓ Active agent set to \"{name}\" ({id})",
-      "importedAgent": "  ✓ Imported agent \"{name}\" ({id})",
-      "clonedAgent": "  ✓ Cloned agent \"{name}\" ({id}) from \"{sourceId}\"",
+      "createdAgent": "  \u2713 Created agent \"{name}\" ({id})",
+      "updatedAgent": "  \u2713 Updated agent \"{name}\" ({id})",
+      "deletedAgent": "  \u2713 Deleted agent \"{id}\"",
+      "activeAgentSet": "  \u2713 Active agent set to \"{name}\" ({id})",
+      "importedAgent": "  \u2713 Imported agent \"{name}\" ({id})",
+      "clonedAgent": "  \u2713 Cloned agent \"{name}\" ({id}) from \"{sourceId}\"",
       "invalidMarketplaceRef": "  Invalid marketplace reference. Use marketplace:<host>/agents/<slug>",
       "fetchingFrom": "  Fetching from {url}",
       "invalidSource": "  Invalid source. Use a URL or marketplace:<host>/agents/<slug>",
@@ -464,16 +463,16 @@
     },
     "agentlint": {
       "actions": "Actions",
-      "checkCommand": "  cortex agentlint check    — Run AgentLint checks on current agent config",
-      "configCommand": "  cortex agentlint config   — Verbose lint report with provider/model details",
-      "allChecksPassed": "✓ {name}: all {totalChecks} checks passed",
+      "checkCommand": "  cortex agentlint check    \u2014 Run AgentLint checks on current agent config",
+      "configCommand": "  cortex agentlint config   \u2014 Verbose lint report with provider/model details",
+      "allChecksPassed": "\u2713 {name}: all {totalChecks} checks passed",
       "lintingAgent": "\nLinting agent: {name}",
       "providerModel": "Provider: {provider}, Model: {model}",
       "totalChecks": "Total checks: {count}",
       "passed": "Passed: {count}",
       "warnings": "Warnings: {count}",
       "errors": "Errors: {count}",
-      "allPassed": "✓ All checks passed",
+      "allPassed": "\u2713 All checks passed",
       "issues": "Issues:",
       "errorsAndWarnings": "{errors} error(s), {warnings} warning(s)"
     },
@@ -485,7 +484,7 @@
       "useAddHint": "Use `cortex channels add` to add a new channel.",
       "channelsConfigured": "\n{count} channel(s) configured:\n",
       "testingConnection": "Testing connection to {name} ({type})...",
-      "connectionSuccessful": "✓ Connection successful",
+      "connectionSuccessful": "\u2713 Connection successful",
       "testCompleted": "Test completed.",
       "connectionTestFailed": "Connection test failed: {message}",
       "cancelled": "Cancelled.",
@@ -502,10 +501,10 @@
     },
     "chrome_bridge": {
       "actions": "Actions",
-      "startCommand": "  cortex mcp chrome start  — Start chrome-bridge MCP server",
-      "stopCommand": "  cortex mcp chrome stop   — Stop chrome-bridge MCP server",
-      "statusCommand": "  cortex mcp chrome status — Check connection status",
-      "toolsCommand": "  cortex mcp chrome tools  — List registered chrome-bridge tools",
+      "startCommand": "  cortex chrome-bridge start  \u2014 Start chrome-bridge MCP server",
+      "stopCommand": "  cortex chrome-bridge stop   \u2014 Stop chrome-bridge MCP server",
+      "statusCommand": "  cortex chrome-bridge status \u2014 Check connection status",
+      "toolsCommand": "  cortex chrome-bridge tools  \u2014 List registered chrome-bridge tools",
       "notConfigured": "chrome-bridge not configured. Add a chromeBridge section to your config.",
       "disabled": "chrome-bridge is disabled in config. Enable it first.",
       "started": "chrome-bridge started",
@@ -549,7 +548,7 @@
       "clipboardFailed": "Clipboard read failed: {error}"
     },
     "discord": {
-      "deprecated": "  ⚠  cortex discord is deprecated.",
+      "deprecated": "  \u26a0  cortex discord is deprecated.",
       "useChannels": "  Use the channels system instead:",
       "step1Add": "  {step} Add a Discord channel:",
       "step2Start": "  {step} Start the channel:",
@@ -562,8 +561,8 @@
       "invalidSuiteFile": "  Invalid suite file: {path}",
       "suiteFileNotFound": "  Suite file not found: {path}",
       "createEvalSuiteHint": "  Create a .cortex/eval_suite.json file with tasks to evaluate.",
-      "regressionDetected": "  ⚠ {count} regression(s) detected:",
-      "noRegressions": "  ✓ No regressions detected",
+      "regressionDetected": "  \u26a0 {count} regression(s) detected:",
+      "noRegressions": "  \u2713 No regressions detected",
       "noBaselineFile": "  No baseline file found at {path}",
       "baselineSaved": "  Baseline saved to {path}"
     },
@@ -620,7 +619,7 @@
       "cannotRead": "  Cannot read: {source}",
       "noJsonFound": "  No JSON files found to import.",
       "importComplete": "\n  Import complete:",
-      "importedSummary": "\n  ✓ Imported: memories={memories} messages={messages} policies={policies}",
+      "importedSummary": "\n  \u2713 Imported: memories={memories} messages={messages} policies={policies}",
       "errors": "  Errors: {count}",
       "noHermesFound": "  No Hermes export found.",
       "passHermesPathHint": "  Pass a path: cortex import hermes <path-to-export.jsonl>",
@@ -628,20 +627,20 @@
       "passZeroClawPathHint": "  Pass a path: cortex import zeroclaw <path-to-transcripts>"
     },
     "install": {
-      "installingServices": "Installing Cortex services…",
-      "uninstallingServices": "Uninstalling Cortex services…",
-      "servicesStarted": "  ✓ Services started",
-      "servicesUninstalled": "  ✓ Services uninstalled"
+      "installingServices": "Installing Cortex services\u2026",
+      "uninstallingServices": "Uninstalling Cortex services\u2026",
+      "servicesStarted": "  \u2713 Services started",
+      "servicesUninstalled": "  \u2713 Services uninstalled"
     },
     "log": {
       "noEntries": "  No log entries found at {path}",
       "noEntriesMatch": "  No entries matching filters.",
-      "entriesCount": "\n  {count} entries · {path}\n",
+      "entriesCount": "\n  {count} entries \u00b7 {path}\n",
       "tailing": "\n  Tailing {path}",
-      "logCleared": "  ✓ Log file cleared: {path}",
+      "logCleared": "  \u2713 Log file cleared: {path}",
       "failedToClear": "  Failed to clear log: {message}",
       "invalidLevel": "  Invalid level \"{level}\". Must be one of: {levels}",
-      "logLevelSet": "  ✓ Log level set to {level}",
+      "logLevelSet": "  \u2713 Log level set to {level}",
       "restartHint": "  Restart the server for file transport to pick up the change."
     },
     "marketplace": {
@@ -649,7 +648,7 @@
       "noAgentsFound": "\n  No agents found.\n",
       "noCategoriesFound": "\n  No categories found.\n",
       "pluginNotFound": "  Plugin \"{slug}\" not found on marketplace.",
-      "pluginInstalled": "  ✓ Installed: {name}@{version}",
+      "pluginInstalled": "  \u2713 Installed: {name}@{version}",
       "enableHint": "  Enable it with: cortex plugins enable {name}\n",
       "noPermissions": "  No special permissions required.\n"
     },
@@ -674,7 +673,7 @@
       "noManagedServersCheck": "\nNo managed MCP servers to check."
     },
     "mcp_gateway": {
-      "deprecated": "  ⚠  cortex mcp-gateway is deprecated.",
+      "deprecated": "  \u26a0  cortex mcp-gateway is deprecated.",
       "gatewayMoved": "  Gateway management has moved under the mcp command:",
       "statusHint": "  {bold}  {command}",
       "healthHint": "  {bold}  {command}"
@@ -697,8 +696,8 @@
       "validProviders": "  Valid providers: {providers}",
       "providerNotConfigured": "\n  Provider \"{provider}\" is not configured. Run `cortex setup`.\n",
       "modelCannotUnset": "  Error: model cannot be unset",
-      "unsetKey": "  ✓ Unset {key} on {provider}",
-      "setKey": "  ✓ Set {key} = {value} on {provider}",
+      "unsetKey": "  \u2713 Unset {key} on {provider}",
+      "setKey": "  \u2713 Set {key} = {value} on {provider}",
       "invalidReasoningEffort": "  Error: reasoningEffort must be one of: {values}",
       "invalidContextWindow": "  Error: contextWindow must be a number between 1000 and 2000000 (tokens)",
       "invalidTemperature": "  Error: temperature must be a number between 0 and 2",
@@ -728,20 +727,20 @@
       "invalidMarketplaceRef": "  Invalid marketplace reference. Use marketplace:<host>/plugins/<slug>",
       "marketplaceFetchFailed": "  Marketplace fetch failed: {status} {statusText}",
       "fetchFailed": "  Fetch failed: {status}",
-      "pluginInstalled": "  ✓ Installed: {name}@{version}",
-      "pluginEnabled": "  ✓ Enabled: {name}",
-      "pluginDisabled": "  ○ Disabled: {name}",
-      "pluginRemoved": "  ✗ Removed: {name}",
+      "pluginInstalled": "  \u2713 Installed: {name}@{version}",
+      "pluginEnabled": "  \u2713 Enabled: {name}",
+      "pluginDisabled": "  \u25cb Disabled: {name}",
+      "pluginRemoved": "  \u2717 Removed: {name}",
       "pluginNotFound": "  Plugin \"{name}\" not found.",
       "noIntegrityHash": "  No integrity hash declared for {name}.",
       "generateHashHint": "  Generate one to enable verification.",
-      "integrityVerified": "  ✓ Integrity verified: {name}",
+      "integrityVerified": "  \u2713 Integrity verified: {name}",
       "hashLabel": "    Hash: {hash}",
-      "integrityFailed": "  ✗ Integrity check FAILED for {name}",
+      "integrityFailed": "  \u2717 Integrity check FAILED for {name}",
       "expectedHash": "    Expected: {expected}",
       "actualHash": "    Actual: {actual}",
       "invalidPermissionFormat": "  Invalid format. Use: --set capability=grant|deny",
-      "overrideSet": "  ✓ Override set: {capability} → {action}",
+      "overrideSet": "  \u2713 Override set: {capability} \u2192 {action}",
       "permissionsTitle": "\n  Permissions: {name}",
       "declaredLabel": "  Declared:",
       "overridesLabel": "\n  Overrides:",
@@ -753,16 +752,16 @@
       "specifyNameOrAll": "  Specify a plugin name or use --all to update all plugins.",
       "noPluginsValidate": "\n  No plugins to validate.\n",
       "validatingPlugins": "\n  Validating Plugins",
-      "allPluginsValid": "\n  ✓ All plugins are valid.\n",
+      "allPluginsValid": "\n  \u2713 All plugins are valid.\n",
       "foundInvalid": "\n  Found {count} invalid plugin(s).",
       "removingInvalid": "\n  Removing invalid plugins...\n",
-      "cleanupComplete": "\n  ✓ Cleanup complete.\n",
+      "cleanupComplete": "\n  \u2713 Cleanup complete.\n",
       "fixHint": "\n  Run with --fix to automatically remove invalid plugins.\n"
     },
     "projects": {
       "noProjects": "No projects. Create one with `cortex projects create <name>`",
       "projectCreated": "\nProject \"{name}\" created at {path}",
-      "useProjectHint": "Run cortex agent chat --project {name} to use it.",
+      "useProjectHint": "Run cortex chat --project {name} to use it.",
       "projectDeleted": "Project \"{name}\" deleted.",
       "projectNotFound": "Project \"{name}\" not found."
     },
@@ -776,7 +775,7 @@
       "allQmStateReset": "All Quartermaster state reset."
     },
     "remote": {
-      "deprecated": "  ⚠  cortex remote is deprecated.",
+      "deprecated": "  \u26a0  cortex remote is deprecated.",
       "useNodeSystem": "  Use the node system instead, which adds tier and group support:",
       "registerNodeHint": "  {bold}  {command}",
       "listNodesHint": "  {bold}       {command}",
@@ -787,56 +786,56 @@
     "service": {
       "noServices": "  No services registered.",
       "serviceNotFound": "  Service \"{id}\" not found.",
-      "serviceRegistered": "  ✓ Service \"{name}\" registered ({id})",
-      "serviceUpdated": "  ✓ Service \"{id}\" updated",
-      "serviceDeleted": "  ✓ Service \"{id}\" deleted",
-      "serviceStarted": "  ✓ Service \"{id}\" started",
-      "serviceStopped": "  ✓ Service \"{id}\" stopped",
+      "serviceRegistered": "  \u2713 Service \"{name}\" registered ({id})",
+      "serviceUpdated": "  \u2713 Service \"{id}\" updated",
+      "serviceDeleted": "  \u2713 Service \"{id}\" deleted",
+      "serviceStarted": "  \u2713 Service \"{id}\" started",
+      "serviceStopped": "  \u2713 Service \"{id}\" stopped",
       "agent": {
-        "showActive": "● active",
-        "showInactive": "○ inactive"
+        "showActive": "\u25cf active",
+        "showInactive": "\u25cb inactive"
       }
     },
     "soul": {
-      "created": "  ✓ Created: {dir}/{file}",
+      "created": "  \u2713 Created: {dir}/{file}",
       "skipped": "  ~ Skipped (exists): {file}",
       "editHelp": "\n  Edit these files to personalise your agent, then restart cortex.\n",
-      "userNotFound": "\n  USER.md not found — run: cortex soul init",
-      "memoryNotFound": "\n  MEMORY.md not found — run: cortex soul init",
+      "userNotFound": "\n  USER.md not found \u2014 run: cortex soul init",
+      "memoryNotFound": "\n  MEMORY.md not found \u2014 run: cortex soul init",
       "editorExited": "  Editor exited with code {code}",
-      "appendedToMemory": "  ✓ Appended to MEMORY.md",
+      "appendedToMemory": "  \u2713 Appended to MEMORY.md",
       "unknownTemplate": "  Unknown template: \"{template}\"",
       "runTemplatesHint": "  Run `cortex soul templates` to see available templates.\n",
-      "appliedTemplate": "  ✓ Applied \"{template}\" template to SOUL.md\n",
+      "appliedTemplate": "  \u2713 Applied \"{template}\" template to SOUL.md\n",
       "failedToApplyTemplate": "  Failed to apply template: {error}\n",
       "noSoulFound": "\n  No SOUL.md found. Run `cortex soul init` first.\n",
-      "soulLooksGood": "\n  ✓ SOUL.md looks good.\n",
+      "soulLooksGood": "\n  \u2713 SOUL.md looks good.\n",
       "soulSuggestions": "\n  SOUL.md has {count} suggestion(s):\n",
       "soulHint": "\n  Hint: run `cortex soul apply-template <name>` or `cortex soul edit`",
       "soulHint2": "\n  to add the missing sections.\n"
     },
     "start": {
-      "startingCortex": "Starting Cortex…",
-      "cortexStarted": "  ✓ Cortex started",
-      "someServicesFailed": "  ✕ Some services failed to start",
-      "daemonStarted": "  ✓ Daemon started",
-      "daemonFailed": "  ✕ Daemon failed to start",
-      "serverStarted": "  ✓ Server started",
-      "serverFailed": "  ✕ Server failed to start",
-      "restartingCortex": "Restarting Cortex…",
-      "cortexRestarted": "  ✓ Cortex restarted",
-      "someServicesFailedRestart": "  ✕ Some services failed to restart",
-      "stoppingDaemons": "Stopping daemons…",
-      "stoppingServer": "Stopping server…",
+      "startingCortex": "Starting Cortex\u2026",
+      "cortexStarted": "  \u2713 Cortex started",
+      "someServicesFailed": "  \u2715 Some services failed to start",
+      "daemonStarted": "  \u2713 Daemon started",
+      "daemonFailed": "  \u2715 Daemon failed to start",
+      "serverStarted": "  \u2713 Server started",
+      "serverFailed": "  \u2715 Server failed to start",
+      "restartingCortex": "Restarting Cortex\u2026",
+      "cortexRestarted": "  \u2713 Cortex restarted",
+      "someServicesFailedRestart": "  \u2715 Some services failed to restart",
+      "stoppingDaemons": "Stopping daemons\u2026",
+      "stoppingServer": "Stopping server\u2026",
       "stoppedServerPort": "  Stopped server (port {port})",
       "stoppedServerPid": "  Stopped server (pid {pid})",
       "noServerFound": "  No server found",
       "mutuallyExclusive": "  Cannot use both --daemon-only and --server-only together."
     },
     "stop": {
-      "stoppingCortex": "Stopping Cortex…",
+      "stoppingCortex": "Stopping Cortex\u2026",
       "noServerFound": "  No background server found",
-      "cortexStopped": "  ✓ Cortex stopped"
+      "cortexStopped": "  \u2713 Cortex stopped"
     },
     "triggers": {
       "noTriggers": "No triggers configured.",
@@ -847,17 +846,17 @@
       "triggerNotFound": "Trigger \"{name}\" not found."
     },
     "update": {
-      "checkingForUpdates": "\n  Checking for updates…",
-      "rollingBack": "\n  Rolling back to previous version…",
-      "checkFailed": "  ✗ {error}",
-      "youAreUpToDate": "  ✓ You are up to date.",
-      "runToApply": "  Run cortex self update to apply the update.",
-      "updatedTo": "  ✓ Updated to version {version}",
-      "rollbackFailed": "  ✗ {error}",
-      "rolledBackTo": "  ✓ Rolled back to version {version}",
-      "updateFailed": "  ✗ Update failed: {error}",
+      "checkingForUpdates": "\n  Checking for updates\u2026",
+      "rollingBack": "\n  Rolling back to previous version\u2026",
+      "checkFailed": "  \u2717 {error}",
+      "youAreUpToDate": "  \u2713 You are up to date.",
+      "runToApply": "  Run cortex update to apply the update.",
+      "updatedTo": "  \u2713 Updated to version {version}",
+      "rollbackFailed": "  \u2717 {error}",
+      "rolledBackTo": "  \u2713 Rolled back to version {version}",
+      "updateFailed": "  \u2717 Update failed: {error}",
       "autoRollback": "  Automatic rollback was attempted.",
-      "updateFailedGeneric": "  ✗ {error}"
+      "updateFailedGeneric": "  \u2717 {error}"
     },
     "voice": {
       "disabled": "Voice system is disabled. Run `cortex voice enable` to enable.",
@@ -871,6 +870,42 @@
       "noWorkflows": "No workflows registered.",
       "notFound": "Workflow \"{name}\" not found.",
       "approved": "Approved workflow: {name}"
+    },
+    "tui": {
+      "commandDescription": "Start the Cortex interactive terminal UI",
+      "tools": "Tools",
+      "banner": {
+        "connected": "Connected \u2014 {provider}/{model}",
+        "keybindings": "Key bindings: Ctrl+C cancel, Ctrl+L clear, Up/Down: history, Enter: send",
+        "slashHint": "Type /help for commands."
+      },
+      "slash": {
+        "help": "Commands: /model, /status, /clear, /save, /theme, /help, /! <cmd>, /exit",
+        "unknown": "Unknown: /{cmd}. /help for commands.",
+        "modelChanged": "Model: {model}",
+        "modelCurrent": "Current: {model}",
+        "modelUsage": "Usage: /model <model-name>",
+        "themeChanged": "Theme: {theme}",
+        "themeUnknown": "Unknown theme: {theme}. Available: dark, light, contrast",
+        "saveSuccess": "Saved to {file}",
+        "saveFailed": "Save failed: {error}",
+        "cleared": "Cleared.",
+        "exportSuccess": "Session exported to {file}",
+        "exportFailed": "Failed to export: {error}",
+        "shellUsage": "Usage: /! <bash command>",
+        "shellFailed": "Command failed: {error}",
+        "compactionNote": "Context compaction would be triggered here (not yet implemented).",
+        "planningNote": "Planning mode would be entered here (not yet implemented).",
+        "noDiff": "No recent diff available. Run file operations first.",
+        "noApprovals": "No pending tool approvals.",
+        "approvalNeeded": "Approval needed: {tool}\n  {command}",
+        "approved": "Approved: {command}",
+        "denied": "Denied: {command}",
+        "approvalPrompt": "Type \"y\" to approve or \"n\" to deny."
+      },
+      "status": {
+        "session": "Session: {id}...\nModel: {model}\nProvider: {provider}\nAgent: {agent}"
+      }
     }
   },
   "tools": {
@@ -910,7 +945,7 @@
     "confirm": "Confirm",
     "edit": "Edit",
     "done": "Done",
-    "loading": "Loading…",
+    "loading": "Loading\u2026",
     "error": "Error: {message}"
   },
   "server": {
@@ -931,6 +966,12 @@
       "configError": "Configuration error: {details}",
       "dbError": "Database error: {details}",
       "forbidden": "Forbidden"
+    }
+  },
+  "agent": {
+    "prompts": {
+      "systemBase": "You are {name}, a helpful AI assistant.",
+      "localeHint": "Respond in {locale} language when possible."
     }
   },
   "ui": {
@@ -966,12 +1007,6 @@
         "agentBreakdown": "Agent Breakdown",
         "custom": "Custom HTML"
       }
-    }
-  },
-  "agent": {
-    "prompts": {
-      "systemBase": "You are {name}, a helpful AI assistant.",
-      "localeHint": "Respond in {locale} language when possible."
     }
   }
 }

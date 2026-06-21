@@ -108,7 +108,7 @@ export async function importOpenClaw(
   }
 
   console.log(green('\n✓ Migration complete.'));
-  console.log(`Run ${yellow('cortex chat')} to start using Cortex with your imported data.\n`);
+  console.log(`Run ${yellow('cortex agent chat')} to start using Cortex with your imported data.\n`);
 }
 
 async function importMemoryContent(db: Db, content: string, source: string): Promise<void> {

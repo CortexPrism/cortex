@@ -12,7 +12,7 @@ CortexPrism is a single-process AI agent operating system written in TypeScript/
 ┌─────────────────────────────────────────────────────────────────┐
 │                         CortexPrism                             │
 │                                                                 │
-│   CLI (cortex chat / run / serve / ...)                         │
+│   CLI (cortex agent chat / sandbox run / server start / ...)                         │
 │          │                                                      │
 │          ▼                                                      │
 │   ┌─────────────────────────────────────────────┐              │
@@ -273,7 +273,7 @@ All routers implement `LLMProvider` so they are drop-in replacements. Router met
 The daemon supervisor manages three background processes required for tool security and job scheduling:
 
 ```
-cortex daemon start / chat / serve auto-start
+cortex daemon start / agent chat / server start auto-start
          │
          ▼
   supervisor-process.ts
@@ -309,7 +309,7 @@ Messages are JSON-line, connection-per-message. Heartbeat pings check liveness.
 
 ### Auto-start
 
-`cortex chat` and `cortex serve` call `ensureDaemons()` which pings the validator socket and starts the supervisor if needed. The web server can also run in the background via `cortex serve -d`.
+`cortex agent chat` and `cortex server start` call `ensureDaemons()` which pings the validator socket and starts the supervisor if needed. The web server can also run in the background via `cortex server start -d`.
 
 ---
 
@@ -781,7 +781,7 @@ A2A Client (external) → POST /a2a → handleA2ARequest() → Cortex executor
 - **A2A client** — `fetchAgentCard`, `sendMessage`, `sendStreamingMessage`, `getTask`, `listTasks`, `cancelTask`
 - **Tool wrapping** — remote A2A agents exposed as Cortex Tool objects
 - **Agent card generation** — Cortex tool definitions mapped to A2A skills
-- **CLI**: `cortex a2a card`, `cortex a2a skills`
+- **CLI**: `cortex mcp a2a card`, `cortex mcp a2a skills`
 
 ---
 
@@ -791,7 +791,7 @@ Enterprise MCP server management.
 
 - **Gateway** — token-bucket rate limiter, HTTP health checking, 10K-entry audit log ring buffer, risk assessment
 - **Registry** — CRUD with tag search, health/transport filtering
-- **CLI**: `cortex mcp-gateway status`, `cortex mcp-gateway health`
+- **CLI**: `cortex mcp gateway status`, `cortex mcp gateway health`
 - **API**: `GET /api/mcp-gateway/servers`
 
 ---
@@ -1132,10 +1132,10 @@ Chrome Bridge tools pass through the same multi-layer validation as all other to
 ### CLI
 
 ```bash
-cortex chrome-bridge start    # Start chrome-bridge MCP server
-cortex chrome-bridge stop     # Stop chrome-bridge MCP server
-cortex chrome-bridge status   # Check connection state
-cortex chrome-bridge tools    # List registered chrome_* tools
+cortex mcp chrome start    # Start chrome-bridge MCP server
+cortex mcp chrome stop     # Stop chrome-bridge MCP server
+cortex mcp chrome status   # Check connection state
+cortex mcp chrome tools    # List registered chrome_* tools
 ```
 
 ### Web UI

@@ -322,10 +322,10 @@ VALUES ('tool', 'chrome_execute_js', 'deny', 100);
 ### CLI Management
 
 ```bash
-cortex chrome-bridge start    # Start the MCP server
-cortex chrome-bridge stop     # Stop the MCP server
-cortex chrome-bridge status   # Check connection state
-cortex chrome-bridge tools    # List registered chrome_* tools
+cortex mcp chrome start    # Start the MCP server
+cortex mcp chrome stop     # Stop the MCP server
+cortex mcp chrome status   # Check connection state
+cortex mcp chrome tools    # List registered chrome_* tools
 ```
 
 ### Web UI
@@ -342,7 +342,7 @@ Navigate to **Settings → Chrome Bridge** in the web UI for:
 
 **"Failed to start chrome-bridge"** — Verify Node.js is installed (`node --version`), the server path is correct, and the Chrome extension is loaded.
 
-**Tools not appearing** — Run `cortex chrome-bridge tools` to check registration. Ensure `autoRegisterTools` is not set to `false`.
+**Tools not appearing** — Run `cortex mcp chrome tools` to check registration. Ensure `autoRegisterTools` is not set to `false`.
 
 **Connection lost repeatedly** — Check that Chrome is running with the chrome-bridge extension enabled. The connection manager will auto-reconnect up to 5 times with exponential backoff.
 

@@ -42,7 +42,7 @@ async function autoCheck(): Promise<void> {
     if (result.status === 'available') {
       console.error(
         dim(
-          `[update] Version ${result.latestVersion} available (current: ${result.currentVersion}). Run \`cortex update\` to apply.`,
+          `[update] Version ${result.latestVersion} available (current: ${result.currentVersion}). Run \`cortex self update\` to apply.`,
         ),
       );
     }

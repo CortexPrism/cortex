@@ -294,7 +294,7 @@
       }
     },
     "sessions": {
-      "empty": "No sessions yet. Run `cortex chat` to start one.",
+      "empty": "No sessions yet. Run `cortex agent chat` to start one.",
       "heading": "Recent Sessions",
       "oneTurn": "1 turn",
       "turnCount": "{count} turns",
@@ -501,10 +501,10 @@
     },
     "chrome_bridge": {
       "actions": "Actions",
-      "startCommand": "  cortex chrome-bridge start  \u2014 Start chrome-bridge MCP server",
-      "stopCommand": "  cortex chrome-bridge stop   \u2014 Stop chrome-bridge MCP server",
-      "statusCommand": "  cortex chrome-bridge status \u2014 Check connection status",
-      "toolsCommand": "  cortex chrome-bridge tools  \u2014 List registered chrome-bridge tools",
+      "startCommand": "  cortex mcp chrome start  \u2014 Start chrome-bridge MCP server",
+      "stopCommand": "  cortex mcp chrome stop   \u2014 Stop chrome-bridge MCP server",
+      "statusCommand": "  cortex mcp chrome status \u2014 Check connection status",
+      "toolsCommand": "  cortex mcp chrome tools  \u2014 List registered chrome-bridge tools",
       "notConfigured": "chrome-bridge not configured. Add a chromeBridge section to your config.",
       "disabled": "chrome-bridge is disabled in config. Enable it first.",
       "started": "chrome-bridge started",
@@ -761,7 +761,7 @@
     "projects": {
       "noProjects": "No projects. Create one with `cortex projects create <name>`",
       "projectCreated": "\nProject \"{name}\" created at {path}",
-      "useProjectHint": "Run cortex chat --project {name} to use it.",
+      "useProjectHint": "Run cortex agent chat --project {name} to use it.",
       "projectDeleted": "Project \"{name}\" deleted.",
       "projectNotFound": "Project \"{name}\" not found."
     },
@@ -850,7 +850,7 @@
       "rollingBack": "\n  Rolling back to previous version\u2026",
       "checkFailed": "  \u2717 {error}",
       "youAreUpToDate": "  \u2713 You are up to date.",
-      "runToApply": "  Run cortex update to apply the update.",
+      "runToApply": "  Run cortex self update to apply the update.",
       "updatedTo": "  \u2713 Updated to version {version}",
       "rollbackFailed": "  \u2717 {error}",
       "rolledBackTo": "  \u2713 Rolled back to version {version}",

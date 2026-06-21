@@ -183,7 +183,7 @@ Wants=network-online.target ${DAEMON_SERVICE_NAME}.service
 
 [Service]
 Type=simple
-ExecStart=${execPath} serve --port ${port} --host ${host}
+ExecStart=${execPath} server start --port ${port} --host ${host}
 Restart=always
 RestartSec=5
 Environment="HOME=%h"
@@ -261,7 +261,8 @@ async function installMacOSServerService(opts: ServiceInstallOptions): Promise<v
     <key>ProgramArguments</key>
     <array>
         <string>${escapeXml(execPath)}</string>
-        <string>serve</string>
+        <string>server</string>
+        <string>start</string>
         <string>--port</string>
         <string>${String(port)}</string>
         <string>--host</string>
@@ -320,14 +321,14 @@ async function installWindowsServerService(opts: ServiceInstallOptions): Promise
   console.log(bold(`Windows Server Service Setup (http://${host}:${port})`));
   console.log(dim('  Install manually with NSSM:'));
   console.log(
-    dim(`    nssm install CortexServer "${execPath}" serve --port ${port} --host ${host}`),
+    dim(`    nssm install CortexServer "${execPath}" server start --port ${port} --host ${host}`),
   );
   console.log(dim('    nssm set CortexServer Start SERVICE_AUTO_START'));
   console.log(dim('    nssm start CortexServer'));
   console.log(dim('  Or use Task Scheduler:'));
   console.log(
     dim(
-      `    schtasks /create /tn "Cortex Server" /tr "\\"${execPath}\\" serve --port ${port} --host ${host}" /sc onlogon /delay 0001:00 /f`,
+      `    schtasks /create /tn "Cortex Server" /tr "\\"${execPath}\\" server start --port ${port} --host ${host}" /sc onlogon /delay 0001:00 /f`,
     ),
   );
 }

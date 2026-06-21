@@ -5,7 +5,7 @@ Wants=network-online.target cortex-daemon.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/cortex serve --port 3000 --host 127.0.0.1
+ExecStart=/usr/local/bin/cortex server start --port 3000 --host 127.0.0.1
 Restart=always
 RestartSec=5
 Environment="HOME=%h"
