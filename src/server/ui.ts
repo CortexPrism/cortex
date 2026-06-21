@@ -1041,6 +1041,9 @@ const HTML = `<!DOCTYPE html>
     <button class="nav-item" onclick="showPage('policies');closeMobileSidebar()" id="nav-policies">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Policies
     </button>
+    <button class="nav-item" onclick="showPage('oshealth');closeMobileSidebar()" id="nav-oshealth">
+      <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> OS Health
+    </button>
     <button class="nav-item" onclick="showPage('remote');closeMobileSidebar()" id="nav-remote">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Remote &amp; Computer
     </button>
@@ -2761,8 +2764,24 @@ const HTML = `<!DOCTYPE html>
             </select>
             <button id="cg-index-btn" class="btn btn-primary" onclick="showCodegraphIndexPrompt()" style="font-size:12px;padding:5px 14px;">Index</button>
             <button class="btn btn-ghost" onclick="loadCodegraphProjects()" style="font-size:12px;">↻ Refresh</button>
-          </div>
     </div>
+  </div>
+
+  <!-- Page: OS Health -->
+  <div id="page-oshealth" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">OS Health</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">System health dashboard — daemons, database, jobs, memory</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadOSHealth()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="os-health-content">
+      <div style="text-align:center;padding:60px;color:var(--text3);">Loading system health...</div>
+    </div>
+  </div>
     <div style="flex:1;display:flex;overflow:hidden;">
       <div style="width:280px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
         <div style="padding:12px;border-bottom:1px solid var(--border);">
@@ -4418,7 +4437,7 @@ function renderRecentPages() {
 }
 
 // ── Navigation ──────────────────────────────────────────────
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','pluginpanels','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','oshealth','analytics','quartermaster','memori','pluginpanels','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');
@@ -4483,6 +4502,7 @@ function showPage(name) {
     computer: () => { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
     remote: () => { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
     daemons: () => { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
+    oshealth: loadOSHealth,
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
     sandbox: loadSandboxPage,
@@ -10122,6 +10142,7 @@ const CMD_PAGES = [
   { id:'remote', label:'Remote & Computer', icon:'🌐🖥', desc:'Remote agent deployment and AI-driven computer use' },
   { id:'nodes', label:'Nodes', icon:'🖧', desc:'Remote Cortex node registry and management' },
   { id:'daemons', label:'Daemons', icon:'⚡', desc:'Validator, executor, and scheduler process status' },
+  { id:'oshealth', label:'OS Health', icon:'🖥️', desc:'System health dashboard — daemons, DB, jobs, memory' },
   { id:'workflow', label:'Workflows', icon:'🔁', desc:'Registered workflow pipelines' },
   { id:'eval', label:'Eval', icon:'📐', desc:'Agent evaluation suites and benchmark runs' },
   { id:'jobs', label:'Jobs', icon:'⏱', desc:'Scheduled cron, interval, and one-shot jobs' },
@@ -15008,6 +15029,64 @@ function startDaemonAutoRefresh() {
 }
 function stopDaemonAutoRefresh() {
   if (daemonAutoRefresh) { clearInterval(daemonAutoRefresh); daemonAutoRefresh = null; }
+}
+
+// ── OS Health Dashboard ──
+async function loadOSHealth() {
+  var el = document.getElementById('os-health-content');
+  try {
+    var data = await fetch(BASE + '/api/os/health').then(function(r) { return r.json(); });
+    var daemons = data.daemons || {};
+    var jobs = data.jobs || {};
+    var memory = data.memory || {};
+    var statusColor = data.status === 'healthy' ? 'green' : 'red';
+    el.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">' +
+        // Overall status
+        '<div class="card" style="grid-column:1/-1;padding:16px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><div style="font-weight:600;font-size:14px;">CortexPrism OS</div>' +
+            '<div style="font-size:11px;color:var(--text3);">v' + esc(String(data.version || '?')) + ' · Uptime ' + formatUptime(data.uptimeMs || 0) + '</div></div>' +
+            renderBadge(data.status === 'healthy' ? 'Healthy' : 'Degraded', statusColor) +
+          '</div>' +
+        '</div>' +
+        // Daemon cards
+        '<div class="card" style="padding:14px;"><div style="font-weight:600;font-size:13px;">Daemons</div>' +
+          ['validator','executor','scheduler'].map(function(n) {
+            var s = daemons[n] || 'down'; var c = s === 'ok' ? 'green' : 'red';
+            return '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:6px 0;border-top:1px solid var(--border);"><span style="font-size:12px;text-transform:capitalize;">' + esc(n) + '</span>' + renderBadge(s, c) + '</div>';
+          }).join('') +
+        '</div>' +
+        // Database
+        '<div class="card" style="padding:14px;"><div style="font-weight:600;font-size:13px;">Database</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;">' +
+            '<span>Connection</span>' + renderBadge(data.database === 'ok' ? 'Connected' : 'Unreachable', data.database === 'ok' ? 'green' : 'red') +
+          '</div>' +
+        '</div>' +
+        // Jobs
+        '<div class="card" style="padding:14px;"><div style="font-weight:600;font-size:13px;">Jobs</div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;"><span>Total</span><span style="font-weight:500;">' + esc(String(jobs.total || 0)) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;"><span>Pending</span><span style="font-weight:500;color:var(--accent2);">' + esc(String(jobs.pending || 0)) + '</span></div>' +
+        '</div>' +
+        // Memory health
+        '<div class="card" style="padding:14px;"><div style="font-weight:600;font-size:13px;">Memory</div>' +
+          (memory.total ? '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;"><span>Total Entries</span><span style="font-weight:500;">' + esc(String(memory.total || 0)) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;"><span>Episodic</span><span style="font-weight:500;">' + esc(String(memory.episodic || 0)) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;"><span>Semantic</span><span style="font-weight:500;">' + esc(String(memory.semantic || 0)) + '</span></div>' : '<div style="margin-top:8px;font-size:12px;color:var(--text3);">No memory data</div>') +
+        '</div>' +
+        // Latency
+        '<div class="card" style="padding:14px;"><div style="font-weight:600;font-size:13px;">Response</div>' +
+          '<div style="font-size:24px;font-weight:600;margin-top:8px;color:var(--accent1);">' + esc(String(data.latencyMs != null ? data.latencyMs + 'ms' : 'N/A')) + '</div>' +
+        '</div>' +
+      '</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load system health</div>'; }
+}
+function formatUptime(ms) {
+  if (!ms || ms < 0) return '0s';
+  var s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60);
+  if (h > 0) return h + 'h ' + (m % 60) + 'm';
+  if (m > 0) return m + 'm ' + (s % 60) + 's';
+  return s + 's';
 }
 
 // ── Phase 3 New Page Functions ────────────────────────────────────────────

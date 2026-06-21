@@ -37,6 +37,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
   - `GET /api/os/capabilities` — capability groups, role-to-capability mappings, and group members
   (`src/server/router.ts`)
 
+- **OS Health dashboard** — new "OS Health" page in the Web UI showing a system health dashboard: overall CortexPrism OS status with version and uptime, daemon health cards (validator/executor/scheduler with green/red indicators), database connectivity, job counts (total/pending), memory system metrics, and request latency. Includes sidebar nav entry, Ctrl+P command palette entry, and manual refresh. (`src/server/ui.ts`)
+
 ### Changed
 
 - **Agent OS identity in soul templates** — all agent soul templates now identify the agent as running on CortexPrism OS rather than as a standalone assistant. The `DEFAULT_SOUL` adds OS awareness as the first identity bullet. The `INIT_SOUL_TEMPLATE` gains a new `## OS Environment` section describing the 8 OS-layer capabilities (persistent memory, tool system with Parallax validation, sub-agent orchestration, background daemons, skills system, job scheduler, plugin marketplace, audit log). All 8 `PERSONALITY_TEMPLATES` updated from "AI assistant" to "AI agent running on CortexPrism OS". (`src/agent/soul.ts`)
