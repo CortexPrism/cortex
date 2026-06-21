@@ -1295,6 +1295,7 @@ const HTML = `<!DOCTYPE html>
             <button class="btn btn-ghost" onclick="editorUndo()" style="padding:1px 6px;font-size:11px;" data-tip="Undo (Ctrl+Z)">↩</button>
             <button class="btn btn-ghost" onclick="editorRedo()" style="padding:1px 6px;font-size:11px;" data-tip="Redo (Ctrl+Shift+Z)">↪</button>
             <span style="margin-left:4px;display:flex;gap:4px;">
+              <button class="btn btn-primary" onclick="editorRunCode()" style="padding:2px 10px;font-size:11px;background:var(--accent2);" data-tip="Run (F5)">▶ Run</button>
               <button class="btn btn-primary" onclick="editorSave()" style="padding:2px 10px;font-size:11px;" data-tip="Save (Ctrl+S)">Save</button>
             </span>
           </div>
@@ -10567,6 +10568,62 @@ function editorAppendOutput(text) {
   editorSwitchPanelTab('output');
 }
 
+// ── Code execution from editor ────────────────────────────────
+function editorDetectRunnerLang(fileName) {
+  var ext = fileName.split('.').pop().toLowerCase();
+  var langs = {
+    js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
+    ts: 'typescript', tsx: 'typescript', mts: 'typescript', cts: 'typescript',
+    py: 'python', py3: 'python', pyi: 'python',
+    rb: 'ruby', rs: 'rust', go: 'go',
+    sh: 'bash', bash: 'bash', zsh: 'bash',
+  };
+  return langs[ext] || null;
+}
+
+async function editorRunCode() {
+  if (!editorInstance || !editorCurrentFile) {
+    toast('No file open to run', 'error');
+    return;
+  }
+  var lang = editorDetectRunnerLang(editorCurrentFile);
+  if (!lang) {
+    toast('Cannot run .' + editorCurrentFile.split('.').pop() + ' files (unsupported language)', 'error');
+    return;
+  }
+  if (editorContentDirty) await editorSave();
+  var code = editorInstance.getValue();
+  var out = document.getElementById('panel-content-output');
+  out.textContent = '\\u25b6 Running ' + esc(editorCurrentFile) + ' (' + lang + ')...\\n';
+  editorShowPanel();
+  editorSwitchPanelTab('output');
+  try {
+    var res = await fetch(BASE + '/api/code/exec', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, language: lang }),
+    });
+    var result = await res.json();
+    if (result.success) {
+      out.textContent += result.output || '(no output)';
+      out.textContent += '\\n\\n\\u2713 Done (' + result.durationMs + 'ms, ' + result.runtime + ')';
+      var statusEl = document.getElementById('editor-modified-dot');
+      if (statusEl) statusEl.style.background = 'var(--green)';
+      window.setTimeout(function() {
+        if (statusEl) statusEl.style.background = '';
+      }, 600);
+    } else {
+      out.textContent += result.output || '';
+      if (result.error) out.textContent += '\\n\\u2717 ' + result.error;
+      out.textContent += '\\n\\u2717 Failed (' + result.durationMs + 'ms)';
+    }
+  } catch (e) {
+    out.textContent += '\\n\\u2717 Error: ' + e.message;
+  }
+  out.scrollTop = out.scrollHeight;
+}
+// ── End code execution ────────────────────────────────────────
+
 // ── Workspace loading ─────────────────────────────────────────
 async function editorLoadWorkspaces() {
   try {
@@ -10894,6 +10951,9 @@ function editorShowEditor(fileName, content) {
       'Cmd-J': function() { editorTogglePanel(); },
       'Shift-Ctrl-F': function() { editorFindInFiles(); },
       'Shift-Cmd-F': function() { editorFindInFiles(); },
+      'F5': function() { editorRunCode(); return false; },
+      'Ctrl-Enter': function() { editorRunCode(); return false; },
+      'Cmd-Enter': function() { editorRunCode(); return false; },
     },
   });
   editorInstance.on('change', function() {

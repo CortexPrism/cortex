@@ -5,6 +5,22 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.48.6] — 2026-06-21
+
+### Added
+
+- **Editor code runner integration** — the built-in code editor now has a **▶ Run** button in the status bar and **F5**/**Ctrl+Enter**/**Cmd+Enter** keyboard shortcuts to execute the current file directly in the sandbox. Language detection maps file extensions to sandbox runtimes (`.py` → python, `.js` → javascript, `.ts` → typescript, `.sh` → bash, `.rb` → ruby, `.go` → go, `.rs` → rust). Results (stdout, stderr, exit code, duration, runtime backend) display in the Output panel at the bottom of the editor, reusing the existing `POST /api/code/exec` endpoint. Unsaved files are auto-saved before execution. (`src/server/ui.ts`)
+
+### Fixed
+
+- **Concurrent agent turns in same WebSocket session** — the `chat` message handler set `turnInFlight = true` but never checked it before launching `processChatMessage`, allowing duplicate turns to run simultaneously in the same session. A second `chat` message (e.g. from a reconnecting client) would spawn a second `agentTurn` while the first was still executing, producing interleaved log entries and corrupted tool state. Added a guard that rejects subsequent chat messages with an error while a turn is in flight. (`src/server/ws.ts`)
+- **Malformed `<arg_key>/<arg_value>` XML tool calls from deepseek-v4-pro** — some LLMs generate tool calls in the format `<tool_call><arg_key>tool</arg_key><arg_value>sub_agent</arg_value><arg_key>args</arg_key><arg_value>{"type":"plan"}</arg_value></tool_call>`, which was unrecognized by any existing parser. The agent loop detected these as malformed and asked the LLM to retry, but the LLM repeatedly produced the same XML format, wasting 7+ rounds and burning tokens. Added a dedicated `<arg_key>/<arg_value>` parser in `parseToolCallsFromFragments` that extracts tool name and args from this format. (`src/tools/executor.ts`)
+- **Sub-agent spawn fails with `SQLITE_CONSTRAINT_FOREIGNKEY`** — sub-agent processes open their own connection to the core database and insert a session row with `parent_session_id` referencing the parent session. Under WAL mode, the parent session INSERT may not be visible to the sub-agent process immediately, causing a foreign key violation. All 11 parallel sub-agents failed with the same error. Added a 3-retry loop with 150ms exponential backoff in the sub-agent entry process. (`src/processes/sub-agent-entry.ts`)
+- **Supervisor LLM hangs block tool execution indefinitely** — `requestSupervisorDecision` had no timeout, so if the supervisor model hung (network error, overloaded API), tools like `db_query` and `memory_search` would block until the overall agent turn timeout. Added a 10-second `Promise.race` timeout to the supervisor LLM call. (`src/security/supervisor.ts`)
+- **`file_write` fails when target directory does not exist** — `file_write` called `Deno.writeTextFile` without creating parent directories, so writing to `test-cortex-app/utils.ts` in a non-existent directory failed with "No such file or directory". The agent then tried to `mkdir` which was denied by the user. Added automatic `mkdir` with `recursive: true` before writing. (`src/tools/builtin/workspace/file_write.ts`)
+- **TUI keyboard: Backspace and all Ctrl+key combos silently dropped** — `InputEngine.decodeByte()` only handled bytes 0, 9, 13, 27, and 32–126, missing backspace (byte 127 / DEL) and all Ctrl-modified keys (bytes 1–26 for Ctrl+A through Ctrl+Z). Backspace and shortcuts like Ctrl+C (cancel), Ctrl+K (cut line), Ctrl+U (clear line), Ctrl+W (delete word), and Ctrl+L (clear screen) produced no `KeyEvent`, effectively breaking text editing in the TUI. Added handlers for bytes 1–26 (Ctrl+letter → `{key, ctrl: true}`) and bytes 8/127 (backspace). (`src/tui/input-engine.ts`)
+- **Editor Run button: template literal escapes broke JS parser** — `\n` escape sequences inside the TypeScript backtick template literal in `serveUi()` were being converted to literal newline characters in the served HTML, causing the browser's JavaScript parser to fail with "Invalid or unexpected token" and preventing the entire SPA from loading. Double-escaped (`\\n`) to preserve the literal `\n` in the generated HTML for browser-side parsing. Affected the new `editorRunCode()` function. (`src/server/ui.ts`)
+
 ## [0.48.5] — 2026-06-21
 
 ### Fixed
