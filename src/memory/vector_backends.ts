@@ -158,9 +158,9 @@ class QdrantVectorStore implements MemoryVectorStore {
   async upsert(record: VectorMemoryRecord): Promise<void> {
     await this.ensureReady(record.embedding.length);
     await requestJson(
-      `${this.url}/collections/${encodeURIComponent(this.collection)}/points?wait=true`,
+      `${this.url}/collections/${encodeURIComponent(this.collection)}/points/upsert?wait=true`,
       {
-        method: 'PUT',
+        method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({
           points: [{
@@ -244,7 +244,7 @@ class PineconeVectorStore implements MemoryVectorStore {
   private headers(): HeadersInit {
     return {
       'Api-Key': this.apiKey ?? '',
-      'X-Pinecone-Api-Version': '2024-10',
+      'X-Pinecone-Api-Version': '2025-10',
     };
   }
 

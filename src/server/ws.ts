@@ -41,7 +41,10 @@ type WsMsg =
   | { type: 'audio'; data: string; format?: string }
   | { type: 'voice_state'; speaking: boolean }
   | { type: 'approval_response'; requestId: string; approved: boolean }
-  | { type: 'stop' };
+  | { type: 'stop' }
+  | { type: 'terminal_open'; cwd?: string }
+  | { type: 'terminal_input'; data: string }
+  | { type: 'terminal_close' };
 
 function send(ws: WebSocket, data: unknown): void {
   if (ws.readyState === WebSocket.OPEN) {
@@ -59,6 +62,13 @@ const pendingApprovals = new Map<string, (approved: boolean) => void>();
 const sessionAbortControllers = new Map<string, AbortController>();
 
 const wsClients = new Map<WebSocket, { sessionId: string | null }>();
+
+interface TerminalSession {
+  process: Deno.ChildProcess;
+  writer: WritableStreamDefaultWriter<Uint8Array>;
+}
+
+const terminalSessions = new Map<WebSocket, TerminalSession>();
 
 function stripToolMarkup(text: string): string {
   return text
@@ -209,6 +219,16 @@ export async function handleWebSocket(req: Request): Promise<Response> {
     wsClients.delete(ws);
     unsubscribe();
     clearAssistantFlushTimer();
+
+    const terminal = terminalSessions.get(ws);
+    if (terminal) {
+      try {
+        terminal.process.kill('SIGTERM');
+        terminal.writer.releaseLock();
+      } catch { /* already exited */ }
+      terminalSessions.delete(ws);
+    }
+
     if (!sessionId || !sessionDbRef) return;
     if (turnInFlight) {
       closeAfterTurn = true;
@@ -1010,6 +1030,101 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         );
       } catch (e) {
         _log.error(`voice_state error`, { error: (e as Error).message });
+      }
+      return;
+    }
+
+    if (msg.type === 'terminal_open') {
+      if (terminalSessions.has(ws)) {
+        try {
+          const existing = terminalSessions.get(ws)!;
+          existing.process.kill('SIGTERM');
+          existing.writer.releaseLock();
+        } catch { /* already exited */ }
+        terminalSessions.delete(ws);
+      }
+      try {
+        const { isWindows: platformIsWindows } = await import('../utils/platform.ts');
+        const shellCmd = platformIsWindows() ? 'powershell.exe' : 'bash';
+        const shellArgs = platformIsWindows()
+          ? ['-NoProfile', '-NoLogo']
+          : ['--norc'];
+        const cwd = (msg as { cwd?: string }).cwd || Deno.cwd();
+        const proc = new Deno.Command(shellCmd, {
+          args: shellArgs,
+          stdin: 'piped',
+          stdout: 'piped',
+          stderr: 'piped',
+          cwd,
+          env: {
+            TERM: 'xterm-256color',
+            HOME: Deno.env.get('HOME') || '',
+            PATH: Deno.env.get('PATH') || '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            PWD: cwd,
+            SHELL: shellCmd,
+            LANG: Deno.env.get('LANG') || 'en_US.UTF-8',
+            COLORTERM: 'truecolor',
+          },
+        });
+        const child = proc.spawn();
+        const writer = child.stdin.getWriter();
+        terminalSessions.set(ws, { process: child, writer });
+
+        const decoder = new TextDecoder();
+
+        (async () => {
+          const stdoutReader = child.stdout.getReader();
+          try {
+            while (true) {
+              const { done, value } = await stdoutReader.read();
+              if (done) break;
+              const text = decoder.decode(value);
+              if (text) send(ws, { type: 'terminal_output', data: text });
+            }
+          } catch { /* reader closed */ }
+        })().catch(() => {});
+
+        (async () => {
+          const stderrReader = child.stderr.getReader();
+          try {
+            while (true) {
+              const { done, value } = await stderrReader.read();
+              if (done) break;
+              const text = decoder.decode(value);
+              if (text) send(ws, { type: 'terminal_output', data: text });
+            }
+          } catch { /* reader closed */ }
+        })().catch(() => {});
+
+        (async () => {
+          const status = await child.status;
+          send(ws, { type: 'terminal_closed', exitCode: status.code });
+          terminalSessions.delete(ws);
+        })().catch(() => {});
+      } catch (e) {
+        send(ws, { type: 'error', error: `Terminal: ${(e as Error).message}` });
+      }
+      return;
+    }
+
+    if (msg.type === 'terminal_input') {
+      const session = terminalSessions.get(ws);
+      if (session) {
+        try {
+          await session.writer.write(new TextEncoder().encode((msg as { data: string }).data));
+        } catch { /* pipe closed */ }
+      }
+      return;
+    }
+
+    if (msg.type === 'terminal_close') {
+      const session = terminalSessions.get(ws);
+      if (session) {
+        try {
+          session.process.kill('SIGTERM');
+          session.writer.releaseLock();
+        } catch { /* already exited */ }
+        terminalSessions.delete(ws);
       }
       return;
     }
