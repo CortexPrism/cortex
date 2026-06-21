@@ -205,7 +205,9 @@ function parseToolCallsFromFragments(text: string): ToolCallRequest[] {
   if (argKeyBlocks.length > 0) {
     for (const block of argKeyBlocks) {
       const inner = block[1];
-      const pairs = [...inner.matchAll(/<arg_key>([^<]+)<\/arg_key>\s*<arg_value>([^<]*)<\/arg_value>/g)];
+      const pairs = [
+        ...inner.matchAll(/<arg_key>([^<]+)<\/arg_key>\s*<arg_value>([^<]*)<\/arg_value>/g),
+      ];
       const map = new Map<string, string>();
       for (const [, key, val] of pairs) {
         map.set(key.trim(), val.trim());
