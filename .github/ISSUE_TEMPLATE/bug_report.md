@@ -47,7 +47,7 @@ assignees: ''
 
 ## Additional Context
 
-- Activity log entries (from `cortex serve` → Activity tab, or `~/.cortex/data/lens.db`)
+- Activity log entries (from `cortex server start` → Activity tab, or `~/.cortex/data/lens.db`)
 - Screenshots or screen recordings if helpful
 - Any recent changes to your setup (new provider, updated Deno, etc.)
 

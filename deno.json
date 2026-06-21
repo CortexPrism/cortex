@@ -3,12 +3,12 @@
   "nodeModulesDir": "auto",
   "tasks": {
     "dev": "deno run --allow-all src/main.ts",
-    "chat": "deno run --allow-all src/main.ts chat",
+    "chat": "deno run --allow-all src/main.ts agent chat",
     "migrate": "deno run --allow-all src/db/migrate.ts",
     "lint": "deno lint",
     "fmt": "deno fmt",
     "check": "deno check src/main.ts",
-    "serve": "deno run --allow-all src/main.ts serve",
+    "serve": "deno run --allow-all src/main.ts server start",
     "test": "deno test --allow-all",
     "i18n:validate": "deno run --allow-read src/i18n/scripts/validate.ts",
     "i18n:sync": "deno run --allow-read --allow-write src/i18n/scripts/sync.ts",
@@ -20,8 +20,8 @@
     "scheduler": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env --allow-sys src/processes/scheduler-process.ts",
     "daemon": "deno run --allow-all src/main.ts daemon run",
     "daemon:start": "deno run --allow-all src/main.ts daemon start",
-    "restart": "deno run --allow-all src/main.ts restart",
-    "stop": "deno run --allow-all src/main.ts stop",
+    "restart": "deno run --allow-all src/main.ts daemon restart",
+    "stop": "deno run --allow-all src/main.ts daemon stop",
     "build-dashboard": "deno run --allow-read --allow-write --allow-net desktop/build-dashboard.ts"
   },
   "imports": {

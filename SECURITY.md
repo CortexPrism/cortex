@@ -55,7 +55,7 @@ Every tool call an agent makes passes through the **policy validator** before ex
 3. The intent is either **approved** (forwarded to the executor), **denied** (error returned to
    agent), or **held for human approval**
 
-Default deny rules (seeded on first `cortex migrate`):
+Default deny rules (seeded on first `cortex db migrate`):
 
 - `rm\s+-rf\s+/` — recursive delete from root
 - `:\(\)\{.*\}` — fork bomb patterns
@@ -154,7 +154,7 @@ Continuous monitoring across 6 ecosystems (npm, PyPI, Maven, Go, Cargo, NuGet):
 
 ### Sandbox Isolation
 
-Code execution (`cortex run`, `code_exec` tool) runs inside **ephemeral Docker containers** with:
+Code execution (`cortex sandbox run`, `code_exec` tool) runs inside **ephemeral Docker containers** with:
 
 - No network access by default
 - Resource limits on CPU and memory
@@ -167,7 +167,7 @@ retains policy gating.
 ### No Telemetry
 
 CortexPrism collects **no telemetry**. No usage data, prompts, or credentials are ever sent to
-external servers. The update check (`cortex update --check`) is the only outbound request made by
+external servers. The update check (`cortex self update --check`) is the only outbound request made by
 the application itself, and it can be skipped by running with `--check` in offline environments.
 
 ---

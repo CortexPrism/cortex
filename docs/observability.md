@@ -42,7 +42,7 @@ cortex log set-level debug
 Or via environment variable (overrides config):
 
 ```bash
-CORTEX_LOG_LEVEL=debug cortex chat
+CORTEX_LOG_LEVEL=debug cortex agent chat
 ```
 
 Log file location (default): `~/.cortex/data/logs/cortex.log`

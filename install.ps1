@@ -125,8 +125,8 @@ Write-Host @"
 Quick start:
 
   cortex setup         Configure your LLM provider
-  cortex chat          Start chatting
-  cortex serve         Start web UI at http://localhost:3000
+  cortex agent chat          Start chatting
+  cortex server start         Start web UI at http://localhost:3000
 
 What's new in v0.42:
 

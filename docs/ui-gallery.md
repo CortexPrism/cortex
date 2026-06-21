@@ -1,6 +1,6 @@
 # Cortex UI Gallery
 
-Captured from a local `cortex serve` session at `http://127.0.0.1:3000`.
+Captured from a local `cortex server start` session at `http://127.0.0.1:3000`.
 
 ## Dashboard
 

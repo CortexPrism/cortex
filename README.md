@@ -165,7 +165,7 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 
 ### Web UI & REST API
 
-- **Built-in HTTP server** — `cortex serve` starts a WebSocket-powered chat UI on port 3000
+- **Built-in HTTP server** — `cortex server start` starts a WebSocket-powered chat UI on port 3000
 - **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Activity, Memory, Jobs, Sessions,
   Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, A2A Bridge, Memori, AgentLint,
   Sandbox
@@ -236,7 +236,7 @@ See [docs/computer-use/README.md](docs/computer-use/README.md) for the full guid
 - **Dependency guardian** — continuous CVE monitoring, license enforcement, and remediation
   suggestions across 6 package ecosystems
 - **AgentLint** — automated auditing of agent configs, tools, plugins, and prompts with 33+ checks
-- **Auto-update** — `cortex update` supports source mode and signed binary mode with SHA-256 and
+- **Auto-update** — `cortex self update` supports source mode and signed binary mode with SHA-256 and
   optional GPG verification
 - **Desktop app** — Tauri-based desktop wrapper (macOS, Windows, Linux)
 
@@ -297,8 +297,8 @@ All binaries include SHA-256 checksums and optional GPG signatures.
 
 ```bash
 cortex setup        # Interactive setup wizard — choose provider, enter API key
-cortex chat         # Start your first chat session
-cortex serve        # Open the Web UI at http://127.0.0.1:3000
+cortex agent chat         # Start your first chat session
+cortex server start        # Open the Web UI at http://127.0.0.1:3000
 ```
 
 ---
@@ -309,23 +309,23 @@ cortex serve        # Open the Web UI at http://127.0.0.1:3000
 cortex <command>
 
 Commands:
-  chat              Interactive streaming chat session
+  agent chat        Interactive streaming chat session
   setup             Re-run the setup wizard
   sessions          List recent chat sessions
-  run <file>        Execute a code file in the sandbox
-  serve             Start the HTTP + WebSocket server with Web UI
+  sandbox run <file>Execute a code file in the sandbox
+  server start      Start the HTTP + WebSocket server with Web UI
   daemon            Manage background processes (validator, executor, scheduler)
-  start             Start daemon + server processes
-  restart           Restart daemon + server processes
-  stop              Stop all background processes
+  daemon start      Start daemon + server processes
+  daemon restart    Restart daemon + server processes
+  daemon stop       Stop all background processes
   voice             Manage voice mode (enable, disable, status, set-voice)
   memory            Search and manage memory
   reflect           Inspect and consolidate reflection patterns
   jobs              Manage scheduled jobs
   vault             Encrypted credential vault (store / get / list / delete)
   policy            Security policy rules (list / add / remove / check)
-  migrate           Initialise or migrate all databases
-  update            Check for and apply updates
+  db migrate        Initialise or migrate all databases
+  self update       Check for and apply updates
   git               Git workspace operations
   github            GitHub integration (PRs, issues, repos)
   remote            Manage remote Cortex agents
@@ -346,20 +346,20 @@ Commands:
   triggers          Manage event triggers
   channels          Manage channel adapters (Discord, etc.)
   mcp               Start MCP server (stdio)
-  tui               Launch terminal UI
+  agent tui         Launch terminal UI
   desktop           Desktop automation
   workflow          Workflow engine operations
   projects          Project management
 ```
 
-### `cortex chat`
+### `cortex agent chat`
 
 ```bash
-cortex chat                          # Start a new chat session
-cortex chat --model gpt-4o           # Override the active model
-cortex chat --resume sess_abc123     # Resume an existing session
-cortex chat -s sess_abc123           # Resume (short flag)
-cortex chat --no-stream              # Disable streaming output
+cortex agent chat                          # Start a new chat session
+cortex agent chat --model gpt-4o           # Override the active model
+cortex agent chat --resume sess_abc123     # Resume an existing session
+cortex agent chat -s sess_abc123           # Resume (short flag)
+cortex agent chat --no-stream              # Disable streaming output
 ```
 
 Slash commands inside chat:
@@ -370,32 +370,32 @@ Slash commands inside chat:
 /clear  Clear the screen
 ```
 
-### `cortex run <file>`
+### `cortex sandbox run <file>`
 
 Execute a code file in an isolated sandbox with optional LLM auto-fix:
 
 ```bash
-cortex run script.py                    # Run in Docker sandbox (auto-detect language)
-cortex run script.py --no-sandbox       # Run as direct subprocess
-cortex run script.py --fix              # Enable LLM auto-fix loop on failure
-cortex run script.py --fix --max-fix 6  # Up to 6 fix attempts
+cortex sandbox run script.py                    # Run in Docker sandbox (auto-detect language)
+cortex sandbox run script.py --no-sandbox       # Run as direct subprocess
+cortex sandbox run script.py --fix              # Enable LLM auto-fix loop on failure
+cortex sandbox run script.py --fix --max-fix 6  # Up to 6 fix attempts
 ```
 
 Supported languages: `python`, `javascript`, `typescript`, `bash`, `ruby`, `go`, `rust`
 
-### `cortex serve`
+### `cortex server start`
 
 Start the built-in HTTP + WebSocket server:
 
 ```bash
-cortex serve                         # http://127.0.0.1:3000 (foreground)
-cortex serve --port 8080 --host 0.0.0.0
-cortex serve -d                      # Run in the background (daemon mode)
-cortex serve -d -r                   # Restart background server
-cortex serve -s                      # Stop background server
-cortex stop                          # Stop server + all daemons
-cortex stop --server-only
-cortex stop --daemon-only
+cortex server start                         # http://127.0.0.1:3000 (foreground)
+cortex server start --port 8080 --host 0.0.0.0
+cortex server start -d                      # Run in the background (daemon mode)
+cortex server start -d -r                   # Restart background server
+cortex server start -s                      # Stop background server
+cortex daemon stop                          # Stop server + all daemons
+cortex daemon stop --server-only
+cortex daemon stop --daemon-only
 ```
 
 ### `cortex daemon`
@@ -494,15 +494,15 @@ Default deny rules (seeded on first migrate):
 - `dd\s+if=.*of=/dev/` — direct disk writes
 - `chmod\s+777\s+/` — world-write on root
 
-### `cortex update`
+### `cortex self update`
 
 ```bash
-cortex update              # Check for updates and apply
-cortex update --check      # Dry-run — show available versions without applying
-cortex update --channel pre-release # Include pre-release versions
-cortex update --rollback   # Revert to previous version
-cortex update --status     # Show current and latest version
-cortex update --force      # Bypass dirty working tree check (source mode)
+cortex self update              # Check for updates and apply
+cortex self update --check      # Dry-run — show available versions without applying
+cortex self update --channel pre-release # Include pre-release versions
+cortex self update --rollback   # Revert to previous version
+cortex self update --status     # Show current and latest version
+cortex self update --force      # Bypass dirty working tree check (source mode)
 ```
 
 Supports **source mode** (git pull) and **binary mode** (download + SHA-256 + optional GPG
@@ -709,7 +709,7 @@ Config file: `~/.cortex/config.json` (created by `cortex setup`)
 
 ## Web UI
 
-Start with `cortex serve` and open `http://127.0.0.1:3000`.
+Start with `cortex server start` and open `http://127.0.0.1:3000`.
 
 | Section        | Page                | Description                                                             |
 | -------------- | ------------------- | ----------------------------------------------------------------------- |

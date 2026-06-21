@@ -12,7 +12,7 @@ set CORTEX_EXE=%CORTEX_PATH%\cortex.exe
 
 REM Check if cortex binary exists
 if not exist "%CORTEX_EXE%" (
-    echo Error: %CORTEX_EXE% not found. Run `cortex update` first.
+    echo Error: %CORTEX_EXE% not found. Run `cortex self update` first.
     exit /b 1
 )
 
@@ -48,7 +48,7 @@ if %INSTALL_DAEMON%==1 (
 )
 
 if %INSTALL_SERVER%==1 (
-    nssm install CortexServer "%CORTEX_EXE%" serve --port 3000 --host 127.0.0.1
+    nssm install CortexServer "%CORTEX_EXE%" server start --port 3000 --host 127.0.0.1
     nssm set CortexServer AppDirectory "%CORTEX_PATH%"
     nssm set CortexServer Start SERVICE_AUTO_START
     nssm start CortexServer
@@ -73,7 +73,7 @@ if %INSTALL_DAEMON%==1 (
 )
 
 if %INSTALL_SERVER%==1 (
-    schtasks /create /tn "Cortex Server" /tr "\"%CORTEX_EXE%\" serve --port 3000 --host 127.0.0.1" /sc onlogon /delay 0001:00 /f
+    schtasks /create /tn "Cortex Server" /tr "\"%CORTEX_EXE%\" server start --port 3000 --host 127.0.0.1" /sc onlogon /delay 0001:00 /f
     schtasks /run /tn "Cortex Server"
     echo Cortex server installed via Task Scheduler. Starts on login (with 1min delay).
 )

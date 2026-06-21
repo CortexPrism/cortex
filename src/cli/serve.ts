@@ -15,7 +15,7 @@ import { i18n } from '../i18n/service.ts';
 export async function findServerProcess(
   port: number,
 ): Promise<{ pid: number; host: string } | null> {
-  const pids = await findDenoProcesses('cortex.*main\\.[jt]s.*serve');
+  const pids = await findDenoProcesses('cortex.*main\\.[jt]s.*(serve|server.*start)');
 
   for (const pid of pids) {
     try {
