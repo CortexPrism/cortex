@@ -360,6 +360,7 @@ export async function incrementalSync(
     const result = await indexRepository(rootPath, projectName);
     return { project: result.project, addedNodes: result.nodeCount, addedEdges: result.edgeCount };
   }
+  const projectId = project.id;
 
   const files = await discoverFiles(rootPath);
   let addedNodes = 0;
@@ -373,17 +374,17 @@ export async function incrementalSync(
         ? filePath.slice(rootPath.length).replace(/^\//, '')
         : filePath;
 
-      const existingHash = await getFileHash(project!.id, relPath);
+      const existingHash = await getFileHash(projectId, relPath);
       if (existingHash === hash) continue;
 
-      await deleteFileNodes(project!.id, relPath);
+      await deleteFileNodes(projectId, relPath);
 
       const result = await indexFile(filePath, rootPath);
       if (!result || 'error' in result || result.nodes.length === 0) continue;
 
       const nodeIds = await bulkInsertNodes(
         result.nodes.map((n) => ({
-          project_id: project!.id,
+          project_id: projectId,
           label: n.label,
           name: n.name,
           qualified_name: n.qualifiedName,
@@ -411,7 +412,7 @@ export async function incrementalSync(
         const source = await Deno.readTextFile(
           result.relPath.startsWith('/') ? result.relPath : `${rootPath}/${result.relPath}`,
         ).catch(() => null);
-        const ctx = await buildResolutionContext(project!.id, [{
+        const ctx = await buildResolutionContext(projectId, [{
           filePath: result.relPath,
           source: source ?? '',
           language: result.language,
@@ -429,7 +430,7 @@ export async function incrementalSync(
         if (resolved.length > 0) {
           const edgeIds = await bulkInsertEdges(
             resolved.map((e) => ({
-              project_id: project!.id,
+              project_id: projectId,
               type: e.type as CodeEdgeType,
               source_id: e.sourceId,
               target_id: e.targetId,
@@ -443,7 +444,7 @@ export async function incrementalSync(
         }
       }
 
-      await setFileHash(project!.id, relPath, hash);
+      await setFileHash(projectId, relPath, hash);
     } catch { /* skip */ }
   }
 

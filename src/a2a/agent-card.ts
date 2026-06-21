@@ -9,6 +9,7 @@ export function generateAgentCard(
   agentName: string,
   agentDescription: string,
   tools: Tool[],
+  { pushNotifications = false }: { pushNotifications?: boolean } = {},
 ): AgentCard {
   const skills = convertToolsToSkills(tools);
 
@@ -21,7 +22,7 @@ export function generateAgentCard(
     defaultOutputModes: ['text'],
     capabilities: {
       streaming: true,
-      pushNotifications: false,
+      pushNotifications,
       stateTransitionHistory: true,
     },
     skills: skills.length > 0 ? skills : getDefaultSkills(),

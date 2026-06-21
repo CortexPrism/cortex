@@ -1,7 +1,7 @@
-import { getTempDir, isWindows } from '../utils/platform.ts';
+import { getTempDir } from '../utils/platform.ts';
 import { join } from '@std/path';
 
-const defaultSocketDir = isWindows() ? join(getTempDir(), 'cortex') : '/tmp/cortex';
+const defaultSocketDir = join(getTempDir(), 'cortex');
 export const SOCKET_DIR = Deno.env.get('CORTEX_SOCKET_DIR') ?? defaultSocketDir;
 export const VALIDATOR_SOCK = join(SOCKET_DIR, 'validator.sock');
 export const EXECUTOR_SOCK = join(SOCKET_DIR, 'executor.sock');

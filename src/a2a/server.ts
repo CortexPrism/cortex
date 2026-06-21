@@ -93,8 +93,17 @@ export function setA2ASkills(skills: AgentSkill[]): void {
   defaultSkills = skills;
 }
 
-export function getA2AAgentCard(baseUrl: string, name: string, description: string): AgentCard {
+export async function getA2AAgentCard(baseUrl: string, name: string, description: string): Promise<AgentCard> {
   if (agentCard) return agentCard;
+
+  let pushNotifications = false;
+  try {
+    const { listChannels } = await import('../channels/store.ts');
+    const channels = await listChannels();
+    pushNotifications = channels.some((c) => c.enabled);
+  } catch {
+    // channels not available
+  }
 
   const interfaces: AgentInterface[] = [
     { url: `${baseUrl}/a2a`, protocol: 'json-rpc', version: '1.0' },
@@ -109,7 +118,7 @@ export function getA2AAgentCard(baseUrl: string, name: string, description: stri
     defaultOutputModes: ['text'],
     capabilities: {
       streaming: true,
-      pushNotifications: false,
+      pushNotifications,
       stateTransitionHistory: true,
     },
     skills: defaultSkills.length > 0 ? defaultSkills : [
@@ -215,7 +224,7 @@ export async function handleA2ARequest(
     return jsonRpcError(null, -32600, message);
   }
 
-  const card = getA2AAgentCard(baseUrl, agentName, agentDescription);
+  const card = await getA2AAgentCard(baseUrl, agentName, agentDescription);
 
   try {
     let result: unknown;
