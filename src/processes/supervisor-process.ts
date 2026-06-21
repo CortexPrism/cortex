@@ -1,26 +1,57 @@
 import {
   ensureSocketDir,
   EXECUTOR_SOCK,
+  pingProcess,
   SCHEDULER_SOCK,
   VALIDATOR_SOCK,
 } from '../ipc/transport.ts';
 import { fromFileUrl, join } from '@std/path';
 import { isWindows } from '../utils/platform.ts';
 import { PATHS } from '../config/paths.ts';
+import { BOOT_ORDER, type BootStage } from '../config/config.ts';
 
 interface ProcDef {
   name: string;
   label: string;
   sock: string;
+  /** Boot stage this daemon maps to. */
+  stage: BootStage;
 }
 
 const PROCESS_DEFS: ProcDef[] = [
-  { name: 'validator', label: 'Cortex Validator', sock: VALIDATOR_SOCK },
-  { name: 'executor', label: 'Cortex Executor', sock: EXECUTOR_SOCK },
-  { name: 'scheduler', label: 'Cortex Scheduler', sock: SCHEDULER_SOCK },
+  { name: 'validator', label: 'Cortex Validator', sock: VALIDATOR_SOCK, stage: 'validator' },
+  { name: 'executor', label: 'Cortex Executor', sock: EXECUTOR_SOCK, stage: 'executor' },
+  { name: 'scheduler', label: 'Cortex Scheduler', sock: SCHEDULER_SOCK, stage: 'scheduler' },
 ];
 
+const READINESS_TIMEOUT_MS = 10_000;
+const READINESS_POLL_MS = 250;
+
 const parentsToKill = new Set<number>();
+
+// ── Boot stage tracking ──────────────────────────────────────
+
+interface StageState {
+  stage: BootStage;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startedAt?: number;
+  completedAt?: number;
+  error?: string;
+}
+
+const stageStates = new Map<BootStage, StageState>();
+
+function initStages(): void {
+  for (const stage of BOOT_ORDER) {
+    stageStates.set(stage, { stage, status: 'pending' });
+  }
+}
+
+export function getBootStatus(): StageState[] {
+  return BOOT_ORDER.map((s) => stageStates.get(s)!);
+}
+
+// ── Helpers ──────────────────────────────────────────────────
 
 function isCompiledBinary(): boolean {
   const p = Deno.execPath();
@@ -71,11 +102,36 @@ async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
   return child;
 }
 
+/** Wait for a daemon to become ready by polling its IPC socket. */
+async function waitForReady(proc: ProcDef): Promise<boolean> {
+  const deadline = Date.now() + READINESS_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      const alive = await pingProcess(proc.sock);
+      if (alive) return true;
+    } catch { /* socket not ready yet */ }
+    await new Promise((r) => setTimeout(r, READINESS_POLL_MS));
+  }
+  return false;
+}
+
+// ── Supervisor (init system) ─────────────────────────────────
+
 export async function runSupervisor(): Promise<void> {
+  initStages();
   const children = new Map<
     string,
     { proc: ProcDef; process: Deno.ChildProcess; restartCount: number }
   >();
+
+  function markStage(stage: BootStage, status: StageState['status'], error?: string): void {
+    const state = stageStates.get(stage);
+    if (!state) return;
+    state.status = status;
+    if (status === 'running') state.startedAt = Date.now();
+    if (status === 'completed' || status === 'failed') state.completedAt = Date.now();
+    if (error) state.error = error;
+  }
 
   async function startOne(proc: ProcDef): Promise<void> {
     const existing = children.get(proc.name);
@@ -95,6 +151,14 @@ export async function runSupervisor(): Promise<void> {
     children.set(proc.name, { proc, process, restartCount });
     console.log(`[supervisor] ${proc.label} started (pid ${process.pid})`);
 
+    // Readiness check
+    const ready = await waitForReady(proc);
+    if (ready) {
+      console.log(`[supervisor] ${proc.label} ready`);
+    } else {
+      console.warn(`[supervisor] ${proc.label} did not report ready within ${READINESS_TIMEOUT_MS}ms`);
+    }
+
     (async () => {
       const status = await process.status;
       parentsToKill.delete(process.pid);
@@ -102,16 +166,33 @@ export async function runSupervisor(): Promise<void> {
       console.log(`[supervisor] ${proc.label} exited (code ${status.code})`);
       if (status.code !== 0) {
         children.delete(proc.name);
+        markStage(proc.stage, 'failed', `exit code ${status.code}`);
         startOne(proc);
       } else {
         children.delete(proc.name);
+        markStage(proc.stage, 'completed');
       }
     })();
   }
 
-  for (const proc of PROCESS_DEFS) {
-    await startOne(proc);
+  // ── Ordered boot sequence ──────────────────────────────────
+
+  markStage('supervisor', 'completed');
+  const daemonDefs = PROCESS_DEFS; // validator, executor, scheduler
+
+  for (const stage of BOOT_ORDER) {
+    const def = daemonDefs.find((d) => d.stage === stage);
+    if (!def) continue; // skip non-daemon stages (migrate, services, channels, ready)
+
+    markStage(stage, 'running');
+    await startOne(def);
+    markStage(stage, 'completed');
   }
+
+  markStage('ready', 'completed');
+  console.log('[supervisor] Boot sequence complete');
+
+  // ── Shutdown ───────────────────────────────────────────────
 
   const shutdown = () => {
     console.log('\n[supervisor] Shutting down...');
