@@ -65,6 +65,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **OS Health page blank due to nested page div** — the `page-oshealth` div was inserted inside the still-open `page-codegraph` div, causing it to remain hidden when Codegraph was not the active page. Moved to the correct location between the Codegraph and Workflows page divs. Also added null guard on the `loadOSHealth()` content element reference. (`src/server/ui.ts`)
 
+- **Jobs duplicating from agent schedule tool and UI double-submit** — `createJob()` had no name-based deduplication: every double-click of the "Create" button, repeated CLI invocation, or LLM agent calling the `schedule` tool multiple times created a new job with a random ID. Added `upsert: true` mode to `createJob()` that updates the existing job by name instead of creating a duplicate (reanimates failed jobs, preserves source). The `schedule` tool now uses upsert semantics by default (`src/tools/builtin/schedule.ts`). UI "Create" button now disables on click to prevent double-submission. (`src/scheduler/scheduler.ts`, `src/server/ui.ts`)
+
+- **No visibility into job origin or mass deletion** — added `source` column to the jobs table (migration 036) tracking whether a job came from `ui`, `cli`, `seed`, or `tool:<agentId>`. Job cards in the UI now show a source badge. Added `DELETE /api/jobs/status/:status` and `DELETE /api/jobs/batch` endpoints, plus "Delete All Failed" and "Delete All Cancelled" buttons with confirmation dialogs in the UI. Added `deleteJobsBatch()` and `deleteJobsByStatus()` functions to the scheduler module. (`src/db/migrations/036_jobs_source.sql`, `src/scheduler/scheduler.ts`, `src/server/router.ts`, `src/server/ui.ts`, `src/cli/jobs.ts`, `src/memory/consolidate.ts`)
+
 ## [0.47.0] — 2026-06-20
 
 ### Added

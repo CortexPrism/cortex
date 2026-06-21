@@ -42,9 +42,9 @@ export async function seedConsolidationJobs(): Promise<void> {
 
     await db.run(
       `INSERT OR IGNORE INTO jobs (
-         id, name, kind, schedule, command, status, attempts, max_attempts, next_run_at,
+         id, name, kind, schedule, command, source, status, attempts, max_attempts, next_run_at,
          schedule_kind, schedule_config, action_kind, action_config, created_at, updated_at
-       ) VALUES (?, ?, 'cron', ?, ?, 'pending', 0, 1, ?, 'cron', ?, 'system', '{}', ?, ?)`,
+       ) VALUES (?, ?, 'cron', ?, ?, 'seed', 'pending', 0, 1, ?, 'cron', ?, 'system', '{}', ?, ?)`,
       [
         id,
         job.name,

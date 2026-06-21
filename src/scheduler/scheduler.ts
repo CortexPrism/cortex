@@ -34,6 +34,7 @@ export interface JobRow {
   schedule_config?: string | null;
   action_kind?: string | null;
   action_config?: string | null;
+  source?: string | null;
 }
 
 export interface JobRunRow {
@@ -57,6 +58,8 @@ export interface CreateJobOptions {
   command: string;
   maxAttempts?: number;
   runAt?: Date;
+  source?: string;
+  upsert?: boolean;
 }
 
 function jobId(): string {
@@ -107,26 +110,60 @@ const JOB_SELECT = `
     schedule_kind,
     schedule_config,
     action_kind,
-    action_config
+    action_config,
+    source
   FROM jobs
 `;
 
 export async function createJob(opts: CreateJobOptions): Promise<string> {
   const db = await getCoreDb();
-  const id = jobId();
   const nextRunAt = opts.runAt?.toISOString() ?? new Date().toISOString();
+
+  if (opts.upsert) {
+    const existing = await db.get<{ id: string }>(
+      `SELECT id FROM jobs WHERE name = ? LIMIT 1`,
+      [opts.name],
+    );
+    if (existing) {
+      await db.run(
+        `UPDATE jobs
+         SET kind = ?, schedule = ?, command = ?, max_attempts = ?,
+             source = COALESCE(?, source),
+             next_run_at = CASE WHEN status = 'failed' THEN ? ELSE next_run_at END,
+             status = CASE WHEN status = 'failed' THEN 'pending' ELSE status END,
+             attempts = CASE WHEN status = 'failed' THEN 0 ELSE attempts END,
+             last_error = CASE WHEN status = 'failed' THEN NULL ELSE last_error END,
+             error = CASE WHEN status = 'failed' THEN NULL ELSE error END,
+             updated_at = datetime('now')
+         WHERE id = ?`,
+        [
+          opts.kind ?? 'once',
+          opts.schedule ?? null,
+          opts.command,
+          opts.maxAttempts ?? 3,
+          opts.source ?? null,
+          nextRunAt,
+          existing.id,
+        ] as InValue[],
+      );
+      return existing.id;
+    }
+  }
+
+  const id = jobId();
 
   await db.run(
     `INSERT INTO jobs (
-       id, name, kind, schedule, command, status, attempts, max_attempts, next_run_at,
+       id, name, kind, schedule, command, source, status, attempts, max_attempts, next_run_at,
        schedule_kind, schedule_config, action_kind, action_config, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, 'pending', 0, ?, ?, 'once', '{}', 'shell', '{}', datetime('now'), datetime('now'))`,
+     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, 'once', '{}', 'shell', '{}', datetime('now'), datetime('now'))`,
     [
       id,
       opts.name,
       opts.kind ?? 'once',
       opts.schedule ?? null,
       opts.command,
+      opts.source ?? null,
       opts.maxAttempts ?? 3,
       nextRunAt,
     ] as InValue[],
@@ -290,4 +327,19 @@ export async function getDueJobs(): Promise<JobRow[]> {
      ORDER BY next_run_at ASC
      LIMIT 10`,
   );
+}
+
+export async function deleteJobsBatch(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = await getCoreDb();
+  const placeholders = ids.map(() => '?').join(',');
+  await db.run(
+    `DELETE FROM jobs WHERE id IN (${placeholders})`,
+    ids as InValue[],
+  );
+}
+
+export async function deleteJobsByStatus(status: JobStatus): Promise<void> {
+  const db = await getCoreDb();
+  await db.run(`DELETE FROM jobs WHERE status = ?`, [status]);
 }

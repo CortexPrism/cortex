@@ -343,6 +343,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '035_compliance.sql',
       label: 'lens.db (compliance metadata)',
     },
+    {
+      db: coreDb,
+      sqlFile: '036_jobs_source.sql',
+      label: 'cortex.db (jobs source tracking)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

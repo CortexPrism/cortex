@@ -90,6 +90,7 @@ export const jobsCommand = new Command()
           schedule: opts.cron,
           maxAttempts: opts.maxAttempts,
           runAt,
+          source: 'cli',
         });
         console.log(green('  ' + i18n.t('cli.jobs.created', { id })));
       }),

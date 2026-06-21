@@ -1547,6 +1547,8 @@ const HTML = `<!DOCTYPE html>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="showCronModal()">+ New Job</button>
         <button class="btn btn-ghost" onclick="loadJobs()">↻ Refresh</button>
+        <button class="btn btn-ghost" style="color:#f87171;" onclick="deleteJobsByStatusUI('failed')" id="btn-delete-failed" title="Remove all failed jobs">✕ Failed</button>
+        <button class="btn btn-ghost" style="color:#f87171;" onclick="deleteJobsByStatusUI('cancelled')" id="btn-delete-cancelled" title="Remove all cancelled jobs">✕ Cancelled</button>
       </div>
     </div>
     <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);">
@@ -5119,6 +5121,8 @@ function renderJobCard(job) {
   const nextRun = fmtJobTime(job.next_run_at);
   const created = fmtJobTime(job.created_at);
   const detail = job.last_error || job.result || job.description || job.action_config || '';
+  const sourceLabel = job.source ? ('via ' + job.source) : '';
+  const sourceColor = job.source && job.source.startsWith('tool:') ? '#a78bfa' : 'var(--text3)';
   return [
     '<div class="card-sm" style="display:flex;flex-direction:column;gap:12px;">',
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">',
@@ -5127,6 +5131,7 @@ function renderJobCard(job) {
     '<span style="font-size:13px;font-weight:600;color:var(--text);">' + esc(job.name) + '</span>',
     '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(statusLabel) + '</span>',
     '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">' + esc(job.kind ?? 'once') + '</span>',
+    sourceLabel ? '<span class="badge" style="background:rgba(165,180,252,0.08);color:' + sourceColor + ';font-size:10px;">' + esc(sourceLabel) + '</span>' : '',
     '</div>',
     '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:\\'JetBrains Mono\\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
       esc(job.command || 'No command configured') +
@@ -10090,35 +10095,51 @@ function toggleCronFields() {
   document.getElementById('cj-schedule-row').style.display = kind === 'once' ? 'none' : 'block';
 }
 async function submitCronJob() {
+  const btn = document.querySelector('#cron-modal .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
   const name = document.getElementById('cj-name').value.trim();
   const command = document.getElementById('cj-command').value.trim();
-  if (!name || !command) { document.getElementById('cj-status').textContent = 'Name and Command required.'; return; }
+  if (!name || !command) { document.getElementById('cj-status').textContent = 'Name and Command required.'; if(btn){btn.disabled=false;btn.textContent='Create';} return; }
   const body = {
     name, command,
     kind: document.getElementById('cj-kind').value,
     schedule: document.getElementById('cj-schedule').value || undefined,
     maxAttempts: Number(document.getElementById('cj-max').value) || 3,
   };
-  const res = await fetch(BASE + '/api/jobs', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (res.ok) { hideCronModal(); toast('Job created', 'success'); loadCronJobs(); }
-  else { document.getElementById('cj-status').textContent = 'Create failed.'; }
+  try {
+    const res = await fetch(BASE + '/api/jobs', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (res.ok) { hideCronModal(); toast('Job created', 'success'); loadCronJobs(); loadJobs(); }
+    else { document.getElementById('cj-status').textContent = 'Create failed.'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Create'; }
+  }
 }
 async function triggerJob(id) {
   const res = await fetch(\`\${BASE}/api/jobs/\${id}/trigger\`, { method: 'POST' });
   if (res.ok) toast('Job triggered', 'success');
-  loadCronJobs();
+  loadCronJobs(); loadJobs();
 }
 async function cancelJobUI(id) {
   const res = await fetch(\`\${BASE}/api/jobs/\${id}/cancel\`, { method: 'POST' });
   if (res.ok) toast('Job cancelled', 'warning');
-  loadCronJobs();
+  loadCronJobs(); loadJobs();
 }
 async function deleteJobUI(id) {
   const ok = await confirmAction('Delete Job', 'Delete this job?', 'Delete');
   if (!ok) return;
   const res = await fetch(\`\${BASE}/api/jobs/\${id}\`, { method: 'DELETE' });
   if (res.ok) toast('Job deleted', 'success');
-  loadCronJobs();
+  loadCronJobs(); loadJobs();
+}
+
+async function deleteJobsByStatusUI(status) {
+  const labels = { failed: 'all failed', cancelled: 'all cancelled' };
+  const label = labels[status] || status;
+  const ok = await confirmAction('Delete Jobs', \`Delete \${label} jobs? This cannot be undone.\`, 'Delete All');
+  if (!ok) return;
+  const res = await fetch(\`\${BASE}/api/jobs/status/\${status}\`, { method: 'DELETE' });
+  if (res.ok) toast(\`\${label} jobs deleted\`, 'success');
+  loadCronJobs(); loadJobs();
 }
 
 // ── Command palette ──────────────────────────
