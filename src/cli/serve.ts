@@ -84,7 +84,7 @@ export async function startServerBackground(port: number, host: string): Promise
   const execPath = Deno.execPath();
 
   if (isCompiledBinary()) {
-    const shellCmd = `${execPath} serve --port ${port} --host ${host} >> ${logPath} 2>&1`;
+    const shellCmd = `${execPath} server start --port ${port} --host ${host} >> ${logPath} 2>&1`;
     new Deno.Command('sh', {
       args: ['-c', shellCmd],
       stdout: 'null',
@@ -102,7 +102,7 @@ export async function startServerBackground(port: number, host: string): Promise
       '--reload=file://',
       `--config=${configPath}`,
       mainPath,
-      'serve',
+      'server', 'start',
       `--port ${port}`,
       `--host ${host}`,
       `>> ${logPath} 2>&1`,
