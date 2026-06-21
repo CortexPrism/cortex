@@ -7,7 +7,17 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **IDE-style code editor** — the File Editor page was redesigned as a full IDE experience with resizable sidebar (180–500px), collapsible bottom panel with Problems/Output/Terminal tabs, drag-to-resize panel handle, file path breadcrumb navigation, inline find/replace bar with regex and case-sensitivity support, quick file open modal (Ctrl+P) with fuzzy search and arrow-key navigation, find-in-files with results in sidebar panel, right-click context menus on file tree (Open, Rename, Delete) and tabs (Close, Close Others, Close to Right, Close All), enhanced status bar with live cursor position (Ln/Col), language mode indicator, and indent info, color-coded file type icons by extension, inline new file/folder input replacing browser `prompt()`, and `escJs` helper for safe JS string escaping in `onclick` attributes. Keyboard shortcuts: `Ctrl+P` quick open, `Ctrl+F` find, `Ctrl+H` find/replace, `Ctrl+Shift+F` find in files, `Ctrl+B` toggle editor sidebar, `Ctrl+J` toggle bottom panel. (`src/server/ui.ts`)
+
 ### Fixed
+
+- **Template literal regex producing JS comment** — the regex `/\/$/` in `name.replace()` was written with a single backslash, causing the template literal to output `//$/` which the JavaScript parser treated as a single-line comment (`//`), silently eating the rest of the line and corrupting all subsequent code in the rendered page. Changed to double-escaped `/\\/$/` so the template literal emits the correct `\/$/` regex literal. (`src/server/ui.ts`)
+
+- **Template literal `\n` producing literal newline in JS string** — `.split('\n')` inside the template literal was consumed as an actual newline character (0x0A), breaking the JavaScript single-quoted string literal across two lines. Changed to `.split('\\n')` so the template literal emits the correct `\n` escape sequence. (`src/server/ui.ts`)
+
+- **Template literal `\'` premature string termination** — 16 instances of `\'` inside JavaScript strings within the template literal were consumed as literal single quotes, causing premature string termination in the rendered JavaScript. All instances changed to `\\'` so the template literal emits correctly escaped `\'` sequences. This affected onclick handlers, context menu actions, and the editor textarea's `font-family` attribute. (`src/server/ui.ts`)
 
 - **Daemon logs always empty in UI** — the `/api/daemons/:name/logs` endpoint read from `validator.log`/`executor.log`/`scheduler.log` but the supervisor wrote logs to `daemon-validator.log`/`daemon-executor.log`/`daemon-scheduler.log`. Fixed the filename prefix mismatch and replaced the hardcoded `/root/.cortex/data/logs/` path with `PATHS.logDir`. Also the supervisor piped only `stderr` to the log files (`stdout: 'null'`), discarding all `console.log()` output (startup messages, migration progress, status lines). Changed to pipe both stdout and stderr so operational messages appear in the daemon logs. (`src/server/router.ts`, `src/processes/supervisor-process.ts`)
 
