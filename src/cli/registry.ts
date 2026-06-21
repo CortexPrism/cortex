@@ -64,11 +64,6 @@ export const registry: CommandEntry[] = [
     load: () => import('./agentlint-cmd.ts').then((m) => m.agentlintCommand._cmd),
   },
   {
-    path: ['agent', 'import'],
-    load: () => import('./import-cmd.ts').then((m) => m.importCommand._cmd),
-    needs: ['config'],
-  },
-  {
     path: ['agent', 'voice'],
     load: () => import('./voice-cmd.ts').then((m) => m.voiceCommand._cmd),
   },
@@ -163,10 +158,6 @@ export const registry: CommandEntry[] = [
   {
     path: ['mcp', 'a2a'],
     load: () => import('./a2a-cmd.ts').then((m) => m.a2aCommand._cmd),
-  },
-  {
-    path: ['mcp', 'gateway'],
-    load: () => import('./mcp-gateway-cmd.ts').then((m) => m.mcpGatewayCommand._cmd),
   },
   {
     path: ['node'],
