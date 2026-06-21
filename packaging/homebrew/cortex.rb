@@ -1,5 +1,5 @@
 class Cortex < Formula
-  desc "CortexPrism - Open-source agentic harness for AI"
+  desc "CortexPrism - Open-source AI agent operating system"
   homepage "https://cortexprism.io"
   url "https://github.com/CortexPrism/cortex/archive/refs/tags/v#{version}.tar.gz"
   license "MIT"

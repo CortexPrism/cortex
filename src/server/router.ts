@@ -544,6 +544,65 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json({ status: 'ok', ts: new Date().toISOString() });
   }
 
+  // GET /api/os/health — OS-level aggregated health check (no auth)
+  if (req.method === 'GET' && path === '/api/os/health') {
+    const t0 = Date.now();
+    const daemonStatus = await Promise.all([
+      pingProcess(VALIDATOR_SOCK),
+      pingProcess(EXECUTOR_SOCK),
+      pingProcess(SCHEDULER_SOCK),
+    ]);
+    const daemons = {
+      validator: daemonStatus[0] ? 'ok' : 'down',
+      executor: daemonStatus[1] ? 'ok' : 'down',
+      scheduler: daemonStatus[2] ? 'ok' : 'down',
+      allUp: daemonStatus.every(Boolean),
+    };
+
+    let dbOk = false;
+    try {
+      const { getCoreDb: getDb } = await import('../db/client.ts');
+      const db = await getDb();
+      await db.get('SELECT 1');
+      dbOk = true;
+    } catch { /* DB unreachable */ }
+
+    let jobCount = 0;
+    let pendingJobs = 0;
+    try {
+      if (dbOk) {
+        const { getCoreDb: getDb } = await import('../db/client.ts');
+        const db = await getDb();
+        const countRow = await db.get<{ total: number }>('SELECT COUNT(*) as total FROM jobs');
+        jobCount = countRow?.total ?? 0;
+        const pendingRow = await db.get<{ pending: number }>(
+          "SELECT COUNT(*) as pending FROM jobs WHERE status = 'pending'",
+        );
+        pendingJobs = pendingRow?.pending ?? 0;
+      }
+    } catch { /* query failed */ }
+
+    let memoryHealth = null;
+    try {
+      memoryHealth = await getMemoryHealth();
+    } catch { /* memory unreachable */ }
+
+    const { getVersion: getVer } = await import('../config/version.ts');
+    const version = await getVer().catch(() => 'unknown');
+
+    return json({
+      status: daemons.allUp && dbOk ? 'healthy' : 'degraded',
+      version,
+      uptimeMs: Math.floor(performance.now()),
+      daemons,
+      database: dbOk ? 'ok' : 'unreachable',
+      jobs: { total: jobCount, pending: pendingJobs },
+      memory: memoryHealth,
+      latencyMs: Date.now() - t0,
+      ts: new Date().toISOString(),
+    });
+  }
+
   // GET /api/debug/health — expanded health check with DB verification
   if (req.method === 'GET' && path === '/api/debug/health') {
     const checks: Record<string, string> = {};

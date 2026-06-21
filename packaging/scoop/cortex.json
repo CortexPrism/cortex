@@ -1,6 +1,6 @@
 {
   "version": "__VERSION__",
-  "description": "CortexPrism - Open-source agentic harness for AI",
+  "description": "CortexPrism - Open-source AI agent operating system",
   "homepage": "https://cortexprism.io",
   "license": "Apache-2.0",
   "url": "https://github.com/CortexPrism/cortex/releases/download/v__VERSION__/cortex-x86_64-windows.zip",

@@ -1,5 +1,9 @@
 import type { ProviderKind } from '../config/config.ts';
 
+/**
+ * System service types — specialized agent processes that run in isolated
+ * contexts within the CortexPrism OS, analogous to OS daemons or services.
+ */
 export type SubAgentType =
   | 'explore'
   | 'general'
@@ -13,11 +17,12 @@ export type SubAgentType =
   | 'data'
   | 'ui';
 
+/** Definition for a system service (sub-agent) type within the agent OS. */
 export interface SubAgentTypeDef {
   type: SubAgentType;
   label: string;
   description: string;
-  /** System prompt instructions that define this sub-agent's behaviour */
+  /** System prompt instructions that define this system service's behaviour */
   systemPrompt: string;
   /** Default tool allow-list (empty = all available) */
   tools: string[];
@@ -29,6 +34,7 @@ export interface SubAgentTypeDef {
   maxTurns: number;
 }
 
+/** Registry of all system service types available in the agent OS. */
 export const SUB_AGENT_TYPES: Record<SubAgentType, SubAgentTypeDef> = {
   explore: {
     type: 'explore',

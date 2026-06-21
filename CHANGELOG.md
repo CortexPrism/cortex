@@ -15,9 +15,23 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Agent OS alignment audit** — comprehensive audit document (`docs/AGENT_OS_ALIGNMENT.md`) mapping the transition from "agentic harness" to "AI agent operating system". Covers terminology audit (5 misaligned "harness" references, 8 aligned "OS" references), OS layer maturity assessment (11 subsystems scored), agent identity gaps, 6 architectural gaps with target solutions, 3-phase implementation roadmap (23 items), and verification log.
 
+- **OS capability groups** — tools are now organized into 12 capability groups (`CAP_FILE`, `CAP_SHELL`, `CAP_NET`, `CAP_MEMORY`, `CAP_GIT`, `CAP_AGENT`, `CAP_CODE`, `CAP_UI`, `CAP_SYSTEM`, `CAP_SKILL`, `CAP_SCHEDULE`, `CAP_BROWSER`) forming the basis of an OS syscall table. Each group maps to fine-grained `ToolCapability` entries. `CAPABILITY_GROUP_LABELS` provides human-readable names and `expandCapabilityGroup()` resolves groups to individual capabilities. (`src/tools/types.ts`)
+
+- **Resource limits for agents** — new `ResourceLimits` type added to `AgentConfig` with `cpuShares` (1–1024), `memoryMb`, `diskMb`, `maxProcesses`, and `networkKbps` fields. These define per-agent resource quotas in the OS resource namespace. (`src/config/config.ts`)
+
+- **Boot sequence definition** — formal `BootStage` type and `BOOT_ORDER` array define the ordered OS startup sequence: migrate → supervisor → validator → executor → scheduler → services → channels → ready. `BootStageStatus` tracks per-stage status. (`src/config/config.ts`)
+
+- **OS health endpoint** — `GET /api/os/health` returns an aggregated health report including daemon status (validator, executor, scheduler via IPC ping), database connectivity, job counts, memory system health, version, and process uptime. Returns `status: "healthy"` or `"degraded"`. (`src/server/router.ts`)
+
+- **System Services terminology** — sub-agent type definitions (`SubAgentType`, `SubAgentTypeDef`, `SUB_AGENT_TYPES`) now use "system services" terminology in documentation, framing them as specialized OS-level service processes rather than simple sub-agents. (`src/agent/sub-agent-types.ts`)
+
 ### Changed
 
 - **Agent OS identity in soul templates** — all agent soul templates now identify the agent as running on CortexPrism OS rather than as a standalone assistant. The `DEFAULT_SOUL` adds OS awareness as the first identity bullet. The `INIT_SOUL_TEMPLATE` gains a new `## OS Environment` section describing the 8 OS-layer capabilities (persistent memory, tool system with Parallax validation, sub-agent orchestration, background daemons, skills system, job scheduler, plugin marketplace, audit log). All 8 `PERSONALITY_TEMPLATES` updated from "AI assistant" to "AI agent running on CortexPrism OS". (`src/agent/soul.ts`)
+
+- **"Agentic harness" terminology replaced with "AI agent operating system"** across all public-facing surfaces: CLI description (`src/main.ts`), GitHub API User-Agent header (`src/workspace/github.ts`), and all package manager manifests (scoop, homebrew, chocolatey). (`src/main.ts`, `src/workspace/github.ts`, `packaging/scoop/cortex.json`, `packaging/homebrew/cortex.rb`, `packaging/chocolatey/cortex.nuspec`)
+
+- **README version badge updated** from 0.46.0 to 0.47.0. (`README.md`)
 
 ### Fixed
 
