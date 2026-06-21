@@ -150,14 +150,14 @@ Daemons share the same `cortex.db` and `memory.db`. The `NoopDb` stub (`src/db/c
 ### Phase 1: Terminology & Branding (v0.48.0)
 
 | # | Action | Files | Done |
-|---|---|---|---|
-| 1 | Change CLI description from "agentic harness system" to "AI agent operating system" | `src/main.ts:96` | |
-| 2 | Change User-Agent from "cortex-agentic-harness" to "CortexPrism-Agent-OS/0.47" | `src/workspace/github.ts:83` | |
-| 3 | Update scoop description | `packaging/scoop/cortex.json:3` | |
-| 4 | Update homebrew description | `packaging/homebrew/cortex.rb:2` | |
-| 5 | Update chocolatey description | `packaging/chocolatey/cortex.nuspec:14,16` | |
-| 6 | Add OS identity to agent soul | `src/agent/soul.ts` | |
-| 7 | Update version badge from 0.46.0 to 0.47.0 | `README.md:22` | |
+|---|--------|-------|------|
+| 1 | Change CLI description from "agentic harness system" to "AI agent operating system" | `src/main.ts:96` | ✅ |
+| 2 | Change User-Agent from "cortex-agentic-harness" to "CortexPrism-Agent-OS/0.47" | `src/workspace/github.ts:83` | ✅ |
+| 3 | Update scoop description | `packaging/scoop/cortex.json:3` | ✅ |
+| 4 | Update homebrew description | `packaging/homebrew/cortex.rb:2` | ✅ |
+| 5 | Update chocolatey description | `packaging/chocolatey/cortex.nuspec:14,16` | ✅ |
+| 6 | Add OS identity to agent soul | `src/agent/soul.ts` | ✅ |
+| 7 | Update version badge from 0.46.0 to 0.47.0 | `README.md:22` | ✅ |
 
 ### Phase 2: Architecture Hardening (v0.48–0.50)
 
@@ -171,6 +171,19 @@ Daemons share the same `cortex.db` and `memory.db`. The `NoopDb` stub (`src/db/c
 | 13 | Create `/api/os/health` endpoint aggregating daemon, memory, scheduler, DB status | Health dashboard |
 | 14 | Rename sub-agent type definitions to "System Services" | Naming |
 | 15 | Add OS awareness to agent system prompt — agent knows it runs on CortexPrism OS | Agent identity |
+
+### Phase 2 Progress
+
+| # | Status | Files |
+|---|--------|-------|
+| 8 | ✅ Done | `src/config/config.ts` |
+| 9 | ✅ Done | `src/config/config.ts` |
+| 10 | ⏳ Pending | — |
+| 11 | ✅ Done | `src/tools/types.ts` |
+| 12 | ⏳ Pending | `src/processes/supervisor-process.ts` |
+| 13 | ✅ Done | `src/server/router.ts` |
+| 14 | ✅ Done | `src/agent/sub-agent-types.ts` |
+| 15 | ✅ Done | `src/agent/soul.ts` (Phase 1) |
 
 ### Phase 3: Full OS Paradigm (v0.51+)
 

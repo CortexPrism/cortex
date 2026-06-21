@@ -93,7 +93,7 @@ const version = await getVersion();
 const program = new Command()
   .name('cortex')
   .version(version)
-  .description('CortexPrism — agentic harness system')
+  .description('CortexPrism — AI agent operating system')
   .command('chat', chatCommand)
   .command('setup', setupCommand)
   .command('sessions', sessionsCommand)

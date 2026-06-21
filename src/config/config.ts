@@ -238,9 +238,59 @@ export interface AgentConfig {
   tags?: string[];
   /** Whether this agent is a built-in (pre-installed) agent */
   builtin?: boolean;
+  /** Resource limits for this agent's processes */
+  resourceLimits?: ResourceLimits;
   createdAt: string;
   updatedAt: string;
 }
+
+/** Per-agent resource constraints (OS resource namespace). */
+export interface ResourceLimits {
+  /** CPU shares relative weight (1–1024). Higher = more CPU time. */
+  cpuShares?: number;
+  /** Memory limit in megabytes. 0 = unlimited. */
+  memoryMb?: number;
+  /** Disk quota in megabytes. 0 = unlimited. */
+  diskMb?: number;
+  /** Maximum number of child processes. 0 = unlimited. */
+  maxProcesses?: number;
+  /** Network bandwidth limit in Kbps. 0 = unlimited. */
+  networkKbps?: number;
+}
+
+// ── Boot Sequence ────────────────────────────────────────────
+
+/** Ordered stages for OS startup. */
+export type BootStage =
+  | 'migrate'
+  | 'supervisor'
+  | 'validator'
+  | 'executor'
+  | 'scheduler'
+  | 'services'
+  | 'channels'
+  | 'ready';
+
+/** Per-stage boot status. */
+export interface BootStageStatus {
+  stage: BootStage;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+}
+
+/** Ordered boot sequence — daemons start sequentially, services and channels in parallel. */
+export const BOOT_ORDER: BootStage[] = [
+  'migrate',
+  'supervisor',
+  'validator',
+  'executor',
+  'scheduler',
+  'services',
+  'channels',
+  'ready',
+];
 
 export interface UpdateConfig {
   channel: 'stable' | 'pre-release';

@@ -11,9 +11,9 @@
     <docsUrl>https://cortexprism.io/docs</docsUrl>
     <bugTrackerUrl>https://github.com/CortexPrism/cortex/issues</bugTrackerUrl>
     <tags>ai llm agent cli automation</tags>
-    <summary>Open-source agentic harness for AI — CLI, server, and desktop automation</summary>
+    <summary>Open-source AI agent operating system — CLI, server, and desktop automation</summary>
     <description><![CDATA[
-CortexPrism is an open-source agentic harness that provides:
+CortexPrism is an open-source AI agent operating system that provides:
 - Multi-provider LLM chat and agent workflows
 - Memory system (episodic, semantic, vector)
 - Desktop automation (screenshot, click, type)
