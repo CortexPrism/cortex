@@ -70,6 +70,9 @@ const aliases: Record<string, string[]> = {
   'chat': ['agent', 'chat'],
   'tui': ['agent', 'tui'],
   'serve': ['server', 'start'],
+  'restart': ['server', 'restart'],
+  'start': ['server', 'start'],
+  'stop': ['server', 'stop'],
 };
 for (const [alias, target] of Object.entries(aliases)) {
   const aliasCmd = new Command()
@@ -79,7 +82,8 @@ for (const [alias, target] of Object.entries(aliases)) {
       console.error(
         `Warning: 'cortex ${alias}' is deprecated. Use 'cortex ${target.join(' ')}' instead.`,
       );
-      const args = [target[0], ...target.slice(1)];
+      const extraArgs = Deno.args.slice(Deno.args.indexOf(alias) + 1);
+      const args = [...target, ...extraArgs];
       await program.parse(args);
     });
   // deno-lint-ignore no-explicit-any
