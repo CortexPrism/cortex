@@ -22,6 +22,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **`project!.id` null assertions (6 occurrences)** — captured `project.id` in a `const projectId` after the null guard, eliminating all non-null assertions in `incrementalSync()`. (`src/codegraph/sync.ts`)
 - **`MAX_OUTPUT_BYTES` inconsistent between shell and sandbox** — shell tool limited output to 32KB while the sandbox executor used 64KB. Standardized to 64KB. (`src/tools/builtin/shell.ts`)
 - **VFS fake `RegExpMatchArray` copy-pasted 3 times** — extracted into a `fakeMatch()` helper function, eliminating the DRY violation. (`src/vfs/mod.ts`)
+- **Debug settings page not saving log level config** — `PUT /api/config` was doing a shallow merge that replaced the entire `logging` section, silently wiping OTLP/Grafana/Langfuse sub-configs when only log level was changed. Now deep-merges the `logging` key. The debug tab also now populates its form fields from the current config (log level, file logging, max bytes/files) when switching tabs, instead of showing static HTML defaults. Save failures now display the server error message. (`src/server/router.ts`, `src/server/ui.ts`)
 
 ## [0.48.4] — 2026-06-21
 
