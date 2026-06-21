@@ -1,10 +1,10 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { applyUpdate, checkForUpdates, cleanup, getUpdateStatus, rollback } from '../update/mod.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const updateCommand = new Command()
-  .name('update')
+export const updateCommand = cortexCommand('update')
   .description('Check for updates and manage Cortex version')
   .option('--check', 'Check for available updates without applying')
   .option('--channel <channel:string>', 'Override channel: stable | pre-release')
@@ -12,15 +12,7 @@ export const updateCommand = new Command()
   .option('--status', 'Show current version, latest available, and channel')
   .option('--force', 'Bypass dirty working tree check (source mode only)')
   .action(
-    async (
-      opts: {
-        check?: boolean;
-        channel?: string;
-        rollback?: boolean;
-        status?: boolean;
-        force?: boolean;
-      },
-    ) => {
+    async (opts: Record<string, unknown>, _ctx: Ctx) => {
       if (opts.status) {
         await showStatus();
         return;
@@ -32,11 +24,11 @@ export const updateCommand = new Command()
       }
 
       if (opts.check) {
-        await doCheck(opts.channel);
+        await doCheck(opts.channel as string | undefined);
         return;
       }
 
-      await doUpdate(opts.channel, opts.force);
+      await doUpdate(opts.channel as string | undefined, opts.force as boolean);
     },
   );
 

@@ -1,6 +1,6 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { runMigrations } from '../db/migrate.ts';
 import {
   addPolicy,
   checkPolicy,
@@ -12,15 +12,14 @@ import {
 import { findCplFile, generateCplTemplate, importCplFile } from '../security/cpl.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const policyCommand = new Command()
-  .name('policy')
+export const policyCommand = cortexCommand('policy')
   .description('Manage Cortex security policy rules')
+  .needs('migrations')
   .command(
     'list',
-    new Command()
+    cortexCommand('list')
       .description('List all policy rules')
-      .action(async () => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         const rules = await listPolicies();
         if (!rules.length) {
           console.log(dim('\n  ' + i18n.t('cli.policy.empty') + '\n'));
@@ -41,7 +40,7 @@ export const policyCommand = new Command()
   )
   .command(
     'add',
-    new Command()
+    cortexCommand('add')
       .description('Add a policy rule')
       .arguments('<pattern:string>')
       .option('-k, --kind <kind:string>', 'Rule kind: tool | shell | domain | capability', {
@@ -50,28 +49,23 @@ export const policyCommand = new Command()
       .option('-e, --effect <effect:string>', 'Effect: allow | deny', { default: 'deny' })
       .option('-r, --reason <reason:string>', 'Human-readable reason')
       .option('-p, --priority <n:number>', 'Priority (lower = higher precedence)', { default: 100 })
-      .action(async (
-        opts: { kind: string; effect: string; reason?: string; priority: number },
-        pattern: string,
-      ) => {
-        await runMigrations();
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, pattern: string) => {
         const id = await addPolicy({
           kind: opts.kind as PolicyKind,
           effect: opts.effect as PolicyEffect,
           pattern,
-          reason: opts.reason,
-          priority: opts.priority,
+          reason: opts.reason as string | undefined,
+          priority: opts.priority as number,
         });
         console.log(green('  ' + i18n.t('cli.policy.added', { id })));
       }),
   )
   .command(
     'remove',
-    new Command()
+    cortexCommand('remove')
       .description('Remove a policy rule by ID')
       .arguments('<id:string>')
-      .action(async (_: void, id: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         const removed = await removePolicy(id);
         if (removed) {
           console.log(green('  ' + i18n.t('cli.policy.removed', { id })));
@@ -82,11 +76,10 @@ export const policyCommand = new Command()
   )
   .command(
     'import',
-    new Command()
+    cortexCommand('import')
       .description('Import policy rules from a CPL YAML file')
       .arguments('[file:string]')
-      .action(async (_: void, file?: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, file?: string) => {
         const path = file ?? await findCplFile();
         if (!path) {
           console.log(red('  ' + i18n.t('cli.policy.noCplFile')));
@@ -102,9 +95,9 @@ export const policyCommand = new Command()
   )
   .command(
     'init',
-    new Command()
+    cortexCommand('init')
       .description('Create a starter CPL policy file at .cortex/policy.yaml')
-      .action(async () => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         await Deno.mkdir('.cortex', { recursive: true });
         const path = '.cortex/policy.yaml';
         try {
@@ -119,11 +112,10 @@ export const policyCommand = new Command()
   )
   .command(
     'check',
-    new Command()
+    cortexCommand('check')
       .description('Test a value against policy rules')
       .arguments('<kind:string> <value:string>')
-      .action(async (_: void, kind: string, value: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, kind: string, value: string) => {
         const decision = await checkPolicy(kind as PolicyKind, value);
         const status = decision.allowed
           ? green(i18n.t('cli.policy.allowed'))

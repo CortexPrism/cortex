@@ -1,11 +1,11 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, yellow } from '@std/fmt/colors';
 import { i18n } from '../i18n/service.ts';
 
-export const mcpGatewayCommand = new Command()
-  .name('mcp-gateway')
+export const mcpGatewayCommand = cortexCommand('mcp-gateway')
   .description('(Deprecated) Use `cortex mcp gateway` instead')
-  .action(() => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
     console.log('');
     console.log(yellow(i18n.t('cli.mcp_gateway.deprecated')));
     console.log('');

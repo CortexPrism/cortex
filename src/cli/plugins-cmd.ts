@@ -1,7 +1,7 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { dirname } from '@std/path';
-import { runMigrations } from '../db/migrate.ts';
 import { getPlugin, installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts';
 import { pluginManager } from '../plugins/manager.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
@@ -33,15 +33,14 @@ function resolveEntryPoint(entryPoint: string, sourceDir: string): string {
   return `file://${resolve(sourceDir, entryPoint)}`;
 }
 
-export const pluginsCommand = new Command()
-  .name('plugins')
+export const pluginsCommand = cortexCommand('plugins')
   .description('Manage Cortex plugins (ESM, MCP, WASM)')
+  .needs('migrations')
   .command(
     'list',
-    new Command()
+    cortexCommand('list')
       .description('List installed plugins')
-      .action(async () => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         const plugins = await listPlugins();
         if (!plugins.length) {
           console.log(dim(i18n.t('cli.plugins.noPluginsInstalled')));
@@ -64,11 +63,10 @@ export const pluginsCommand = new Command()
   )
   .command(
     'install',
-    new Command()
+    cortexCommand('install')
       .description('Install a plugin from a file, URL, or marketplace reference')
       .arguments('<source:string>')
-      .action(async (_: void, source: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, source: string) => {
         let sourceDir: string | undefined;
         if (source.startsWith('marketplace:')) {
           const rest = source.slice('marketplace:'.length);
@@ -224,44 +222,40 @@ export const pluginsCommand = new Command()
   )
   .command(
     'enable',
-    new Command()
+    cortexCommand('enable')
       .description('Enable a plugin by name')
       .arguments('<name:string>')
-      .action(async (_: void, name: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         await pluginManager.enable(name);
         console.log(green(i18n.t('cli.plugins.pluginEnabled', { name })));
       }),
   )
   .command(
     'disable',
-    new Command()
+    cortexCommand('disable')
       .description('Disable a plugin by name')
       .arguments('<name:string>')
-      .action(async (_: void, name: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         await pluginManager.disable(name);
         console.log(yellow(i18n.t('cli.plugins.pluginDisabled', { name })));
       }),
   )
   .command(
     'remove',
-    new Command()
+    cortexCommand('remove')
       .description('Remove a plugin by name')
       .arguments('<name:string>')
-      .action(async (_: void, name: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         await pluginManager.remove(name);
         console.log(red(i18n.t('cli.plugins.pluginRemoved', { name })));
       }),
   )
   .command(
     'verify',
-    new Command()
+    cortexCommand('verify')
       .description('Verify plugin integrity hash')
       .arguments('<name:string>')
-      .action(async (_: void, name: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         const plugin = await getPlugin(name);
         if (!plugin) {
           console.log(red(i18n.t('cli.plugins.pluginNotFound', { name })));
@@ -289,21 +283,21 @@ export const pluginsCommand = new Command()
   )
   .command(
     'permissions',
-    new Command()
+    cortexCommand('permissions')
       .description('Show effective permissions for a plugin')
       .arguments('<name:string>')
       .option(
         '-s, --set <perm:string>',
         'Set a permission override (format: capability=grant|deny)',
       )
-      .action(async ({ set }: { set?: string }, name: string) => {
-        await runMigrations();
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         const plugin = await getPlugin(name);
         if (!plugin) {
           console.log(red(`  Plugin "${name}" not found.`));
           return;
         }
 
+        const set = opts.set as string | undefined;
         if (set) {
           const parts = set.split('=');
           if (parts.length !== 2 || !['grant', 'deny'].includes(parts[1])) {
@@ -351,13 +345,14 @@ export const pluginsCommand = new Command()
   )
   .command(
     'update',
-    new Command()
+    cortexCommand('update')
       .description('Update plugins to the latest version')
       .arguments('[name:string]')
       .option('-a, --all', 'Update all installed plugins')
       .option('-c, --check', 'Check for updates without applying')
-      .action(async ({ all, check }: { all?: boolean; check?: boolean }, name?: string) => {
-        await runMigrations();
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, name?: string) => {
+        const all = opts.all as boolean | undefined;
+        const check = opts.check as boolean | undefined;
 
         if (check) {
           const results = name ? [await checkPluginUpdate(name)] : await checkAllUpdates();
@@ -425,11 +420,10 @@ export const pluginsCommand = new Command()
   )
   .command(
     'validate',
-    new Command()
+    cortexCommand('validate')
       .description('Validate installed plugins and remove invalid ones')
       .option('--fix', 'Automatically remove invalid plugins')
-      .action(async (opts: { fix?: boolean }) => {
-        await runMigrations();
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
         const plugins = await listPlugins();
 
         if (!plugins.length) {
@@ -480,7 +474,8 @@ export const pluginsCommand = new Command()
           yellow(i18n.t('cli.plugins.foundInvalid', { count: String(invalid.length) })),
         );
 
-        if (opts.fix) {
+        const fix = opts.fix as boolean | undefined;
+        if (fix) {
           console.log(dim(i18n.t('cli.plugins.removingInvalid')));
           for (const { name, reason } of invalid) {
             try {

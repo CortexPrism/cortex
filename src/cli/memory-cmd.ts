@@ -1,36 +1,34 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { runMigrations } from '../db/migrate.ts';
 import { retrieve, searchEpisodic, searchSemantic, writeSemantic } from '../memory/store.ts';
 import { buildEmbedder } from '../memory/embeddings.ts';
-import { loadConfig } from '../config/config.ts';
 import { getMemoryHealth, runHeuristicCycle } from '../memory/heuristics.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const memoryCommand = new Command()
-  .name('memory')
+export const memoryCommand = cortexCommand('memory')
   .description('Inspect and manage Cortex memory')
   .command(
     'search',
-    new Command()
+    cortexCommand('search')
       .description('Search memory by keyword query')
       .arguments('<query:string>')
       .option('-n, --limit <n:number>', 'Max results', { default: 8 })
       .option('--type <type:string>', 'Filter: episodic | semantic | all', { default: 'all' })
-      .action(async (opts: { limit: number; type: string }, query: string) => {
-        await runMigrations();
-        const config = await loadConfig();
-        const embedder = buildEmbedder(config);
+      .needs('migrations')
+      .needs('config')
+      .action(async (opts: Record<string, unknown>, ctx: Ctx, query: string) => {
+        const embedder = buildEmbedder(ctx.config!);
 
         console.log(`\n  Searching memory for: ${bold(cyan(query))}\n`);
 
         let hits;
         if (opts.type === 'episodic') {
-          hits = await searchEpisodic(query, opts.limit);
+          hits = await searchEpisodic(query, opts.limit as number);
         } else if (opts.type === 'semantic') {
-          hits = await searchSemantic(query, opts.limit);
+          hits = await searchSemantic(query, opts.limit as number);
         } else {
-          hits = await retrieve(query, embedder, { limit: opts.limit });
+          hits = await retrieve(query, embedder, { limit: opts.limit as number });
         }
 
         if (hits.length === 0) {
@@ -50,22 +48,23 @@ export const memoryCommand = new Command()
   )
   .command(
     'add',
-    new Command()
+    cortexCommand('add')
       .description('Manually add a semantic memory entry')
       .arguments('<content:string>')
       .option('--category <cat:string>', 'Category tag', { default: 'general' })
       .option('--importance <n:number>', 'Importance 0.0-1.0', { default: 0.5 })
+      .needs('migrations')
+      .needs('config')
       .action(async (
-        opts: { category: string; importance: number },
+        opts: Record<string, unknown>,
+        ctx: Ctx,
         content: string,
       ) => {
-        await runMigrations();
-        const config = await loadConfig();
-        const embedder = buildEmbedder(config);
+        const embedder = buildEmbedder(ctx.config!);
         const id = await writeSemantic({
           content,
-          category: opts.category,
-          importance: opts.importance,
+          category: opts.category as string,
+          importance: opts.importance as number,
           embedder,
         });
         console.log(green('  ' + i18n.t('cli.memory.stored', { id })));
@@ -73,10 +72,10 @@ export const memoryCommand = new Command()
   )
   .command(
     'health',
-    new Command()
+    cortexCommand('health')
       .description('Show memory health statistics across all tiers')
-      .action(async () => {
-        await runMigrations();
+      .needs('migrations')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         const h = await getMemoryHealth();
 
         console.log('\n' + bold('  ' + i18n.t('cli.memory.healthReport')));
@@ -129,10 +128,10 @@ export const memoryCommand = new Command()
   )
   .command(
     'heuristics',
-    new Command()
+    cortexCommand('heuristics')
       .description('Manually run a heuristic learning cycle')
-      .action(async () => {
-        await runMigrations();
+      .needs('migrations')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         console.log(dim('\n  ' + i18n.t('cli.memory.heuristicCycle')));
         const result = await runHeuristicCycle();
         console.log(`\n  ${bold(i18n.t('cli.memory.results'))}`);

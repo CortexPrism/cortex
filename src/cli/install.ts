@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, dim, green, red } from '@std/fmt/colors';
 import {
   installBothServices,
@@ -12,8 +13,7 @@ import {
 } from './service-helper.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const installCommand = new Command()
-  .name('install')
+export const installCommand = cortexCommand('install')
   .description('Install Cortex daemon and server as system services (systemd / launchd / NSSM)')
   .option('-p, --port <port:number>', 'Server port', { default: 3000 })
   .option('-H, --host <host:string>', 'Server bind host', { default: '127.0.0.1' })
@@ -22,16 +22,14 @@ export const installCommand = new Command()
   .option('--no-start', 'Install service files but do not start them immediately')
   .action(
     async (
-      opts: {
-        port: number;
-        host: string;
-        daemonOnly?: boolean;
-        serverOnly?: boolean;
-        noStart?: boolean;
-      },
+      opts: Record<string, unknown>,
+      _ctx: Ctx,
     ) => {
       try {
-        validateMutuallyExclusive(opts.daemonOnly, opts.serverOnly);
+        validateMutuallyExclusive(
+          opts.daemonOnly as boolean | undefined,
+          opts.serverOnly as boolean | undefined,
+        );
       } catch (err) {
         console.error(red(`  ${(err as Error).message}`));
         Deno.exit(1);
@@ -44,7 +42,11 @@ export const installCommand = new Command()
       const installDaemon = installBoth || opts.daemonOnly;
       const installServer = installBoth || opts.serverOnly;
 
-      const svcOpts = { port: opts.port, host: opts.host, noStart: opts.noStart };
+      const svcOpts = {
+        port: opts.port as number,
+        host: opts.host as string,
+        noStart: opts.noStart as boolean | undefined,
+      };
 
       if (installBoth) {
         await installBothServices(svcOpts);
@@ -94,15 +96,17 @@ export const installCommand = new Command()
     },
   );
 
-export const uninstallCommand = new Command()
-  .name('uninstall')
+export const uninstallCommand = cortexCommand('uninstall')
   .description('Uninstall Cortex system services')
   .option('--daemon-only', 'Uninstall only the daemon service')
   .option('--server-only', 'Uninstall only the server service')
   .action(
-    async (opts: { daemonOnly?: boolean; serverOnly?: boolean }) => {
+    async (opts: Record<string, unknown>, _ctx: Ctx) => {
       try {
-        validateMutuallyExclusive(opts.daemonOnly, opts.serverOnly);
+        validateMutuallyExclusive(
+          opts.daemonOnly as boolean | undefined,
+          opts.serverOnly as boolean | undefined,
+        );
       } catch (err) {
         console.error(red(`  ${(err as Error).message}`));
         Deno.exit(1);

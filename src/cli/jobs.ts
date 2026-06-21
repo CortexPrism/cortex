@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import {
   cancelJob,
@@ -9,7 +10,6 @@ import {
   markJobFailed,
   markJobRunning,
 } from '../scheduler/scheduler.ts';
-import { runMigrations } from '../db/migrate.ts';
 import { runConsolidation } from '../memory/consolidate.ts';
 import { getShellCommand } from '../utils/platform.ts';
 import { i18n } from '../i18n/service.ts';
@@ -31,16 +31,15 @@ function statusColor(status: string): string {
   }
 }
 
-export const jobsCommand = new Command()
-  .name('jobs')
+export const jobsCommand = cortexCommand('jobs')
   .description('Manage scheduled jobs')
   .command(
     'list',
-    new Command()
+    cortexCommand('list')
       .description('List all jobs')
       .option('-s, --status <status:string>', 'Filter by status')
-      .action(async (opts: { status?: string }) => {
-        await runMigrations();
+      .needs('migrations')
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
         const jobs = await listJobs(opts.status as never);
 
         if (jobs.length === 0) {
@@ -70,25 +69,26 @@ export const jobsCommand = new Command()
   )
   .command(
     'add',
-    new Command()
+    cortexCommand('add')
       .description('Schedule a new shell command job')
       .arguments('<name:string> <command:string>')
       .option('--cron <expr:string>', 'Cron expression (e.g. "0 * * * *")')
       .option('--in <minutes:number>', 'Run after N minutes from now')
       .option('--max-attempts <n:number>', 'Max retry attempts', { default: 3 })
+      .needs('migrations')
       .action(async (
-        opts: { cron?: string; in?: number; maxAttempts: number },
+        opts: Record<string, unknown>,
+        _ctx: Ctx,
         name: string,
         command: string,
       ) => {
-        await runMigrations();
-        const runAt = opts.in ? new Date(Date.now() + opts.in * 60_000) : undefined;
+        const runAt = opts.in ? new Date(Date.now() + (opts.in as number) * 60_000) : undefined;
         const id = await createJob({
           name,
           command,
           kind: opts.cron ? 'cron' : 'once',
-          schedule: opts.cron,
-          maxAttempts: opts.maxAttempts,
+          schedule: opts.cron as string | undefined,
+          maxAttempts: opts.maxAttempts as number,
           runAt,
           source: 'cli',
         });
@@ -97,21 +97,21 @@ export const jobsCommand = new Command()
   )
   .command(
     'cancel',
-    new Command()
+    cortexCommand('cancel')
       .description('Cancel a pending or failed job')
       .arguments('<id:string>')
-      .action(async (_opts: void, id: string) => {
-        await runMigrations();
+      .needs('migrations')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         await cancelJob(id);
         console.log(green('  ' + i18n.t('cli.jobs.cancelled', { id })));
       }),
   )
   .command(
     'run-due',
-    new Command()
+    cortexCommand('run-due')
       .description('Execute all currently due jobs (shell commands)')
-      .action(async () => {
-        await runMigrations();
+      .needs('migrations')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         const due = await getDueJobs();
 
         if (due.length === 0) {

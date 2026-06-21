@@ -1,31 +1,14 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
-import { loadConfig } from '../config/config.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const agentlintCommand = new Command()
-  .name('agentlint')
-  .description('AgentLint — audit agent configs, tools, plugins, and prompts')
-  .action(async () => {
-    console.log('');
-    console.log(bold('Cortex AgentLint'));
-    console.log('');
-    console.log(bold(i18n.t('cli.agentlint.actions')));
-    console.log(
-      `  ${cyan(i18n.t('cli.agentlint.checkCommand'))}`,
-    );
-    console.log(
-      `  ${cyan(i18n.t('cli.agentlint.configCommand'))}`,
-    );
-    console.log('');
-  });
-
-agentlintCommand
-  .command('check')
+const checkCmd = cortexCommand('check')
   .description('Quick lint check — prints issues only, exits 1 if errors found (CI-friendly)')
-  .action(async () => {
+  .needs('config')
+  .action(async (_opts: Record<string, unknown>, ctx: Ctx) => {
     const { lintAgentConfig } = await import('../agent/agentlint.ts');
-    const config = await loadConfig();
+    const config = ctx.config!;
 
     const agentConfig = {
       name: config.agent.name,
@@ -70,12 +53,12 @@ agentlintCommand
     Deno.exit(report.errorCount > 0 ? 1 : 0);
   });
 
-agentlintCommand
-  .command('config')
+const configCmd = cortexCommand('config')
   .description('Lint current agent configuration from config file')
-  .action(async () => {
+  .needs('config')
+  .action(async (_opts: Record<string, unknown>, ctx: Ctx) => {
     const { lintAgentConfig } = await import('../agent/agentlint.ts');
-    const config = await loadConfig();
+    const config = ctx.config!;
 
     const agentConfig = {
       name: config.agent.name,
@@ -139,3 +122,8 @@ function printLintReport(report: {
     console.log('');
   }
 }
+
+export const agentlintCommand = cortexCommand('agentlint')
+  .description('AgentLint — audit agent configs, tools, plugins, and prompts')
+  .command('check', checkCmd)
+  .command('config', configCmd);

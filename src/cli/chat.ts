@@ -1,58 +1,24 @@
-import { Command } from '@cliffy/command';
-import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { isFirstRun, loadConfig } from '../config/config.ts';
-import type { AgentConfig } from '../config/config.ts';
-import { configureLogger } from '../utils/logger.ts';
-import { PATHS } from '../config/paths.ts';
-import { buildProvider, buildRouter } from '../llm/router.ts';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
+import { createAgentSession, endAgentSession } from './agent-session.ts';
+import type { AgentSession } from './agent-session.ts';
 import { agentTurn } from '../agent/loop.ts';
-import { initSessionDb } from '../db/migrate.ts';
-import { runSetupWizard } from './setup.ts';
-import { runMigrations } from '../db/migrate.ts';
-import { buildSystemPrompt, ensureSoulFile, loadSoulContext } from '../agent/soul.ts';
-import { closeSession, createSession, getSession, resumeSession } from '../db/sessions.ts';
-import { logEvent } from '../db/lens.ts';
-import { globalRegistry } from '../tools/registry.ts';
-import type { Tool } from '../tools/types.ts';
-import { ensureDaemons } from './daemon.ts';
-import { buildEmbedder } from '../memory/embeddings.ts';
-import {
-  formatSkillsAsAvailableList,
-  getAllHumanSkills,
-  registerBuiltinSkills,
-} from '../memory/skills.ts';
-import { getDefaultAgent, listAgents, loadAgentIdentity } from '../agent/manager.ts';
+import { listAgents } from '../agent/manager.ts';
+import { loadConfig } from '../config/config.ts';
+import { loadSoulContext } from '../agent/soul.ts';
 import { i18n } from '../i18n/service.ts';
+import { execShell, getTermCols, getTermRows, VirtualScreen } from '../tui/screen.ts';
+import { Renderer } from '../tui/renderer.ts';
+import { VSplit } from '../tui/layout.ts';
+import { Header } from '../tui/components/header.ts';
+import { StatusBar } from '../tui/components/status-bar.ts';
+import { TextInput } from '../tui/components/text-input.ts';
+import { CompletionMenu } from '../tui/components/completion-menu.ts';
+import { ChatView } from '../tui/components/chat-view.ts';
+import { inputEngine } from '../tui/input-engine.ts';
+import { contrast, dark, light } from '../tui/mod.ts';
 
-function makeSessionId(): string {
-  return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function printBanner(agentName: string, model: string, provider: string): void {
-  console.log('');
-  console.log(bold(cyan(`  ${agentName}`)) + dim(` · ${provider}/${model}`));
-  console.log(dim(i18n.t('cli.chat.banner.promptHint') + '\n'));
-}
-
-function printCost(costUsd: number, durationMs: number): void {
-  if (costUsd > 0) {
-    console.log(dim(
-      '\n  ' + i18n.t('cli.chat.cost.withCost', {
-        durationMs: String(durationMs),
-        costUsd: costUsd.toFixed(6),
-      }),
-    ));
-  } else {
-    console.log(dim(
-      '\n  ' + i18n.t('cli.chat.cost.withoutCost', {
-        durationMs: String(durationMs),
-      }),
-    ));
-  }
-}
-
-export const chatCommand = new Command()
-  .name('chat')
+export const chatCommand = cortexCommand('chat')
   .description('Start an interactive chat session with Cortex')
   .option('-m, --model <model:string>', 'Override the model for this session')
   .option('-p, --provider <provider:string>', 'Override the provider for this session')
@@ -61,290 +27,459 @@ export const chatCommand = new Command()
   .option('--list-agents', 'List available agents and exit')
   .option('--no-stream', 'Disable streaming output')
   .option('--sandbox-debug', 'Enable sandbox debug logging')
-  .action(
-    async (
-      options: {
-        model?: string;
-        provider?: string;
-        agent?: string;
-        resume?: string;
-        listAgents?: boolean;
-        stream?: boolean;
-        sandboxDebug?: boolean;
-      },
-    ) => {
-      if (options.sandboxDebug) {
-        const { setSandboxDebug } = await import('../sandbox/logger.ts');
-        setSandboxDebug(true);
+  .needs('config')
+  .needs('migrations')
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const options = opts as {
+      model?: string;
+      provider?: string;
+      agent?: string;
+      resume?: string;
+      listAgents?: boolean;
+      stream?: boolean;
+      sandboxDebug?: boolean;
+    };
+
+    if (options.listAgents) {
+      const agents = await listAgents();
+      const config = await loadConfig();
+      console.log('\n  ' + i18n.t('cli.chat.listAgents.heading'));
+      for (const a of agents) {
+        const active = config.defaultAgent === a.id ? ' ●' : ' ○';
+        const p = a.provider ? ` [${a.provider}/${a.model || '?'}]` : '';
+        console.log(`  ${active}  ${a.name} (${a.id})${p}`);
       }
-      let config = await loadConfig();
+      console.log('');
+      return;
+    }
 
-      const _loggingCfg = config.logging ?? { level: 'error', fileEnabled: true };
-      configureLogger({
-        level: _loggingCfg.level as import('../utils/logger.ts').LogLevel,
-        fileEnabled: _loggingCfg.fileEnabled,
-        filePath: _loggingCfg.filePath ?? PATHS.logFile,
-        fileMaxBytes: _loggingCfg.fileMaxBytes,
-        fileMaxFiles: _loggingCfg.fileMaxFiles,
-      });
+    const session: AgentSession = await createAgentSession({
+      model: options.model,
+      provider: options.provider,
+      agent: options.agent,
+      resume: options.resume,
+      enableStream: options.stream,
+      sandboxDebug: options.sandboxDebug,
+    });
 
-      if (await isFirstRun()) {
-        config = await runSetupWizard(config);
-      } else {
-        await runMigrations();
-      }
+    const cols = getTermCols();
+    const rows = getTermRows();
+    const screen = new VirtualScreen(cols, rows);
+    const renderer = new Renderer(screen, dark, i18n.t);
+    const tui = startTui(screen, renderer, session);
 
-      // List agents and exit
-      if (options.listAgents) {
-        const agents = await listAgents();
-        console.log(bold('\n  ' + i18n.t('cli.chat.listAgents.heading')));
-        for (const a of agents) {
-          const active = config.defaultAgent === a.id ? green(' ●') : dim(' ○');
-          const p = a.provider ? ` [${a.provider}/${a.model || '?'}]` : '';
-          console.log(`  ${active}  ${bold(a.name)} ${dim(`(${a.id})`)}${p}`);
-        }
-        console.log('');
-        Deno.exit(0);
-      }
+    tui.chatView.addMessage({
+      role: 'system',
+      content: `${session.agent.name} · ${session.effectiveProvider.name}/${session.model}`,
+    });
+    tui.chatView.addMessage({
+      role: 'system',
+      content: i18n.t('cli.chat.banner.promptHint'),
+    });
 
-      // Ensure background daemons are running
-      ensureDaemons().catch(() => {});
+    inputEngine.onKey(async (event) => {
+      renderer.handleKey(event);
+      renderer.scheduleRender();
+    });
 
-      // Resolve agent
-      let agent: AgentConfig;
-      if (options.agent) {
-        const { getAgent } = await import('../agent/manager.ts');
-        const found = await getAgent(options.agent);
-        if (!found) {
-          console.error(
-            red('  ' + i18n.t('cli.chat.error.agentNotFound', { agent: options.agent! })),
-          );
-          Deno.exit(1);
-        }
-        agent = found;
-      } else {
-        agent = await getDefaultAgent();
-      }
+    tui.completionMenu.setOnSelect((candidate) => {
+      tui.textInput.setText(candidate.label + ' ');
+      tui.textInput.showCompletions = false;
+      renderer.scheduleRender();
+    });
 
-      // Apply agent overrides
-      if (options.provider) {
-        config = { ...config, defaultProvider: options.provider as never };
-      } else if (agent.provider) {
-        config = { ...config, defaultProvider: agent.provider as never };
-      }
-
-      let provider;
-      try {
-        provider = buildProvider(config);
-      } catch (err) {
-        console.error(
-          red('  ' + i18n.t('cli.chat.error.generic', { message: (err as Error).message })),
-        );
-        Deno.exit(1);
-      }
-      const activeProvider = provider!;
-      const model = options.model ?? agent.model ??
-        config.providers[config.defaultProvider]?.model ?? 'unknown';
-
-      const reasoningEffort = config.providers[config.defaultProvider]?.reasoningEffort;
-
-      const router = buildRouter(config);
-      const effectiveProvider = router ?? activeProvider;
-      const sid = options.resume ?? makeSessionId();
-      const sessionDb = await initSessionDb(sid);
-
-      // Load agent identity
-      const identity = await loadAgentIdentity(agent);
-      let systemPrompt = buildSystemPrompt(
-        identity.soul,
-        agent.systemPrompt,
-        identity.user,
-        identity.memory,
-      );
-
-      const embedder = buildEmbedder(config);
-
-      // Register built-in skills and load filesystem skills at startup
-      await registerBuiltinSkills(undefined, embedder).catch(() => {});
-      // Inject only active human-authored skills into the system prompt (lazy)
-      const humanSkills = await getAllHumanSkills().catch(() => []);
-      if (humanSkills.length > 0) {
-        systemPrompt += formatSkillsAsAvailableList(humanSkills);
+    tui.textInput.setOnSubmit(async (text) => {
+      if (tui.pendingApproval) {
+        const answer = text.trim().toLowerCase();
+        const approved = answer === 'y' || answer === 'yes';
+        const command = tui.pendingApproval.command;
+        tui.pendingApproval.resolve(approved);
+        tui.pendingApproval = null;
+        tui.textInput.clear();
+        tui.chatView.addMessage({
+          role: 'system',
+          content: approved ? `Approved: ${command}` : `Denied: ${command}`,
+        });
+        renderer.scheduleRender();
+        return;
       }
 
-      if (options.resume) {
-        const existing = await getSession(sid);
-        if (!existing) {
-          console.error(red('  ' + i18n.t('cli.chat.error.sessionNotFound', { id: sid })));
-          Deno.exit(1);
-        }
-        await resumeSession(sid);
-      } else {
-        await createSession(sid, 'cli');
-      }
-      const sessionStart = new Date().toISOString();
-      await logEvent({
-        event_type: 'session_start',
-        session_id: sid,
-        actor: 'user',
-        action: 'session_start',
-        summary: `CLI session started with agent "${agent.name}" / ${activeProvider.name}/${model}`,
-        started_at: sessionStart,
-      });
-
-      // Build tool registry respecting agent's tool allow-list (centralized registration)
-      const registry = globalRegistry;
-      const { registerAllBuiltins } = await import('../tools/registry.ts');
-      const allTools = await registerAllBuiltins(registry, false); // Exclude codegraph in CLI
-
-      // Filter to allowed tools if agent specifies a subset
-      if (agent.tools?.length) {
-        // Clear registry and re-register only allowed tools
-        for (const name of Object.keys(allTools)) {
-          registry.unregister(name);
-        }
-        for (const name of agent.tools) {
-          if (allTools[name]) {
-            registry.register(allTools[name]);
-          }
-        }
+      if (text.trim() === '/exit' || text.trim() === '/quit') {
+        tui.running = false;
+        return;
       }
 
-      // Load active plugin tools
-      const { pluginManager } = await import('../plugins/manager.ts');
-      await pluginManager.loadAll().catch((e) => {
-        console.error(
-          dim('  ' + i18n.t('cli.chat.warning.pluginLoad', { message: (e as Error).message })),
-        );
-      });
+      if (text.startsWith('/')) {
+        await handleSlashCommand(text, session, tui, renderer);
+        tui.textInput.clear();
+        renderer.scheduleRender();
+        return;
+      }
+
+      tui.chatView.addMessage({ role: 'user', content: text });
+      tui.chatView.addMessage({ role: 'assistant', content: '' });
+      tui.statusBar.model = `${session.effectiveProvider.name}/${session.model}`;
+      tui.statusBar.sessionName = session.sid.slice(0, 8);
+      tui.textInput.clear();
+      renderer.scheduleRender();
 
       const approvalGate = async (
         tool: string,
         command: string,
         sampleData?: string,
       ): Promise<boolean> => {
-        await Deno.stdout.write(
-          new TextEncoder().encode(
-            `\n  ${yellow('⚠')}  ${tool} action requires approval:\n  ${bold(command)}${
-              sampleData ? `\n  Sample: ${sampleData}` : ''
-            }\n  Allow? [y/N] `,
-          ),
-        );
-        const buf = new Uint8Array(16);
-        const n = await Deno.stdin.read(buf);
-        const answer = n ? new TextDecoder().decode(buf.subarray(0, n)).trim().toLowerCase() : '';
-        return answer === 'y' || answer === 'yes';
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Approval needed: ${tool}\n  ${command}${
+            sampleData ? `\n  Sample: ${sampleData}` : ''
+          }\n  Type "y" to approve or "n" to deny.`,
+        });
+        renderer.scheduleRender();
+
+        return new Promise((resolve) => {
+          tui.pendingApproval = { resolve, command };
+        });
       };
 
-      printBanner(agent.name, model, activeProvider.name);
+      try {
+        const result = await agentTurn({
+          userMessage: text,
+          provider: session.effectiveProvider,
+          model: session.model,
+          sessionDb: session.sessionDb,
+          sessionId: session.sid,
+          systemPrompt: session.systemPrompt,
+          stream: session.enableStream,
+          reasoningEffort: session.reasoningEffort,
+          onChunk: session.enableStream
+            ? (chunk) => {
+              tui.chatView.appendToLastMessage(chunk);
+              renderer.scheduleRender();
+            }
+            : undefined,
+          registry: session.registry,
+          toolContext: {
+            workingDir: Deno.cwd(),
+            approvalGate,
+            agentId: 'assistant',
+            workspaceDir: Deno.cwd(),
+            model: session.model,
+            provider: session.config.defaultProvider,
+          },
+          embedder: session.embedder,
+        });
 
-      const useStream = options.stream !== false;
-      const enc = new TextEncoder();
-
-      while (true) {
-        const line = await readLine(cyan('  You › '));
-
-        if (line === null || line.trim() === '/exit' || line.trim() === '/quit') {
-          console.log(dim('\n  ' + i18n.t('cli.chat.sessionClosed') + '\n'));
-          await Promise.allSettled([
-            closeSession(sid),
-            logEvent({
-              event_type: 'session_end',
-              session_id: sid,
-              actor: 'user',
-              action: 'session_end',
-              started_at: new Date().toISOString(),
-            }),
-          ]);
-          sessionDb.close();
-          break;
+        if (!session.enableStream) {
+          tui.chatView.updateLastMessage(result.response);
         }
 
-        const input = line.trim();
-        if (!input) continue;
-
-        if (input.startsWith('/')) {
-          await handleSlashCommand(input, sid);
-          continue;
-        }
-
-        await Deno.stdout.write(enc.encode(bold(green('\n  Cortex › '))));
-
-        try {
-          const result = await agentTurn({
-            userMessage: input,
-            provider: effectiveProvider,
-            model,
-            sessionDb,
-            sessionId: sid,
-            systemPrompt,
-            stream: useStream,
-            reasoningEffort,
-            onChunk: useStream
-              ? (chunk) => {
-                Deno.stdout.write(enc.encode(chunk));
-              }
-              : undefined,
-            registry,
-            toolContext: {
-              workingDir: Deno.cwd(),
-              approvalGate,
-              agentId: 'assistant',
-              workspaceDir: Deno.cwd(),
-              model,
-              provider: config.defaultProvider,
-            },
-            embedder,
-          });
-
-          if (!useStream) {
-            await Deno.stdout.write(enc.encode(result.response));
-          }
-
-          printCost(result.costUsd, result.durationMs);
-        } catch (err) {
-          console.error(
-            red(
-              '\n  ' + i18n.t('cli.chat.error.generic', { message: (err as Error).message }) + '\n',
-            ),
-          );
-        }
-
-        console.log('');
+        tui.statusBar.inputTokens = result.tokensIn;
+        tui.statusBar.outputTokens = result.tokensOut;
+        tui.statusBar.cost = result.costUsd;
+        tui.statusBar.contextPercent = 0;
+      } catch (err) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Error: ${(err as Error).message}`,
+        });
       }
-    },
-  );
 
-async function handleSlashCommand(input: string, _sessionId: string): Promise<void> {
-  const cmd = input.slice(1).split(' ')[0];
-  switch (cmd) {
-    case 'help':
-      console.log(dim('  ' + i18n.t('cli.chat.help.commandList')));
-      break;
-    case 'soul': {
-      const ctx = await loadSoulContext();
-      console.log(dim(i18n.t('cli.chat.soul.soulHeader')));
-      console.log(dim(ctx.soul));
-      if (ctx.user) {
-        console.log(dim(i18n.t('cli.chat.soul.userHeader')));
-        console.log(dim(ctx.user));
-      }
-      if (ctx.memory) {
-        console.log(dim(i18n.t('cli.chat.soul.memoryHeader')));
-        console.log(dim(ctx.memory));
-      }
-      console.log(dim(i18n.t('cli.chat.soul.footer') + '\n'));
-      break;
-    }
-    default:
-      console.log(yellow('  ' + i18n.t('cli.chat.unknownCommand', { input })));
-  }
+      renderer.scheduleRender();
+    });
+
+    renderer.start();
+    await inputEngine.start();
+
+    inputEngine.stop();
+    renderer.stop();
+    await endAgentSession(session);
+  });
+
+interface TuiState {
+  running: boolean;
+  theme: import('../tui/style.ts').Theme;
+  chatView: ChatView;
+  statusBar: StatusBar;
+  header: Header;
+  textInput: TextInput;
+  completionMenu: CompletionMenu;
+  pendingApproval: { resolve: (v: boolean) => void; command: string } | null;
 }
 
-async function readLine(prompt: string): Promise<string | null> {
-  await Deno.stdout.write(new TextEncoder().encode(prompt));
-  const buf = new Uint8Array(4096);
-  const n = await Deno.stdin.read(buf);
-  if (n === null) return null;
-  return new TextDecoder().decode(buf.subarray(0, n)).replace(/\r?\n$/, '');
+function startTui(
+  screen: VirtualScreen,
+  renderer: Renderer,
+  session: AgentSession,
+): TuiState {
+  const rows = screen.height;
+  const header = new Header(
+    'Cortex — chat',
+    `${session.effectiveProvider.name}/${session.model}`,
+  );
+  header.x = 0;
+  header.y = 0;
+  header.width = screen.width;
+  header.height = 1;
+
+  const statusBar = new StatusBar();
+  statusBar.model = `${session.effectiveProvider.name}/${session.model}`;
+  statusBar.sessionName = session.sid.slice(0, 8);
+
+  const chatView = new ChatView();
+  chatView.x = 0;
+  chatView.y = 0;
+  chatView.focused = true;
+
+  const textInput = new TextInput();
+  textInput.setPrompt('> ');
+  textInput.x = 0;
+  textInput.y = 0;
+  textInput.height = 3;
+  textInput.focused = true;
+
+  const completionMenu = new CompletionMenu();
+  completionMenu.visible = false;
+
+  const mainSplit = new VSplit();
+  mainSplit.add(header, 1);
+  mainSplit.add(chatView, `*`);
+  mainSplit.add(textInput, 3);
+  mainSplit.add(statusBar, 1);
+  mainSplit.x = 0;
+  mainSplit.y = 0;
+  mainSplit.width = screen.width;
+  mainSplit.height = screen.height;
+
+  renderer.mount(mainSplit);
+  renderer.mount(completionMenu);
+
+  const state: TuiState = {
+    running: true,
+    theme: dark,
+    chatView,
+    statusBar,
+    header,
+    textInput,
+    completionMenu,
+    pendingApproval: null,
+  };
+
+  return state;
+}
+
+async function handleSlashCommand(
+  input: string,
+  session: AgentSession,
+  tui: TuiState,
+  renderer: Renderer,
+): Promise<void> {
+  const parts = input.trim().split(/\s+/);
+  const cmd = (parts[0] ?? '').slice(1);
+  const arg = parts.slice(1).join(' ');
+
+  switch (cmd) {
+    case 'model': {
+      const name = arg.trim();
+      if (!name) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Current model: ${session.model}\nUsage: /model <model-name>`,
+        });
+        break;
+      }
+      session.model = name;
+      tui.statusBar.model = `${session.effectiveProvider.name}/${name}`;
+      tui.chatView.addMessage({
+        role: 'system',
+        content: `Switched to model: ${name}`,
+      });
+      break;
+    }
+    case 'compact': {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: 'Context compaction would be triggered here (not yet implemented).',
+      });
+      break;
+    }
+    case 'status': {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: `Session: ${
+          session.sid.slice(0, 12)
+        }...\nModel: ${session.model}\nProvider: ${session.effectiveProvider.name}\nAgent: ${session.agent.name}`,
+      });
+      break;
+    }
+    case 'clear': {
+      tui.chatView.clear();
+      tui.chatView.addMessage({
+        role: 'system',
+        content: 'Chat history cleared.',
+      });
+      break;
+    }
+    case 'save': {
+      const file = arg || `transcript-${session.sid.slice(0, 8)}.md`;
+      try {
+        const messages = tui.chatView.getCurrentMessages();
+        const text = messages.map((m) => `## ${m.role}\n${m.content}`).join('\n\n');
+        await Deno.writeTextFile(file, text);
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Transcript saved to ${file}`,
+        });
+      } catch (e) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Failed to save: ${(e as Error).message}`,
+        });
+      }
+      break;
+    }
+    case 'load': {
+      const file = arg;
+      if (!file) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: 'Usage: /load <file>',
+        });
+        break;
+      }
+      try {
+        const content = await Deno.readTextFile(file);
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Loaded from ${file} (${content.length} chars)`,
+        });
+      } catch (e) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Failed to load: ${(e as Error).message}`,
+        });
+      }
+      break;
+    }
+    case 'export': {
+      try {
+        const messages = tui.chatView.getCurrentMessages();
+        const text = messages.map((m) => `## ${m.role}\n${m.content}`).join('\n\n');
+        const file = `export-${session.sid.slice(0, 8)}.md`;
+        await Deno.writeTextFile(file, text);
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Session exported to ${file}`,
+        });
+      } catch (e) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Failed to export: ${(e as Error).message}`,
+        });
+      }
+      break;
+    }
+    case 'theme': {
+      const name = arg.trim() || 'dark';
+      const themes: Record<string, import('../tui/style.ts').Theme> = {
+        dark,
+        light,
+        contrast,
+      };
+      const theme = themes[name];
+      if (theme) {
+        tui.theme = theme;
+        renderer.setTheme(theme);
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Theme switched to: ${name}`,
+        });
+      } else {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Unknown theme: ${name}. Available: dark, light, contrast`,
+        });
+      }
+      break;
+    }
+    case 'diff': {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: 'No recent diff available. Run file operations first.',
+      });
+      break;
+    }
+    case 'review': {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: 'No pending tool approvals.',
+      });
+      break;
+    }
+    case 'plan': {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: 'Planning mode would be entered here (not yet implemented).',
+      });
+      break;
+    }
+    case 'help': {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: `Slash commands:
+  /model <name>   - Switch model
+  /compact        - Trigger context compaction
+  /status         - Show session info
+  /clear          - Clear chat history
+  /save [file]    - Save transcript
+  /load <file>    - Load transcript
+  /export         - Export session as markdown
+  /theme <name>   - Switch theme (dark/light/contrast)
+  /diff           - Show last file change
+  /review         - Review pending approvals
+  /plan           - Enter planning mode
+  /help           - Show this help
+  /soul           - Show soul context
+  /! <cmd>        - Execute bash command
+  /exit, /quit    - Exit chat`,
+      });
+      break;
+    }
+    case 'soul': {
+      const ctx = await loadSoulContext();
+      const lines: string[] = ['Soul context:'];
+      if (ctx.soul) lines.push(`\nSoul:\n${ctx.soul.slice(0, 500)}`);
+      if (ctx.user) lines.push(`\nUser:\n${ctx.user.slice(0, 300)}`);
+      if (ctx.memory) lines.push(`\nMemory:\n${ctx.memory.slice(0, 300)}`);
+      tui.chatView.addMessage({ role: 'system', content: lines.join('\n') });
+      break;
+    }
+    case '!': {
+      const shellCmd = arg;
+      if (!shellCmd) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: 'Usage: /! <bash command>',
+        });
+        break;
+      }
+      try {
+        const result = await execShell(shellCmd);
+        tui.chatView.addMessage({ role: 'system', content: result });
+      } catch (e) {
+        tui.chatView.addMessage({
+          role: 'system',
+          content: `Command failed: ${(e as Error).message}`,
+        });
+      }
+      break;
+    }
+    default: {
+      tui.chatView.addMessage({
+        role: 'system',
+        content: `Unknown command: /${cmd}. Type /help for available commands.`,
+      });
+    }
+  }
+
+  renderer.scheduleRender();
 }

@@ -1,24 +1,23 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { Secret } from '@cliffy/prompt';
-import { runMigrations } from '../db/migrate.ts';
 import { vaultDelete, vaultGet, vaultList, vaultStore } from '../security/vault.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const vaultCommand = new Command()
-  .name('vault')
+export const vaultCommand = cortexCommand('vault')
   .description('Manage encrypted credential vault')
+  .needs('migrations')
   .command(
     'store',
-    new Command()
+    cortexCommand('store')
       .description('Store a secret in the vault (prompts for value)')
       .arguments('<name:string>')
       .option('-s, --service <service:string>', 'Service name', { default: 'general' })
       .option('-t, --type <type:string>', 'Credential type (api_key, token, password)', {
         default: 'api_key',
       })
-      .action(async (opts: { service: string; type: string }, name: string) => {
-        await runMigrations();
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         const value = await Secret.prompt(`  Value for "${name}" (hidden): `);
         if (!value.trim()) {
           console.error(red('  ' + i18n.t('cli.vault.emptyValue')));
@@ -26,20 +25,19 @@ export const vaultCommand = new Command()
         }
         const id = await vaultStore({
           name,
-          service: opts.service,
+          service: opts.service as string,
           value,
-          credentialType: opts.type,
+          credentialType: opts.type as string,
         });
         console.log(green('  ' + i18n.t('cli.vault.stored', { name: bold(name), id })));
       }),
   )
   .command(
     'get',
-    new Command()
+    cortexCommand('get')
       .description('Retrieve and print a secret (requires CORTEX_VAULT_KEY)')
       .arguments('<name:string>')
-      .action(async (_: void, name: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         try {
           const value = await vaultGet(name, 'cli');
           console.log(`  ${bold(cyan(name))}: ${value}`);
@@ -51,10 +49,9 @@ export const vaultCommand = new Command()
   )
   .command(
     'list',
-    new Command()
+    cortexCommand('list')
       .description('List all vault entries (names only, no values)')
-      .action(async () => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         const entries = await vaultList();
         if (!entries.length) {
           console.log(dim('\n  ' + i18n.t('cli.vault.empty') + '\n'));
@@ -75,11 +72,10 @@ export const vaultCommand = new Command()
   )
   .command(
     'delete',
-    new Command()
+    cortexCommand('delete')
       .description('Delete a vault entry')
       .arguments('<name:string>')
-      .action(async (_: void, name: string) => {
-        await runMigrations();
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         const deleted = await vaultDelete(name);
         if (deleted) {
           console.log(green('  ' + i18n.t('cli.vault.deleted', { name })));

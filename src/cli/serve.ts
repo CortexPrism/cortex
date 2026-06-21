@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { fromFileUrl, join } from '@std/path';
 import {
@@ -143,8 +144,7 @@ export async function stopBackgroundServer(port = 3000): Promise<boolean> {
   }
 }
 
-export const serveCommand = new Command()
-  .name('serve')
+export const serveCommand = cortexCommand('serve')
   .description('Start the Cortex HTTP + WebSocket server with Web UI')
   .option('-p, --port <port:number>', 'Port to listen on', { default: 3000 })
   .option('-H, --host <host:string>', 'Host to bind to', { default: '127.0.0.1' })
@@ -154,30 +154,31 @@ export const serveCommand = new Command()
   .option('--sandbox-debug', 'Enable sandbox debug logging')
   .action(
     async (
-      opts: {
-        port: number;
-        host: string;
-        daemon?: boolean;
-        restart?: boolean;
-        stop?: boolean;
-        sandboxDebug?: boolean;
-      },
+      opts: Record<string, unknown>,
+      _ctx: Ctx,
     ) => {
-      if (opts.sandboxDebug) {
+      const p = opts.port as number;
+      let h = opts.host as string;
+      const daemon = opts.daemon as boolean | undefined;
+      const restart = opts.restart as boolean | undefined;
+      const stopFlag = opts.stop as boolean | undefined;
+      const sandboxDebug = opts.sandboxDebug as boolean | undefined;
+
+      if (sandboxDebug) {
         const { setSandboxDebug } = await import('../sandbox/logger.ts');
         setSandboxDebug(true);
       }
-      if (opts.stop) {
-        const stopped = await stopBackgroundServer(opts.port);
+      if (stopFlag) {
+        const stopped = await stopBackgroundServer(p);
         if (!stopped) {
-          console.log(dim(i18n.t('cli.serve.noServerOnPort', { port: String(opts.port) })));
+          console.log(dim(i18n.t('cli.serve.noServerOnPort', { port: String(p) })));
         }
         Deno.exit(0);
       }
 
-      if (opts.daemon) {
-        if (opts.restart) {
-          const existing = await findServerProcess(opts.port);
+      if (daemon) {
+        if (restart) {
+          const existing = await findServerProcess(p);
           if (existing) {
             try {
               killProcessById(existing.pid);
@@ -186,13 +187,13 @@ export const serveCommand = new Command()
             } catch {
               console.log(dim(i18n.t('cli.serve.couldNotStopExisting')));
             }
-            opts.host = existing.host;
+            h = existing.host;
           } else {
-            console.log(dim(i18n.t('cli.serve.noExistingOnPort', { port: String(opts.port) })));
+            console.log(dim(i18n.t('cli.serve.noExistingOnPort', { port: String(p) })));
           }
         }
 
-        const alive = await startServerBackground(opts.port, opts.host);
+        const alive = await startServerBackground(p, h);
         if (!alive) {
           console.log(dim(i18n.t('cli.serve.checkLogsHint')));
           Deno.exit(1);
@@ -201,6 +202,6 @@ export const serveCommand = new Command()
         Deno.exit(0);
       }
 
-      await startServer({ port: opts.port, host: opts.host });
+      await startServer({ port: p, host: h });
     },
   );
