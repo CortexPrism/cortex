@@ -129,6 +129,18 @@ export async function* spawnSubAgent(
   });
 
   const child = cmd.spawn();
+
+  // Register the child process in the OS kernel for process tree tracking.
+  const { kernel: k } = await import('../kernel/mod.ts');
+  k.registerProcess({
+    pid: child.pid,
+    parentPid: Deno.pid,
+    agentId: effectiveAgent.id,
+    sessionId: effectiveAgent.id,
+    role: 'agent',
+    agentType: task.subAgentType,
+  });
+
   const writer = child.stdin.getWriter();
   const reader = child.stdout.getReader();
   const decoder = new TextDecoder();
@@ -170,12 +182,13 @@ export async function* spawnSubAgent(
         break;
       case 'done':
         yield { type: 'done', result: msg.result };
-        // Wait for process to finish
         await child.status;
+        k.unregisterProcess(child.pid);
         return;
       case 'error':
         yield { type: 'error', error: msg.error };
         await child.status;
+        k.unregisterProcess(child.pid);
         return;
     }
   }

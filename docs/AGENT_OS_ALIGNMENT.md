@@ -198,6 +198,19 @@ Daemons share the same `cortex.db` and `memory.db`. The `NoopDb` stub (`src/db/c
 | 22 | Implement plugin dependency resolution in marketplace |
 | 23 | Create system health dashboard UI page |
 
+### Phase 3 Progress
+
+| # | Status | Files |
+|---|--------|-------|
+| 16 | ✅ Done | `src/kernel/mod.ts` |
+| 17 | ⏳ Deferred | — (major refactor, separate PR) |
+| 18 | ✅ Done | `src/kernel/mod.ts`, `src/agent/sub-agent.ts`, `src/server/server.ts` |
+| 19 | ✅ Done | `src/server/router.ts` |
+| 20 | ✅ Done | `src/server/router.ts` |
+| 21 | ✅ Done | `src/kernel/mod.ts` |
+| 22 | ⏳ Deferred | — (requires marketplace redesign) |
+| 23 | ⏳ Deferred | — (UI work, separate PR) |
+
 ---
 
 ## VI. What Already Works Well (OS-Aligned)

@@ -603,6 +603,57 @@ export async function handleApi(req: Request): Promise<Response | null> {
     });
   }
 
+  // GET /api/os/info — kernel metadata (no auth)
+  if (req.method === 'GET' && path === '/api/os/info') {
+    const { kernel: k } = await import('../kernel/mod.ts');
+    const { getVersion: getVer } = await import('../config/version.ts');
+    const version = await getVer().catch(() => 'unknown');
+    return json({
+      name: 'CortexPrism OS',
+      version,
+      uptimeMs: Math.floor(performance.now()),
+      roles: ['admin', 'operator', 'user', 'agent'] as const,
+      processCount: k.getProcessTree().length,
+      ts: new Date().toISOString(),
+    });
+  }
+
+  // GET /api/os/processes — process tree (no auth)
+  if (req.method === 'GET' && path === '/api/os/processes') {
+    const { kernel: k } = await import('../kernel/mod.ts');
+    const tree = k.getProcessTreeForDisplay();
+    const flat = k.getProcessTree().map((p) => ({
+      pid: p.pid,
+      parentPid: p.parentPid,
+      agentId: p.agentId,
+      sessionId: p.sessionId,
+      role: p.role,
+      agentType: p.agentType,
+      status: p.status,
+      startedAt: p.startedAt,
+    }));
+    return json({ tree, flat, count: flat.length });
+  }
+
+  // GET /api/os/capabilities — capability groups and role mappings (no auth)
+  if (req.method === 'GET' && path === '/api/os/capabilities') {
+    const { ROLE_CAPABILITIES, ROLE_LABELS } = await import('../kernel/mod.ts');
+    const { CAPABILITY_GROUP_LABELS, CAPABILITY_GROUP_MEMBERS } = await import(
+      '../tools/types.ts'
+    );
+    const roles = Object.keys(ROLE_CAPABILITIES).map((role) => ({
+      role,
+      label: ROLE_LABELS[role as keyof typeof ROLE_LABELS],
+      capabilities: ROLE_CAPABILITIES[role as keyof typeof ROLE_CAPABILITIES],
+    }));
+    const groups = Object.keys(CAPABILITY_GROUP_LABELS).map((group) => ({
+      group,
+      label: CAPABILITY_GROUP_LABELS[group as keyof typeof CAPABILITY_GROUP_LABELS],
+      members: CAPABILITY_GROUP_MEMBERS[group as keyof typeof CAPABILITY_GROUP_MEMBERS],
+    }));
+    return json({ roles, groups });
+  }
+
   // GET /api/debug/health — expanded health check with DB verification
   if (req.method === 'GET' && path === '/api/debug/health') {
     const checks: Record<string, string> = {};

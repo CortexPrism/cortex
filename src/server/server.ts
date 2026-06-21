@@ -18,6 +18,7 @@ import { setGitHookServerPort } from '../triggers/git-hooks.ts';
 import { SECURITY_HEADERS } from './security-headers.ts';
 import { i18n } from '../i18n/service.ts';
 import { extractLocale } from '../i18n/middleware.ts';
+import { kernel } from '../kernel/mod.ts';
 
 const _log = logger('server');
 
@@ -50,6 +51,15 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     port: opts.port,
     level: _loggingCfg.level ?? 'error',
     logFile: _loggingCfg.filePath ?? PATHS.logFile,
+  });
+
+  // Register main server as root process (pid 0 parent) in the OS kernel.
+  kernel.registerProcess({
+    pid: Deno.pid,
+    parentPid: 0,
+    agentId: 'server',
+    sessionId: 'kernel',
+    role: 'admin',
   });
 
   // Wire up OTLP if configured

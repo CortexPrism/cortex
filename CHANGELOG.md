@@ -29,6 +29,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Supervisor upgraded to init process** — the supervisor daemon now follows the formal `BOOT_ORDER` sequence, starting daemons sequentially (validator → executor → scheduler) with socket readiness checks (10s timeout) before proceeding. Boot stage status is tracked via `getBootStatus()` exposing per-stage timeline. Crash-restart with exponential backoff is preserved. (`src/processes/supervisor-process.ts`)
 
+- **OS kernel** — new `src/kernel/` module implements the `OsKernel` singleton: a system call dispatcher with capability enforcement and resource accounting. Features include RBAC with 4 roles (`admin`, `operator`, `user`, `agent`) each mapped to capability groups, per-agent token/cost CPU tracking, and a process registry with parent-child tree tracking. The kernel registers the main server as the root process (parentPid 0) and automatically tracks sub-agent processes spawned during execution. (`src/kernel/mod.ts`, `src/agent/sub-agent.ts`, `src/server/server.ts`)
+
+- **OS API endpoints** — three new endpoints under `/api/os/`:
+  - `GET /api/os/info` — kernel metadata (name, version, uptime, role list, process count)
+  - `GET /api/os/processes` — process tree with nested display format and flat list
+  - `GET /api/os/capabilities` — capability groups, role-to-capability mappings, and group members
+  (`src/server/router.ts`)
+
 ### Changed
 
 - **Agent OS identity in soul templates** — all agent soul templates now identify the agent as running on CortexPrism OS rather than as a standalone assistant. The `DEFAULT_SOUL` adds OS awareness as the first identity bullet. The `INIT_SOUL_TEMPLATE` gains a new `## OS Environment` section describing the 8 OS-layer capabilities (persistent memory, tool system with Parallax validation, sub-agent orchestration, background daemons, skills system, job scheduler, plugin marketplace, audit log). All 8 `PERSONALITY_TEMPLATES` updated from "AI assistant" to "AI agent running on CortexPrism OS". (`src/agent/soul.ts`)
