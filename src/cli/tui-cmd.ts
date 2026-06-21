@@ -65,6 +65,7 @@ export const tuiCommand = cortexCommand('tui')
       model: opts.model as string | undefined,
       agent: opts.agent as string | undefined,
       enableStream: true,
+      quietLogging: true,
     });
 
     const version = await getVersion();

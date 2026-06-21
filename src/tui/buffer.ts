@@ -33,7 +33,7 @@ function styleEqual(a: CellStyle, b: CellStyle): boolean {
     a.bold === b.bold &&
     a.dim === b.dim &&
     a.italic === b.italic &&
-    a.underline === a.underline &&
+    a.underline === b.underline &&
     a.inverse === b.inverse;
 }
 

@@ -1,6 +1,6 @@
 import type { AgentConfig, CortexConfig } from '../config/config.ts';
 import { isFirstRun, loadConfig } from '../config/config.ts';
-import { configureLogger } from '../utils/logger.ts';
+import { configureLogger, setLogLevel } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
 import { buildProvider, buildRouter } from '../llm/router.ts';
 import type { LLMProvider } from '../llm/types.ts';
@@ -30,6 +30,7 @@ export interface AgentSessionOptions {
   resume?: string;
   enableStream?: boolean;
   sandboxDebug?: boolean;
+  quietLogging?: boolean;
 }
 
 export interface AgentSession {
@@ -65,6 +66,9 @@ export async function createAgentSession(
     fileMaxBytes: _loggingCfg.fileMaxBytes,
     fileMaxFiles: _loggingCfg.fileMaxFiles,
   });
+  if (options.quietLogging) {
+    setLogLevel('silent');
+  }
 
   if (await isFirstRun()) {
     config = await runSetupWizard(config);

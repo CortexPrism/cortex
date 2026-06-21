@@ -45,6 +45,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed
 
+- **Interactive TUI logging polluted the screen** — `agent:loop` stdout logging was still active during `chat`/`tui` sessions, so debug output could overwrite the terminal UI. Interactive sessions now force silent stdout logging while preserving file logs. (`src/cli/agent-session.ts`, `src/cli/chat.ts`, `src/cli/tui-cmd.ts`)
+
+- **Nested layout children were rendered twice** — the root renderer was traversing nested child components after split layouts had already rendered them, duplicating the UI. Root rendering now only paints top-level mounted components once. (`src/tui/component.ts`)
+
 - **Tool approval gate hung indefinitely in TUI chat** — the rewritten `approvalGate` callback created an unresolvable `Promise` with no code path to call `resolve()`, freezing the agent turn. Fixed by intercepting user input in the `onSubmit` handler: when `pendingApproval` is set, the input text is checked for `y`/`n`, the promise is resolved, and the approval result is displayed. Removed the obsolete enter-key binding that swallowed input without resolving. (`src/cli/chat.ts`)
 
 - **`agent` leaf command overwrote all agent subcommands** — registering `{ path: ['agent'] }` after multi-segment entries (`['agent', 'chat']`, `['agent', 'tui']`, etc.) overwrote the parent `Command` created by `findOrCreateParent`, making all subcommands unreachable. Fixed by reordering the registry so the leaf entry registers first, and storing single-segment commands in the `parents` map so subsequent multi-segment entries attach as subcommands instead of creating a conflicting parent. (`src/cli/registry.ts`, `src/cli/registry-helpers.ts`)

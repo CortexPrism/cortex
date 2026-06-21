@@ -177,33 +177,6 @@ export class Root extends Component {
         height: child.height,
       };
       child.render(ctx);
-      if (child.children.length > 0) {
-        this.renderSubChildren(child, buffer, theme, tFn);
-      }
-    }
-  }
-
-  private renderSubChildren(
-    parent: Component,
-    buffer: CellBuffer,
-    theme: Theme,
-    tFn: (key: string, params?: Record<string, string | number>) => string,
-  ): void {
-    for (const child of parent.children) {
-      if (!child.visible) continue;
-      const ctx: RenderContext = {
-        buffer,
-        theme,
-        t: tFn,
-        x: child.x,
-        y: child.y,
-        width: child.width,
-        height: child.height,
-      };
-      child.render(ctx);
-      if (child.children.length > 0) {
-        this.renderSubChildren(child, buffer, theme, tFn);
-      }
     }
   }
 
