@@ -63,6 +63,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Daemon migration race at startup** — the supervisor spawns all three daemon processes simultaneously, each calling `runMigrations()` which checks `schema_migrations` for existing records. All three detect no record before any inserts one, then all three attempt the same `ALTER TABLE ... ADD COLUMN` — the first succeeds, the rest crash with `duplicate column name: embedding`. Made `applyMigration()` resilient to concurrent execution by catching "already exists" errors and recording the migration as applied via `INSERT OR IGNORE`. (`src/db/migrate.ts`)
 
+- **OS Health page blank due to nested page div** — the `page-oshealth` div was inserted inside the still-open `page-codegraph` div, causing it to remain hidden when Codegraph was not the active page. Moved to the correct location between the Codegraph and Workflows page divs. Also added null guard on the `loadOSHealth()` content element reference. (`src/server/ui.ts`)
+
 ## [0.47.0] — 2026-06-20
 
 ### Added
