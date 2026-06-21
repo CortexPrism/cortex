@@ -10589,7 +10589,7 @@ function renderEditorTree() {
   var sorted = dirs.concat(files);
   sorted.forEach(function(name) {
     var isDir = name.endsWith('/');
-    var nameClean = name.replace(/\/$/, '');
+    var nameClean = name.replace(/\\/$/, '');
     var active = editorCurrentFile === nameClean || editorCurrentFile === name;
     var onclick = isDir
       ? 'editorOpenDir(\\'' + escJs(nameClean) + '\\')'
@@ -11160,7 +11160,7 @@ async function editorSearchInTree(query) {
       var res = await fetch(base + '/' + encPath);
       if (!res.ok) continue;
       var data = await res.json();
-      var lines = (data.content || '').split('\n');
+      var lines = (data.content || '').split('\\n');
       for (var j = 0; j < lines.length; j++) {
         if (lines[j].toLowerCase().indexOf(query) > -1) {
           results.push({ file: f, line: j + 1, preview: lines[j].substring(0, 80) + (lines[j].length > 80 ? '...' : '') });
