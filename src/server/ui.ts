@@ -2767,21 +2767,6 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: OS Health -->
-  <div id="page-oshealth" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <h1 style="font-size:15px;font-weight:600;">OS Health</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">System health dashboard — daemons, database, jobs, memory</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="loadOSHealth()" style="font-size:12px;">↻ Refresh</button>
-      </div>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:16px;" id="os-health-content">
-      <div style="text-align:center;padding:60px;color:var(--text3);">Loading system health...</div>
-    </div>
-  </div>
     <div style="flex:1;display:flex;overflow:hidden;">
       <div style="width:280px;min-width:260px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
         <div style="padding:12px;border-bottom:1px solid var(--border);">
@@ -2822,6 +2807,22 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div style="height:200px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="cg-bottom-panel"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Page: OS Health -->
+  <div id="page-oshealth" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">OS Health</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">System health dashboard — daemons, database, jobs, memory</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="loadOSHealth()" style="font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;" id="os-health-content">
+      <div style="text-align:center;padding:60px;color:var(--text3);">Loading system health...</div>
     </div>
   </div>
 
@@ -15034,6 +15035,7 @@ function stopDaemonAutoRefresh() {
 // ── OS Health Dashboard ──
 async function loadOSHealth() {
   var el = document.getElementById('os-health-content');
+  if (!el) return;
   try {
     var data = await fetch(BASE + '/api/os/health').then(function(r) { return r.json(); });
     var daemons = data.daemons || {};
@@ -15079,7 +15081,7 @@ async function loadOSHealth() {
           '<div style="font-size:24px;font-weight:600;margin-top:8px;color:var(--accent1);">' + esc(String(data.latencyMs != null ? data.latencyMs + 'ms' : 'N/A')) + '</div>' +
         '</div>' +
       '</div>';
-  } catch(e) { el.innerHTML = '<div class="empty">Failed to load system health</div>'; }
+  } catch(e) { if (el) el.innerHTML = '<div class="empty">Failed to load system health</div>'; }
 }
 function formatUptime(ms) {
   if (!ms || ms < 0) return '0s';
