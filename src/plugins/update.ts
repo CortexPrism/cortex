@@ -4,9 +4,13 @@ import { buildGitHubArchiveUrl, downloadFromUrl, downloadPluginPackage } from '.
 import { join, normalize } from '@std/path';
 import { resolveHomeDir } from '../utils/platform.ts';
 import type { PluginManifest, PluginRow } from './types.ts';
+import { loadConfig } from '../config/config.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
 const API_BASE = `https://${MARKETPLACE_HOST}/api/marketplace`;
+
+const gitHubVersionCache = new Map<string, { version: string; ts: number }>();
+const GITHUB_CACHE_TTL = 3600_000;
 
 interface GitHubRelease {
   tag_name: string;
@@ -28,11 +32,20 @@ export async function checkGitHubRelease(
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
   if (githubToken) headers['Authorization'] = `Bearer ${githubToken}`;
 
+  async function fetchWithFallback(url: string): Promise<Response> {
+    let res = await fetch(url, { headers });
+    if ((res.status === 401 || res.status === 403) && githubToken) {
+      // Token is invalid — retry without auth
+      const { Authorization: _, ...rest } = headers;
+      res = await fetch(url, { headers: rest });
+    }
+    return res;
+  }
+
   // Try GitHub Releases first
   try {
-    const res = await fetch(
+    const res = await fetchWithFallback(
       `https://api.github.com/repos/${owner}/${repo}/releases/latest`,
-      { headers },
     );
     if (res.ok) {
       const release = await res.json() as GitHubRelease;
@@ -43,11 +56,10 @@ export async function checkGitHubRelease(
     // 404 or prerelease: fall through to tags
   } catch { /* fall through */ }
 
-  // Fall back to tags API (repos that tag without creating a Release)
+  // Fall back to tags API
   try {
-    const res = await fetch(
+    const res = await fetchWithFallback(
       `https://api.github.com/repos/${owner}/${repo}/tags?per_page=10`,
-      { headers },
     );
     if (!res.ok) {
       return { latestVersion: null, error: `GitHub API error: ${res.status}` };
@@ -56,7 +68,6 @@ export async function checkGitHubRelease(
     if (!tags.length) {
       return { latestVersion: null, error: 'No releases or tags found' };
     }
-    // Pick the first tag that looks like a semver (vX.Y.Z or X.Y.Z)
     const semverTag = tags.find((t) => /^v?\d+\.\d+/.test(t.name));
     const chosen = semverTag ?? tags[0];
     return { latestVersion: chosen.name.replace(/^v/, '') };
@@ -356,14 +367,22 @@ export async function applyPluginUpdate(
       // Marketplace /package unavailable — try GitHub fallback
     }
     if (!downloaded && manifest.homepage) {
-      const ghUrl = buildGitHubArchiveUrl(manifest.homepage);
+      const ghUrl = buildGitHubArchiveUrl(manifest.homepage, `v${check.latestVersion}`);
       if (ghUrl) {
         try {
           await downloadFromUrl(ghUrl, pluginDir);
         } catch {
-          console.warn(
-            `[plugins] Could not download updated package for "${pluginName}", keeping existing files`,
-          );
+          // Try without leading 'v' prefix
+          const ghUrlNoV = buildGitHubArchiveUrl(manifest.homepage, check.latestVersion!);
+          if (ghUrlNoV) {
+            try {
+              await downloadFromUrl(ghUrlNoV, pluginDir);
+            } catch {
+              console.warn(
+                `[plugins] Could not download updated package for "${pluginName}", keeping existing files`,
+              );
+            }
+          }
         }
       }
     }
@@ -411,7 +430,41 @@ export async function applyPluginUpdate(
   return { success: true, previousVersion, newVersion: manifest.version };
 }
 
-function compareVersions(a: string, b: string): number {
+export async function enrichPluginVersions(plugins: Array<Record<string, unknown>>) {
+  const withRepo = plugins.filter((p) =>
+    typeof p.repository === 'string' && p.repository
+  );
+  if (!withRepo.length) return;
+
+  const config = await loadConfig();
+  const githubToken = config.pluginUpdate?.githubToken ?? null;
+
+  const results = await Promise.allSettled(
+    withRepo.map(async (p) => {
+      const repoUrl = p.repository as string;
+      const key = repoUrl;
+      const cached = gitHubVersionCache.get(key);
+      if (cached && Date.now() - cached.ts < GITHUB_CACHE_TTL) {
+        p.version = cached.version;
+        return;
+      }
+      const gh = extractGitHubOwnerRepo(repoUrl);
+      if (!gh) return;
+      const { latestVersion } = await checkGitHubRelease(gh.owner, gh.repo, githubToken);
+      if (latestVersion) {
+        p.version = latestVersion;
+        gitHubVersionCache.set(key, { version: latestVersion, ts: Date.now() });
+      }
+    }),
+  );
+
+  const failures = results.filter((r) => r.status === 'rejected');
+  if (failures.length) {
+    console.warn(`GitHub version enrichment: ${failures.length}/${withRepo.length} failed`);
+  }
+}
+
+export function compareVersions(a: string, b: string): number {
   const pa = a.split('.').map(parseVersionPart);
   const pb = b.split('.').map(parseVersionPart);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {

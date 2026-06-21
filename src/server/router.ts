@@ -105,8 +105,7 @@ import { extractSettingsSchema } from '../plugins/extensions/config.ts';
 import {
   applyPluginUpdate,
   checkAllUpdates,
-  checkGitHubRelease,
-  extractGitHubOwnerRepo,
+  enrichPluginVersions,
 } from '../plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
@@ -180,10 +179,6 @@ function err(msg: string, status = 500): Response {
   const translated = i18n.t(msg);
   return json({ error: translated !== msg ? translated : msg }, status);
 }
-
-// In-memory cache of GitHub versions for marketplace plugins (TTL: 1 hour)
-const gitHubVersionCache = new Map<string, { version: string; ts: number }>();
-const GITHUB_CACHE_TTL = 3600_000;
 
 async function getComputerScreenshotDir(): Promise<string> {
   return join(PATHS.dataDir, 'screenshots');
@@ -3285,38 +3280,6 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // ── Marketplace API proxy ────────────────────────────────
 
   const MARKETPLACE_BASE = 'https://cortexprism.io';
-
-  async function enrichPluginVersions(plugins: Array<Record<string, unknown>>) {
-    const withRepo = plugins.filter((p) => typeof p.repository === 'string' && p.repository);
-    if (!withRepo.length) return;
-
-    const config = await loadConfig();
-    const githubToken = config.pluginUpdate?.githubToken ?? null;
-
-    const results = await Promise.allSettled(
-      withRepo.map(async (p) => {
-        const repoUrl = p.repository as string;
-        const key = repoUrl;
-        const cached = gitHubVersionCache.get(key);
-        if (cached && Date.now() - cached.ts < GITHUB_CACHE_TTL) {
-          p.version = cached.version;
-          return;
-        }
-        const gh = extractGitHubOwnerRepo(repoUrl);
-        if (!gh) return;
-        const { latestVersion } = await checkGitHubRelease(gh.owner, gh.repo, githubToken);
-        if (latestVersion) {
-          p.version = latestVersion;
-          gitHubVersionCache.set(key, { version: latestVersion, ts: Date.now() });
-        }
-      }),
-    );
-    // Log only if there are actual failures (not missing repos)
-    const failures = results.filter((r) => r.status === 'rejected');
-    if (failures.length) {
-      console.warn(`GitHub version enrichment: ${failures.length}/${withRepo.length} failed`);
-    }
-  }
 
   // GET /api/marketplace/plugins
   if (req.method === 'GET' && path === '/api/marketplace/plugins') {

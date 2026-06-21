@@ -5,6 +5,23 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.48.2] — 2026-06-21
+
+### Fixed
+
+- **Server restart not working** — `cortex server restart` was silently routing to the parent's empty action instead of the restart handler due to a Cliffy 1.2.1 bug where parent commands with both subcommands and an empty `.action()` misroute 3rd+ subcommands. Removed no-op `.action()` from `server-cmd.ts`, `db-cmd.ts`, `sandbox-cmd.ts`, and `self-cmd.ts` (commands that serve only as subcommand containers don't need a parent action — Cliffy shows help automatically).
+- **Server graceful shutdown** — added `SIGTERM`/`SIGINT` signal handlers to the HTTP server. On shutdown the server now: writes/removes a PID file at `~/.cortex/data/server.pid`, stops all auto-started micro-services via `stopAllServices()`, and stops chrome-bridge. Previously the server had no cleanup on exit.
+- **Service manager orphan cleanup on restart** — `startAutoServices()` now calls `cleanupStaleServices()` before starting, which checks if each `running` service's PID is still alive (using `/proc/<pid>` on Linux with `SIGCONT` fallback) and resets dead services to `stopped` in the database. This prevents orphaned service processes from being skipped by the auto-start logic after a restart.
+- **Server restart port race condition** — replaced the fixed 1500ms sleep with port availability polling (up to 10s with 300ms checks), preventing the new server from failing to bind when the old process hasn't fully released the port.
+- **Server restart uses PID file** — the restart command now checks `~/.cortex/data/server.pid` first (most reliable), falls back to `fuser -k <port>/tcp`, then `pgrep`-based PID discovery.
+- **Marketplace plugin version enrichment broken** — `checkGitHubRelease()` was passing an invalid/encrypted GitHub token (`enc:...`) to the GitHub API, causing `401 Bad credentials` and returning `null` for all plugin versions. Now detects `401`/`403` responses and retries without authentication, falling back to unauthenticated API calls.
+- **Marketplace CLI lacked version enrichment** — `cortex marketplace list plugins` fetched directly from `cortexprism.io` without enriching versions from GitHub releases. Now imports and calls `enrichPluginVersions()` from `update.ts`, matching the web UI proxy behavior.
+- **Version enrichment shared module** — moved `enrichPluginVersions()` and its cache from `router.ts` into `update.ts` as a shared export, used by both the server proxy and the CLI.
+- **`installFromMarketplace` used stale manifest version** — now resolves the actual latest version from GitHub releases BEFORE downloading, and passes the version tag to `buildGitHubArchiveUrl()` so the downloaded code matches the recorded version.
+- **Update flow GitHub fallback used `main` branch** — marketplace plugin update fallback now downloads from the correct release tag (`v{version}`) instead of always using `main`.
+- **`content_readable` supply chain failure** — `Deno.readTextFile()` rejects `file://` URIs. Fixed `verifySupplyChain()` and `verifyEntryPointIntegrity()`/`generateIntegrityHash()` to strip the `file://` prefix before reading.
+- **Supply chain `requireKnownHash` too strict** — changed default from `true` to `false`. Community marketplace plugins don't have pre-registered known-good hashes; requiring them blocked installation. When hashes aren't registered, the check now passes as informational instead of failing as a warning.
+
 ## [0.48.1] — 2026-06-21
 
 ### Fixed

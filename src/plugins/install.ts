@@ -200,11 +200,12 @@ export async function downloadFromUrl(pkgUrl: string, pluginDir: string): Promis
   return await extractTar(decompressed, pluginDir);
 }
 
-export function buildGitHubArchiveUrl(homepage: string): string | null {
+export function buildGitHubArchiveUrl(homepage: string, tag?: string): string | null {
   const match = homepage.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/);
   if (!match) return null;
   const [, owner, repo] = match;
-  return `https://api.github.com/repos/${owner}/${repo}/tarball/main`;
+  const ref = tag ?? 'main';
+  return `https://api.github.com/repos/${owner}/${repo}/tarball/${ref}`;
 }
 
 export async function installFromMarketplace(
@@ -232,6 +233,29 @@ export async function installFromMarketplace(
     throw new Error(`Invalid plugin name: "${manifest.name}"`);
   }
 
+  let resolvedVersion = manifest.version;
+  let bestTag: string | null = null;
+
+  const ghHomepage = manifest.homepage;
+  if (ghHomepage && ghHomepage.includes('github.com')) {
+    try {
+      const { checkGitHubRelease, extractGitHubOwnerRepo, compareVersions } = await import('./update.ts');
+      const { loadConfig } = await import('../config/config.ts');
+      const gh = extractGitHubOwnerRepo(ghHomepage);
+      if (gh) {
+        const config = await loadConfig();
+        const githubToken = config.pluginUpdate?.githubToken ?? null;
+        const { latestVersion } = await checkGitHubRelease(gh.owner, gh.repo, githubToken);
+        if (latestVersion && compareVersions(latestVersion, manifest.version) > 0) {
+          resolvedVersion = latestVersion;
+          bestTag = `v${latestVersion}`;
+        }
+      }
+    } catch {
+      // GitHub version check failed, use manifest version
+    }
+  }
+
   let localEntryPoint = manifest.entryPoint;
   let downloaded = false;
 
@@ -246,8 +270,8 @@ export async function installFromMarketplace(
     // Marketplace /package endpoint not available — try GitHub fallback
   }
 
-  if (!downloaded && manifest.homepage) {
-    const ghUrl = buildGitHubArchiveUrl(manifest.homepage);
+  if (!downloaded && ghHomepage) {
+    const ghUrl = buildGitHubArchiveUrl(ghHomepage, bestTag ?? undefined);
     if (ghUrl) {
       try {
         const extracted = await downloadFromUrl(ghUrl, pluginDir);
@@ -274,7 +298,7 @@ export async function installFromMarketplace(
 
   await installPlugin({
     name: manifest.name,
-    version: manifest.version,
+    version: resolvedVersion,
     description: manifest.description ?? '',
     kind: (manifest.kind as PluginKind) || 'esm',
     entryPoint: localEntryPoint,
@@ -357,7 +381,27 @@ export async function installFromUrl(
       const decompressed = buffer[0] === 0x1f && buffer[1] === 0x8b ? await gunzip(buffer) : buffer;
       await extractTar(decompressed, pluginDir2);
       const localEntryPoint = resolveEntryPoint(manifest.entryPoint, pluginDir2);
-      await installPlugin({
+  let resolvedVersion = manifest.version;
+  const homepage = manifest.homepage;
+  if (homepage && homepage.includes('github.com')) {
+    try {
+      const { checkGitHubRelease, extractGitHubOwnerRepo, compareVersions } = await import('./update.ts');
+      const { loadConfig } = await import('../config/config.ts');
+      const gh = extractGitHubOwnerRepo(homepage);
+      if (gh) {
+        const config = await loadConfig();
+        const githubToken = config.pluginUpdate?.githubToken ?? null;
+        const { latestVersion } = await checkGitHubRelease(gh.owner, gh.repo, githubToken);
+        if (latestVersion && compareVersions(latestVersion, manifest.version) > 0) {
+          resolvedVersion = latestVersion;
+        }
+      }
+    } catch {
+      // GitHub version check failed, use manifest version
+    }
+  }
+
+  await installPlugin({
         name: manifest.name,
         version: manifest.version,
         description: manifest.description ?? '',

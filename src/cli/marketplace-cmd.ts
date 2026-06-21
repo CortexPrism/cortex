@@ -5,6 +5,7 @@ import { installFromMarketplace } from '../plugins/install.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
 import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
 import { pluginManager } from '../plugins/manager.ts';
+import { enrichPluginVersions } from '../plugins/update.ts';
 import { i18n } from '../i18n/service.ts';
 
 const MARKETPLACE_HOST = 'cortexprism.io';
@@ -66,6 +67,7 @@ export const marketplaceCommand = cortexCommand('marketplace')
                   console.log(dim(i18n.t('cli.marketplace.noPluginsFound')));
                   return;
                 }
+                await enrichPluginVersions(data.plugins as Array<Record<string, unknown>>);
                 console.log(
                   bold(
                     `\n  Marketplace Plugins  (${data.total} total, page ${data.page}/${data.totalPages})`,
