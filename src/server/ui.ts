@@ -1683,7 +1683,7 @@ const HTML = `<!DOCTYPE html>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;">
             <label style="font-size:11px;color:var(--text3);">Agent ID</label>
-            <input id="trig-agent" class="inp" placeholder="default" />
+            <input id="trig-agent" class="inp" placeholder="assistant" />
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;">
             <label style="font-size:11px;color:var(--text3);">Prompt Template</label>
@@ -3462,11 +3462,11 @@ async function loadAgentSelector() {
   try {
     const agents = await fetch(BASE + '/api/agents').then(r => r.json());
     const current = await fetch(BASE + '/api/agents/current').then(r => r.json());
-    const activeId = current?.id || 'default';
+    const activeId = current?.id || 'assistant';
     currentAgentId = activeId;
     document.getElementById('chat-agent-name').textContent = current?.name || 'Cortex';
     sel.innerHTML = agents.map(a =>
-      \`<option value="\${a.id}" \${a.id === activeId ? 'selected' : ''}>\${esc(a.name)}\${a.id === 'default' ? ' (default)' : ''}</option>\`
+      \`<option value="\${a.id}" \${a.id === activeId ? 'selected' : ''}>\${esc(a.name)}\${a.id === 'assistant' ? ' (default)' : ''}</option>\`
     ).join('');
     // If more than 1 agent, show the selector; otherwise hide it
     sel.style.display = agents.length > 1 ? 'inline-block' : 'none';
@@ -5311,13 +5311,13 @@ function closeProjectForm() {
   document.getElementById('project-form-panel').style.display = 'none';
   document.getElementById('proj-name').value = '';
   document.getElementById('proj-desc').value = '';
-  document.getElementById('proj-agent').value = 'default';
+  document.getElementById('proj-agent').value = 'assistant';
 }
 
 async function saveProject() {
   const name = document.getElementById('proj-name').value.trim();
   const description = document.getElementById('proj-desc').value.trim();
-  const agentId = document.getElementById('proj-agent').value.trim() || 'default';
+  const agentId = document.getElementById('proj-agent').value.trim() || 'assistant';
   const errEl = document.getElementById('project-form-error');
   if (!name) { errEl.textContent = 'Name is required.'; errEl.style.display = 'block'; return; }
   const res = await fetch(BASE + '/api/projects', {
@@ -5392,7 +5392,7 @@ async function loadGitHubRepos() {
 async function importGitHubProject(idx) {
   var repo = window._ghRepos[idx];
   if (!repo) { toast('Repository not found', 'error'); return; }
-  var agentId = document.getElementById('gh-import-agent').value || 'default';
+  var agentId = document.getElementById('gh-import-agent').value || 'assistant';
   try {
     var res = await fetch(BASE + '/api/projects/import-github', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -5489,7 +5489,7 @@ function renderTriggers(triggers) {
           URL: <code style="font-size:10px;cursor:pointer;text-decoration:underline;" onclick="navigator.clipboard.writeText(\${JSON.stringify(webhookUrl)});showToast('URL copied','success')">\${esc(webhookUrl)}</code>
         </div>\` : ''}
         <div style="margin-top:5px;font-size:11px;color:var(--text3);">
-          Agent: <strong>\${esc(t.action?.agent || 'default')}</strong>
+          Agent: <strong>\${esc(t.action?.agent || 'assistant')}</strong>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -5527,7 +5527,7 @@ function triggerFormSourceChanged() {
 async function saveTrigger() {
   const name = document.getElementById('trig-name').value.trim();
   const source = document.getElementById('trig-source').value;
-  const agent = document.getElementById('trig-agent').value.trim() || 'default';
+  const agent = document.getElementById('trig-agent').value.trim() || 'assistant';
   const promptTemplate = document.getElementById('trig-prompt').value.trim() || 'Handle event: {{event}}';
   const enabled = document.getElementById('trig-enabled').checked;
   const errEl = document.getElementById('trigger-form-error');
@@ -5739,7 +5739,7 @@ async function submitAddChannel() {
   const id = document.getElementById('add-ch-id').value.trim();
   const name = document.getElementById('add-ch-name').value.trim() || id;
   const type = document.getElementById('add-ch-type').value;
-  const agentId = document.getElementById('add-ch-agent').value.trim() || 'default';
+  const agentId = document.getElementById('add-ch-agent').value.trim() || 'assistant';
 
   if (!id) { showToast('Channel ID is required.', 'error'); return; }
 
@@ -7113,7 +7113,7 @@ async function loadStatus() {
                 <div style="width:6px;height:6px;border-radius:50%;background:\${s.status==='active'?'#10b981':'var(--text3)'}"></div>
                 <div>
                   <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-12).toUpperCase()}</div>
-                  <div style="font-size:10px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${s.agent || 'default'}</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${s.agent || 'assistant'}</div>
                 </div>
               </div>
               <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;">\${new Date(s.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:false})}</div>
@@ -7263,7 +7263,7 @@ function renderSessionsList(sessions) {
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           \${s.name ? '<span style="font-size:13px;font-weight:500;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.name) + '</span>' : ''}
           <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
-          \${s.agent_id && s.agent_id !== 'default' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
+          \${s.agent_id && s.agent_id !== 'assistant' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
           \${ch ? '<span class="badge" style="background:' + chBg + ';color:' + chTc + ';font-size:10px;">' + esc(ch) + '</span>' : ''}
           \${hasParent ? '<span class="badge" style="background:rgba(245,158,11,0.08);color:#fbbf24;font-size:10px;">⤷ child</span>' : ''}
           <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':s.status==='archived'?'rgba(107,114,128,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':s.status==='archived'?'#9ca3af':'var(--text3)'};">\${s.status}</span>
@@ -7399,7 +7399,7 @@ async function exportSession(id) {
 }
 
 function getSandboxWorkspacePath() {
-  var agentId = window._selectedAgentId || 'default';
+  var agentId = window._selectedAgentId || 'assistant';
   var wsMap = window._wsMap || {};
   if (wsMap[agentId]) return wsMap[agentId];
   if (wsMap['default']) return wsMap['default'];
@@ -8980,7 +8980,7 @@ async function loadAgents() {
       fetch(BASE + '/api/sessions?limit=100').then(r => r.json()).catch(() => []),
       fetch(BASE + '/api/workspace/agents').then(r => r.json()).catch(() => []),
     ]);
-    const currentAgentId = currentRes?.id || 'default';
+    const currentAgentId = currentRes?.id || 'assistant';
     window._selectedAgentId = currentAgentId;
     window._selectedAgentName = currentRes?.name || currentAgentId;
     const wsMap = {};
@@ -8988,7 +8988,7 @@ async function loadAgents() {
     window._wsMap = wsMap;
     const sessCount = {};
     for (const s of sessions) {
-      const aid = s.agent_id || 'default';
+      const aid = s.agent_id || 'assistant';
       sessCount[aid] = (sessCount[aid] || 0) + 1;
     }
     if (!agents.length) {
@@ -9031,7 +9031,7 @@ async function loadAgents() {
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="cloneAgentUI(\\'' + a.id + '\\')">Clone</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="showPage(\\'sessions\\');var f=document.getElementById(\\'sess-agent-filter\\');if(f){f.value=\\'' + a.id + '\\';loadSessionsList();}">Sessions</button>');
-      if (a.id !== 'default') ac.push('<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent(\\'' + a.id + '\\')">✕</button>');
+      if (!a.builtin) ac.push('<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent(\\'' + a.id + '\\')">✕</button>');
       ac.push('</div></div></div>');
       return ac.join('');
     }).join('');
@@ -10172,7 +10172,7 @@ async function filterCmdPalette(query) {
         html += matchingSessions.slice(0, 5).map(function(s) {
           return '<button class="cmd-item" onclick="closeCmdPalette({target:document.getElementById(\\'cmd-palette\\')});openSession(\\'' + s.id + '\\');" onmouseenter="highlightCmd(this)">' +
             '<span class="cmd-icon">💬</span>' +
-            '<span class="cmd-label"><strong>' + esc(s.id.slice(-20)) + '</strong><br><span style="font-size:11px;color:var(--text3);">' + (s.agent_id || 'default') + ' · ' + s.turn_count + ' turns</span></span>' +
+            '<span class="cmd-label"><strong>' + esc(s.id.slice(-20)) + '</strong><br><span style="font-size:11px;color:var(--text3);">' + (s.agent_id || 'assistant') + ' · ' + s.turn_count + ' turns</span></span>' +
             '</button>';
         }).join('');
       }
@@ -16504,8 +16504,8 @@ async function loadSandboxPage() {
   if (!window._selectedAgentId) {
     try {
       var cur = await fetch(BASE + '/api/agents/current').then(function(r) { return r.json(); }).catch(function() { return null; });
-      window._selectedAgentId = (cur && cur.id) || 'default';
-    } catch(e) { window._selectedAgentId = 'default'; }
+      window._selectedAgentId = (cur && cur.id) || 'assistant';
+    } catch(e) { window._selectedAgentId = 'assistant'; }
   }
   switchSandboxTab(currentSandboxTab);
 }
@@ -16534,7 +16534,7 @@ function showSandboxModal(opts) {
   overlay.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;';
   overlay.onclick = function(e) { if (e.target === overlay) closeSandboxModal(); };
 
-  var agentId = window._selectedAgentId || 'default';
+  var agentId = window._selectedAgentId || 'assistant';
   var wp = getSandboxWorkspacePath() || '';
 
   var fieldsHtml = fields.map(function(f, i) {
@@ -16591,7 +16591,7 @@ function showSandboxModal(opts) {
 async function loadSandboxModalAgents() {
   var sel = document.getElementById('sandbox-modal-agent');
   if (!sel) return;
-  var currentId = window._selectedAgentId || 'default';
+  var currentId = window._selectedAgentId || 'assistant';
   try {
     var agents = await fetch(BASE + '/api/agents').then(function(r) { return r.json(); }).catch(function() { return []; });
     var html = (Array.isArray(agents) ? agents : []).map(function(a) {
@@ -16638,7 +16638,7 @@ async function ensureAgentWorkspace(agentId) {
 function submitSandboxModal() {
   if (!_sandboxModalCallback) return;
   var sel = document.getElementById('sandbox-modal-agent');
-  var agentId = sel ? sel.value : (window._selectedAgentId || 'default');
+  var agentId = sel ? sel.value : (window._selectedAgentId || 'assistant');
   var wsMap = window._wsMap || {};
   var workspacePath = wsMap[agentId] || '';
 

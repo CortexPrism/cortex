@@ -1987,7 +1987,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       if (/[^a-zA-Z0-9_-]/.test(name)) {
         return err('Project name may only contain letters, numbers, hyphens, and underscores', 400);
       }
-      const agentId = body.agentId || 'default';
+      const agentId = body.agentId || 'assistant';
       const cloneDir = join(PATHS.workspacesDir, agentId, name);
       await Deno.mkdir(join(PATHS.workspacesDir, agentId), { recursive: true });
       const cmd = new Deno.Command('git', {
@@ -2246,7 +2246,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
         enabled: false,
         settings: body.settings || {},
         vaultRef,
-        agentId: body.agentId || 'default',
+        agentId: body.agentId || 'assistant',
       });
       return json({ ok: true, id: body.id });
     } catch (e) {
@@ -2707,6 +2707,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/agents/sub-types') {
     const { listSubAgentTypes } = await import('../agent/sub-agent-types.ts');
     return json(listSubAgentTypes());
+  }
+
+  // GET /api/agents/builtin — returns built-in agent definitions
+  if (req.method === 'GET' && path === '/api/agents/builtin') {
+    const { getBuiltinAgentDefs } = await import('../agent/builtin-agents.ts');
+    return json(getBuiltinAgentDefs());
   }
 
   // PUT /api/agents/sub-types/:name — static route, must precede :id wildcard
@@ -5079,7 +5085,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
         name: config.agent.name,
         description: `${config.agent.name} agent via ${config.defaultProvider}`,
         systemPrompt: 'CortexPrism agent prompt',
-        tools: Object.keys(config.agents?.['default'] ?? {}),
+        tools: Object.keys(config.agents?.['assistant'] ?? {}),
         maxTurns: config.agent.maxTurns,
         provider: config.defaultProvider,
         model: config.providers[config.defaultProvider]?.model ?? 'unknown',

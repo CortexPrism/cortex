@@ -18,7 +18,7 @@ const projectsCommand = new Command()
       const desc = p.description ? ` — ${p.description}` : '';
       console.log(`  ${p.name}${desc}`);
       console.log(`    Path: ${p.path}`);
-      console.log(`    Agent: ${p.agentId ?? 'default'}`);
+      console.log(`    Agent: ${p.agentId ?? 'assistant'}`);
       console.log();
     }
   });
@@ -28,9 +28,9 @@ projectsCommand
   .description('Create a new project workspace')
   .action(async (_opts: void, name: string) => {
     const desc = await Input.prompt({ message: 'Description (optional):', default: '' });
-    const agent = await Input.prompt({ message: 'Agent (default = default):', default: 'default' });
+    const agent = await Input.prompt({ message: 'Agent (default = assistant):', default: 'assistant' });
     const project = await createProject(name, {
-      agentId: agent === 'default' ? undefined : agent,
+      agentId: agent === 'assistant' ? undefined : agent,
       description: desc || undefined,
     });
     console.log(

@@ -42,7 +42,7 @@ debugCmd
       for (const s of sessions) {
         const created = new Date(s.created_at as string).toISOString().split('T')[0];
         console.log(
-          `  ${s.id}  agent=${s.agent_id ?? 'default'}  turns=${
+          `  ${s.id}  agent=${s.agent_id ?? 'assistant'}  turns=${
             s.turn_count ?? 0
           }  created=${created}`,
         );

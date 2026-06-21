@@ -289,7 +289,7 @@ export const chatCommand = new Command()
             toolContext: {
               workingDir: Deno.cwd(),
               approvalGate,
-              agentId: 'default',
+              agentId: 'assistant',
               workspaceDir: Deno.cwd(),
               model,
               provider: config.defaultProvider,
