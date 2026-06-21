@@ -437,6 +437,9 @@ const HTML = `<!DOCTYPE html>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@4.19.0/lib/xterm.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@4.19.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -789,6 +792,10 @@ const HTML = `<!DOCTYPE html>
   .editor-context-item:hover { background:rgba(6,182,212,0.15); color:var(--text); }
   .editor-context-item.danger:hover { background:rgba(239,68,68,0.15); color:#f87171; }
   .editor-context-sep { border:none; border-top:1px solid var(--border); margin:4px 0; }
+  #panel-content-terminal .xterm { height:100%; padding:4px; }
+  #panel-content-terminal .xterm-viewport { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  #panel-content-terminal .xterm-viewport::-webkit-scrollbar { width:6px; }
+  #panel-content-terminal .xterm-viewport::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
   .editor-quick-result { display:flex; align-items:center; gap:8px; padding:6px 16px; cursor:pointer; color:var(--text2); transition:all 0.08s; }
   .editor-quick-result:hover, .editor-quick-result.active { background:rgba(6,182,212,0.15); color:var(--text); }
   .editor-breadcrumb-part { cursor:pointer; color:var(--text3); border-radius:3px; padding:2px 4px; transition:all 0.1s; }
@@ -940,6 +947,23 @@ const HTML = `<!DOCTYPE html>
   .list-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2); }
   .list-meta { color:var(--text3); font-size:10px; flex-shrink:0; }
   .empty { text-align:center; padding:20px; color:var(--text3); font-size:12px; }
+
+  /* ── Graph visualization ─────────────────────── */
+  .graph-container { flex:1; overflow:hidden; position:relative; background:radial-gradient(ellipse at center, rgba(255,255,255,0.015) 0%, transparent 70%); }
+  .graph-container svg { width:100%; height:100%; }
+  .graph-legend { display:flex; flex-wrap:wrap; gap:10px; padding:6px 24px; border-top:1px solid var(--border); background:var(--bg2); font-size:10px; }
+  .graph-legend-group { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .graph-legend-label { color:var(--text3); font-size:9px; text-transform:uppercase; letter-spacing:0.04em; margin-right:2px; }
+  .graph-legend-item { display:flex; align-items:center; gap:3px; }
+  .graph-legend-swatch { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .graph-legend-line { width:12px; height:1.5px; border-radius:1px; flex-shrink:0; }
+  .graph-legend-text { color:var(--text3); }
+  .graph-node-label { font-size:9px; fill:var(--text2); pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,0.8); }
+  .graph-edge-label { font-size:8px; fill:var(--text3); pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,0.9); }
+  .graph-tooltip { position:absolute; background:#1a1a28; border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:11px; pointer-events:none; z-index:10; max-width:220px; color:var(--text); box-shadow:0 4px 16px rgba(0,0,0,0.5); }
+  .graph-controls { position:absolute; bottom:8px; right:8px; display:flex; gap:4px; z-index:5; }
+  .graph-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--bg2); color:var(--text2); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+  .graph-btn:hover { background:var(--bg3); color:var(--text); border-color:rgba(255,255,255,0.15); }
 </style>
 </head>
 <body>
@@ -1271,10 +1295,7 @@ const HTML = `<!DOCTYPE html>
           </div>
           <div id="panel-content-problems" style="flex:1;overflow-y:auto;padding:8px 12px;font-size:11px;color:var(--text3);">No problems detected. Open a file to see diagnostics.</div>
           <div id="panel-content-output" style="display:none;flex:1;overflow-y:auto;padding:8px 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:pre-wrap;"></div>
-          <div id="panel-content-terminal" style="display:none;flex:1;overflow-y:auto;padding:12px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text2);background:var(--bg3);">
-            <div style="color:#4ade80;font-size:11px;">CortexPrism Terminal — not connected</div>
-            <div style="color:var(--text3);margin-top:8px;">Run code in the CodeRunner page or execute shell commands via the Chat.</div>
-          </div>
+          <div id="panel-content-terminal" style="display:none;flex:1;overflow:hidden;background:var(--bg3);"></div>
         </div>
         <!-- Status bar -->
         <div id="editor-statusbar" style="display:none;padding:4px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;color:var(--text3);justify-content:space-between;align-items:center;flex-shrink:0;min-height:26px;">
@@ -1482,14 +1503,24 @@ const HTML = `<!DOCTYPE html>
 
     <!-- Graph Tab -->
     <div id="mem-pane-graph" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-      <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;">
+      <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">
         <input id="graph-query" class="inp" placeholder="Search entity by name…" style="flex:1;" onkeydown="if(event.key==='Enter')searchGraphEntities()" />
         <button class="btn btn-primary" onclick="searchGraphEntities()">Search</button>
+        <button class="btn btn-ghost" onclick="loadFullGraph()" style="font-size:11px;white-space:nowrap;">Full Graph</button>
       </div>
-      <div style="padding:12px 24px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);">
+      <div style="padding:10px 24px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);">
         <span id="graph-breadcrumb"></span>
+        <span style="margin-left:auto;font-size:10px;" id="graph-stats"></span>
       </div>
-      <div id="graph-results" style="flex:1;overflow-y:auto;padding:0 24px 16px;display:flex;flex-direction:column;gap:6px;"></div>
+      <div class="graph-container" id="graph-viz">
+        <div class="graph-controls">
+          <button class="graph-btn" onclick="graphZoomIn()" title="Zoom in">+</button>
+          <button class="graph-btn" onclick="graphZoomOut()" title="Zoom out">−</button>
+          <button class="graph-btn" onclick="graphFit()" title="Fit to view">⊡</button>
+        </div>
+        <div id="graph-tooltip" class="graph-tooltip" style="display:none;"></div>
+      </div>
+      <div class="graph-legend" id="graph-legend"></div>
     </div>
 
   </div>
@@ -3805,8 +3836,25 @@ function finalizeSubAgent(id, result, success, error) {
 // ── WebSocket ───────────────────────────────────────────────
 function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => setBadge('connected');
-  ws.onclose = () => { setBadge('disconnected'); setTimeout(connect, 3000); };
+  ws.onopen = () => {
+    setBadge('connected');
+    if (terminalInstance && !terminalConnected) {
+      terminalInstance.write('\x1b[32mReconnected.\x1b[0m\r\n');
+      sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
+      terminalConnected = true;
+      terminalInputBuffer = '';
+      terminalInstance.write('$ ');
+    }
+  };
+  ws.onclose = () => {
+    setBadge('disconnected');
+    if (terminalInstance) {
+      terminalInstance.write('\r\n\x1b[33mConnection lost. Reconnecting...\x1b[0m\r\n');
+      terminalConnected = false;
+      terminalInputBuffer = '';
+    }
+    setTimeout(connect, 3000);
+  };
   ws.onerror = () => setBadge('disconnected');
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
@@ -3976,9 +4024,19 @@ function connect() {
       case 'file_change':
         if (currentPage === 'editor') {
           editorRefreshTree();
-          if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split(/[\\/]/).pop()) {
+          if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split(/[\\\\/]/).pop()) {
             editorOpenFile(editorCurrentFile);
           }
+        }
+        break;
+      case 'terminal_output':
+        handleTerminalOutput(msg.data);
+        break;
+      case 'terminal_closed':
+        if (terminalInstance) {
+          terminalInstance.write('\r\n\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\x1b[0m\r\n');
+          terminalConnected = false;
+          terminalInputBuffer = '';
         }
         break;
       case 'context_usage':
@@ -4702,7 +4760,6 @@ function toggleLensAutoRefresh() {
 }
 
 // ── Memory ──────────────────────────────────────────────────
-const ENTITY_COLORS = { concept:'#a78bfa', code:'#38bdf8', domain:'#34d399' };
 
 function decayColor(score) {
   if (score >= 0.7) return '#4ade80';
@@ -4722,7 +4779,7 @@ function switchMemoryTab(name) {
   var ext = document.getElementById('mem-ext-content');
   if (ext) ext.style.display = 'none';
   // Reset extension tab buttons
-  ['privacy','heuristics','embeddings'].forEach(function(t) {
+  ['privacy','heuristics','embeddings','vector-store'].forEach(function(t) {
     var b = document.getElementById('mem-tab-' + t);
     if (b) b.classList.remove('active');
   });
@@ -4917,81 +4974,295 @@ async function searchMemory() {
 document.getElementById('mem-query').addEventListener('keydown', e => { if (e.key === 'Enter') searchMemory(); });
 
 // ── Graph ────────────────────────────────────────────────────
+const ENTITY_COLORS = { concept:'#a78bfa', code:'#38bdf8', domain:'#34d399' };
+const REL_COLORS = { uses:'#38bdf8', replaces:'#f87171', extends:'#a78bfa', is_part_of:'#34d399', is_instance_of:'#fb923c', related_to:'#9090a8', contradicts:'#f87171', supports:'#4ade80', causes:'#fbbf24', requires:'#f97316', configures:'#818cf8' };
+
+let graphSimulation = null;
+let graphData = { nodes: [], edges: [] };
+let graphSvg = null;
+let graphZoom = null;
+let graphLinkGroup = null;
+let graphNodeGroup = null;
+let graphEdgeLabelGroup = null;
+
+function initGraphView() {
+  const container = document.getElementById('graph-viz');
+  if (!container || graphSvg) return;
+
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  graphSvg = d3.select('#graph-viz')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+
+  graphZoom = d3.zoom()
+    .scaleExtent([0.1, 4])
+    .on('zoom', (event) => {
+      graphSvg.select('g.main').attr('transform', event.transform);
+    });
+
+  graphSvg.call(graphZoom);
+
+  const g = graphSvg.append('g').attr('class', 'main');
+
+  graphEdgeLabelGroup = g.append('g').attr('class', 'edge-labels');
+  graphLinkGroup = g.append('g').attr('class', 'links');
+  graphNodeGroup = g.append('g').attr('class', 'nodes');
+
+  graphSvg.on('dblclick.zoom', null);
+
+  const resizeObserver = new ResizeObserver(() => {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    graphSvg.attr('width', w).attr('height', h);
+  });
+  resizeObserver.observe(container);
+}
+
+function renderGraph(data, focusId) {
+  if (!graphSvg) initGraphView();
+  graphData = data;
+
+  const svg = graphSvg;
+  const width = +svg.attr('width');
+  const height = +svg.attr('height');
+  const tip = document.getElementById('graph-tooltip');
+  const container = document.getElementById('graph-viz');
+
+  const maxConn = Math.max(1, ...data.nodes.map(n => n.connections));
+  const nodeRadius = d => 6 + (d.connections / maxConn) * 18;
+
+  const linkForce = d3.forceLink(data.edges)
+    .id(d => d.id)
+    .distance(d => 200 - d.strength * 120)
+    .strength(d => 0.3 + d.strength * 0.5);
+
+  if (graphSimulation) {
+    graphSimulation.stop();
+  }
+
+  graphSimulation = d3.forceSimulation(data.nodes)
+    .force('link', linkForce)
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 4))
+    .alphaDecay(0.02);
+
+  const link = graphLinkGroup.selectAll('line').data(data.edges, d => d.id);
+  link.exit().remove();
+  const linkEnter = link.enter().append('line')
+    .attr('stroke', d => REL_COLORS[d.relation] || '#9090a8')
+    .attr('stroke-width', d => Math.max(0.5, d.strength * 3))
+    .attr('stroke-opacity', d => 0.15 + d.strength * 0.35)
+    .style('cursor', 'pointer');
+  graphLinkGroup.selectAll('line')
+    .on('mouseenter', function(event, d) {
+      d3.select(this).attr('stroke-opacity', 0.9).attr('stroke-width', Math.max(1.5, d.strength * 5));
+      tip.style.display = 'block';
+      tip.innerHTML = '<span style="color:' + (REL_COLORS[d.relation] || '#9090a8') + ';font-weight:600;">' + d.relation.replace(/_/g, ' ') + '</span>' +
+        '<span style="color:var(--text3);margin-left:8px;">str ' + (d.strength * 100).toFixed(0) + '%</span>';
+    })
+    .on('mousemove', function(event) {
+      const rect = container.getBoundingClientRect();
+      tip.style.left = (event.clientX - rect.left + 14) + 'px';
+      tip.style.top = (event.clientY - rect.top - 10) + 'px';
+    })
+    .on('mouseleave', function() {
+      d3.select(this).attr('stroke-opacity', d => 0.15 + d.strength * 0.35).attr('stroke-width', d => Math.max(0.5, d.strength * 3));
+      tip.style.display = 'none';
+    });
+
+  const edgeText = graphEdgeLabelGroup.selectAll('text').data(data.edges, d => d.id);
+  edgeText.exit().remove();
+  edgeText.enter().append('text')
+    .attr('class', 'graph-edge-label')
+    .attr('text-anchor', 'middle')
+    .attr('dy', -3)
+    .text(d => d.relation.replace(/_/g, ' '));
+
+  const node = graphNodeGroup.selectAll('g').data(data.nodes, d => d.id);
+  node.exit().remove();
+  const nodeEnter = node.enter().append('g').style('cursor', 'pointer');
+
+  nodeEnter.append('circle')
+    .attr('r', d => nodeRadius(d))
+    .attr('fill', d => ENTITY_COLORS[d.type] || '#9090a8')
+    .attr('stroke', d => ENTITY_COLORS[d.type] || '#9090a8')
+    .attr('stroke-opacity', 0.3)
+    .attr('stroke-width', 1.5);
+
+  nodeEnter.append('title');
+
+  graphNodeGroup.selectAll('g')
+    .on('mouseenter', function(event, d) {
+      const color = ENTITY_COLORS[d.type] || '#9090a8';
+      tip.style.display = 'block';
+      tip.innerHTML = '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + color + ';font-size:9px;">' + esc(d.type) + '</span>' +
+        ' <span style="font-weight:600;">' + esc(d.name) + '</span>' +
+        (d.description ? '<div style="margin-top:4px;font-size:10px;color:var(--text3);">' + esc(d.description) + '</div>' : '') +
+        '<div style="margin-top:4px;font-size:10px;color:var(--text3);">' + d.connections + ' connection' + (d.connections !== 1 ? 's' : '') + '</div>';
+    })
+    .on('mousemove', function(event) {
+      const rect = container.getBoundingClientRect();
+      tip.style.left = (event.clientX - rect.left + 14) + 'px';
+      tip.style.top = (event.clientY - rect.top - 10) + 'px';
+    })
+    .on('mouseleave', function() {
+      tip.style.display = 'none';
+    })
+    .on('click', function(event, d) {
+      event.stopPropagation();
+      document.getElementById('graph-query').value = d.name;
+      loadGraphForEntity(d.name);
+    })
+    .call(d3.drag()
+      .on('start', (event, d) => {
+        if (!event.active) graphSimulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on('drag', (event, d) => {
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on('end', (event, d) => {
+        if (!event.active) graphSimulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }));
+
+  graphNodeGroup.selectAll('circle')
+    .attr('r', d => nodeRadius(d))
+    .attr('fill', d => ENTITY_COLORS[d.type] || '#9090a8');
+
+  graphSimulation.on('tick', () => {
+    graphLinkGroup.selectAll('line')
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+
+    graphEdgeLabelGroup.selectAll('text')
+      .attr('x', d => (d.source.x + d.target.x) / 2)
+      .attr('y', d => (d.source.y + d.target.y) / 2);
+
+    graphNodeGroup.selectAll('g')
+      .attr('transform', d => 'translate(' + d.x + ',' + d.y + ')');
+  });
+
+  graphNodeGroup.selectAll('text').remove();
+  graphNodeGroup.selectAll('g').append('text')
+    .attr('class', 'graph-node-label')
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => -nodeRadius(d) - 4)
+    .text(d => d.name.length > 18 ? d.name.slice(0, 16) + '…' : d.name)
+    .style('opacity', 0.85);
+
+  if (focusId) {
+    const focusNode = data.nodes.find(n => n.id === focusId);
+    if (focusNode) {
+      focusNode.fx = width / 2;
+      focusNode.fy = height / 2;
+    }
+  }
+
+  const stats = document.getElementById('graph-stats');
+  if (stats) stats.innerHTML = data.nodes.length + ' nodes · ' + data.edges.length + ' edges';
+
+  const legend = document.getElementById('graph-legend');
+  if (legend) {
+    legend.innerHTML = [
+      '<span class="graph-legend-label">Entities:</span>',
+      ...Object.entries(ENTITY_COLORS).map(([type, color]) =>
+        '<span class="graph-legend-item"><span class="graph-legend-swatch" style="background:' + color + ';"></span><span class="graph-legend-text">' + type + '</span></span>'
+      ),
+      '<span style="margin-left:12px;" class="graph-legend-label">Relations:</span>',
+      ...Object.entries(REL_COLORS).map(([rel, color]) =>
+        '<span class="graph-legend-item"><span class="graph-legend-line" style="background:' + color + ';"></span><span class="graph-legend-text">' + rel.replace(/_/g, ' ') + '</span></span>'
+      ),
+    ].join('');
+  }
+}
+
+async function loadFullGraph() {
+  const bc = document.getElementById('graph-breadcrumb');
+  bc.innerHTML = '<span style="color:var(--text2);">Full Knowledge Graph</span>';
+
+  const data = await fetch(BASE + '/api/memory/graph/full').then(r => r.json()).catch(() => ({ nodes: [], edges: [] }));
+  if (!data.nodes.length) {
+    graphSvg = null;
+    graphSimulation = null;
+    const viz = document.getElementById('graph-viz');
+    if (viz) viz.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">No graph data yet. Entities and relations are built automatically as the agent works.</div>';
+    const stats = document.getElementById('graph-stats');
+    if (stats) stats.innerHTML = '';
+    const legend = document.getElementById('graph-legend');
+    if (legend && legend.parentElement) legend.innerHTML = '';
+    return;
+  }
+  renderGraph(data, null);
+}
+
 async function searchGraphEntities() {
   const q = document.getElementById('graph-query').value.trim();
-  let url = BASE + '/api/memory/graph/entities';
-  if (q) url += '?q=' + encodeURIComponent(q);
+  if (!q) { loadFullGraph(); return; }
 
-  const entities = await fetch(url).then(r => r.json()).catch(() => []);
-  const el = document.getElementById('graph-results');
   const bc = document.getElementById('graph-breadcrumb');
+  bc.innerHTML = '<span style="color:var(--text2);">Entities</span> · <span style="color:var(--text3);">matching "' + esc(q) + '"</span>';
 
+  const entities = await fetch(BASE + '/api/memory/graph/entities?q=' + encodeURIComponent(q)).then(r => r.json()).catch(() => []);
   if (!entities.length) {
-    el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">No entities found.</p>';
-    bc.innerHTML = '';
+    const stats = document.getElementById('graph-stats');
+    if (stats) stats.innerHTML = '';
+    const legend = document.getElementById('graph-legend');
+    if (legend && legend.parentElement) legend.innerHTML = '';
     return;
   }
 
-  bc.innerHTML = '<span style="color:var(--text2);">Entities</span>' + (q ? ' · <span style="color:var(--text3);">matching "' + esc(q) + '"</span>' : '');
-
-  el.innerHTML = entities.map(e => {
-    const color = ENTITY_COLORS[e.type] ?? '#9090a8';
-    return \`<div class="card-sm" style="cursor:pointer;" onclick="loadGraphForEntity('\${esc(e.name)}')">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="badge" style="background:rgba(255,255,255,0.06);color:\${color};">\${esc(e.type)}</span>
-          <span style="font-size:13px;font-weight:500;color:var(--text);">\${esc(e.name)}</span>
-        </div>
-      </div>
-      \${e.description ? \`<p style="font-size:11px;color:var(--text3);margin-top:4px;">\${esc(e.description)}</p>\` : ''}
-    </div>\`;
-  }).join('');
+  loadGraphForEntity(entities[0].name);
 }
 
 async function loadGraphForEntity(name) {
-  const hits = await fetch(\`\${BASE}/api/memory/graph?entity=\${encodeURIComponent(name)}&depth=1\`).then(r => r.json()).catch(() => []);
-  const el = document.getElementById('graph-results');
   const bc = document.getElementById('graph-breadcrumb');
+  bc.innerHTML = '<span style="color:var(--text3);cursor:pointer;" onclick="loadFullGraph()">Full Graph</span> <span style="color:var(--text3);">/</span> <span style="color:var(--text2);">' + esc(name) + '</span>';
 
-  bc.innerHTML = \`<span style="color:var(--text3);cursor:pointer;" onclick="searchGraphEntities()">Entities</span> <span style="color:var(--text3);">/</span> <span style="color:var(--text2);">\${esc(name)}</span>\`;
-
-  if (!hits.length) {
-    el.innerHTML = '<p style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">No connections found for "' + esc(name) + '".</p>';
+  const data = await fetch(BASE + '/api/memory/graph/full?entity=' + encodeURIComponent(name) + '&depth=2&limit=60').then(r => r.json()).catch(() => ({ nodes: [], edges: [] }));
+  if (!data.nodes.length) {
+    loadFullGraph();
     return;
   }
+  renderGraph(data, data.focused || null);
+}
 
-  const relations = {};
-  const REL_COLORS = { uses:'#38bdf8', replaces:'#f87171', extends:'#a78bfa', is_part_of:'#34d399', is_instance_of:'#fb923c', related_to:'#9090a8', contradicts:'#f87171', supports:'#4ade80', causes:'#fbbf24', requires:'#f97316', configures:'#818cf8' };
+function graphZoomIn() {
+  if (graphSvg && graphZoom) graphSvg.transition().call(graphZoom.scaleBy, 1.4);
+}
 
-  for (const h of hits) {
-    const dir = h.direction === 'outbound' ? '→' : '←';
-    const key = h.relation;
-    if (!relations[key]) relations[key] = { name: h.relation, direction: dir, peers: [] };
-    relations[key].peers.push(h);
-  }
+function graphZoomOut() {
+  if (graphSvg && graphZoom) graphSvg.transition().call(graphZoom.scaleBy, 0.7);
+}
 
-  el.innerHTML = Object.entries(relations).map(([rel, group]) => {
-    const color = REL_COLORS[rel] ?? '#9090a8';
-    return \`<div style="margin-bottom:10px;">
-      <div style="font-size:11px;font-weight:600;color:\${color};margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">\${group.direction} \${group.name}</div>
-      \${group.peers.map(h => {
-        const peerColor = ENTITY_COLORS[h.peer.type] ?? '#9090a8';
-        return \`<div class="card-sm" style="cursor:pointer;margin-bottom:6px;" onclick="document.getElementById('graph-query').value='\${esc(h.peer.name)}';loadGraphForEntity('\${esc(h.peer.name)}')">
-          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span class="badge" style="background:rgba(255,255,255,0.06);color:\${peerColor};">\${esc(h.peer.type)}</span>
-              <span style="font-size:13px;font-weight:500;color:var(--text);">\${esc(h.peer.name)}</span>
-            </div>
-            <span style="font-size:10px;color:var(--text3);">str \${(h.strength*100).toFixed(0)}%</span>
-          </div>
-          \${h.peer.description ? \`<p style="font-size:11px;color:var(--text3);margin-top:4px;">\${esc(h.peer.description)}</p>\` : ''}
-          <div style="height:2px;background:var(--border);border-radius:1px;margin-top:6px;overflow:hidden;">
-            <div style="height:100%;width:\${h.strength*100}%;background:\${color};border-radius:1px;"></div>
-          </div>
-        </div>\`;
-      }).join('')}
-    </div>\`;
-  }).join('');
+function graphFit() {
+  if (!graphSvg || !graphData.nodes.length) return;
+  const width = +graphSvg.attr('width');
+  const height = +graphSvg.attr('height');
+  const xs = graphData.nodes.map(n => n.x);
+  const ys = graphData.nodes.map(n => n.y);
+  const x0 = Math.min(...xs) - 40;
+  const y0 = Math.min(...ys) - 40;
+  const x1 = Math.max(...xs) + 40;
+  const y1 = Math.max(...ys) + 40;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const scale = Math.min(width / dx, height / dy, 2);
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  graphSvg.transition().duration(400).call(
+    graphZoom.transform,
+    d3.zoomIdentity.translate(width / 2, height / 2).scale(scale).translate(-cx, -cy),
+  );
 }
 
 // ── Reflections ─────────────────────────────────────────────
@@ -10493,6 +10764,9 @@ let editorFlatFileList = [];
 let editorFindMarkers = [];
 let editorFindIdx = -1;
 let editorCurrentPanelTab = 'problems';
+let terminalInstance = null;
+let terminalConnected = false;
+let terminalInputBuffer = '';
 
 // ── Sidebar / Panel resize ────────────────────────────────────
 function editorStartSidebarResize(e) {
@@ -10539,6 +10813,21 @@ function editorSwitchPanelTab(tab) {
     var btn = document.getElementById('panel-tab-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
   });
+  if (tab === 'terminal') {
+    if (!terminalInstance) initTerminal();
+    else if (!terminalConnected) {
+      terminalInstance.write('Reconnecting to terminal...\r\n');
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
+        terminalConnected = true;
+        terminalInputBuffer = '';
+        terminalInstance.write('$ ');
+      }
+    }
+    if (terminalInstance && terminalInstance._fitAddon) {
+      setTimeout(function() { terminalInstance._fitAddon.fit(); }, 20);
+    }
+  }
   var panel = document.getElementById('editor-bottom-panel');
   if (panel.style.display !== 'flex') editorTogglePanel();
 }
@@ -10567,6 +10856,130 @@ function editorAppendOutput(text) {
   editorShowPanel();
   editorSwitchPanelTab('output');
 }
+
+// ── Integrated Terminal ──────────────────────────────────────
+function initTerminal() {
+  if (terminalInstance) return;
+  var container = document.getElementById('panel-content-terminal');
+  if (!container || typeof Terminal === 'undefined') return;
+
+  terminalInstance = new Terminal({
+    cursorBlink: true,
+    cursorStyle: 'bar',
+    fontSize: 13,
+    fontFamily: "'JetBrains Mono', monospace",
+    theme: {
+      background: getComputedStyle(document.documentElement).getPropertyValue('--bg3').trim() || '#1a1a2e',
+      foreground: getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e2e2ea',
+      cursor: '#06b6d4',
+      selectionBackground: 'rgba(6,182,212,0.25)',
+      black: '#1a1a2e',
+      red: '#f87171',
+      green: '#4ade80',
+      yellow: '#fbbf24',
+      blue: '#818cf8',
+      magenta: '#f472b6',
+      cyan: '#22d3ee',
+      white: '#e2e2ea',
+      brightBlack: '#55556a',
+      brightRed: '#fca5a5',
+      brightGreen: '#86efac',
+      brightYellow: '#fcd34d',
+      brightBlue: '#a5b4fc',
+      brightMagenta: '#f9a8d4',
+      brightCyan: '#67e8f9',
+      brightWhite: '#ffffff',
+    },
+    allowProposedApi: true,
+  });
+
+  if (typeof FitAddon !== 'undefined') {
+    var fitAddon = new FitAddon();
+    terminalInstance.loadAddon(fitAddon);
+    terminalInstance._fitAddon = fitAddon;
+    fitAddon.fit();
+  }
+
+  terminalInstance.open(container);
+
+  terminalInstance.onData(function(data) {
+    if (!terminalConnected) return;
+    if (data === '\r') {
+      terminalInstance.write('\r\n');
+      if (terminalInputBuffer.length > 0) {
+        sendWs({ type: 'terminal_input', data: terminalInputBuffer + '\n' });
+      }
+      terminalInputBuffer = '';
+    } else if (data === '\x7f') {
+      if (terminalInputBuffer.length > 0) {
+        terminalInputBuffer = terminalInputBuffer.slice(0, -1);
+        terminalInstance.write('\b \b');
+      }
+    } else if (data === '\x03') {
+      terminalInstance.write('^C\r\n');
+      sendWs({ type: 'terminal_input', data: '\x03' });
+      terminalInputBuffer = '';
+    } else if (data === '\x04') {
+      if (terminalInputBuffer.length === 0) {
+        sendWs({ type: 'terminal_input', data: '\x04' });
+      }
+    } else if (data === '\x1b[A') {
+    } else if (data === '\x1b[B') {
+    } else {
+      terminalInputBuffer += data;
+      terminalInstance.write(data);
+    }
+  });
+
+  if (terminalInstance._fitAddon) {
+    new ResizeObserver(function() {
+      terminalInstance._fitAddon.fit();
+    }).observe(container);
+  }
+
+  terminalInstance.write('Connecting to terminal...\r\n');
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
+    terminalConnected = true;
+    terminalInstance.write('$ ');
+  } else {
+    terminalInstance.write('WebSocket not connected. Terminal will reconnect when available.\r\n');
+  }
+}
+
+function sendWs(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+function handleTerminalOutput(data) {
+  if (!terminalInstance) return;
+  if (data.endsWith('\n')) {
+    terminalInstance.write(data.slice(0, -1).replace(/\n/g, '\r\n') + '\r\n$ ');
+  } else {
+    terminalInstance.write(data.replace(/\n/g, '\r\n'));
+  }
+}
+
+function closeTerminal() {
+  if (!terminalInstance) return;
+  sendWs({ type: 'terminal_close' });
+  terminalInstance.write('\r\n\x1b[33mTerminal closed.\x1b[0m\r\n');
+  terminalConnected = false;
+  terminalInputBuffer = '';
+}
+
+function destroyTerminal() {
+  if (terminalInstance) {
+    try { terminalInstance.dispose(); } catch(e) {}
+    terminalInstance = null;
+  }
+  terminalConnected = false;
+  terminalInputBuffer = '';
+}
+
+// ── End Integrated Terminal ──────────────────────────────────
 
 // ── Code execution from editor ────────────────────────────────
 function editorDetectRunnerLang(fileName) {
@@ -15776,7 +16189,7 @@ function switchMemExtTab(tab) {
     if (b) b.classList.toggle('active', t === tab);
   });
   // Hide all main memory panes
-  ['search','graph','reflections','health','persistent'].forEach(function(p) {
+  ['overview','search','graph'].forEach(function(p) {
     var pane = document.getElementById('mem-pane-' + p);
     if (pane) pane.style.display = 'none';
   });
@@ -15922,8 +16335,9 @@ function renderMemVectorStoreFields(kind) {
   }
 
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">' +
-    '<div class="card-sm"><div class="stat-row"><span>URL</span><input id="mem-vector-url" class="inp" value="' + escAttr(current.url || '') + '" placeholder="http://localhost:6333" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for ' + (kind === 'qdrant' ? 'Qdrant' : 'ChromaDB') + '.</div></div>' +
-    '<div class="card-sm"><div class="stat-row"><span>Collection</span><input id="mem-vector-collection" class="inp" value="' + escAttr(current.collection || '') + '" placeholder="cortex_memory" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for ' + (kind === 'qdrant' ? 'Qdrant' : 'ChromaDB') + '.</div></div>' +
+    '<div class="card-sm"><div class="stat-row"><span>URL</span><input id="mem-vector-url" class="inp" value="' + escAttr(current.url || '') + '" placeholder="' + (kind === 'qdrant' ? 'http://localhost:6333' : 'http://localhost:8000') + '" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for ' + (kind === 'qdrant' ? 'Qdrant' : 'ChromaDB') + '.</div></div>' +
+    '<div class="card-sm"><div class="stat-row"><span>Collection</span><input id="mem-vector-collection" class="inp" value="' + escAttr(current.collection || '') + '" placeholder="cortex_memory" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Collection name.</div></div>' +
+    '<div class="card-sm"><div class="stat-row"><span>API Key</span><input id="mem-vector-apikey" class="inp" value="' + escAttr(current.apiKey || '') + '" placeholder="Optional for self-hosted' + (kind === 'qdrant' ? ', required for Qdrant Cloud' : '') + '" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Authentication key for hosted instances.</div></div>' +
   '</div>';
 }
 async function saveMemVectorStore() {
@@ -15935,6 +16349,7 @@ async function saveMemVectorStore() {
   } else if (kind === 'qdrant' || kind === 'chromadb') {
     body.url = document.getElementById('mem-vector-url').value.trim() || undefined;
     body.collection = document.getElementById('mem-vector-collection').value.trim() || undefined;
+    body.apiKey = document.getElementById('mem-vector-apikey').value.trim() || undefined;
   }
   await fetch(BASE + '/api/memory/vector-store', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   toast('Vector store updated', 'success');

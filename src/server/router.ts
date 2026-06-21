@@ -16,6 +16,7 @@ import { getJob, listJobRuns, listJobs } from '../scheduler/scheduler.ts';
 import { retrieve, writeEpisodic } from '../memory/store.ts';
 import {
   findDuplicateEntities,
+  getGraphData,
   mergeEntities,
   searchEntities,
   traverseGraph,
@@ -1766,6 +1767,15 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const depth = Number(url.searchParams.get('depth') ?? 2);
     const hits = await traverseGraph(entity, { depth, limit: 30 });
     return json(hits);
+  }
+
+  // GET /api/memory/graph/full?entity=&depth=&limit=
+  if (req.method === 'GET' && path === '/api/memory/graph/full') {
+    const entity = url.searchParams.get('entity') ?? undefined;
+    const depth = Number(url.searchParams.get('depth') ?? 2);
+    const limit = Number(url.searchParams.get('limit') ?? 200);
+    const data = await getGraphData(entity, { depth, limit });
+    return json(data);
   }
 
   // GET /api/memory/duplicates
@@ -5280,11 +5290,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/agent/preferences — user preference learner (#68)
   if (req.method === 'GET' && path === '/api/agent/preferences') {
-    const config = await loadConfig();
-    const prefs =
-      (config as unknown as Record<string, unknown>).learnedPreferences as Record<string, string> ??
-        {};
-    return json(Object.entries(prefs).map(([key, value]) => ({ key, value })));
+    const { generatePreferenceReport } = await import('../memory/preference-learner.ts');
+    const report = await generatePreferenceReport();
+    return json(report);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -5295,7 +5303,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/glossary') {
     const { listTerms, getCategories } = await import('../memory/glossary.ts');
     const category = url.searchParams.get('category');
-    return json({ terms: listTerms(category || undefined), categories: getCategories() });
+    const [terms, categories] = await Promise.all([
+      listTerms(category || undefined),
+      getCategories(),
+    ]);
+    return json({ terms, categories });
   }
   if (req.method === 'POST' && path === '/api/glossary') {
     const body = await req.json() as {
@@ -5306,7 +5318,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     };
     if (!body.name || !body.definition) return err('name and definition required', 400);
     const { defineTerm } = await import('../memory/glossary.ts');
-    defineTerm(body.name, body.definition, body.category || 'general', body.aliases ?? []);
+    await defineTerm(body.name, body.definition, body.category || 'general', body.aliases ?? []);
     return json({ ok: true }, 201);
   }
 

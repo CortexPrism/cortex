@@ -7,7 +7,7 @@
  * manual handoff.
  */
 import { retrieve } from '../memory/store.ts';
-import { listSessions } from '../db/sessions.ts';
+import { listSessions, type SessionRow } from '../db/sessions.ts';
 
 export interface SessionContext {
   sessionId: string;
@@ -73,19 +73,20 @@ async function retrieveRelevantSessions(
   for (const session of allSessions) {
     if (contexts.length >= maxSessions * 2) break;
 
+    if (session.started_at && session.started_at < cutoff) continue;
+
     const score = calculateRelevanceScore(session, projectRoot, taskDescription);
     if (score > 0) {
       contexts.push({
         sessionId: session.id,
         agentId: session.agent_id,
-        projectRoot: (session as Record<string, unknown>).project_root as string ?? projectRoot,
-        taskDescription: (session as Record<string, unknown>).task_summary as string ??
-          session.name,
+        projectRoot: projectRoot,
+        taskDescription: session.name ?? '',
         keyDecisions: [],
         recentErrors: [],
-        activeFiles: (session as Record<string, unknown>).active_files as string[] ?? [],
-        lastTurnNumber: (session as Record<string, unknown>).turn_number as number ?? 0,
-        lastActiveAt: session.updated_at ?? session.created_at,
+        activeFiles: [],
+        lastTurnNumber: session.turn_count,
+        lastActiveAt: session.last_turn_at ?? session.started_at,
         relevanceScore: score,
       });
     }
@@ -96,20 +97,19 @@ async function retrieveRelevantSessions(
 }
 
 function calculateRelevanceScore(
-  session: { id: string; name: string; agent_id: string; created_at: string; updated_at?: string },
+  session: SessionRow,
   projectRoot: string,
   taskDescription: string,
 ): number {
   let score = 0;
 
-  const recency = (session as Record<string, unknown>).updated_at
-    ? Date.now() - new Date((session as Record<string, unknown>).updated_at as string).getTime()
-    : Date.now() - new Date(session.created_at).getTime();
+  const lastActive = session.last_turn_at ?? session.started_at;
+  const recency = Date.now() - new Date(lastActive).getTime();
 
   const recencyDays = recency / (24 * 60 * 60 * 1000);
   score += Math.max(0, 10 - recencyDays);
 
-  const nameWords = session.name.toLowerCase().split(/\s+/);
+  const nameWords = (session.name ?? '').toLowerCase().split(/\s+/);
   const taskWords = taskDescription.toLowerCase().split(/\s+/);
   const commonWords = nameWords.filter((w) => taskWords.includes(w) && w.length > 3);
   score += commonWords.length * 3;

@@ -408,3 +408,174 @@ export async function mergeEntities(sourceId: string, targetId: string): Promise
 
   return 1;
 }
+
+export interface GraphNode {
+  id: string;
+  name: string;
+  type: string;
+  description: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  connections: number;
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relation: string;
+  strength: number;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  focused?: string;
+}
+
+export async function getGraphData(
+  entityName?: string,
+  opts: { depth?: number; limit?: number } = {},
+): Promise<GraphData> {
+  const db = await getMemoryDb();
+
+  if (entityName) {
+    const root = await db.get<GraphEntity>(
+      `SELECT * FROM graph_entities WHERE name = ? LIMIT 1`,
+      [entityName],
+    );
+    if (!root) return { nodes: [], edges: [] };
+
+    const depth = opts.depth ?? 2;
+    const limit = opts.limit ?? 50;
+    const nodeMap = new Map<string, GraphNode>();
+    const edgeMap = new Map<string, GraphEdge>();
+    const visited = new Set<string>([root.id]);
+
+    nodeMap.set(root.id, {
+      id: root.id,
+      name: root.name,
+      type: root.type,
+      description: root.description,
+      metadata: root.metadata ?? {},
+      created_at: root.created_at,
+      connections: 0,
+    });
+
+    const queue: Array<{ id: string; currentDepth: number }> = [{ id: root.id, currentDepth: 0 }];
+
+    while (queue.length > 0 && nodeMap.size < limit) {
+      const { id, currentDepth } = queue.shift()!;
+      if (currentDepth >= depth) continue;
+
+      const edges = await db.all<{
+        id: string;
+        source_id: string;
+        target_id: string;
+        relation: string;
+        strength: number;
+      }>(
+        `SELECT id, source_id, target_id, relation, strength
+         FROM graph_relations WHERE source_id = ? OR target_id = ?
+         ORDER BY strength DESC LIMIT 20`,
+        [id, id],
+      );
+
+      for (const edge of edges) {
+        const peerId = edge.source_id === id ? edge.target_id : edge.source_id;
+        const edgeKey = edge.id;
+
+        if (!edgeMap.has(edgeKey)) {
+          edgeMap.set(edgeKey, {
+            id: edge.id,
+            source: edge.source_id,
+            target: edge.target_id,
+            relation: edge.relation,
+            strength: edge.strength,
+          });
+        }
+
+        const currentNode = nodeMap.get(id)!;
+        currentNode.connections++;
+
+        if (!visited.has(peerId)) {
+          visited.add(peerId);
+          const peer = await db.get<GraphEntity>(
+            `SELECT * FROM graph_entities WHERE id = ?`,
+            [peerId],
+          );
+          if (peer) {
+            nodeMap.set(peer.id, {
+              id: peer.id,
+              name: peer.name,
+              type: peer.type,
+              description: peer.description,
+              metadata: peer.metadata ?? {},
+              created_at: peer.created_at,
+              connections: 1,
+            });
+            queue.push({ id: peer.id, currentDepth: currentDepth + 1 });
+          }
+        }
+      }
+    }
+
+    return { nodes: [...nodeMap.values()], edges: [...edgeMap.values()], focused: root.id };
+  }
+
+  const count = await db.get<{ cnt: number }>(
+    `SELECT COUNT(*) as cnt FROM graph_relations`,
+  );
+  const edgeLimit = opts.limit ?? 200;
+
+  if (!count || count.cnt === 0) return { nodes: [], edges: [] };
+
+  const topEdges = await db.all<{
+    id: string;
+    source_id: string;
+    target_id: string;
+    relation: string;
+    strength: number;
+  }>(
+    `SELECT id, source_id, target_id, relation, strength
+     FROM graph_relations ORDER BY strength DESC LIMIT ?`,
+    [edgeLimit],
+  );
+
+  const nodeIds = new Set<string>();
+  for (const e of topEdges) {
+    nodeIds.add(e.source_id);
+    nodeIds.add(e.target_id);
+  }
+
+  const entityRows = await db.all<GraphEntity>(
+    `SELECT * FROM graph_entities WHERE id IN (${[...nodeIds].map(() => '?').join(',')})`,
+    [...nodeIds],
+  );
+
+  const connectionCounts = new Map<string, number>();
+  for (const e of topEdges) {
+    connectionCounts.set(e.source_id, (connectionCounts.get(e.source_id) ?? 0) + 1);
+    connectionCounts.set(e.target_id, (connectionCounts.get(e.target_id) ?? 0) + 1);
+  }
+
+  const nodes: GraphNode[] = entityRows.map((e) => ({
+    id: e.id,
+    name: e.name,
+    type: e.type,
+    description: e.description,
+    metadata: e.metadata ?? {},
+    created_at: e.created_at,
+    connections: connectionCounts.get(e.id) ?? 0,
+  }));
+
+  const edges: GraphEdge[] = topEdges.map((e) => ({
+    id: e.id,
+    source: e.source_id,
+    target: e.target_id,
+    relation: e.relation,
+    strength: e.strength,
+  }));
+
+  return { nodes, edges };
+}

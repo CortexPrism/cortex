@@ -14,7 +14,9 @@ import {
 } from '../tools/executor.ts';
 import type { EmbeddingProvider } from '../memory/embeddings.ts';
 import { injectMemory } from '../memory/inject.ts';
-import { writeEpisodic, writeSemantic } from '../memory/store.ts';
+import { writeSemantic } from '../memory/store.ts';
+import { getActiveBackend } from '../memory/backends.ts';
+import { bridgeSessionContext } from '../memory/context-bridge.ts';
 import { appendToMemoryFile } from './soul.ts';
 import { adversarialReflection, reflectOnTurn, storeReflection } from './reflect.ts';
 import { extractAndStoreEntities } from '../memory/graph.ts';
@@ -38,6 +40,7 @@ import {
   spanUpdate,
   traceCreate,
 } from '../observability/langfuse.ts';
+import { buildPreferenceContext, learnFromCorrection } from '../memory/preference-learner.ts';
 import { OBS_CONTEXT } from '../observability/provider-wrapper.ts';
 import { i18n } from '../i18n/service.ts';
 
@@ -75,7 +78,9 @@ const PREFERENCE_PATTERNS: Array<
   },
 ];
 
-async function detectAndPersistPreference(userMessage: string): Promise<void> {
+async function detectAndPersistPreference(userMessage: string, sessionId: string): Promise<void> {
+  void learnFromCorrection(sessionId, userMessage, '');
+
   for (const { re, extract, category } of PREFERENCE_PATTERNS) {
     const m = userMessage.match(re);
     if (!m) continue;
@@ -536,16 +541,36 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
   )
     .catch(() => systemPrompt);
 
-  let skillEnrichedPrompt = memoryEnrichedPrompt;
+  let enrichedPrompt = memoryEnrichedPrompt;
+
+  try {
+    const prefCtx = await buildPreferenceContext();
+    if (prefCtx) {
+      enrichedPrompt += '\n\n---\n\n' + prefCtx;
+    }
+  } catch { /* preference context may fail */ }
+
+  try {
+    const bridgeResult = await bridgeSessionContext(
+      Deno.cwd(),
+      effectiveInput,
+      3,
+      30,
+    );
+    if (bridgeResult.preloadPrompt) {
+      enrichedPrompt += '\n\n---\n\n' + bridgeResult.preloadPrompt;
+    }
+  } catch { /* context bridge may fail */ }
+
   try {
     const skills = await findMatchingSkills(effectiveInput, 3, options.embedder ?? null);
     const reliable = filterReliableSkills(skills);
     if (reliable.length > 0) {
-      skillEnrichedPrompt = memoryEnrichedPrompt + formatSkillsForPrompt(reliable);
+      enrichedPrompt += formatSkillsForPrompt(reliable);
     }
   } catch { /* skills query may fail */ }
 
-  const metaCogPrompt = applyMetaCogPrefix(metaAssessment, skillEnrichedPrompt);
+  const metaCogPrompt = applyMetaCogPrefix(metaAssessment, enrichedPrompt);
 
   const effectiveSystemPrompt = registry && toolCtx
     ? injectToolsIntoPrompt(metaCogPrompt, registry.definitions())
@@ -1481,14 +1506,14 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
     (async () => {
       try {
         await Promise.allSettled([
-          writeEpisodic({
+          getActiveBackend().write({
             sessionId,
             summary: episodicSummary,
             importance: Math.min(1.0, 0.3 + (userMessage.length / 500)),
             embedder: options.embedder,
           }),
           extractAndStoreEntities(`${userMessage} ${response}`, sessionId),
-          detectAndPersistPreference(userMessage),
+          detectAndPersistPreference(userMessage, sessionId),
         ]);
 
         // Handle reflection separately since it has additional dependencies

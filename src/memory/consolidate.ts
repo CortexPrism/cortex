@@ -5,6 +5,10 @@ import { loadConfig } from '../config/config.ts';
 import { consolidateReflections } from '../agent/reflect.ts';
 import { runHeuristicCycle } from './heuristics.ts';
 import { deleteVectorRecords } from './store.ts';
+import { enforceMemoryRetention } from './privacy.ts';
+import { logger } from '../utils/logger.ts';
+
+const _log = logger('consolidate');
 
 const CONSOLIDATION_JOBS = [
   {
@@ -16,7 +20,7 @@ const CONSOLIDATION_JOBS = [
   {
     name: 'cortex:consolidate-daily',
     schedule: '0 3 * * *',
-    description: 'Daily 03:00: re-score semantic memory decay, prune stale entries',
+    description: 'Daily 03:00: re-score memory decay, prune stale entries, run heuristics',
     kind: 'daily' as const,
   },
   {
@@ -99,6 +103,14 @@ export async function runDailyConsolidation(): Promise<void> {
   const db = await getMemoryDb();
 
   await db.run(
+    `UPDATE episodic_memory
+     SET decay_score = MAX(0.01,
+       decay_score * (1.0 / (1.0 + (julianday('now') - julianday(last_accessed)) / half_life_days))
+     )
+      WHERE last_accessed IS NOT NULL`,
+  );
+
+  await db.run(
     `UPDATE semantic_memory
      SET decay_score = MAX(0.01,
        decay_score * (1.0 / (1.0 + (julianday('now') - julianday(last_accessed)) / half_life_days))
@@ -106,21 +118,42 @@ export async function runDailyConsolidation(): Promise<void> {
       WHERE last_accessed IS NOT NULL`,
   );
 
-  const staleRows = await db.all<{ id: string }>(
+  const staleEpisodic = await db.all<{ id: string }>(
+    `SELECT id FROM episodic_memory
+     WHERE decay_score < 0.05
+       AND created_at < datetime('now', '-30 days')`,
+  );
+
+  const staleSemantic = await db.all<{ id: string }>(
     `SELECT id FROM semantic_memory
      WHERE decay_score < 0.05
        AND created_at < datetime('now', '-30 days')`,
   );
 
-  await db.run(
-    `DELETE FROM semantic_memory
-     WHERE decay_score < 0.05
-        AND created_at < datetime('now', '-30 days')`,
-  );
+  if (staleEpisodic.length > 0) {
+    await db.run(
+      `DELETE FROM episodic_memory
+       WHERE decay_score < 0.05
+         AND created_at < datetime('now', '-30 days')`,
+    );
+    await deleteVectorRecords(staleEpisodic.map((row) => row.id));
+  }
 
-  await deleteVectorRecords(staleRows.map((row) => row.id));
+  if (staleSemantic.length > 0) {
+    await db.run(
+      `DELETE FROM semantic_memory
+       WHERE decay_score < 0.05
+         AND created_at < datetime('now', '-30 days')`,
+    );
+    await deleteVectorRecords(staleSemantic.map((row) => row.id));
+  }
 
-  await runHeuristicCycle().catch(() => {});
+  const result = await runHeuristicCycle().catch(() => null);
+  if (result) {
+    _log.info('heuristic cycle complete', result);
+  }
+
+  await enforceMemoryRetention(90).catch(() => {});
 }
 
 export async function runWeeklyConsolidation(): Promise<void> {

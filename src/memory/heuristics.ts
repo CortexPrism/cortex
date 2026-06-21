@@ -119,10 +119,10 @@ export function autoCategorize(text: string): { category: string; tags: string[]
 export async function recordAccess(id: string, type: 'episodic' | 'semantic'): Promise<void> {
   const db = await getMemoryDb();
   const table = type === 'episodic' ? 'episodic_memory' : 'semantic_memory';
-  const lastCol = type === 'episodic' ? '' : ", last_accessed = datetime('now')";
   await db.run(
     `UPDATE ${table}
-     SET access_count = COALESCE(access_count, 0) + 1${lastCol}
+     SET access_count = COALESCE(access_count, 0) + 1,
+         last_accessed = datetime('now')
      WHERE id = ?`,
     [id],
   ).catch(() => {});
@@ -139,7 +139,8 @@ export async function recordBatchAccess(
   if (epIds.length > 0) {
     await db.run(
       `UPDATE episodic_memory
-       SET access_count = COALESCE(access_count, 0) + 1
+       SET access_count = COALESCE(access_count, 0) + 1,
+           last_accessed = datetime('now')
        WHERE id IN (${epIds.map(() => '?').join(',')})`,
       epIds as InValue[],
     ).catch(() => {});
@@ -487,17 +488,16 @@ export async function getMemoryHealth(): Promise<MemoryHealth> {
 
   result.warnings = warnings;
   result.healthScore = Math.max(0, Math.round(healthScore));
-  result.warnings = warnings;
-  result.healthScore = Math.max(0, Math.round(healthScore));
 
   healthCache = { data: result, ts: Date.now() };
   return result;
 }
 
 export async function runHeuristicCycle(): Promise<Record<string, number>> {
-  const [boosted, decaySlowed, strengthened, tagged] = await Promise.all([
-    boostImportanceFromAccess(),
-    slowDecayForFrequentAccess(),
+  const decaySlowed = await slowDecayForFrequentAccess();
+  const boosted = await boostImportanceFromAccess();
+
+  const [strengthened, tagged] = await Promise.all([
     strengthenCoOccurringEntities(),
     autoTagUntaggedMemories(),
   ]);

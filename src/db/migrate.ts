@@ -353,6 +353,21 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '037_graph_metadata.sql',
       label: 'memory.db (graph metadata)',
     },
+    {
+      db: memoryDb,
+      sqlFile: '038_episodic_last_accessed.sql',
+      label: 'memory.db (episodic last_accessed)',
+    },
+    {
+      db: memoryDb,
+      sqlFile: '039_shared_context.sql',
+      label: 'memory.db (shared context)',
+    },
+    {
+      db: memoryDb,
+      sqlFile: '040_linked_sessions.sql',
+      label: 'memory.db (linked sessions)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

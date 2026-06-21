@@ -151,28 +151,88 @@ export function resolveContextConflict(key: string, acceptSessionId: string): bo
   return true;
 }
 
-const linkedSessions = new Map<string, LinkedSession>();
+export async function linkSessions(
+  sessionIds: string[],
+  namespace = 'default',
+): Promise<LinkedSession> {
+  const id = `link_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const now = new Date().toISOString();
+  const db = await getMemoryDb();
 
-export function linkSessions(sessionIds: string[], namespace = 'default'): LinkedSession {
-  const id = `link_${Date.now().toString(36)}`;
-  const linked: LinkedSession = {
-    id,
-    sessionIds,
-    namespace,
-    createdAt: new Date().toISOString(),
-  };
-  linkedSessions.set(id, linked);
-  return linked;
+  for (const sid of sessionIds) {
+    await db.run(
+      `INSERT OR IGNORE INTO linked_sessions (id, session_id, namespace, linked_at) VALUES (?, ?, ?, ?)`,
+      [id, sid, namespace, now],
+    );
+  }
+
+  return { id, sessionIds, namespace, createdAt: now };
 }
 
-export function unlinkSessions(id: string): boolean {
-  return linkedSessions.delete(id);
+export async function unlinkSessions(id: string): Promise<boolean> {
+  const db = await getMemoryDb();
+  const before = await db.get<{ cnt: number }>(
+    `SELECT COUNT(*) as cnt FROM linked_sessions WHERE id = ?`,
+    [id],
+  );
+  if (!before || before.cnt === 0) return false;
+  await db.run(
+    `DELETE FROM linked_sessions WHERE id = ?`,
+    [id],
+  );
+  return true;
 }
 
-export function getLinkedSessions(): LinkedSession[] {
-  return Array.from(linkedSessions.values());
+export async function getLinkedSessions(): Promise<LinkedSession[]> {
+  const db = await getMemoryDb();
+  const rows = await db.all<
+    { id: string; session_id: string; namespace: string; linked_at: string }
+  >(
+    `SELECT id, session_id, namespace, linked_at FROM linked_sessions ORDER BY linked_at DESC`,
+  );
+
+  const grouped = new Map<string, LinkedSession>();
+  for (const row of rows) {
+    const existing = grouped.get(row.id);
+    if (existing) {
+      existing.sessionIds.push(row.session_id);
+    } else {
+      grouped.set(row.id, {
+        id: row.id,
+        sessionIds: [row.session_id],
+        namespace: row.namespace,
+        createdAt: row.linked_at,
+      });
+    }
+  }
+  return Array.from(grouped.values());
 }
 
-export function getSessionLinks(sessionId: string): LinkedSession[] {
-  return Array.from(linkedSessions.values()).filter((l) => l.sessionIds.includes(sessionId));
+export async function getSessionLinks(sessionId: string): Promise<LinkedSession[]> {
+  const db = await getMemoryDb();
+  const rows = await db.all<
+    { id: string; session_id: string; namespace: string; linked_at: string }
+  >(
+    `SELECT ls.id, ls.session_id, ls.namespace, ls.linked_at
+     FROM linked_sessions ls
+     WHERE ls.id IN (SELECT id FROM linked_sessions WHERE session_id = ?)
+     ORDER BY ls.linked_at DESC`,
+    [sessionId],
+  );
+
+  const grouped = new Map<string, LinkedSession>();
+  for (const row of rows) {
+    const existing = grouped.get(row.id);
+    if (existing) {
+      existing.sessionIds.push(row.session_id);
+    } else {
+      grouped.set(row.id, {
+        id: row.id,
+        sessionIds: [row.session_id],
+        namespace: row.namespace,
+        createdAt: row.linked_at,
+      });
+    }
+  }
+  return Array.from(grouped.values());
 }
