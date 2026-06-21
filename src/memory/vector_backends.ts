@@ -236,7 +236,7 @@ class PineconeVectorStore implements MemoryVectorStore {
   private namespace?: string;
 
   constructor(cfg: NonNullable<StoreConfig> & { kind: 'pinecone' }) {
-    this.host = normaliseBaseUrl(cfg.url, 'http://localhost:8000');
+    this.host = cfg.url ? normaliseBaseUrl(cfg.url, '') : 'https://api.pinecone.io';
     this.apiKey = cfg.apiKey;
     this.namespace = cfg.namespace;
   }

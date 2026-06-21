@@ -473,7 +473,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     cfg.onboarding = {
       completed: true,
       completedAt: new Date().toISOString(),
-      version: '2.0',
+      version: (await import('../config/version.ts')).ONBOARDING_VERSION,
       skippedSteps: [],
     };
     await saveConfig(config);
@@ -893,7 +893,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const { getA2AAgentCard } = await import('../a2a/mod.ts');
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.host}`;
-    const card = getA2AAgentCard(baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent');
+    const card = await getA2AAgentCard(baseUrl, 'CortexPrism', 'CortexPrism AI Coding Agent');
     return json(card);
   }
 
@@ -909,7 +909,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // ── Auth middleware: all remaining /api/* routes require auth ──
   const authResult = await requireAuth(req);
   if (!authResult.authenticated) {
-    return authResult.response!;
+    return authResult.response ?? new Response(JSON.stringify({ error: 'Authentication required' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // GET /api/sessions?limit=&agentId=
@@ -5016,9 +5019,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/sandbox/backends
   if (req.method === 'GET' && path === '/api/sandbox/backends') {
+    const { isDockerAvailable, isGVisorAvailable } = await import('../sandbox/executor.ts');
+    const dockerOk = await isDockerAvailable();
+    const gvisorOk = await isGVisorAvailable();
     return json({
       backends: [
-        { kind: 'docker', label: 'Docker', available: true, description: 'Local Docker container' },
+        { kind: 'docker', label: 'Docker', available: dockerOk, description: 'Local Docker container' },
         {
           kind: 'subprocess',
           label: 'Subprocess',
@@ -5028,7 +5034,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
         {
           kind: 'gvisor',
           label: 'gVisor',
-          available: false,
+          available: gvisorOk,
           description: 'gVisor sandbox (requires installation)',
         },
         {
@@ -5044,7 +5050,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
           description: 'Daytona dev environments',
         },
       ],
-      default: 'docker',
+      default: dockerOk ? 'docker' : 'subprocess',
     });
   }
 

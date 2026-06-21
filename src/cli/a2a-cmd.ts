@@ -29,7 +29,7 @@ a2aCommand
           (ctx.config! as unknown as Record<string, unknown>).a2aUrl as string ??
           `http://localhost:4220`;
         const { getA2AAgentCard } = await import('../a2a/mod.ts');
-        const card = getA2AAgentCard(
+        const card = await getA2AAgentCard(
           baseUrl,
           'CortexPrism',
           'CortexPrism AI Coding Agent',
@@ -51,7 +51,7 @@ a2aCommand
           (ctx.config! as unknown as Record<string, unknown>).a2aUrl as string ??
           `http://localhost:4220`;
         const { getA2AAgentCard } = await import('../a2a/mod.ts');
-        const card = getA2AAgentCard(
+        const card = await getA2AAgentCard(
           baseUrl,
           'CortexPrism',
           'CortexPrism AI Coding Agent',

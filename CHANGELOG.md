@@ -5,6 +5,24 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.48.5] — 2026-06-21
+
+### Fixed
+
+- **Sandbox backends API hardcoded Docker availability** — `GET /api/sandbox/backends` returned `available: true` for Docker regardless of whether Docker was actually installed, because Docker and gVisor availability were hardcoded booleans instead of calling `isDockerAvailable()`/`isGVisorAvailable()`. The `default` backend also now falls back to `subprocess` when Docker is unavailable. (`src/server/router.ts`)
+- **IPC socket directory hardcoded to `/tmp/cortex`** — socket dir on Linux now uses `getTempDir()` (which checks `TMPDIR`/`TEMP`/`TMP` env vars) instead of a hardcoded `/tmp/cortex` path, matching the Windows behavior. (`src/ipc/transport.ts`)
+- **MCP client version stale and duplicated** — the MCP `clientInfo.version` was hardcoded to `'0.35.3'` in two places (stdio and SSE client initialization), while the actual version is `0.48.4`. Added a synchronous `VERSION` export to `config/version.ts` (reads from `VERSION` file or `deno.json` at import time) and updated both MCP client locations to use it. (`src/mcp/client.ts`, `src/config/version.ts`)
+- **A2A `pushNotifications` capability hardcoded** — the A2A agent card always declared `pushNotifications: false` even when notification channels were configured. `getA2AAgentCard()` now checks the channel store for any enabled channels and sets the capability accordingly. `generateAgentCard()` now accepts an optional `pushNotifications` parameter. (`src/a2a/server.ts`, `src/a2a/agent-card.ts`, `src/cli/a2a-cmd.ts`)
+- **Daemon log path hardcoded to `/tmp/cortex-daemon.log`** — macOS launchd plist generation now uses `getTempDir()` for the log path instead of a hardcoded `/tmp/cortex-daemon.log`. (`src/cli/service-helper.ts`)
+- **Onboarding version `'2.0'` duplicated across 3 locations** — extracted into a single `ONBOARDING_VERSION` constant in `config/version.ts`, referenced from all three usage sites. (`src/server/router.ts`, `src/cli/setup.ts`, `src/config/version.ts`)
+- **Pinecone vector store fallback was `localhost:8000`** — Pinecone is a cloud-only service; the `vectorBackends` constructor had a copy-paste error from ChromaDB that fell back to `http://localhost:8000` when no URL was configured. Now falls back to `https://api.pinecone.io`. (`src/memory/vector_backends.ts`)
+- **Bedrock model listing hardcoded `us-east-1` region** — `bedrockModels()` always hit the us-east-1 endpoint even for users in other regions. Now reads `AWS_REGION` env var with `us-east-1` fallback. (`src/server/models.ts`)
+- **`/compact` and `/plan` slash commands were stubs** — both returned "not yet implemented" messages. Replaced with informative messages explaining these features run automatically in the agent loop. (`src/cli/chat.ts`)
+- **`authResult.response!` null assertion** — replaced with null-coalescing fallback that returns a proper 401 JSON response if the auth response object is unexpectedly missing. (`src/server/router.ts`)
+- **`project!.id` null assertions (6 occurrences)** — captured `project.id` in a `const projectId` after the null guard, eliminating all non-null assertions in `incrementalSync()`. (`src/codegraph/sync.ts`)
+- **`MAX_OUTPUT_BYTES` inconsistent between shell and sandbox** — shell tool limited output to 32KB while the sandbox executor used 64KB. Standardized to 64KB. (`src/tools/builtin/shell.ts`)
+- **VFS fake `RegExpMatchArray` copy-pasted 3 times** — extracted into a `fakeMatch()` helper function, eliminating the DRY violation. (`src/vfs/mod.ts`)
+
 ## [0.48.4] — 2026-06-21
 
 ### Added
