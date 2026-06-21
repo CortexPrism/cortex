@@ -431,9 +431,7 @@ export async function applyPluginUpdate(
 }
 
 export async function enrichPluginVersions(plugins: Array<Record<string, unknown>>) {
-  const withRepo = plugins.filter((p) =>
-    typeof p.repository === 'string' && p.repository
-  );
+  const withRepo = plugins.filter((p) => typeof p.repository === 'string' && p.repository);
   if (!withRepo.length) return;
 
   const config = await loadConfig();

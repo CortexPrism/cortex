@@ -114,8 +114,8 @@ export async function verifySupplyChain(
     rawContent = entryPoint.startsWith('http')
       ? await (await fetch(entryPoint)).text()
       : await Deno.readTextFile(
-          entryPoint.startsWith('file://') ? entryPoint.slice(7) : entryPoint,
-        );
+        entryPoint.startsWith('file://') ? entryPoint.slice(7) : entryPoint,
+      );
   } catch {
     checks.push({
       name: 'content_readable',
