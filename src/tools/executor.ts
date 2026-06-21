@@ -377,6 +377,13 @@ export async function executeTool(
     actor: 'tool',
     action: `tool:${request.toolName}`,
     summary: JSON.stringify(request.args).slice(0, 120),
+    payload: {
+      toolName: request.toolName,
+      success: toolResult.success,
+      output: toolResult.success ? toolResult.output.slice(0, 500) : undefined,
+      error: toolResult.error,
+      durationMs: toolResult.durationMs,
+    },
     started_at: new Date().toISOString(),
     duration_ms: toolResult.durationMs,
     error: toolResult.error,

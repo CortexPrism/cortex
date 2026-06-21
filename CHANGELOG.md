@@ -5,6 +5,13 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.48.3] — 2026-06-21
+
+### Fixed
+
+- **Tool call lens events missing payload** — `logEvent` for tool calls now includes a structured `payload` with tool name, success status, output (first 500 chars), error, and duration for auditability. Previously tool call events only stored truncated args in `summary` with no result data in `payload`.
+- **VERSION file out of sync** — `VERSION` file was stuck at 0.48.1 while `deno.json` was already at 0.48.2. CI version consistency check would fail on any tag push. Now synced and included in automated checks.
+
 ## [0.48.2] — 2026-06-21
 
 ### Fixed

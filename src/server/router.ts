@@ -102,11 +102,7 @@ import { installPlugin, listPlugins, removePlugin } from '../plugins/registry.ts
 import { pluginManager } from '../plugins/manager.ts';
 import type { PluginManifest } from '../plugins/types.ts';
 import { extractSettingsSchema } from '../plugins/extensions/config.ts';
-import {
-  applyPluginUpdate,
-  checkAllUpdates,
-  enrichPluginVersions,
-} from '../plugins/update.ts';
+import { applyPluginUpdate, checkAllUpdates, enrichPluginVersions } from '../plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../scheduler/scheduler.ts';

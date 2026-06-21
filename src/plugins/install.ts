@@ -239,7 +239,9 @@ export async function installFromMarketplace(
   const ghHomepage = manifest.homepage;
   if (ghHomepage && ghHomepage.includes('github.com')) {
     try {
-      const { checkGitHubRelease, extractGitHubOwnerRepo, compareVersions } = await import('./update.ts');
+      const { checkGitHubRelease, extractGitHubOwnerRepo, compareVersions } = await import(
+        './update.ts'
+      );
       const { loadConfig } = await import('../config/config.ts');
       const gh = extractGitHubOwnerRepo(ghHomepage);
       if (gh) {
@@ -381,27 +383,29 @@ export async function installFromUrl(
       const decompressed = buffer[0] === 0x1f && buffer[1] === 0x8b ? await gunzip(buffer) : buffer;
       await extractTar(decompressed, pluginDir2);
       const localEntryPoint = resolveEntryPoint(manifest.entryPoint, pluginDir2);
-  let resolvedVersion = manifest.version;
-  const homepage = manifest.homepage;
-  if (homepage && homepage.includes('github.com')) {
-    try {
-      const { checkGitHubRelease, extractGitHubOwnerRepo, compareVersions } = await import('./update.ts');
-      const { loadConfig } = await import('../config/config.ts');
-      const gh = extractGitHubOwnerRepo(homepage);
-      if (gh) {
-        const config = await loadConfig();
-        const githubToken = config.pluginUpdate?.githubToken ?? null;
-        const { latestVersion } = await checkGitHubRelease(gh.owner, gh.repo, githubToken);
-        if (latestVersion && compareVersions(latestVersion, manifest.version) > 0) {
-          resolvedVersion = latestVersion;
+      let resolvedVersion = manifest.version;
+      const homepage = manifest.homepage;
+      if (homepage && homepage.includes('github.com')) {
+        try {
+          const { checkGitHubRelease, extractGitHubOwnerRepo, compareVersions } = await import(
+            './update.ts'
+          );
+          const { loadConfig } = await import('../config/config.ts');
+          const gh = extractGitHubOwnerRepo(homepage);
+          if (gh) {
+            const config = await loadConfig();
+            const githubToken = config.pluginUpdate?.githubToken ?? null;
+            const { latestVersion } = await checkGitHubRelease(gh.owner, gh.repo, githubToken);
+            if (latestVersion && compareVersions(latestVersion, manifest.version) > 0) {
+              resolvedVersion = latestVersion;
+            }
+          }
+        } catch {
+          // GitHub version check failed, use manifest version
         }
       }
-    } catch {
-      // GitHub version check failed, use manifest version
-    }
-  }
 
-  await installPlugin({
+      await installPlugin({
         name: manifest.name,
         version: manifest.version,
         description: manifest.description ?? '',
