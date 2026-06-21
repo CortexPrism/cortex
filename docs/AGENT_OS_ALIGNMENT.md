@@ -178,9 +178,9 @@ Daemons share the same `cortex.db` and `memory.db`. The `NoopDb` stub (`src/db/c
 |---|--------|-------|
 | 8 | ✅ Done | `src/config/config.ts` |
 | 9 | ✅ Done | `src/config/config.ts` |
-| 10 | ⏳ Pending | — |
+| 10 | ✅ Done | `src/vfs/mod.ts` |
 | 11 | ✅ Done | `src/tools/types.ts` |
-| 12 | ⏳ Pending | `src/processes/supervisor-process.ts` |
+| 12 | ✅ Done | `src/processes/supervisor-process.ts` |
 | 13 | ✅ Done | `src/server/router.ts` |
 | 14 | ✅ Done | `src/agent/sub-agent-types.ts` |
 | 15 | ✅ Done | `src/agent/soul.ts` (Phase 1) |

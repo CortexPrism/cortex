@@ -25,6 +25,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **System Services terminology** — sub-agent type definitions (`SubAgentType`, `SubAgentTypeDef`, `SUB_AGENT_TYPES`) now use "system services" terminology in documentation, framing them as specialized OS-level service processes rather than simple sub-agents. (`src/agent/sub-agent-types.ts`)
 
+- **Virtual filesystem** — new `src/vfs/` module provides an OS-level namespace abstraction mapping `/cortex/agents/:id/`, `/cortex/memory/:tier/`, `/cortex/config/`, `/cortex/db/:name.db`, `/cortex/logs/`, `/cortex/workspace/`, and `/cortex/plugins/` virtual paths to real filesystem locations and database tables. Includes `resolveVfsPath()`, `listVfsPaths()`, `listVfsByNamespace()`, and `vfsTree()` APIs. (`src/vfs/mod.ts`)
+
+- **Supervisor upgraded to init process** — the supervisor daemon now follows the formal `BOOT_ORDER` sequence, starting daemons sequentially (validator → executor → scheduler) with socket readiness checks (10s timeout) before proceeding. Boot stage status is tracked via `getBootStatus()` exposing per-stage timeline. Crash-restart with exponential backoff is preserved. (`src/processes/supervisor-process.ts`)
+
 ### Changed
 
 - **Agent OS identity in soul templates** — all agent soul templates now identify the agent as running on CortexPrism OS rather than as a standalone assistant. The `DEFAULT_SOUL` adds OS awareness as the first identity bullet. The `INIT_SOUL_TEMPLATE` gains a new `## OS Environment` section describing the 8 OS-layer capabilities (persistent memory, tool system with Parallax validation, sub-agent orchestration, background daemons, skills system, job scheduler, plugin marketplace, audit log). All 8 `PERSONALITY_TEMPLATES` updated from "AI assistant" to "AI agent running on CortexPrism OS". (`src/agent/soul.ts`)
