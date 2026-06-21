@@ -330,7 +330,9 @@ export async function recoverStaleJobs(
   const db = await getCoreDb();
   const cutoff = new Date(Date.now() - timeoutMs).toISOString();
 
-  const staleJobs = await db.all<{ id: string; run_id: string; attempts: number; max_attempts: number }>(
+  const staleJobs = await db.all<
+    { id: string; run_id: string; attempts: number; max_attempts: number }
+  >(
     `SELECT j.id, j.attempts, j.max_attempts, r.id as run_id
      FROM jobs j
      LEFT JOIN job_runs r ON r.job_id = j.id AND r.status = 'running'
