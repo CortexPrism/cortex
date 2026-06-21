@@ -15,6 +15,10 @@ export function verifyIntegrity(
   return computeSha256(bytes).then((hash) => hash === expectedHash).catch(() => false);
 }
 
+function toFilePath(entryPoint: string): string {
+  return entryPoint.startsWith('file://') ? entryPoint.slice(7) : entryPoint;
+}
+
 export async function verifyEntryPointIntegrity(
   entryPoint: string,
   expectedHash: string | null,
@@ -24,7 +28,7 @@ export async function verifyEntryPointIntegrity(
   try {
     const content = entryPoint.startsWith('http')
       ? await (await fetch(entryPoint)).text()
-      : await Deno.readTextFile(entryPoint);
+      : await Deno.readTextFile(toFilePath(entryPoint));
 
     const hash = await computeSha256(content);
     return { valid: hash === expectedHash, hash };
@@ -37,7 +41,7 @@ export async function generateIntegrityHash(entryPoint: string): Promise<string 
   try {
     const content = entryPoint.startsWith('http')
       ? await (await fetch(entryPoint)).text()
-      : await Deno.readTextFile(entryPoint);
+      : await Deno.readTextFile(toFilePath(entryPoint));
     return await computeSha256(content);
   } catch {
     return null;

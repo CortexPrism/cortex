@@ -10,7 +10,7 @@ import { loadConfig } from '../config/config.ts';
 import { configureLogger } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
 import { hasPassword, parseCookies, requireAuth } from './auth.ts';
-import { startAutoServices } from '../services/manager.ts';
+import { startAutoServices, stopAllServices } from '../services/manager.ts';
 import { setWebhookJobCreator } from '../triggers/webhook.ts';
 import { setWatcherJobCreator, startWatchers } from '../triggers/watcher.ts';
 import { createTriggerJobCreator } from '../triggers/job-creator.ts';
@@ -269,11 +269,48 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     },
   );
 
+  _log.info(`Cortex server listening on http://${host}:${port}`);
+
+  const pidFile = `${PATHS.dataDir}/server.pid`;
+  try {
+    await Deno.writeTextFile(pidFile, String(Deno.pid));
+  } catch {
+    // Non-fatal if PID file can't be written
+  }
+
+  const shutdown = async () => {
+    _log.info('Server shutting down...');
+    try {
+      await Deno.remove(pidFile).catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      await stopAllServices();
+    } catch (e) {
+      _log.error(`Error stopping services during shutdown`, { error: (e as Error).message });
+    }
+    try {
+      const { stopChromeBridge } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      await stopChromeBridge().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      httpServer.shutdown();
+    } catch { /* ignore */ }
+  };
+
+  const shutdownController = new AbortController();
+  Deno.addSignalListener('SIGTERM', () => shutdownController.abort());
+  Deno.addSignalListener('SIGINT', () => shutdownController.abort());
+
+  shutdownController.signal.addEventListener('abort', () => {
+    shutdown().catch((e) => _log.error(`Shutdown failed`, { error: (e as Error).message }));
+  }, { once: true });
+
   httpServer.finished.then(async () => {
-    const { stopChromeBridge } = await import(
-      '../tools/builtin/chrome_bridge_manager.ts'
-    );
-    await stopChromeBridge().catch(() => {});
+    try {
+      await shutdown();
+    } catch { /* ignore */ }
   }).catch((err) => {
     _log.error(`Server error`, { error: (err as Error).message });
   });

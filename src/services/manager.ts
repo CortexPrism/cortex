@@ -360,7 +360,39 @@ function stopHealthCheck(id: string): void {
 
 // ── Auto-start registered services ─────────────────────────
 
+function isProcessAlive(pid: number): boolean {
+  try {
+    // Use /proc on Linux, SIGCONT as fallback elsewhere
+    Deno.statSync(`/proc/${pid}`);
+    return true;
+  } catch {
+    try {
+      Deno.kill(pid, 'SIGCONT');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export async function cleanupStaleServices(): Promise<void> {
+  const services = await listServices();
+  for (const s of services) {
+    if (s.status === 'running') {
+      const isAlive = s.pid ? isProcessAlive(s.pid) : false;
+      if (!isAlive) {
+        const db = await getCoreDb();
+        await db.run(
+          `UPDATE services SET status = 'stopped', pid = NULL, updated_at = ? WHERE id = ?`,
+          [new Date().toISOString(), s.id] as InValue[],
+        );
+      }
+    }
+  }
+}
+
 export async function startAutoServices(): Promise<void> {
+  await cleanupStaleServices();
   const services = await listServices();
   const startJobs: Array<Promise<void>> = [];
   for (const s of services) {

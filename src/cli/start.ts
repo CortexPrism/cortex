@@ -4,6 +4,7 @@ import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { isLinux, killProcessById } from '../utils/platform.ts';
 import { startDaemonCore, stopDaemons } from './daemon.ts';
 import { findServerProcess, startServerBackground, stopBackgroundServer } from './serve.ts';
+import { PATHS } from '../config/paths.ts';
 import { i18n } from '../i18n/service.ts';
 
 export const startCommand = cortexCommand('start')
@@ -85,7 +86,27 @@ export const restartCommand = cortexCommand('restart')
     if (restartServer) {
       console.log(dim(i18n.t('cli.start.stoppingServer')));
       let serverStopped = false;
-      if (isLinux()) {
+
+      // Try PID file first (most reliable)
+      try {
+        const pidFile = `${PATHS.dataDir}/server.pid`;
+        const pidStr = await Deno.readTextFile(pidFile);
+        const pid = parseInt(pidStr.trim(), 10);
+        if (pid && !isNaN(pid)) {
+          try {
+            Deno.kill(pid, 'SIGTERM');
+            console.log(cyan(i18n.t('cli.start.stoppedServerPid', { pid: String(pid) })));
+            serverStopped = true;
+          } catch {
+            // PID file exists but process is dead — clean up the file
+            await Deno.remove(pidFile).catch(() => {});
+          }
+        }
+      } catch {
+        // No PID file, fall through
+      }
+
+      if (!serverStopped && isLinux()) {
         try {
           const fuserProc = new Deno.Command('fuser', {
             args: ['-k', `${port}/tcp`],
@@ -112,7 +133,18 @@ export const restartCommand = cortexCommand('restart')
       console.log('');
     }
 
-    await new Promise((r) => setTimeout(r, 1500));
+    // Wait for port to become free (up to 10 seconds)
+    const maxWaitMs = 10_000;
+    const startWait = Date.now();
+    while (Date.now() - startWait < maxWaitMs) {
+      try {
+        const listener = Deno.listen({ port, hostname: '127.0.0.1' });
+        listener.close();
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
 
     let daemonOk = true;
     let serverOk = true;
