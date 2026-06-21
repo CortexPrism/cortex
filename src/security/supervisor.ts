@@ -238,12 +238,18 @@ Respond ONLY with valid JSON.`;
 
   try {
     // Call the supervisor model with low temperature for consistent decisions
-    const response = await provider.complete({
-      messages: [{ role: 'user', content: prompt }],
-      model,
-      temperature: 0.3,
-      maxTokens: 300,
-    });
+    // Timeout after 10s to avoid blocking tool execution indefinitely
+    const response = await Promise.race([
+      provider.complete({
+        messages: [{ role: 'user', content: prompt }],
+        model,
+        temperature: 0.3,
+        maxTokens: 300,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Supervisor LLM timed out')), 10_000)
+      ),
+    ]);
 
     // Parse JSON response
     const decision = JSON.parse(response.content.trim()) as AccessDecision;

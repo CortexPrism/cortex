@@ -1025,6 +1025,10 @@ export async function handleWebSocket(req: Request): Promise<Response> {
     }
 
     if (msg.type === 'chat') {
+      if (turnInFlight) {
+        send(ws, { type: 'error', error: 'A turn is already in progress — wait for it to finish' });
+        return;
+      }
       if (!msg.message?.trim() && (!msg.files || msg.files.length === 0)) {
         send(ws, { type: 'error', error: 'Empty message' });
         return;

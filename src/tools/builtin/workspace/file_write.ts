@@ -2,6 +2,7 @@ import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
 import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 import { gitAutoCommit, gitEnsureBranch } from '../../../workspace/git.ts';
 import { logFileEdit } from './common.ts';
+import { dirname } from '@std/path';
 
 export const fileWriteTool: Tool = {
   definition: {
@@ -50,6 +51,7 @@ export const fileWriteTool: Tool = {
       if (workspace !== 'config') await ensureAgentWorkspace(context.agentId);
       const filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
+      await Deno.mkdir(dirname(filePath), { recursive: true }).catch(() => {});
       const existing = await Deno.readTextFile(filePath).catch(() => '');
       await Deno.writeTextFile(filePath, content);
 
