@@ -9,7 +9,7 @@ env:
 
 jobs:
   check:
-    name: Lint & Type Check
+    name: Lint, Test & Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +30,10 @@ jobs:
       - run: deno lint
       - run: deno fmt --check
       - run: deno check src/main.ts
+      - run: deno check src/db/migrate.ts
+      - run: deno task i18n:validate
+      - run: deno task migrate
+      - run: deno test --allow-all
 
   compile:
     name: Compile ${{ matrix.name }}
@@ -161,11 +165,8 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
 
-      - name: Build dashboard (placeholder)
-        shell: bash
-        run: |
-          mkdir -p desktop/dist
-          echo "<!DOCTYPE html><html><head><title>Cortex Dashboard</title></head><body><h1>Cortex Dashboard v${{ github.ref_name }}</h1></body></html>" > desktop/dist/index.html
+      - name: Build dashboard
+        run: deno task build-dashboard
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable

@@ -300,7 +300,11 @@ export function resolveVfsPath(virtualPath: string): VfsResolveResult | null {
 export function listVfsPaths(): string[] {
   const seen = new Set<string>();
   for (const matcher of MATCHERS) {
-    const fake = Object.assign([''], { index: 0, input: '', groups: undefined }) as unknown as RegExpMatchArray;
+    const fake = Object.assign([''], {
+      index: 0,
+      input: '',
+      groups: undefined,
+    }) as unknown as RegExpMatchArray;
     const result = matcher.resolve(fake);
     if (!seen.has(result.virtualPath)) {
       seen.add(result.virtualPath);
@@ -312,7 +316,11 @@ export function listVfsPaths(): string[] {
 /** Get all virtual paths within a namespace. */
 export function listVfsByNamespace(ns: VfsNamespace): string[] {
   const seen = new Set<string>();
-  const fake = Object.assign([''], { index: 0, input: '', groups: undefined }) as unknown as RegExpMatchArray;
+  const fake = Object.assign([''], {
+    index: 0,
+    input: '',
+    groups: undefined,
+  }) as unknown as RegExpMatchArray;
   for (const matcher of MATCHERS) {
     const result = matcher.resolve(fake);
     if (result.namespace === ns && !seen.has(result.virtualPath)) {
@@ -331,7 +339,11 @@ export function vfsRoot(): string {
 export function vfsTree(): string {
   const lines: string[] = ['/cortex/'];
   const namespaces = new Set<string>();
-  const fake = Object.assign([''], { index: 0, input: '', groups: undefined }) as unknown as RegExpMatchArray;
+  const fake = Object.assign([''], {
+    index: 0,
+    input: '',
+    groups: undefined,
+  }) as unknown as RegExpMatchArray;
   for (const matcher of MATCHERS) {
     const result = matcher.resolve(fake);
     namespaces.add(`  ${result.namespace}/`);

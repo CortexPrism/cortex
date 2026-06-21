@@ -156,7 +156,9 @@ export async function runSupervisor(): Promise<void> {
     if (ready) {
       console.log(`[supervisor] ${proc.label} ready`);
     } else {
-      console.warn(`[supervisor] ${proc.label} did not report ready within ${READINESS_TIMEOUT_MS}ms`);
+      console.warn(
+        `[supervisor] ${proc.label} did not report ready within ${READINESS_TIMEOUT_MS}ms`,
+      );
     }
 
     (async () => {

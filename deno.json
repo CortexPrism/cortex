@@ -21,7 +21,8 @@
     "daemon": "deno run --allow-all src/main.ts daemon run",
     "daemon:start": "deno run --allow-all src/main.ts daemon start",
     "restart": "deno run --allow-all src/main.ts restart",
-    "stop": "deno run --allow-all src/main.ts stop"
+    "stop": "deno run --allow-all src/main.ts stop",
+    "build-dashboard": "deno run --allow-read --allow-write --allow-net desktop/build-dashboard.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19",

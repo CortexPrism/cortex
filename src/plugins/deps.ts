@@ -68,10 +68,14 @@ function versionSatisfies(actual: string, constraint: string): boolean {
     const v = cmpMatch[2];
     const cmp = semverCmp(actual, v);
     switch (op) {
-      case '>=': return cmp >= 0;
-      case '>': return cmp > 0;
-      case '<=': return cmp <= 0;
-      case '<': return cmp < 0;
+      case '>=':
+        return cmp >= 0;
+      case '>':
+        return cmp > 0;
+      case '<=':
+        return cmp <= 0;
+      case '<':
+        return cmp < 0;
     }
   }
 
@@ -126,14 +130,16 @@ export function resolveDependencies(
     if (!list) return null;
     // Find the best matching version
     for (const m of list) {
-      if (!version || versionSatisfies(m.version, version)) return {
-        name: m.name,
-        version: m.version,
-        manifest: m,
-        resolved: false,
-        visiting: false,
-        edges: [],
-      };
+      if (!version || versionSatisfies(m.version, version)) {
+        return {
+          name: m.name,
+          version: m.version,
+          manifest: m,
+          resolved: false,
+          visiting: false,
+          edges: [],
+        };
+      }
     }
     return null;
   }
@@ -142,7 +148,14 @@ export function resolveDependencies(
   for (const m of allManifests) {
     let node = nodes.get(m.name);
     if (!node) {
-      node = { name: m.name, version: m.version, manifest: m, resolved: false, visiting: false, edges: [] };
+      node = {
+        name: m.name,
+        version: m.version,
+        manifest: m,
+        resolved: false,
+        visiting: false,
+        edges: [],
+      };
       nodes.set(m.name, node);
     }
 

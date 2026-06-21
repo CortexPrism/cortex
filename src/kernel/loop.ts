@@ -135,11 +135,22 @@ export async function kernelTurn(opts: KernelTurnOptions): Promise<KernelTurnRes
 
 export async function* kernelTurnStream(
   opts: KernelTurnOptions,
-): AsyncIterable<{ type: 'chunk'; delta: string } | { type: 'done'; result: KernelTurnResult } | { type: 'error'; error: string }> {
+): AsyncIterable<
+  { type: 'chunk'; delta: string } | { type: 'done'; result: KernelTurnResult } | {
+    type: 'error';
+    error: string;
+  }
+> {
   const t0 = performance.now();
 
   kernel.recordToolCall(
-    { sessionId: opts.sessionId, agentId: opts.agentId, role: 'agent', pid: Deno.pid, parentPid: 0 },
+    {
+      sessionId: opts.sessionId,
+      agentId: opts.agentId,
+      role: 'agent',
+      pid: Deno.pid,
+      parentPid: 0,
+    },
     0,
   );
 
@@ -181,7 +192,13 @@ export async function* kernelTurnStream(
     kernel.recordTokens(opts.agentId, result.tokensIn, result.tokensOut, result.costUsd);
     const elapsed = performance.now() - t0;
     kernel.recordToolCall(
-      { sessionId: opts.sessionId, agentId: opts.agentId, role: 'agent', pid: Deno.pid, parentPid: 0 },
+      {
+        sessionId: opts.sessionId,
+        agentId: opts.agentId,
+        role: 'agent',
+        pid: Deno.pid,
+        parentPid: 0,
+      },
       elapsed,
     );
 

@@ -1,4 +1,4 @@
-import type { AgentConfig, AgentCategory, CortexConfig, ProviderKind } from '../config/config.ts';
+import type { AgentCategory, AgentConfig, CortexConfig, ProviderKind } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { DEFAULT_SOUL } from './soul.ts';
 
