@@ -96,6 +96,28 @@ export class InputEngine {
       return { key: 'escape', ctrl: false, alt: false, shift: false, meta: false, raw: [27] };
     }
 
+    if (byte >= 1 && byte <= 26) {
+      return {
+        key: String.fromCharCode(byte + 96),
+        ctrl: true,
+        alt: false,
+        shift: false,
+        meta: false,
+        raw: [byte],
+      };
+    }
+
+    if (byte === 127 || byte === 8) {
+      return {
+        key: 'backspace',
+        ctrl: false,
+        alt: false,
+        shift: false,
+        meta: false,
+        raw: [byte],
+      };
+    }
+
     if (byte === 13) {
       return {
         key: 'enter',

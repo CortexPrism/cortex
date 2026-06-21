@@ -148,7 +148,23 @@ async function main(): Promise<void> {
     const sessionId = `sub_${taskId}_${Date.now().toString(36)}`;
     const sessionType = config.subAgentType ? `subagent:${config.subAgentType}` : 'subagent';
     const sessionDb = await initSessionDb(sessionId);
-    await createSession(sessionId, sessionType, undefined, undefined, config.parentSessionId);
+
+    // Retry session creation if the parent doesn't exist yet in the core DB
+    // (foreign key can fail due to WAL flush timing across separate processes)
+    let sessionCreated = false;
+    for (let attempt = 0; attempt < 3 && !sessionCreated; attempt++) {
+      try {
+        await createSession(sessionId, sessionType, undefined, undefined, config.parentSessionId);
+        sessionCreated = true;
+      } catch (e) {
+        const errMsg = (e as Error).message;
+        if (errMsg.includes('SQLITE_CONSTRAINT_FOREIGNKEY') && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
 
     // Signal ready
     send({ type: 'ready' });
