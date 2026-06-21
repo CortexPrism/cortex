@@ -348,6 +348,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '036_jobs_source.sql',
       label: 'cortex.db (jobs source tracking)',
     },
+    {
+      db: memoryDb,
+      sqlFile: '037_graph_metadata.sql',
+      label: 'memory.db (graph metadata)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

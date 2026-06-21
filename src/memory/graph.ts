@@ -33,7 +33,7 @@ export interface GraphRelation {
   target_id: string;
   relation: RelationType;
   strength: number;
-  context: string | null;
+  metadata: string | null;
   created_at: string;
 }
 
@@ -113,8 +113,9 @@ export async function addRelation(opts: {
 
   const id = graphId('rel');
   const now = new Date().toISOString();
+  const metadata = opts.context ? JSON.stringify({ context: opts.context }) : '{}';
   await db.run(
-    `INSERT INTO graph_relations (id, source_id, target_id, relation, strength, context, created_at, updated_at)
+    `INSERT INTO graph_relations (id, source_id, target_id, relation, strength, metadata, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
@@ -122,7 +123,7 @@ export async function addRelation(opts: {
       targetId,
       opts.relation,
       opts.strength ?? 1.0,
-      opts.context ?? null,
+      metadata,
       now,
       now,
     ] as InValue[],
@@ -163,10 +164,10 @@ export async function traverseGraph(
       target_id: string;
       relation: string;
       strength: number;
-      context: string | null;
+      metadata: string | null;
       created_at: string;
     }>(
-      `SELECT id, target_id, relation, strength, context, created_at
+      `SELECT id, target_id, relation, strength, metadata, created_at
        FROM graph_relations WHERE source_id = ? ${typeFilter} ORDER BY strength DESC LIMIT 10`,
       [id, ...typeArgs] as InValue[],
     );
@@ -176,10 +177,10 @@ export async function traverseGraph(
       source_id: string;
       relation: string;
       strength: number;
-      context: string | null;
+      metadata: string | null;
       created_at: string;
     }>(
-      `SELECT id, source_id, relation, strength, context, created_at
+      `SELECT id, source_id, relation, strength, metadata, created_at
        FROM graph_relations WHERE target_id = ? ${typeFilter} ORDER BY strength DESC LIMIT 10`,
       [id, ...typeArgs] as InValue[],
     );
