@@ -134,7 +134,7 @@ export const tuiCommand = cortexCommand('tui')
       }
 
       if (text.startsWith('/')) {
-        handleTuiSlash(text, session, chatView, toolPanel, renderer);
+        await handleTuiSlash(text, session, chatView, toolPanel, renderer);
         textInput.clear();
         renderer.scheduleRender();
         return;
@@ -168,11 +168,19 @@ export const tuiCommand = cortexCommand('tui')
             provider: session.config.defaultProvider,
           },
           embedder: session.embedder,
+        }).catch((err: Error) => {
+          chatView.addMessage({
+            role: 'system',
+            content: `Error: ${err.message}`,
+          });
+          return null;
         });
 
-        statusBar.inputTokens = result.tokensIn;
-        statusBar.outputTokens = result.tokensOut;
-        statusBar.cost = result.costUsd;
+        if (result) {
+          statusBar.inputTokens = result.tokensIn;
+          statusBar.outputTokens = result.tokensOut;
+          statusBar.cost = result.costUsd;
+        }
       } catch (err) {
         chatView.addMessage({
           role: 'system',
