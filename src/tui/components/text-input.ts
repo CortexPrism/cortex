@@ -62,9 +62,13 @@ export class TextInput extends Component {
 
     switch (event.key) {
       case 'enter': {
-        if (this.text.trim() && this.onSubmit) {
-          this.addToHistory(this.text);
-          this.onSubmit(this.text);
+        const submitted = this.text;
+        this.text = '';
+        this.cursorPos = 0;
+        this.requestRender();
+        if (submitted.trim() && this.onSubmit) {
+          this.addToHistory(submitted);
+          try { this.onSubmit(submitted); } catch { /* fire-and-forget */ }
         }
         return true;
       }
