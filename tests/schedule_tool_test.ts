@@ -1,6 +1,7 @@
 import { assertEquals, assertExists, assertStringIncludes } from '@std/assert';
 import { scheduleTool } from '../src/tools/builtin/schedule.ts';
 import type { ToolContext } from '../src/tools/types.ts';
+import { runMigrations } from '../src/db/migrate.ts';
 
 const mockContext: ToolContext = {
   sessionId: 'test-session-schedule',
@@ -8,6 +9,15 @@ const mockContext: ToolContext = {
   agentId: 'test-agent',
   workspaceDir: '/tmp/workspace',
 };
+
+let migrated = false;
+
+async function ensureMigrations() {
+  if (!migrated) {
+    await runMigrations();
+    migrated = true;
+  }
+}
 
 Deno.test('schedule - tool definition', () => {
   assertEquals(scheduleTool.definition.name, 'schedule');
@@ -30,6 +40,7 @@ Deno.test('schedule - rejects invalid action', async () => {
 });
 
 Deno.test('schedule - list returns jobs successfully', async () => {
+  await ensureMigrations();
   const result = await scheduleTool.execute({ action: 'list' }, mockContext);
 
   assertEquals(result.success, true);
@@ -37,6 +48,7 @@ Deno.test('schedule - list returns jobs successfully', async () => {
 });
 
 Deno.test('schedule - due succeeds', async () => {
+  await ensureMigrations();
   const result = await scheduleTool.execute({ action: 'due' }, mockContext);
 
   assertEquals(result.success, true);
@@ -104,6 +116,7 @@ Deno.test('schedule - status requires job_id', async () => {
 });
 
 Deno.test('schedule - status for non-existent job returns error', async () => {
+  await ensureMigrations();
   const result = await scheduleTool.execute(
     { action: 'status', job_id: 'nonexistent-job-id' },
     mockContext,
@@ -126,6 +139,7 @@ Deno.test('schedule - has max_attempts parameter', () => {
 });
 
 Deno.test('schedule - creates job with valid cron expression', async () => {
+  await ensureMigrations();
   const result = await scheduleTool.execute(
     {
       action: 'create',
@@ -144,6 +158,7 @@ Deno.test('schedule - creates job with valid cron expression', async () => {
 });
 
 Deno.test('schedule - creates job with default kind', async () => {
+  await ensureMigrations();
   const result = await scheduleTool.execute(
     {
       action: 'create',

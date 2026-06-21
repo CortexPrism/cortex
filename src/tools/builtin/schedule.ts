@@ -223,6 +223,8 @@ export const scheduleTool: Tool = {
             command,
             maxAttempts,
             runAt,
+            source: `tool:${_context.agentId ?? 'unknown'}`,
+            upsert: true,
           });
 
           return {

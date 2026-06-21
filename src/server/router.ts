@@ -2689,6 +2689,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
       command: body.command,
       maxAttempts: body.maxAttempts ?? 3,
       runAt: body.runAt ? new Date(body.runAt) : undefined,
+      source: 'ui',
     };
     const id = await createJob(opts);
     return json({ ok: true, id });
@@ -2709,6 +2710,22 @@ export async function handleApi(req: Request): Promise<Response | null> {
       `UPDATE jobs SET status='pending', next_run_at=datetime('now') WHERE id=?`,
       [jobTriggerMatch[1]],
     );
+    return json({ ok: true });
+  }
+
+  // DELETE /api/jobs/batch — bulk delete by IDs
+  if (req.method === 'DELETE' && path === '/api/jobs/batch') {
+    const body = await req.json() as { ids: string[] };
+    const { deleteJobsBatch } = await import('../scheduler/scheduler.ts');
+    await deleteJobsBatch(body.ids ?? []);
+    return json({ ok: true });
+  }
+
+  // DELETE /api/jobs/status/:status — delete all jobs with a given status
+  const jobDeleteStatusMatch = path.match(/^\/api\/jobs\/status\/([^/]+)$/);
+  if (req.method === 'DELETE' && jobDeleteStatusMatch) {
+    const { deleteJobsByStatus } = await import('../scheduler/scheduler.ts');
+    await deleteJobsByStatus(jobDeleteStatusMatch[1] as import('../scheduler/scheduler.ts').JobStatus);
     return json({ ok: true });
   }
 
