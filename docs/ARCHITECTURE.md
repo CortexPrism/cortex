@@ -1,6 +1,6 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.46.0.
+This document describes the implemented architecture of CortexPrism as of v0.48.5.
 
 ---
 
@@ -10,23 +10,30 @@ CortexPrism is a single-process AI agent operating system written in TypeScript/
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         CortexPrism                             │
+│                         CortexPrism OS                          │
 │                                                                 │
-│   CLI (cortex agent chat / sandbox run / server start / ...)                         │
+│   CLI (cortex agent chat / sandbox run / server start / ...)    │
 │          │                                                      │
 │          ▼                                                      │
 │   ┌─────────────────────────────────────────────┐              │
-│   │              agent/loop.ts                  │              │
-│   │  userMessage → [memory inject] → LLM call   │              │
-│   │  → [tool parse] → [validator] → [execute]   │              │
-│   │  → [re-prompt loop] → response              │              │
-│   │  → [episodic write] → [reflection]          │              │
+│   │              kernel/loop.ts                  │              │
+│   │  kernelTurn() → process register → dispatch  │              │
+│   │  → token/cost accounting → agentTurn()       │              │
+│   └──────────────┬──────────────────────────────┘              │
+│                  │                                              │
+│   ┌──────────────▼────────────────────────────┐                │
+│   │              agent/loop.ts                  │               │
+│   │  userMessage → [memory inject] → LLM call   │               │
+│   │  → [tool parse] → [validator] → [execute]   │               │
+│   │  → [re-prompt loop] → response              │               │
+│   │  → [episodic write] → [reflection]          │               │
 │   └─────────────────────────────────────────────┘              │
 │          │                                                      │
 │   ┌──────┼──────────────────────────────────────┐              │
 │   │      │         Subsystems                   │              │
-│   │  a2a/ memory/ tools/ sandbox/ security/       │              │
-│   │  mcp-gateway/ memori/ scheduler/              │              │
+│   │  kernel/ vfs/ a2a/ memory/ tools/ sandbox/    │              │
+│   │  security/ mcp-gateway/ memori/ scheduler/    │              │
+│   │  tui/ observability/ plugins/ voice/          │              │
 │   └──────────────────────────────────────────────┘             │
 │                                                                 │
 │   SQLite databases (WAL mode)                                   │
@@ -63,7 +70,7 @@ agentTurn(opts)
 ### Options
 
 | Option | Type | Purpose |
-|---|---|---|
+|---|---|---|---|
 | `userMessage` | string | User input |
 | `provider` | LLMProvider | Active LLM provider |
 | `model` | string | Model name |
@@ -76,6 +83,22 @@ agentTurn(opts)
 | `toolContext` | ToolContext | Working dir, approval gate |
 | `embedder` | EmbeddingProvider | For memory retrieval |
 | `enableReflection` | boolean | Post-turn reflection |
+
+### Observable LLM Provider Wrapper
+
+All LLM calls across every subsystem are automatically observed via an `ObservableLLMProvider` wrapper (`src/observability/provider-wrapper.ts`). Every provider returned by `buildProvider()` and `buildProviderFromConfig()` is wrapped, ensuring Langfuse generations, Lens audit events (`llm_call`), and Prometheus metrics are recorded for every `complete()` and `stream()` call — including previously invisible calls from reflection, autofix, compliance classifier, security supervisor, image analysis, skill extraction, and CLI setup. The main agent loop passes session/turn context via an `OBS_CONTEXT` symbol on `CompletionOptions` so wrapper generations attach to the parent Langfuse trace.
+
+### Kernel Turn Orchestration (`src/kernel/`)
+
+The OS kernel wraps the agent loop with kernel-level orchestration via `kernelTurn()` and `kernelTurnStream()` in `src/kernel/loop.ts`:
+
+- **OsKernel singleton** (`src/kernel/mod.ts`) — system call dispatcher with capability enforcement and resource accounting. Features RBAC with 4 roles (`admin`, `operator`, `user`, `agent`) each mapped to capability groups, per-agent token/cost CPU tracking, and a process registry with parent-child tree tracking.
+- **Process registration** — the kernel registers the main server as the root process (parentPid 0) and automatically tracks sub-agent processes spawned during execution.
+- **Resource accounting** — automatic token/cost tracking via the OS kernel establishes the kernel/user-space split where the kernel dispatches to the agent loop and records resource consumption.
+
+### Built-in Agent Profiles
+
+Cortex ships with 5 pre-configured built-in agents in addition to user-created agents: **Assistant** (general-purpose default), **Developer** (code writing, debugging, refactoring), **Researcher** (web research, documentation, fact-finding), **Architect** (system design, planning, trade-off analysis), and **Analyst** (SQL, data exploration, statistics). Each has a specialized soul prompt. Built-in agents cannot be deleted but can be customized. The default agent has been migrated from `default` to `assistant` with full backward compatibility. (`src/agent/builtin-agents.ts`, `src/agent/manager.ts`)
 
 ---
 
@@ -851,7 +874,68 @@ Server → Client:
 
 ---
 
-## Database Schema
+## OS API Endpoints (`/api/os/`)
+
+Three OS-layer endpoints provide kernel visibility:
+
+- `GET /api/os/info` — kernel metadata (name, version, uptime, role list, process count)
+- `GET /api/os/processes` — process tree with nested display format and flat list
+- `GET /api/os/capabilities` — capability groups, role-to-capability mappings, and group members
+- `GET /api/os/health` — aggregated health report including daemon status, database connectivity, job counts, memory system health, version, and process uptime. Returns `status: "healthy"` or `"degraded"`.
+
+## Virtual Filesystem (`src/vfs/`)
+
+An OS-level namespace abstraction mapping virtual paths to real filesystem locations and database tables:
+
+```
+/cortex/agents/:id/     → ~/.cortex/data/workspaces/<agent-id>/
+/cortex/memory/:tier/   → memory.db tables
+/cortex/config/         → ~/.cortex/config.json
+/cortex/db/:name.db     → ~/.cortex/data/<name>.db
+/cortex/logs/           → ~/.cortex/data/logs/
+/cortex/workspace/      → CWD (global workspace)
+/cortex/plugins/        → ~/.cortex/data/plugins/
+```
+
+APIs include `resolveVfsPath()`, `listVfsPaths()`, `listVfsByNamespace()`, and `vfsTree()`.
+
+## Capability Groups
+
+Tools are organized into 12 capability groups (`CAP_FILE`, `CAP_SHELL`, `CAP_NET`, `CAP_MEMORY`, `CAP_GIT`, `CAP_AGENT`, `CAP_CODE`, `CAP_UI`, `CAP_SYSTEM`, `CAP_SKILL`, `CAP_SCHEDULE`, `CAP_BROWSER`) forming an OS syscall table. Each group maps to fine-grained `ToolCapability` entries. (`src/tools/types.ts`)
+
+## Resource Limits
+
+New `ResourceLimits` type on `AgentConfig` with `cpuShares` (1–1024), `memoryMb`, `diskMb`, `maxProcesses`, and `networkKbps` fields defining per-agent resource quotas in the OS resource namespace. (`src/config/config.ts`)
+
+## Boot Sequence
+
+Formal `BootStage` type and `BOOT_ORDER` array define the ordered OS startup: `migrate → supervisor → validator → executor → scheduler → services → channels → ready`. The supervisor daemon now follows this sequence, starting daemons sequentially with socket readiness checks before proceeding. (`src/config/config.ts`, `src/processes/supervisor-process.ts`)
+
+## Shared Agent Session Helper
+
+`createAgentSession()` in `src/cli/agent-session.ts` extracts the agent initialization sequence (config loading, provider building, agent resolution, session creation, soul/skills loading, tool registry setup, plugin loading) into a reusable function shared by `chat.ts`, `tui-cmd.ts`, and `agent-exec.ts`. (`src/cli/agent-session.ts`)
+
+## CLI Command Builder (`src/cli/command-builder.ts`)
+
+The `cortexCommand()` builder provides a fluent API replacing raw `new Command()`. Commands declare `needs('config'|'migrations')` and receive a typed `Ctx` with auto-loaded config. Middleware runs transparently before the action handler, eliminating manual `await loadConfig()` / `await runMigrations()` boilerplate from every command file.
+
+## Static Command Registry (`src/cli/registry.ts`)
+
+A `CommandEntry[]` table maps nested paths (e.g. `['agent', 'chat']`) to async `load()` functions. Command modules are only imported when their path is invoked. Plugin CLI commands are merged via `mergePluginCommands()`. The CLI tree was restructured from 44 flat commands to nested domain groups: `agent` (chat/tui/exec/sessions/eval), `server` (start/stop/restart), `sandbox` (run), `self` (update), `db` (migrate), `config` (get/set/unset/list/validate).
+
+## Debug Settings Page
+
+The Web UI includes a new **Debug** tab under Settings with four diagnostic cards: **System Diagnostics** (scheduler status, heap/RSS, sandbox runtime, per-DB file sizes), **Scheduler & Stuck Jobs** (lists all running jobs with per-job Cancel buttons and a Recover Stale Jobs action), **Sandbox Debug** (backend availability and sandbox debug toggle), and **Log Level & File** (interactive log level dropdown, file logging toggle, size/rotation config). (`src/server/ui.ts`)
+
+## Stale Job Recovery
+
+`recoverStaleJobs()` in the scheduler detects jobs stuck in `running` state longer than 10 minutes and transitions them to `pending` (if under `max_attempts`) or `failed` (if exhausted). Recovery runs at daemon startup and every poll cycle. A `cortex jobs recover` CLI command allows manual recovery. (`src/scheduler/scheduler.ts`)
+
+## Plugin Dependency Resolution
+
+`src/plugins/deps.ts` provides full dependency resolution for the plugin marketplace: semver constraint satisfaction (`^`, `~`, `>=`, `*` operators), topological sort for install ordering, circular dependency detection, transitive dependency traversal, and version compatibility checking. (`src/plugins/deps.ts`)
+
+---
 
 All databases use SQLite WAL mode via `@libsql/client`. Migrations are idempotent (checksum guard).
 
@@ -1183,9 +1267,15 @@ Headless agents connect via WebSocket. Primary handles reasoning/memory/credenti
 
 ---
 
-## Terminal UI (`src/tui/terminal.ts`)
+## Terminal UI (`src/tui/`)
 
-Full-screen interactive terminal interface with split-pane layout (chat left, tools right), command history, and status bar.
+Full custom Deno-native TUI framework (v0.48.0) replacing the previous single-file TUI:
+
+- **Core** — double-buffered `VirtualScreen` (cell-level diff-and-flush for flicker-free rendering), class-based `Component` tree with lifecycle hooks (`onMount`, `onUpdate`, `onDestroy`, `onResize`, `onKeyPress`), layout engine (`HSplit`, `VSplit`, `ScrollView`, `Box` with flex/percentage sizing), raw `InputEngine` with ANSI escape decoding and emacs-style keybindings (`Ctrl+A/E/K/W/U`, `Alt+F/B/D`, `Ctrl+R` history search), `Renderer` with SIGWINCH resize handling. Three built-in themes: `dark`, `light`, `contrast`.
+- **Components** — 9 reusable components: `Header` (title bar), `StatusBar` (model/tokens/cost/session footer), `TextInput` (multi-line with cursor movement, history, selection), `CompletionMenu` (floating dropdown for slash commands/file paths/agent names), `MarkdownBlock` (headers, bold, italic, inline code), `CodeBlock` (syntax highlighting for TS/JS/Python/Go/Rust/Bash/SQL), `DiffBlock` (unified diff with +/- coloring), `ToolCard` (tool call status with spinner/checkmark/cross and duration), `ChatView` (scrollable message list with streaming support).
+- **12 slash commands** — `/model <name>` switches model mid-session, `/compact` triggers context compaction, `/status` shows session info, `/clear` clears chat history, `/save [file]` saves transcript, `/load <file>` loads transcript, `/export` exports session as markdown, `/theme <name>` switches theme, `/diff` shows last file change, `/review` reviews pending approvals, `/plan` enters planning mode, `/help` lists all commands.
+- **`agent exec` one-shot mode** — non-interactive agent execution for CI/scripting. Accepts a prompt argument, runs a single `agentTurn`, outputs the response. `--json` flag outputs structured JSON for machine consumption. (`src/cli/agent-exec.ts`)
+- **`config` command group** — `config get <key>` reads dot-notation keys, `config set <key> <value>` writes with JSON5 auto-parsing and encrypted credential storage, `config unset <key>` deletes keys, `config list` pretty-prints full config, `config validate` checks schema compliance. (`src/cli/config-cmd.ts`)
 
 ---
 
