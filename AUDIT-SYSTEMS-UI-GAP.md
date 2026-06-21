@@ -240,8 +240,8 @@ These backend systems have **no web UI at all** — accessible only via CLI or a
 ### Update System
 
 - **What exists**: GitHub release checking, binary/source installation, rollback with health check,
-  backup rotation. CLI: `cortex self update --check/--channel/--rollback/--status/--force`. Settings tab
-  has channel/interval/token fields.
+  backup rotation. CLI: `cortex self update --check/--channel/--rollback/--status/--force`. Settings
+  tab has channel/interval/token fields.
 - **What a UI needs**: Update check trigger button, channel selector, rollback button with
   confirmation, changelog viewer, install progress bar. (Settings page has config fields but no
   action buttons.)

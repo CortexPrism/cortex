@@ -236,8 +236,8 @@ See [docs/computer-use/README.md](docs/computer-use/README.md) for the full guid
 - **Dependency guardian** — continuous CVE monitoring, license enforcement, and remediation
   suggestions across 6 package ecosystems
 - **AgentLint** — automated auditing of agent configs, tools, plugins, and prompts with 33+ checks
-- **Auto-update** — `cortex self update` supports source mode and signed binary mode with SHA-256 and
-  optional GPG verification
+- **Auto-update** — `cortex self update` supports source mode and signed binary mode with SHA-256
+  and optional GPG verification
 - **Desktop app** — Tauri-based desktop wrapper (macOS, Windows, Linux)
 
 ---
