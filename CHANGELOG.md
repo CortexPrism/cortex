@@ -39,6 +39,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **OS Health dashboard** — new "OS Health" page in the Web UI showing a system health dashboard: overall CortexPrism OS status with version and uptime, daemon health cards (validator/executor/scheduler with green/red indicators), database connectivity, job counts (total/pending), memory system metrics, and request latency. Includes sidebar nav entry, Ctrl+P command palette entry, and manual refresh. (`src/server/ui.ts`)
 
+- **Kernel turn orchestration** — `kernelTurn()` and `kernelTurnStream()` in `src/kernel/loop.ts` wrap the agent loop with kernel-level orchestration: automatic process registration, token/cost tracking via the OS kernel, and resource accounting. This establishes the OS kernel/user-space split where the kernel dispatches to the agent loop and records resource consumption. (`src/kernel/loop.ts`)
+
+- **Plugin dependency resolution** — new `src/plugins/deps.ts` module provides full dependency resolution for the plugin marketplace: semver constraint satisfaction (`^`, `~`, `>=`, `*` operators), topological sort for install ordering, circular dependency detection, transitive dependency traversal, and version compatibility checking. The `installPlugin()` function in `src/plugins/registry.ts` now validates dependencies before install and returns a result with missing dependency and warning lists. (`src/plugins/deps.ts`, `src/plugins/registry.ts`)
+
 ### Changed
 
 - **Agent OS identity in soul templates** — all agent soul templates now identify the agent as running on CortexPrism OS rather than as a standalone assistant. The `DEFAULT_SOUL` adds OS awareness as the first identity bullet. The `INIT_SOUL_TEMPLATE` gains a new `## OS Environment` section describing the 8 OS-layer capabilities (persistent memory, tool system with Parallax validation, sub-agent orchestration, background daemons, skills system, job scheduler, plugin marketplace, audit log). All 8 `PERSONALITY_TEMPLATES` updated from "AI assistant" to "AI agent running on CortexPrism OS". (`src/agent/soul.ts`)
