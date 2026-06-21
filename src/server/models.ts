@@ -111,9 +111,9 @@ async function ollamaModels(_apiKey: string, baseUrl?: string): Promise<ModelEnt
   return data.models.map((m) => ({ id: m.name }));
 }
 
-async function bedrockModels(): Promise<ModelEntry[]> {
-  // Bedrock model listing doesn't require API key for the list endpoint
-  const res = await fetch('https://bedrock.us-east-1.amazonaws.com/foundation-model-list', {
+async function bedrockModels(region?: string): Promise<ModelEntry[]> {
+  const awsRegion = region ?? Deno.env.get('AWS_REGION') ?? 'us-east-1';
+  const res = await fetch(`https://bedrock.${awsRegion}.amazonaws.com/foundation-model-list`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });

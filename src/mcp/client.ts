@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.ts';
+import { VERSION } from '../config/version.ts';
 
 const _log = logger('mcp:client');
 
@@ -173,7 +174,7 @@ export async function connectStdio(config: McpConnectionConfig): Promise<McpConn
       params: {
         protocolVersion: '2024-11-05',
         capabilities: {},
-        clientInfo: { name: 'cortex', version: '0.35.3' },
+        clientInfo: { name: 'cortex', version: VERSION },
       },
     });
 
@@ -285,7 +286,7 @@ export async function connectHttp(config: McpConnectionConfig): Promise<McpConne
       params: {
         protocolVersion: '2024-11-05',
         capabilities: {},
-        clientInfo: { name: 'cortex', version: '0.35.3' },
+        clientInfo: { name: 'cortex', version: VERSION },
       },
     }),
   });

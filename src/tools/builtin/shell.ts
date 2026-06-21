@@ -2,7 +2,7 @@ import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { getShellCommand, isWindows } from '../../utils/platform.ts';
 
 const TIMEOUT_MS = 30_000;
-const MAX_OUTPUT_BYTES = 32 * 1024;
+const MAX_OUTPUT_BYTES = 64 * 1024;
 
 const BLOCKED = [
   /rm\s+-rf\s+\//,

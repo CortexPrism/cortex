@@ -296,16 +296,19 @@ export function resolveVfsPath(virtualPath: string): VfsResolveResult | null {
   return null;
 }
 
+function fakeMatch(): RegExpMatchArray {
+  return Object.assign([''], {
+    index: 0,
+    input: '',
+    groups: undefined,
+  }) as unknown as RegExpMatchArray;
+}
+
 /** List all known virtual paths. */
 export function listVfsPaths(): string[] {
   const seen = new Set<string>();
   for (const matcher of MATCHERS) {
-    const fake = Object.assign([''], {
-      index: 0,
-      input: '',
-      groups: undefined,
-    }) as unknown as RegExpMatchArray;
-    const result = matcher.resolve(fake);
+    const result = matcher.resolve(fakeMatch());
     if (!seen.has(result.virtualPath)) {
       seen.add(result.virtualPath);
     }
@@ -316,13 +319,9 @@ export function listVfsPaths(): string[] {
 /** Get all virtual paths within a namespace. */
 export function listVfsByNamespace(ns: VfsNamespace): string[] {
   const seen = new Set<string>();
-  const fake = Object.assign([''], {
-    index: 0,
-    input: '',
-    groups: undefined,
-  }) as unknown as RegExpMatchArray;
+  const match = fakeMatch();
   for (const matcher of MATCHERS) {
-    const result = matcher.resolve(fake);
+    const result = matcher.resolve(match);
     if (result.namespace === ns && !seen.has(result.virtualPath)) {
       seen.add(result.virtualPath);
     }
@@ -339,19 +338,15 @@ export function vfsRoot(): string {
 export function vfsTree(): string {
   const lines: string[] = ['/cortex/'];
   const namespaces = new Set<string>();
-  const fake = Object.assign([''], {
-    index: 0,
-    input: '',
-    groups: undefined,
-  }) as unknown as RegExpMatchArray;
+  const match = fakeMatch();
   for (const matcher of MATCHERS) {
-    const result = matcher.resolve(fake);
+    const result = matcher.resolve(match);
     namespaces.add(`  ${result.namespace}/`);
   }
   for (const ns of [...namespaces].sort()) {
     lines.push(`${ns}`);
     for (const matcher of MATCHERS) {
-      const result = matcher.resolve(fake);
+      const result = matcher.resolve(match);
       if (result.namespace === ns.slice(2, -1)) {
         const suffix = result.dbBacked ? ' [db]' : '';
         const name = result.virtualPath.split('/').filter(Boolean).slice(1).join('/');
