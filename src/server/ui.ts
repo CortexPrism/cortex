@@ -8332,7 +8332,7 @@ function switchSettingsTab(tabName) {
   }
   if (tabName === 'general') refreshSecuritySection();
   if (tabName === 'tools') loadToolConfigs();
-  if (tabName === 'debug') { refreshDebugDiagnostics(); refreshDebugJobs(); refreshDebugSandbox(); }
+  if (tabName === 'debug') { loadDebugFormFields(); refreshDebugDiagnostics(); refreshDebugJobs(); refreshDebugSandbox(); }
   // Sync global sub-nav
   var bar = document.getElementById('global-subnav');
   if (bar && bar.getAttribute('data-group') === 'settings') {
@@ -8550,6 +8550,20 @@ async function refreshSecuritySection() {
   if (oldPassRow) oldPassRow.style.display = authStatus.hasPassword ? 'block' : 'none';
 }
 
+async function loadDebugFormFields() {
+  const config = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
+  if (!config?.logging) return;
+  const lc = config.logging;
+  const levelEl = document.getElementById('cfg-log-level');
+  if (levelEl) levelEl.value = lc.level ?? 'error';
+  const fileEl = document.getElementById('cfg-log-file-enabled');
+  if (fileEl) fileEl.checked = lc.fileEnabled !== false;
+  const bytesEl = document.getElementById('cfg-log-maxbytes');
+  if (bytesEl) bytesEl.value = ((lc.fileMaxBytes ?? 10 * 1048576) / 1048576) | 0;
+  const filesEl = document.getElementById('cfg-log-maxfiles');
+  if (filesEl) filesEl.value = lc.fileMaxFiles ?? 5;
+}
+
 async function saveLoggingSettings() {
   const otlpEndpoint = document.getElementById('cfg-otlp-endpoint')?.value?.trim();
   const otlpAuth = document.getElementById('cfg-otlp-auth')?.value?.trim();
@@ -8573,7 +8587,9 @@ async function saveLoggingSettings() {
   if (res.ok) {
     toast('Logging settings saved — restart server for full effect', 'success');
   } else {
-    toast('Failed to save logging settings', 'error');
+    let msg = 'Failed to save logging settings';
+    try { const err = await res.json(); if (err?.error) msg = err.error; } catch {}
+    toast(msg, 'error');
   }
 }
 

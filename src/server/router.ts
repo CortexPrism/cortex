@@ -54,6 +54,7 @@ import type {
   AgentConfig,
   AutoModelPoolEntry,
   CortexConfig,
+  LoggingConfig,
   ProviderConfig,
   ProviderKind,
   UserProfile,
@@ -1795,11 +1796,14 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'PUT' && path === '/api/config') {
     const body = await req.json() as Partial<CortexConfig>;
     const current = await loadConfig();
-    const updated = { ...current, ...body } as CortexConfig;
-    await saveConfig(updated);
-    // Apply logging config live if it was included in the update
+    const updated = { ...current, ...body } as Record<string, unknown>;
+    if (body.logging && current.logging) {
+      updated.logging = { ...current.logging, ...body.logging as unknown as Record<string, unknown> };
+    }
+    const final = updated as unknown as CortexConfig;
+    await saveConfig(final);
     if (body.logging) {
-      const lc = updated.logging!;
+      const lc = { ...current.logging, ...body.logging } as unknown as LoggingConfig;
       configureLogger({
         level: (lc.level ?? 'error') as import('../utils/logger.ts').LogLevel,
         fileEnabled: lc.fileEnabled !== false,
