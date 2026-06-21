@@ -70,9 +70,9 @@ const aliases: Record<string, string[]> = {
   'chat': ['agent', 'chat'],
   'tui': ['agent', 'tui'],
   'serve': ['server', 'start'],
-  'restart': ['server', 'restart'],
-  'start': ['server', 'start'],
-  'stop': ['server', 'stop'],
+  'restart': ['daemon', 'restart'],
+  'start': ['daemon', 'start'],
+  'stop': ['daemon', 'stop'],
 };
 for (const [alias, target] of Object.entries(aliases)) {
   const aliasCmd = new Command()
