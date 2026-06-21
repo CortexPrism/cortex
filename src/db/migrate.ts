@@ -53,7 +53,19 @@ async function applyMigration(
     return;
   }
 
-  await db.exec(sql);
+  try {
+    await db.exec(sql);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (/\b(?:duplicate column|already exists|column already)\b/i.test(msg)) {
+      await db.run(
+        'INSERT OR IGNORE INTO schema_migrations (version, description, checksum) VALUES (?, ?, ?)',
+        [version, description, cs],
+      );
+      return;
+    }
+    throw e;
+  }
   await db.run(
     'INSERT INTO schema_migrations (version, description, checksum) VALUES (?, ?, ?)',
     [version, description, cs],
