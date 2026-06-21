@@ -910,10 +910,11 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // ── Auth middleware: all remaining /api/* routes require auth ──
   const authResult = await requireAuth(req);
   if (!authResult.authenticated) {
-    return authResult.response ?? new Response(JSON.stringify({ error: 'Authentication required' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return authResult.response ??
+      new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
   }
 
   // GET /api/sessions?limit=&agentId=
@@ -1798,7 +1799,10 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const current = await loadConfig();
     const updated = { ...current, ...body } as Record<string, unknown>;
     if (body.logging && current.logging) {
-      updated.logging = { ...current.logging, ...body.logging as unknown as Record<string, unknown> };
+      updated.logging = {
+        ...current.logging,
+        ...body.logging as unknown as Record<string, unknown>,
+      };
     }
     const final = updated as unknown as CortexConfig;
     await saveConfig(final);
@@ -5028,7 +5032,12 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const gvisorOk = await isGVisorAvailable();
     return json({
       backends: [
-        { kind: 'docker', label: 'Docker', available: dockerOk, description: 'Local Docker container' },
+        {
+          kind: 'docker',
+          label: 'Docker',
+          available: dockerOk,
+          description: 'Local Docker container',
+        },
         {
           kind: 'subprocess',
           label: 'Subprocess',

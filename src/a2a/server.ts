@@ -93,7 +93,11 @@ export function setA2ASkills(skills: AgentSkill[]): void {
   defaultSkills = skills;
 }
 
-export async function getA2AAgentCard(baseUrl: string, name: string, description: string): Promise<AgentCard> {
+export async function getA2AAgentCard(
+  baseUrl: string,
+  name: string,
+  description: string,
+): Promise<AgentCard> {
   if (agentCard) return agentCard;
 
   let pushNotifications = false;
