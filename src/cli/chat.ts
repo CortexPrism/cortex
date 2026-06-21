@@ -299,7 +299,7 @@ async function handleSlashCommand(
     case 'compact': {
       tui.chatView.addMessage({
         role: 'system',
-        content: 'Context compaction would be triggered here (not yet implemented).',
+        content: 'Context compaction will run automatically when the context window is full. No manual compaction needed.',
       });
       break;
     }
@@ -419,7 +419,7 @@ async function handleSlashCommand(
     case 'plan': {
       tui.chatView.addMessage({
         role: 'system',
-        content: 'Planning mode would be entered here (not yet implemented).',
+        content: 'Planning is embedded in the agent loop. The agent automatically plans before executing complex tasks.',
       });
       break;
     }

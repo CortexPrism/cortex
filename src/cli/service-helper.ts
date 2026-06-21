@@ -1,5 +1,6 @@
 import { bold, dim, green } from '@std/fmt/colors';
-import { resolveHomeDir } from '../utils/platform.ts';
+import { join } from '@std/path';
+import { getTempDir, resolveHomeDir } from '../utils/platform.ts';
 
 export interface ServiceInstallOptions {
   port?: number;
@@ -202,6 +203,7 @@ async function installMacOSDaemonService(opts: { noStart?: boolean } = {}): Prom
   const execPath = getExecPath();
   const runAtLoad = opts.noStart ? 'false' : 'true';
   const keepAlive = opts.noStart ? 'false' : 'true';
+  const logPath = join(getTempDir(), 'cortex-daemon.log');
   const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -219,9 +221,9 @@ async function installMacOSDaemonService(opts: { noStart?: boolean } = {}): Prom
     <key>KeepAlive</key>
     <${keepAlive}/>
     <key>StandardOutPath</key>
-    <string>/tmp/cortex-daemon.log</string>
+    <string>${escapeXml(logPath)}</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/cortex-daemon.log</string>
+    <string>${escapeXml(logPath)}</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOME</key>

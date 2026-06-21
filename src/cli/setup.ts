@@ -9,6 +9,7 @@ import type {
 import { loadConfig, saveConfig } from '../config/config.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { PATHS } from '../config/paths.ts';
+import { ONBOARDING_VERSION } from '../config/version.ts';
 import { ensureDir } from '@std/fs';
 import { buildProviderFromConfig } from '../llm/router.ts';
 import { renderWelcomeScreen } from './onboarding/logo.ts';
@@ -559,7 +560,7 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   cfg.onboarding = {
     completed: true,
     completedAt: new Date().toISOString(),
-    version: '2.0',
+    version: ONBOARDING_VERSION,
     skippedSteps: [],
   };
 
@@ -600,7 +601,7 @@ async function handleWebOnboarding(config: CortexConfig): Promise<CortexConfig> 
   const cfg = updated as unknown as Record<string, unknown>;
   cfg.onboarding = {
     completed: false,
-    version: '2.0',
+    version: ONBOARDING_VERSION,
     skippedSteps: [],
     currentMode: 'web',
     startedAt: new Date().toISOString(),
