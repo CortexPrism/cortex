@@ -473,7 +473,6 @@ export async function bulkInsertNodes(
 ): Promise<number[]> {
   if (nodes.length === 0) return [];
   const db = await getMemoryDb();
-  const ids: number[] = [];
 
   const placeholders = nodes.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
   const params: InValue[] = [];
@@ -497,18 +496,25 @@ export async function bulkInsertNodes(
     );
   }
 
-  await db.run(
-    `INSERT INTO code_nodes (project_id, label, name, qualified_name, file_path, line_start, line_end, signature, return_type, language, is_exported, complexity, decorators, metadata, content_hash)
-     VALUES ${placeholders}`,
-    params,
-  );
-
-  const lastId = await insertAndGetId(db, `SELECT last_insert_rowid() as id`, []);
-  const firstId = lastId;
-  for (let i = 0; i < nodes.length; i++) {
-    ids.push(firstId + i);
+  try {
+    await db.run(`BEGIN`);
+    await db.run(
+      `INSERT INTO code_nodes (project_id, label, name, qualified_name, file_path, line_start, line_end, signature, return_type, language, is_exported, complexity, decorators, metadata, content_hash)
+       VALUES ${placeholders}`,
+      params,
+    );
+    const row = await db.get<{ id: number }>(`SELECT last_insert_rowid() as id`);
+    await db.run(`COMMIT`);
+    const firstId = row?.id ?? 0;
+    const ids: number[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      ids.push(firstId + i);
+    }
+    return ids;
+  } catch (e) {
+    try { await db.run(`ROLLBACK`); } catch { /* ignore */ }
+    throw e;
   }
-  return ids;
 }
 
 export async function rebuildFtsIndex(): Promise<void> {
@@ -521,11 +527,24 @@ export async function bulkInsertEdges(
 ): Promise<number[]> {
   if (edges.length === 0) return [];
   const db = await getMemoryDb();
-  const ids: number[] = [];
 
-  const placeholders = edges.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+  const projectId = edges[0].project_id;
+  const existingNodeIds = new Set<number>();
+  const nodeRows = await db.all<{ id: number }>(
+    `SELECT id FROM code_nodes WHERE project_id = ?`,
+    [projectId],
+  );
+  for (const r of nodeRows) existingNodeIds.add(r.id);
+
+  const validEdges = edges.filter((e) =>
+    existingNodeIds.has(e.source_id) && existingNodeIds.has(e.target_id)
+  );
+
+  if (validEdges.length === 0) return [];
+
+  const placeholders = validEdges.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
   const params: InValue[] = [];
-  for (const e of edges) {
+  for (const e of validEdges) {
     params.push(
       e.project_id,
       e.type,
@@ -538,26 +557,34 @@ export async function bulkInsertEdges(
     );
   }
 
-  await db.run(`BEGIN`);
-  await db.run(`PRAGMA foreign_keys = OFF`);
+  const before = await db.get<{ cnt: number }>(
+    `SELECT COUNT(*) as cnt FROM code_edges WHERE project_id = ?`,
+    [projectId],
+  );
+
   await db.run(
     `INSERT OR IGNORE INTO code_edges (project_id, type, source_id, target_id, confidence, call_line, arg_to_param, metadata)
      VALUES ${placeholders}`,
     params,
   );
+
+  const afterInsert = await db.get<{ cnt: number }>(
+    `SELECT COUNT(*) as cnt FROM code_edges WHERE project_id = ?`,
+    [projectId],
+  );
+
   await db.run(
     `DELETE FROM code_edges WHERE project_id = ? AND (source_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?) OR target_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?))`,
-    [params[0], params[0]],
+    [projectId, projectId],
   );
-  await db.run(`PRAGMA foreign_keys = ON`);
-  await db.run(`COMMIT`);
 
-  const lastId = await insertAndGetId(db, `SELECT last_insert_rowid() as id`, []);
-  const firstId = lastId - edges.length + 1;
-  for (let i = 0; i < edges.length; i++) {
-    ids.push(firstId + i);
+  const inserted = Math.max(0, (afterInsert?.cnt ?? 0) - (before?.cnt ?? 0));
+  if (inserted < validEdges.length) {
+    console.error(
+      `[codegraph] bulkInsertEdges: inserted ${inserted} of ${validEdges.length} valid edges (${edges.length} total, filtered ${edges.length - validEdges.length} invalid)`,
+    );
   }
-  return ids;
+  return new Array(inserted).fill(0).map((_, i) => i);
 }
 
 export async function updateProjectCounts(projectId: number): Promise<void> {
@@ -573,10 +600,10 @@ export async function updateProjectCounts(projectId: number): Promise<void> {
 
 export async function clearProjectNodes(projectId: number): Promise<void> {
   const db = await getMemoryDb();
-  await db.run(`DELETE FROM code_edges WHERE project_id = ?`, [projectId]);
-  await db.run(`DELETE FROM code_nodes WHERE project_id = ?`, [projectId]);
   await db.run(`DELETE FROM code_file_hashes WHERE project_id = ?`, [projectId]);
   await db.run(`DELETE FROM code_communities WHERE project_id = ?`, [projectId]);
+  await db.run(`DELETE FROM code_edges WHERE project_id = ?`, [projectId]);
+  await db.run(`DELETE FROM code_nodes WHERE project_id = ?`, [projectId]);
 }
 
 export async function getFileHash(

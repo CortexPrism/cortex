@@ -5,6 +5,14 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Fixed
+
+- **Daemon logs always empty in UI** — the `/api/daemons/:name/logs` endpoint read from `validator.log`/`executor.log`/`scheduler.log` but the supervisor wrote logs to `daemon-validator.log`/`daemon-executor.log`/`daemon-scheduler.log`. Fixed the filename prefix mismatch and replaced the hardcoded `/root/.cortex/data/logs/` path with `PATHS.logDir`. Also the supervisor piped only `stderr` to the log files (`stdout: 'null'`), discarding all `console.log()` output (startup messages, migration progress, status lines). Changed to pipe both stdout and stderr so operational messages appear in the daemon logs. (`src/server/router.ts`, `src/processes/supervisor-process.ts`)
+
+- **Daemon migration race at startup** — the supervisor spawns all three daemon processes simultaneously, each calling `runMigrations()` which checks `schema_migrations` for existing records. All three detect no record before any inserts one, then all three attempt the same `ALTER TABLE ... ADD COLUMN` — the first succeeds, the rest crash with `duplicate column name: embedding`. Made `applyMigration()` resilient to concurrent execution by catching "already exists" errors and recording the migration as applied via `INSERT OR IGNORE`. (`src/db/migrate.ts`)
+
 ## [0.47.0] — 2026-06-20
 
 ### Added
@@ -36,6 +44,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **claude-sonnet-4-5 hallucinated by LLM** — the `sub_agent` tool's `model` parameter description listed `"claude-sonnet-4-5"` as an example, which the LLM then copied verbatim into sub-agent calls. Since no Anthropic provider was configured, every sub-agent with that model failed with provider errors. Removed the specific model example from the tool description and replaced it with guidance to use only configured providers. (`src/tools/builtin/sub_agent.ts`)
 
 - **Metacognition delegate reason contradicted suggested types** — the `delegate` case used a hardcoded if-else chain that checked `security`/`debug`/`architect` before `research`/`code`/`explore`, causing the reason text to mismatch the score-sorted suggested types (e.g. "Security audit task" when `research=4` was the strongest signal). Changed to a `switch` on the score-sorted `primaryType`. (`src/agent/metacog.ts`)
+
+- **Codegraph reimport transaction deadlock** — `bulkInsertEdges` opened an explicit `BEGIN` without error handling. Any failure between `BEGIN` and `COMMIT` left a dangling transaction on the shared memory DB singleton connection, poisoning all subsequent codegraph operations with `SQLITE_ERROR: cannot start a transaction within a transaction`. Added `ROLLBACK` in a `finally` block so the connection always returns to a clean state. (`src/codegraph/graph.ts`)
+
+- **Codegraph edge insert FK violations** — `PRAGMA foreign_keys = OFF` was set inside a transaction in `bulkInsertEdges`, which is a no-op in SQLite and can cause deferred FK checks to fail at `COMMIT` in libsql. Removed the PRAGMA manipulation. Additionally, libsql's `INSERT OR IGNORE` does not reliably suppress FK violations on multi-row inserts, causing `SQLITE_CONSTRAINT_FOREIGNKEY` during reimport. Now queries existing `code_nodes` IDs and strips invalid edges before the INSERT, ensuring no FK-violating rows ever reach the statement. (`src/codegraph/graph.ts`)
+
+- **Codegraph fragile ID computation** — `bulkInsertNodes` and `bulkInsertEdges` used `last_insert_rowid()` outside a transaction, making ID retrieval vulnerable to concurrent INSERTs on the shared connection. `bulkInsertNodes` now wraps INSERT + rowid read in atomic `BEGIN`/`COMMIT`. `bulkInsertEdges` uses a reliable before/after `COUNT(*)` diff instead of extrapolating IDs from rowid. (`src/codegraph/graph.ts`)
+
+- **Codegraph clear order** — `clearProjectNodes` deleted `code_edges` and `code_nodes` before `code_file_hashes` and `code_communities`, allowing `ON DELETE CASCADE` from node deletes to pull edges from other projects. Reordered to delete non-referenced tables first, then edges, then nodes last. (`src/codegraph/graph.ts`)
 
 - **Malformed tool calls silently dropped** — when the LLM emitted tool calls in unrecognized XML formats (e.g. `<tool_call name="sub_agent">` with nested attributes), `parseToolCalls` returned 0 and the loop treated the response as final text. `stripToolCallMarkup` then removed all content, leaving the user with blank output. Added malformed-tool-call detection before the final-response break: if the response contains unparsed `<tool_call name=` or raw `{"tool":` patterns, the system injects a format correction and continues the loop. (`src/agent/loop.ts`)
 

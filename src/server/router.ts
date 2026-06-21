@@ -721,7 +721,7 @@ export async function handleApi(req: Request): Promise<Response | null> {
         args: [
           '-n',
           String(Number(new URL(req.url).searchParams.get('lines') ?? 100)),
-          '/root/.cortex/data/logs/' + dmLogs[1] + '.log',
+          join(PATHS.logDir, `daemon-${dmLogs[1]}.log`),
         ],
         stdout: 'piped',
         stderr: 'null',

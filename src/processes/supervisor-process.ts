@@ -44,7 +44,7 @@ async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
 
   const cmd = new Deno.Command(execPath, {
     args,
-    stdout: 'null',
+    stdout: 'piped',
     stderr: 'piped',
     stdin: 'null',
   });
@@ -55,9 +55,13 @@ async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
     try {
       const file = await Deno.open(logPath, { write: true, create: true, append: true });
       try {
-        for await (const chunk of child.stderr) {
-          await file.write(chunk);
-        }
+        const writeStream = (stream: ReadableStream<Uint8Array>) =>
+          (async () => {
+            try {
+              for await (const chunk of stream) await file.write(chunk);
+            } catch { /* best-effort */ }
+          })();
+        await Promise.all([writeStream(child.stdout), writeStream(child.stderr)]);
       } finally {
         file.close();
       }

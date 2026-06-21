@@ -732,25 +732,31 @@ const HTML = `<!DOCTYPE html>
     .page-fade-in { animation: fadeIn 0.2s ease-out; }
   }
 
-  /* ── Editor ──────────────────────────────────── */
-  .editor-tree-item { display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:5px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.12s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; }
+  /* ── Editor IDE ──────────────────────────────────── */
+  .editor-tree-item { display:flex; align-items:center; gap:4px; padding:3px 8px 3px 4px; border-radius:3px; cursor:pointer; font-size:12px; color:var(--text2); transition:all 0.1s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; white-space:nowrap; }
   .editor-tree-item:hover { background:rgba(255,255,255,0.05); color:var(--text); }
   .editor-tree-item.active { background:rgba(6,182,212,0.12); color:var(--accent2); }
-  .editor-tree-item .icon { width:16px; text-align:center; opacity:0.6; flex-shrink:0; }
-  .editor-tab { padding:6px 12px; border-radius:6px 6px 0 0; font-size:12px; cursor:pointer; background:transparent; color:var(--text3); border:1px solid transparent; border-bottom:none; transition:all 0.12s; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+  .editor-tree-item.drag-over { background:rgba(6,182,212,0.2); outline:1px dashed var(--accent2); }
+  .editor-tree-chevron { width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; font-size:8px; color:var(--text3); transition:transform 0.12s; }
+  .editor-tree-chevron.expanded { transform:rotate(90deg); }
+  .editor-tree-children { padding-left:12px; }
+  .editor-tab { padding:4px 10px; border-radius:4px 4px 0 0; font-size:12px; cursor:pointer; background:transparent; color:var(--text3); border:1px solid transparent; border-bottom:none; transition:all 0.1s; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; position:relative; }
   .editor-tab.active { background:var(--bg3); color:var(--text); border-color:var(--border); }
-  .editor-tab:hover:not(.active) { color:var(--text2); }
+  .editor-tab:hover:not(.active) { color:var(--text2); background:rgba(255,255,255,0.03); }
   .editor-tab .editor-tab-icon { width:12px; height:12px; opacity:0.5; flex-shrink:0; }
   .editor-tab.active .editor-tab-icon { opacity:0.8; }
   .editor-tab .editor-tab-modified { width:8px; height:8px; border-radius:50%; background:var(--accent-amber); flex-shrink:0; }
   .editor-tab .editor-tab-close { width:16px; height:16px; border-radius:3px; display:none; align-items:center; justify-content:center; font-size:10px; color:var(--text3); cursor:pointer; flex-shrink:0; margin-left:2px; }
   .editor-tab:hover .editor-tab-close { display:flex; }
   .editor-tab .editor-tab-close:hover { background:rgba(239,68,68,0.2); color:var(--accent-red); }
+  .editor-panel-tab { border-bottom:2px solid transparent !important; }
+  .editor-panel-tab.active { color:var(--accent2) !important; border-bottom-color:var(--accent2) !important; }
   #editor-container { position:relative; }
   .CodeMirror { position:absolute; top:0; left:0; right:0; bottom:0; height:auto !important; font-size:13px; font-family:'JetBrains Mono',monospace; background:var(--bg3) !important; color:var(--text) !important; }
   .CodeMirror-gutters { background:var(--bg2) !important; border-right:1px solid var(--border) !important; }
   .CodeMirror-linenumber { color:var(--text3) !important; }
   .CodeMirror-cursor { border-left:2px solid var(--accent2) !important; }
+  .CodeMirror-activeline-background { background:rgba(255,255,255,0.03) !important; }
   .cm-s-default .cm-keyword { color:#818cf8; }
   .cm-s-default .cm-atom { color:#f472b6; }
   .cm-s-default .cm-number { color:#f472b6; }
@@ -777,6 +783,17 @@ const HTML = `<!DOCTYPE html>
   .CodeMirror-focused .CodeMirror-selected { background:rgba(6,182,212,0.25) !important; }
   .CodeMirror-matchingbracket { outline:1px solid rgba(6,182,212,0.4); color:var(--text) !important; }
   .CodeMirror-nonmatchingbracket { color:#f87171 !important; }
+  .editor-find-highlight { background:rgba(250,204,21,0.3) !important; border-bottom:1px solid rgba(250,204,21,0.6); }
+  .editor-find-active { background:rgba(250,204,21,0.5) !important; border-bottom:2px solid #facc15; }
+  .editor-context-item { display:flex; align-items:center; gap:8px; padding:5px 10px; border-radius:3px; cursor:pointer; color:var(--text2); transition:all 0.08s; border:none; background:transparent; width:100%; text-align:left; font-family:'Inter',sans-serif; font-size:11px; justify-content:space-between; }
+  .editor-context-item:hover { background:rgba(6,182,212,0.15); color:var(--text); }
+  .editor-context-item.danger:hover { background:rgba(239,68,68,0.15); color:#f87171; }
+  .editor-context-sep { border:none; border-top:1px solid var(--border); margin:4px 0; }
+  .editor-quick-result { display:flex; align-items:center; gap:8px; padding:6px 16px; cursor:pointer; color:var(--text2); transition:all 0.08s; }
+  .editor-quick-result:hover, .editor-quick-result.active { background:rgba(6,182,212,0.15); color:var(--text); }
+  .editor-breadcrumb-part { cursor:pointer; color:var(--text3); border-radius:3px; padding:2px 4px; transition:all 0.1s; }
+  .editor-breadcrumb-part:hover { color:var(--accent2); background:rgba(6,182,212,0.1); }
+  .editor-breadcrumb-sep { color:var(--text3); opacity:0.4; margin:0 2px; }
 
   /* ── Card hover effects ───────────────────────── */
   .card, .card-sm { transition: border-color 0.2s, box-shadow 0.2s; }
@@ -1166,47 +1183,128 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Page: Editor -->
+  <!-- Page: Editor (IDE) -->
   <div id="page-editor" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <!-- Breadcrumb / path bar -->
+    <div id="editor-breadcrumb" style="display:none;padding:4px 16px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);align-items:center;gap:2px;flex-shrink:0;overflow-x:auto;white-space:nowrap;"></div>
     <div style="display:flex;flex:1;overflow:hidden;">
-      <!-- Editor sidebar: file tree / tabs -->
-      <div style="width:240px;min-width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
-        <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;">
+      <!-- Editor sidebar: file tree -->
+      <div id="editor-sidebar" style="width:260px;min-width:180px;max-width:500px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;">
           <select id="editor-workspace-select" class="inp" style="flex:1;font-size:12px;padding:5px 8px;" onchange="editorSwitchWorkspace(this.value)">
             <option value="global">Global</option>
           </select>
           <button class="btn btn-ghost" onclick="editorRefreshTree()" style="padding:4px 8px;font-size:12px;" data-tip="Refresh">↻</button>
         </div>
-        <div style="padding:6px 8px;border-bottom:1px solid var(--border);display:flex;gap:4px;">
-          <button class="btn btn-ghost" onclick="editorNewFile()" style="flex:1;padding:4px 6px;font-size:11px;">+ New File</button>
-          <button class="btn btn-ghost" onclick="editorNewFolder()" style="flex:1;padding:4px 6px;font-size:11px;">+ Folder</button>
+        <div style="padding:4px 8px;border-bottom:1px solid var(--border);display:flex;gap:4px;">
+          <button class="btn btn-ghost" id="editor-new-file-btn" onclick="editorNewFileInline()" style="flex:1;padding:4px 6px;font-size:11px;">+ New File</button>
+          <button class="btn btn-ghost" id="editor-new-folder-btn" onclick="editorNewFolderInline()" style="flex:1;padding:4px 6px;font-size:11px;">+ Folder</button>
+          <button class="btn btn-ghost" onclick="editorCollapseAll()" style="padding:4px 6px;font-size:11px;" data-tip="Collapse All">⊟</button>
         </div>
-        <div id="editor-tree" style="flex:1;overflow-y:auto;padding:6px 4px;font-size:13px;"></div>
+        <div id="editor-new-item-form" style="display:none;padding:6px 8px;border-bottom:1px solid var(--border);">
+          <input id="editor-new-item-input" class="inp" style="width:100%;font-size:11px;padding:4px 8px;" placeholder="File or folder name..." onkeydown="if(event.key==='Escape')editorCancelNewItem();if(event.key==='Enter')editorCommitNewItem();">
+        </div>
+        <div id="editor-tree" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0;font-size:12px;"></div>
+        <!-- Search results panel (find in files) -->
+        <div id="editor-search-results" style="display:none;border-top:1px solid var(--border);max-height:40%;overflow-y:auto;background:var(--bg2);">
+          <div style="padding:6px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span id="editor-search-title">Search Results</span>
+            <button class="btn btn-ghost" onclick="editorClearSearch()" style="padding:2px 6px;font-size:10px;">✕</button>
+          </div>
+          <div id="editor-search-list" style="font-size:11px;"></div>
+        </div>
       </div>
+      <!-- Sidebar resize handle -->
+      <div id="editor-sidebar-handle" style="width:4px;cursor:col-resize;background:transparent;flex-shrink:0;position:relative;z-index:10;" onmousedown="editorStartSidebarResize(event)"></div>
       <!-- Editor main pane -->
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
         <!-- Tabs bar -->
-        <div id="editor-tabs" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;padding:0 8px;flex-shrink:0;"></div>
-      <!-- CodeMirror container -->
-      <div id="editor-container" style="flex:1;overflow:hidden;display:flex;">
-          <div style="text-align:center;color:var(--text3);">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            <p style="font-size:14px;font-weight:500;">File Editor</p>
-            <p style="font-size:12px;margin-top:4px;">Select a file from the tree to start editing</p>
+        <div id="editor-tabs-wrapper" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow:hidden;flex-shrink:0;align-items:stretch;">
+          <div id="editor-tabs" style="display:flex;overflow-x:auto;padding:0 4px;flex:1;scrollbar-width:none;"></div>
+          <div style="display:flex;align-items:center;padding:0 8px;gap:4px;flex-shrink:0;">
+            <button class="btn btn-ghost" onclick="editorFind()" style="padding:2px 6px;font-size:11px;" data-tip="Find (Ctrl+F)">🔍</button>
+            <button class="btn btn-ghost" onclick="editorFindInFiles()" style="padding:2px 6px;font-size:11px;" data-tip="Find in Files (Ctrl+Shift+F)">🔎</button>
+          </div>
+        </div>
+        <!-- CodeMirror container -->
+        <div id="editor-main-area" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+          <!-- Find/replace bar -->
+          <div id="editor-find-bar" style="display:none;padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--border);gap:8px;align-items:center;flex-shrink:0;">
+            <input id="editor-find-input" class="inp" style="width:240px;font-size:12px;padding:3px 8px;" placeholder="Find..." onkeydown="if(event.key==='Enter')editorFindNext();if(event.key==='Escape')editorCloseFind();">
+            <span id="editor-find-count" style="font-size:11px;color:var(--text3);min-width:40px;">0/0</span>
+            <button class="btn btn-ghost" onclick="editorFindPrev()" style="padding:2px 6px;font-size:11px;" data-tip="Previous">↑</button>
+            <button class="btn btn-ghost" onclick="editorFindNext()" style="padding:2px 6px;font-size:11px;" data-tip="Next">↓</button>
+            <input id="editor-replace-input" class="inp" style="width:180px;font-size:12px;padding:3px 8px;" placeholder="Replace...">
+            <button class="btn btn-ghost" onclick="editorReplace()" style="padding:2px 8px;font-size:11px;">Replace</button>
+            <button class="btn btn-ghost" onclick="editorReplaceAll()" style="padding:2px 8px;font-size:11px;">All</button>
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="editor-find-regex" onchange="editorUpdateSearch()"> .*</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="editor-find-case" onchange="editorUpdateSearch()"> Aa</label>
+            <button class="btn btn-ghost" onclick="editorCloseFind()" style="padding:2px 6px;font-size:11px;margin-left:auto;">✕</button>
+          </div>
+          <!-- Editor area -->
+          <div id="editor-container" style="flex:1;overflow:hidden;display:flex;">
+            <div style="margin:auto;text-align:center;color:var(--text3);">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.15;margin-bottom:16px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <p style="font-size:15px;font-weight:500;margin:0;">Code Editor</p>
+              <p style="font-size:12px;margin-top:6px;margin-bottom:0;line-height:1.5;">
+                <span style="color:var(--accent2);">Ctrl+P</span> Quick Open &ensp;
+                <span style="color:var(--accent2);">Ctrl+B</span> Toggle Sidebar &ensp;
+                <span style="color:var(--accent2);">Ctrl+J</span> Toggle Panel
+              </p>
+              <p style="font-size:11px;color:var(--text3);margin-top:4px;">Select a file from the sidebar to begin editing</p>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom panel handle -->
+        <div id="editor-panel-handle" style="display:none;height:4px;cursor:row-resize;background:var(--border);flex-shrink:0;position:relative;z-index:10;" onmousedown="editorStartPanelResize(event)"></div>
+        <!-- Bottom panel (output / problems) -->
+        <div id="editor-bottom-panel" style="display:none;height:180px;min-height:60px;max-height:50%;background:var(--bg2);border-top:1px solid var(--border);flex-direction:column;overflow:hidden;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:2px;padding:0 8px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;">
+            <button class="editor-panel-tab active" onclick="editorSwitchPanelTab('problems')" id="panel-tab-problems" style="padding:4px 10px;font-size:11px;background:transparent;border:none;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;">Problems</button>
+            <button class="editor-panel-tab" onclick="editorSwitchPanelTab('output')" id="panel-tab-output" style="padding:4px 10px;font-size:11px;background:transparent;border:none;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;">Output</button>
+            <button class="editor-panel-tab" onclick="editorSwitchPanelTab('terminal')" id="panel-tab-terminal" style="padding:4px 10px;font-size:11px;background:transparent;border:none;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;">Terminal</button>
+            <div style="flex:1;"></div>
+            <button class="btn btn-ghost" onclick="editorTogglePanel()" style="padding:2px 6px;font-size:10px;">✕</button>
+          </div>
+          <div id="panel-content-problems" style="flex:1;overflow-y:auto;padding:8px 12px;font-size:11px;color:var(--text3);">No problems detected. Open a file to see diagnostics.</div>
+          <div id="panel-content-output" style="display:none;flex:1;overflow-y:auto;padding:8px 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:pre-wrap;"></div>
+          <div id="panel-content-terminal" style="display:none;flex:1;overflow-y:auto;padding:12px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text2);background:var(--bg3);">
+            <div style="color:#4ade80;font-size:11px;">CortexPrism Terminal — not connected</div>
+            <div style="color:var(--text3);margin-top:8px;">Run code in the CodeRunner page or execute shell commands via the Chat.</div>
           </div>
         </div>
         <!-- Status bar -->
-        <div id="editor-statusbar" style="display:none;padding:6px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;color:var(--text3);justify-content:space-between;align-items:center;flex-shrink:0;">
-          <span id="editor-file-info"></span>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <span id="editor-git-status"></span>
-            <button class="btn btn-ghost" onclick="editorUndo()" style="padding:2px 8px;font-size:11px;" data-tip="Undo">↩ Undo</button>
-            <button class="btn btn-ghost" onclick="editorRedo()" style="padding:2px 8px;font-size:11px;" data-tip="Redo">↪ Redo</button>
-            <span id="editor-modified" style="color:#fbbf24;"></span>
-            <button class="btn btn-ghost" onclick="editorDeleteFile()" style="padding:2px 8px;font-size:11px;color:#f87171;" data-tip="Delete file">✕ Delete</button>
-            <button class="btn btn-primary" onclick="editorSave()" style="padding:3px 12px;font-size:11px;">Save</button>
+        <div id="editor-statusbar" style="display:none;padding:4px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;color:var(--text3);justify-content:space-between;align-items:center;flex-shrink:0;min-height:26px;">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <span id="editor-file-info" style="color:var(--text2);"></span>
+            <span id="editor-modified-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--accent-amber);flex-shrink:0;"></span>
+            <span id="editor-git-status" style="font-size:10px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span id="editor-lang-mode" style="color:var(--accent2);"></span>
+            <span>|</span>
+            <span id="editor-line-col">Ln 1, Col 1</span>
+            <span>|</span>
+            <span id="editor-encoding">UTF-8</span>
+            <span>|</span>
+            <span id="editor-indent-info">Spaces: 2</span>
+            <span>|</span>
+            <button class="btn btn-ghost" onclick="editorUndo()" style="padding:1px 6px;font-size:11px;" data-tip="Undo (Ctrl+Z)">↩</button>
+            <button class="btn btn-ghost" onclick="editorRedo()" style="padding:1px 6px;font-size:11px;" data-tip="Redo (Ctrl+Shift+Z)">↪</button>
+            <span style="margin-left:4px;display:flex;gap:4px;">
+              <button class="btn btn-primary" onclick="editorSave()" style="padding:2px 10px;font-size:11px;" data-tip="Save (Ctrl+S)">Save</button>
+            </span>
           </div>
         </div>
+      </div>
+    </div>
+    <!-- Context menu -->
+    <div id="editor-context-menu" style="display:none;position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px;min-width:180px;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-size:11px;" onmouseleave="editorHideContextMenu()"></div>
+    <!-- Quick open modal -->
+    <div id="editor-quick-open" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:900;align-items:flex-start;justify-content:center;padding-top:15vh;">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;width:500px;max-width:90vw;box-shadow:0 16px 48px rgba(0,0,0,0.5);overflow:hidden;">
+        <input id="editor-quick-open-input" class="inp" style="width:100%;font-size:14px;padding:12px 16px;border:none;border-bottom:1px solid var(--border);border-radius:8px 8px 0 0;background:var(--bg2);" placeholder="Type file name to open...">
+        <div id="editor-quick-open-results" style="max-height:360px;overflow-y:auto;font-size:12px;"></div>
       </div>
     </div>
   </div>
@@ -6827,6 +6925,9 @@ function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function escAttr(s) { return esc(s); }
+function escJs(s) {
+  return String(s ?? '').replace(/'/g, "\\\\'").replace(/"/g, '\\\\"');
+}
 function renderBadge(label, color) {
   const palette = {
     green: ['rgba(34,197,94,0.15)', '#4ade80'],
@@ -10151,6 +10252,21 @@ function filterNav(query) {
 document.addEventListener('keydown', (e) => {
   // Esc: close modals and panels
   if (e.key === 'Escape') {
+    var qo = document.getElementById('editor-quick-open');
+    if (qo && qo.style.display === 'flex') {
+      editorQuickClose();
+      return;
+    }
+    var ctx = document.getElementById('editor-context-menu');
+    if (ctx && ctx.style.display !== 'none') {
+      editorHideContextMenu();
+      return;
+    }
+    var findBar = document.getElementById('editor-find-bar');
+    if (findBar && findBar.style.display !== 'none') {
+      editorCloseFind();
+      return;
+    }
     const palette = document.getElementById('cmd-palette');
     if (palette.classList.contains('open')) {
       closeCmdPalette({ target: palette });
@@ -10198,7 +10314,12 @@ document.addEventListener('keydown', (e) => {
   // Ctrl+B: toggle sidebar
   if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
     e.preventDefault();
-    toggleSidebar();
+    if (currentPage === 'editor' && editorInstance) { editorToggleSidebar(); }
+    else { toggleSidebar(); }
+  }
+  // Ctrl+J: toggle bottom panel
+  if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+    if (currentPage === 'editor') { e.preventDefault(); editorTogglePanel(); }
   }
   // Enter in command palette
   if (e.key === 'Enter') {
@@ -10258,6 +10379,7 @@ hideAgentModal = function() {
   if (_agentModalCleanup) { _agentModalCleanup(); _agentModalCleanup = null; }
   _origHideAgentModal();
 };
+// ── Editor IDE ──────────────────────────────────────────────────
 let editorInstance = null;
 let editorFileTree = [];
 let editorOpenFiles = [];
@@ -10265,7 +10387,90 @@ let editorCurrentFile = null;
 let editorWorkspace = 'global';
 let editorContentDirty = false;
 let editorCurrentPath = '';
+let editorSidebarResizing = false;
+let editorPanelResizing = false;
+let editorCurrentLang = '';
+let editorNewItemKind = '';
+let editorFlatFileList = [];
+let editorFindMarkers = [];
+let editorFindIdx = -1;
+let editorCurrentPanelTab = 'problems';
 
+// ── Sidebar / Panel resize ────────────────────────────────────
+function editorStartSidebarResize(e) {
+  editorSidebarResizing = true; e.preventDefault();
+  document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+}
+function editorStartPanelResize(e) {
+  editorPanelResizing = true; e.preventDefault();
+  document.body.style.cursor = 'row-resize'; document.body.style.userSelect = 'none';
+}
+document.addEventListener('mousemove', function(e) {
+  if (!editorSidebarResizing && !editorPanelResizing) return;
+  if (editorSidebarResizing) {
+    const sb = document.getElementById('editor-sidebar');
+    const rect = sb.parentElement.getBoundingClientRect();
+    let w = e.clientX - rect.left;
+    if (w < 180) w = 180;
+    if (w > 500) w = 500;
+    sb.style.width = w + 'px';
+  }
+  if (editorPanelResizing) {
+    const panel = document.getElementById('editor-bottom-panel');
+    const mainArea = document.getElementById('editor-main-area');
+    const h = mainArea.getBoundingClientRect().bottom - e.clientY;
+    let clamped = h;
+    if (clamped < 60) clamped = 60;
+    if (clamped > window.innerHeight * 0.5) clamped = window.innerHeight * 0.5;
+    panel.style.height = clamped + 'px';
+  }
+});
+document.addEventListener('mouseup', function() {
+  if (editorSidebarResizing || editorPanelResizing) {
+    editorSidebarResizing = false; editorPanelResizing = false;
+    document.body.style.cursor = ''; document.body.style.userSelect = '';
+    if (editorInstance) editorInstance.refresh();
+  }
+});
+
+// ── Panel tabs ────────────────────────────────────────────────
+function editorSwitchPanelTab(tab) {
+  editorCurrentPanelTab = tab;
+  ['problems','output','terminal'].forEach(function(t) {
+    document.getElementById('panel-content-' + t).style.display = (t === tab ? '' : 'none');
+    var btn = document.getElementById('panel-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  var panel = document.getElementById('editor-bottom-panel');
+  if (panel.style.display !== 'flex') editorTogglePanel();
+}
+function editorTogglePanel() {
+  var panel = document.getElementById('editor-bottom-panel');
+  var handle = document.getElementById('editor-panel-handle');
+  var isOpen = panel.style.display === 'flex';
+  panel.style.display = isOpen ? 'none' : 'flex';
+  handle.style.display = isOpen ? 'none' : '';
+  if (editorInstance) setTimeout(function() { editorInstance.refresh(); }, 50);
+}
+function editorShowPanel() {
+  var panel = document.getElementById('editor-bottom-panel');
+  var handle = document.getElementById('editor-panel-handle');
+  if (panel.style.display !== 'flex') {
+    panel.style.display = 'flex';
+    handle.style.display = '';
+    editorSwitchPanelTab(editorCurrentPanelTab);
+    if (editorInstance) setTimeout(function() { editorInstance.refresh(); }, 50);
+  }
+}
+function editorAppendOutput(text) {
+  var out = document.getElementById('panel-content-output');
+  out.textContent += text;
+  out.scrollTop = out.scrollHeight;
+  editorShowPanel();
+  editorSwitchPanelTab('output');
+}
+
+// ── Workspace loading ─────────────────────────────────────────
 async function editorLoadWorkspaces() {
   try {
     const res = await fetch(BASE + '/api/workspace/agents');
@@ -10274,7 +10479,7 @@ async function editorLoadWorkspaces() {
       const sel = document.getElementById('editor-workspace-select');
       const currentVal = sel.value;
       sel.innerHTML = '<option value="global">Global</option>' +
-        agents.map(a => '<option value="' + esc(a.agentId) + '">' + esc(a.agentName) + ' (agent)</option>').join('');
+        agents.map(function(a) { return '<option value="' + esc(a.agentId) + '">' + esc(a.agentName) + ' (agent)</option>'; }).join('');
       if (currentVal === 'global' && agents.length > 0) {
         sel.value = agents[0].agentId;
         editorWorkspace = agents[0].agentId;
@@ -10285,27 +10490,84 @@ async function editorLoadWorkspaces() {
   } catch {}
 }
 
+// ── Recursive file list fetcher ───────────────────────────────
+async function editorFetchAllFiles() {
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var base = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
+    : BASE + '/api/workspace/files';
+  var allFiles = [];
+  async function recurse(path) {
+    var url = path ? base + '/' + path.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
+    try {
+      var res = await fetch(url);
+      if (!res.ok) return;
+      var entries = await res.json();
+      if (!Array.isArray(entries)) return;
+      for (var i = 0; i < entries.length; i++) {
+        var name = entries[i];
+        var full = path ? path + '/' + name : name;
+        if (name.endsWith('/')) {
+          await recurse(full);
+        } else {
+          allFiles.push(full);
+        }
+      }
+    } catch {}
+  }
+  await recurse('');
+  editorFlatFileList = allFiles;
+}
+
+// ── Nested tree structure ─────────────────────────────────────
+function editorBuildNestedTree(entries, basePath) {
+  var dirs = {};
+  var files = [];
+  entries.forEach(function(name) {
+    if (name.endsWith('/')) {
+      var dName = name.slice(0, -1);
+      dirs[dName] = [];
+    } else {
+      files.push(name);
+    }
+  });
+  return { dirs: dirs, files: files };
+}
+
+// ── Refresh & render tree ─────────────────────────────────────
 async function editorRefreshTree() {
-  const tree = document.getElementById('editor-tree');
-  tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Loading…</div>';
+  var tree = document.getElementById('editor-tree');
+  tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">Loading...</div>';
   try {
-    const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+    var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
     var base = agentId
       ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
       : BASE + '/api/workspace/files';
     var url = editorCurrentPath ? base + '/' + editorCurrentPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
-    const res = await fetch(url);
+    var res = await fetch(url);
     if (!res.ok) { tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Folder not found: ' + esc(editorCurrentPath || '/') + '</div>'; return; }
-    const entries = await res.json();
+    var entries = await res.json();
     editorFileTree = Array.isArray(entries) ? entries : [];
+    // Preload all files for quick open
+    editorFetchAllFiles().catch(function(){});
     renderEditorTree();
   } catch (e) {
     tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Error: ' + e.message + '</div>';
   }
 }
 
+function editorGetFileIcon(name, isDir) {
+  if (isDir) return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+  // Color-coded by extension
+  var ext = name.split('.').pop().toLowerCase();
+  var color = 'currentColor';
+  var colors = { js:'#f0db4f', ts:'#3178c6', jsx:'#61dafb', tsx:'#3178c6', py:'#3572A5', rb:'#cc342d', rs:'#dea584', go:'#00ADD8', md:'#fff', json:'#f0db4f', css:'#42a5f5', html:'#e44d26', sql:'#336791', sh:'#4eaa25', yaml:'#f15a24', yml:'#f15a24', xml:'#e65100', svg:'#ffb13b', toml:'#9c4221', dockerfile:'#2496ed', vue:'#41b883', scss:'#cd6799', less:'#1d365d' };
+  color = colors[ext] || 'currentColor';
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+}
+
 function renderEditorTree() {
-  const tree = document.getElementById('editor-tree');
+  var tree = document.getElementById('editor-tree');
   if (!editorFileTree.length && !editorCurrentPath) {
     tree.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">Empty workspace</div>';
     return;
@@ -10313,41 +10575,72 @@ function renderEditorTree() {
   var html = '';
   if (editorCurrentPath) {
     html += '<button class="editor-tree-item" onclick="editorGoUp()" style="color:var(--accent2);">' +
-      '<span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></span>' +
-      '<span>..</span></button>';
+      '<span class="editor-tree-chevron">◂</span>' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" style="margin-left:2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">..</span></button>';
   }
-  html += editorFileTree.map(function(name) {
-    const isDir = name.endsWith('/');
-    const active = editorCurrentFile === name;
-    const icon = isDir
-      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
-    const nameClean = name.replace(/\\/$/, '');
+  // Group: directories first, then files
+  var dirs = [];
+  var files = [];
+  editorFileTree.forEach(function(name) {
+    if (name.endsWith('/')) dirs.push(name);
+    else files.push(name);
+  });
+  var sorted = dirs.concat(files);
+  sorted.forEach(function(name) {
+    var isDir = name.endsWith('/');
+    var nameClean = name.replace(/\/$/, '');
+    var active = editorCurrentFile === nameClean || editorCurrentFile === name;
     var onclick = isDir
-      ? 'editorOpenDir(\\'' + esc(nameClean) + '\\')'
-      : 'editorOpenFile(\\'' + esc(nameClean) + '\\')';
-    return '<button class="editor-tree-item' + (active ? ' active' : '') + '" onclick="' + onclick + '" title="' + esc(nameClean) + '">' +
-      '<span class="icon">' + icon + '</span>' +
+      ? 'editorOpenDir(\'' + escJs(nameClean) + '\')'
+      : 'editorOpenFile(\'' + escJs(nameClean) + '\')';
+    html += '<button class="editor-tree-item' + (active ? ' active' : '') + '" ' +
+      'onclick="' + onclick + '" ' +
+      'oncontextmenu="event.preventDefault();editorTreeContextMenu(event, \'' + escJs(nameClean) + '\', ' + isDir + ')" ' +
+      'title="' + esc(nameClean) + '" ' +
+      'data-path="' + esc(nameClean) + '">' +
+      '<span class="editor-tree-chevron" style="visibility:hidden;">▶</span>' +
+      '<span style="width:14px;text-align:center;flex-shrink:0;">' + editorGetFileIcon(nameClean, isDir) + '</span>' +
       '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(nameClean) + '</span>' +
       '</button>';
-  }).join('');
+  });
   tree.innerHTML = html;
 }
 function editorOpenDir(dirName) {
   editorCurrentPath = editorCurrentPath ? editorCurrentPath + '/' + dirName : dirName;
   editorRefreshTree();
+  editorUpdateBreadcrumb();
 }
 function editorGoUp() {
   var parts = editorCurrentPath.split('/');
   parts.pop();
   editorCurrentPath = parts.join('/');
   editorRefreshTree();
+  editorUpdateBreadcrumb();
+}
+function editorCollapseAll() {
+  editorCurrentPath = '';
+  editorRefreshTree();
+  editorUpdateBreadcrumb();
+}
+function editorUpdateBreadcrumb() {
+  var bc = document.getElementById('editor-breadcrumb');
+  if (!editorCurrentPath) { bc.style.display = 'none'; return; }
+  bc.style.display = 'flex';
+  var parts = editorCurrentPath.split('/');
+  var html = '<span class="editor-breadcrumb-part" onclick="editorCollapseAll()">~/</span>';
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts.slice(0, i + 1).join('/');
+    html += '<span class="editor-breadcrumb-sep">›</span>';
+    html += '<span class="editor-breadcrumb-part" onclick="editorCurrentPath=\'' + escJs(p) + '\';editorRefreshTree();editorUpdateBreadcrumb();">' + esc(parts[i]) + '</span>';
+  }
+  bc.innerHTML = html;
 }
 
-
+// ── Workspace switch ──────────────────────────────────────────
 async function editorSwitchWorkspace(value) {
   if (editorInstance && editorContentDirty) {
-    const ok = await confirmAction('Unsaved Changes', 'Unsaved changes will be lost. Switch workspace?', 'Switch');
+    var ok = await confirmAction('Unsaved Changes', 'Unsaved changes will be lost. Switch workspace?', 'Switch');
     if (!ok) {
       document.getElementById('editor-workspace-select').value = editorWorkspace;
       return;
@@ -10355,178 +10648,217 @@ async function editorSwitchWorkspace(value) {
   }
   editorWorkspace = value;
   editorCurrentPath = '';
+  editorFlatFileList = [];
+  editorUpdateBreadcrumb();
   editorCloseAllTabs();
   editorRefreshTree();
 }
 
+// ── File operations ──────────────────────────────────────────
 async function editorOpenFile(fileName) {
   if (editorInstance && editorContentDirty) {
-    const ok = await confirmAction('Unsaved Changes', 'Save changes to ' + editorCurrentFile + '?', 'Save');
-    if (ok) {
-      await editorSave();
-    }
+    var ok = await confirmAction('Unsaved Changes', 'Save changes to ' + editorCurrentFile + '?', 'Save');
+    if (ok) await editorSave();
   }
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   var relPath = editorCurrentPath ? editorCurrentPath + '/' + fileName : fileName;
   var encPath = relPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
-  const url = agentId
+  var url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encPath
     : BASE + '/api/workspace/files/' + encPath;
   try {
-    const res = await fetch(url);
+    var res = await fetch(url);
     if (!res.ok) { toast('Failed to open file', 'error'); return; }
-    const data = await res.json();
-    const content = data.content || '';
+    var data = await res.json();
+    var content = data.content || '';
     editorCurrentFile = relPath;
     editorContentDirty = false;
     editorAddTab(fileName);
     editorShowEditor(fileName, content);
+    renderEditorTree();
+    editorUpdateBreadcrumb();
   } catch (e) {
     toast('Error: ' + e.message, 'error');
   }
 }
 
+// ── Tab management ────────────────────────────────────────────
 function editorAddTab(fileName) {
-  if (!editorOpenFiles.includes(fileName)) {
-    editorOpenFiles.push(fileName);
-  }
+  if (!editorOpenFiles.includes(fileName)) editorOpenFiles.push(fileName);
   renderEditorTabs();
 }
-
 function fileIcon(f) {
-  const ext = f.split('.').pop();
-  const icons = { js:'⬡', ts:'⬡', jsx:'⬡', tsx:'⬡', py:'◇', rb:'◇', rs:'◇', go:'◇',
+  var ext = f.split('.').pop().toLowerCase();
+  var icons = { js:'⬡', ts:'⬡', jsx:'⬡', tsx:'⬡', py:'◇', rb:'◇', rs:'◇', go:'◇',
     md:'≡', yaml:'≡', yml:'≡', toml:'≡', json:'≡', css:'◐', html:'◇', svg:'◇',
-    sql:'◈', sh:'▷', bash:'▷', zsh:'▷', txt:'≡' };
+    sql:'◈', sh:'▷', bash:'▷', zsh:'▷', txt:'≡', vue:'◇', dockerfile:'◈', scss:'◐', less:'◐', xml:'≡' };
   return '<span class="editor-tab-icon">' + (icons[ext] || '▢') + '</span>';
 }
-
 function renderEditorTabs() {
-  const bar = document.getElementById('editor-tabs');
-  bar.innerHTML = editorOpenFiles.map(f =>
-    '<span class="editor-tab' + (f === editorCurrentFile ? ' active' : '') + '" onclick="editorSwitchTab(\\'' + esc(f) + '\\')">' +
-    fileIcon(f) +
-    esc(f) +
-    (editorContentDirty && f === editorCurrentFile ? '<span class="editor-tab-modified"></span>' : '') +
-    (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\\'' + esc(f) + '\\')">✕</span>' : '') +
-    '</span>'
-  ).join('');
-  renderEditorTree();
+  var bar = document.getElementById('editor-tabs');
+  bar.innerHTML = editorOpenFiles.map(function(f) {
+    return '<span class="editor-tab' + (f === editorCurrentFile ? ' active' : '') + '" ' +
+      'onclick="editorSwitchTab(\'' + escJs(f) + '\')" ' +
+      'oncontextmenu="event.preventDefault();event.stopPropagation();editorTabContextMenu(event, \'' + escJs(f) + '\')" ' +
+      'data-tab="' + esc(f) + '">' +
+      fileIcon(f) + esc(f) +
+      (editorContentDirty && f === editorCurrentFile ? '<span class="editor-tab-modified"></span>' : '') +
+      (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\'' + escJs(f) + '\')">✕</span>' : '') +
+      '</span>';
+  }).join('');
 }
-
 function editorSwitchTab(fileName) {
-  if (editorInstance && editorContentDirty) {
-    // Auto-save on tab switch
-    editorSave();
-  }
+  if (editorInstance && editorContentDirty) editorSave();
   editorCurrentFile = fileName;
   renderEditorTabs();
-  // Re-read content from server
   editorOpenFile(fileName);
 }
-
 function editorCloseTab(fileName) {
-  const idx = editorOpenFiles.indexOf(fileName);
+  var idx = editorOpenFiles.indexOf(fileName);
   if (idx > -1) editorOpenFiles.splice(idx, 1);
   if (editorCurrentFile === fileName) {
     editorCurrentFile = editorOpenFiles.length > 0 ? editorOpenFiles[editorOpenFiles.length - 1] : null;
-    if (editorCurrentFile) {
-      editorOpenFile(editorCurrentFile);
-    } else {
-      editorDestroyEditor();
-    }
+    if (editorCurrentFile) { editorOpenFile(editorCurrentFile); }
+    else { editorDestroyEditor(); }
   }
   renderEditorTabs();
 }
-
 function editorCloseAllTabs() {
   editorOpenFiles = [];
   editorCurrentFile = null;
   editorDestroyEditor();
 }
-
+function editorCloseOtherTabs(keepFile) {
+  editorOpenFiles = [keepFile];
+  if (editorCurrentFile !== keepFile) editorCurrentFile = keepFile;
+  editorOpenFile(keepFile);
+}
+function editorCloseTabsRight(fileName) {
+  var idx = editorOpenFiles.indexOf(fileName);
+  if (idx > -1) editorOpenFiles = editorOpenFiles.slice(0, idx + 1);
+  renderEditorTabs();
+}
 function editorDestroyEditor() {
+  editorClearFind();
   if (editorInstance) {
-    try { editorInstance.toTextArea(); } catch {}
+    try { editorInstance.toTextArea(); } catch(e) {}
     editorInstance = null;
   }
-  const container = document.getElementById('editor-container');
-  container.innerHTML = '<div style="text-align:center;color:var(--text3);">' +
-    '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-    '<p style="font-size:14px;font-weight:500;">File Editor</p>' +
-    '<p style="font-size:12px;margin-top:4px;">Select a file from the tree to start editing</p></div>';
+  var container = document.getElementById('editor-container');
+  container.innerHTML = '<div style="margin:auto;text-align:center;color:var(--text3);">' +
+    '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.15;margin-bottom:16px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+    '<p style="font-size:15px;font-weight:500;margin:0;">Code Editor</p>' +
+    '<p style="font-size:12px;margin-top:6px;margin-bottom:0;line-height:1.5;">' +
+    '<span style="color:var(--accent2);">Ctrl+P</span> Quick Open &ensp;' +
+    '<span style="color:var(--accent2);">Ctrl+B</span> Toggle Sidebar &ensp;' +
+    '<span style="color:var(--accent2);">Ctrl+J</span> Toggle Panel</p>' +
+    '<p style="font-size:11px;color:var(--text3);margin-top:4px;">Select a file from the sidebar to begin editing</p></div>';
   document.getElementById('editor-statusbar').style.display = 'none';
+  document.getElementById('editor-breadcrumb').style.display = 'none';
+  document.getElementById('editor-panel-handle').style.display = 'none';
+  var panel = document.getElementById('editor-bottom-panel');
+  if (panel) panel.style.display = 'none';
 }
 
+// ── Editor show / init ────────────────────────────────────────
 function editorShowEditor(fileName, content) {
+  editorClearFind();
   if (editorInstance) {
-    try { editorInstance.toTextArea(); } catch {}
+    try { editorInstance.toTextArea(); } catch(e) {}
     editorInstance = null;
   }
-
-  const container = document.getElementById('editor-container');
-  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:\\'JetBrains Mono\\',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
+  var container = document.getElementById('editor-container');
+  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
   container.style.cssText = 'flex:1;overflow:hidden;display:flex;';
-
-  const mode = editorDetectMode(fileName);
+  var lang = editorDetectMode(fileName);
+  editorCurrentLang = lang;
   editorInstance = CodeMirror.fromTextArea(document.getElementById('editor-textarea'), {
     lineNumbers: true,
-    mode: mode,
+    mode: lang,
     theme: 'default',
     indentUnit: 2,
     tabSize: 2,
     lineWrapping: false,
+    styleActiveLine: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
     extraKeys: {
       'Ctrl-S': function() { editorSave(); },
       'Cmd-S': function() { editorSave(); },
+      'Ctrl-F': function() { editorFind(); },
+      'Cmd-F': function() { editorFind(); },
+      'Ctrl-H': function() { editorFindReplace(); },
+      'Cmd-Alt-F': function() { editorFindReplace(); },
+      'Ctrl-P': function() { editorQuickOpen(); },
+      'Cmd-P': function() { editorQuickOpen(); },
+      'Ctrl-B': function() { editorToggleSidebar(); },
+      'Cmd-B': function() { editorToggleSidebar(); },
+      'Ctrl-J': function() { editorTogglePanel(); },
+      'Cmd-J': function() { editorTogglePanel(); },
+      'Shift-Ctrl-F': function() { editorFindInFiles(); },
+      'Shift-Cmd-F': function() { editorFindInFiles(); },
     },
   });
-
   editorInstance.on('change', function() {
     editorContentDirty = true;
-    document.getElementById('editor-modified').textContent = '● unsaved';
+    document.getElementById('editor-modified-dot').style.display = '';
   });
-
-  const statusbar = document.getElementById('editor-statusbar');
+  editorInstance.on('cursorActivity', function() {
+    editorUpdateCursorPos();
+  });
+  editorUpdateCursorPos();
+  var statusbar = document.getElementById('editor-statusbar');
   statusbar.style.display = 'flex';
-  document.getElementById('editor-file-info').textContent = fileName + ' (' + content.length + ' bytes)';
-  document.getElementById('editor-modified').textContent = '';
+  document.getElementById('editor-file-info').textContent = fileName;
+  document.getElementById('editor-modified-dot').style.display = 'none';
+  document.getElementById('editor-lang-mode').textContent = lang.toUpperCase();
+  document.getElementById('editor-indent-info').textContent = 'Spaces: 2';
+  editorUpdateBreadcrumb();
   editorLoadGitStatus();
 }
 
 function editorDetectMode(fileName) {
-  const ext = fileName.split('.').pop().toLowerCase();
-  const modes = {
+  var ext = fileName.split('.').pop().toLowerCase();
+  var modes = {
     js: 'javascript', ts: 'javascript', jsx: 'javascript', tsx: 'javascript',
     py: 'python', rb: 'python', rs: 'rust',
-    html: 'htmlmixed', htm: 'htmlmixed',
+    html: 'htmlmixed', htm: 'htmlmixed', vue: 'htmlmixed',
     css: 'css', scss: 'css', less: 'css',
     md: 'markdown', markdown: 'markdown',
     json: 'javascript', yaml: 'yaml', yml: 'yaml',
     sql: 'sql', xml: 'xml', svg: 'xml',
+    sh: 'shell', bash: 'shell', zsh: 'shell',
+    dockerfile: 'dockerfile',
   };
   return modes[ext] || 'javascript';
 }
+function editorUpdateCursorPos() {
+  if (!editorInstance) return;
+  var cursor = editorInstance.getCursor();
+  var el = document.getElementById('editor-line-col');
+  if (el) el.textContent = 'Ln ' + (cursor.line + 1) + ', Col ' + (cursor.ch + 1);
+}
 
+// ── Save / Delete / Undo / Redo ───────────────────────────────
 async function editorSave() {
   if (!editorCurrentFile || !editorInstance) return;
-  const content = editorInstance.getValue();
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var content = editorInstance.getValue();
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   var encFile = editorCurrentFile.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
-  const url = agentId
+  var url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encFile
     : BASE + '/api/workspace/files/' + encFile;
   try {
-    const res = await fetch(url, {
+    var res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content: content }),
     });
     if (res.ok) {
       editorContentDirty = false;
-      document.getElementById('editor-modified').textContent = '';
+      document.getElementById('editor-modified-dot').style.display = 'none';
       toast('File saved', 'success');
-      document.getElementById('editor-file-info').textContent = editorCurrentFile + ' (' + content.length + ' bytes)';
+      document.getElementById('editor-file-info').textContent = editorCurrentFile;
     } else {
       toast('Failed to save file', 'error');
     }
@@ -10534,18 +10866,17 @@ async function editorSave() {
     toast('Error saving: ' + e.message, 'error');
   }
 }
-
 async function editorDeleteFile() {
   if (!editorCurrentFile) return;
-  const ok = await confirmAction('Delete File', 'Delete ' + editorCurrentFile + '?', 'Delete');
+  var ok = await confirmAction('Delete File', 'Delete ' + editorCurrentFile + '?', 'Delete');
   if (!ok) return;
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
   var encFileD = editorCurrentFile.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
-  const url = agentId
+  var url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encFileD
     : BASE + '/api/workspace/files/' + encFileD;
   try {
-    const res = await fetch(url, { method: 'DELETE' });
+    var res = await fetch(url, { method: 'DELETE' });
     if (res.ok) {
       toast('File deleted', 'success');
       editorCloseTab(editorCurrentFile);
@@ -10557,106 +10888,412 @@ async function editorDeleteFile() {
     toast('Delete error: ' + e.message, 'error');
   }
 }
-
+async function editorDeleteFileByPath(filePath) {
+  var ok = await confirmAction('Delete File', 'Delete ' + filePath + '?', 'Delete');
+  if (!ok) return;
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encPath = filePath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
+  var url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encPath
+    : BASE + '/api/workspace/files/' + encPath;
+  try {
+    var res = await fetch(url, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Deleted ' + filePath, 'success');
+      if (editorCurrentFile === filePath) editorCloseTab(editorCurrentFile);
+      editorRefreshTree();
+    } else { toast('Failed to delete', 'error'); }
+  } catch (e) { toast('Delete error: ' + e.message, 'error'); }
+}
+async function editorRenameFile(filePath) {
+  var newName = prompt('Rename ' + filePath + ' to:');
+  if (!newName || newName === filePath) return;
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encOld = filePath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
+  var oldParts = filePath.split('/');
+  oldParts.pop();
+  var newPath = (oldParts.length ? oldParts.join('/') + '/' : '') + newName;
+  var encNew = newPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
+  var base = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId)
+    : BASE + '/api/workspace';
+  try {
+    var readRes = await fetch(base + '/files/' + encOld);
+    if (!readRes.ok) { toast('Failed to read source', 'error'); return; }
+    var data = await readRes.json();
+    var writeRes = await fetch(base + '/files/' + encNew, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: data.content || '' }),
+    });
+    if (!writeRes.ok) { toast('Failed to create renamed file', 'error'); return; }
+    await fetch(base + '/files/' + encOld, { method: 'DELETE' });
+    toast('Renamed to ' + newPath, 'success');
+    editorRefreshTree();
+    if (editorCurrentFile === filePath) {
+      editorCloseTab(filePath);
+      editorOpenFile(newPath);
+    }
+  } catch (e) { toast('Rename error: ' + e.message, 'error'); }
+}
 async function editorUndo() {
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
-  const url = agentId
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/undo'
     : BASE + '/api/workspace/undo';
   try {
-    const res = await fetch(url, { method: 'POST' });
+    var res = await fetch(url, { method: 'POST' });
     if (res.ok) {
       toast('Undo applied', 'success');
       if (editorCurrentFile) editorOpenFile(editorCurrentFile);
     } else {
       toast('Nothing to undo', 'warning');
     }
-  } catch (e) {
-    toast('Undo error: ' + e.message, 'error');
-  }
+  } catch (e) { toast('Undo error: ' + e.message, 'error'); }
 }
-
 async function editorRedo() {
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
-  const url = agentId
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/redo'
     : BASE + '/api/workspace/redo';
   try {
-    const res = await fetch(url, { method: 'POST' });
+    var res = await fetch(url, { method: 'POST' });
     if (res.ok) {
       toast('Redo applied', 'success');
       if (editorCurrentFile) editorOpenFile(editorCurrentFile);
     } else {
       toast('Nothing to redo', 'warning');
     }
-  } catch (e) {
-    toast('Redo error: ' + e.message, 'error');
-  }
+  } catch (e) { toast('Redo error: ' + e.message, 'error'); }
 }
-
 async function editorLoadGitStatus() {
-  const el = document.getElementById('editor-git-status');
+  var el = document.getElementById('editor-git-status');
   if (editorWorkspace === 'global') { el.textContent = ''; return; }
   try {
-    const res = await fetch(BASE + '/api/workspace/agents/' + encodeURIComponent(editorWorkspace) + '/git/log');
+    var res = await fetch(BASE + '/api/workspace/agents/' + encodeURIComponent(editorWorkspace) + '/git/log');
     if (res.ok) {
-      const data = await res.json();
+      var data = await res.json();
       el.textContent = data.log ? data.log.slice(0, 80) : '';
     }
   } catch {}
 }
 
-async function editorNewFile() {
-  const name = prompt('File name:');
-  if (!name) return;
-  const content = '';
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
-  var encName = name.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
-  const url = agentId
+// ── New file / folder (inline) ───────────────────────────────
+function editorNewFileInline() {
+  editorNewItemKind = 'file';
+  var form = document.getElementById('editor-new-item-form');
+  form.style.display = '';
+  var input = document.getElementById('editor-new-item-input');
+  input.value = '';
+  input.placeholder = 'File name (e.g. app.ts)...';
+  input.focus();
+}
+function editorNewFolderInline() {
+  editorNewItemKind = 'folder';
+  var form = document.getElementById('editor-new-item-form');
+  form.style.display = '';
+  var input = document.getElementById('editor-new-item-input');
+  input.value = '';
+  input.placeholder = 'Folder name...';
+  input.focus();
+}
+function editorCancelNewItem() {
+  document.getElementById('editor-new-item-form').style.display = 'none';
+}
+async function editorCommitNewItem() {
+  var input = document.getElementById('editor-new-item-input');
+  var name = input.value.trim();
+  if (!name) { editorCancelNewItem(); return; }
+  document.getElementById('editor-new-item-form').style.display = 'none';
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var fullPath = editorCurrentPath ? editorCurrentPath + '/' + name : name;
+  if (editorNewItemKind === 'folder') fullPath += '/placeholder';
+  var encName = fullPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
+  var url = agentId
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encName
     : BASE + '/api/workspace/files/' + encName;
   try {
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
+    var body = editorNewItemKind === 'folder' ? JSON.stringify({ content: '' }) : JSON.stringify({ content: '' });
+    var res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body });
     if (res.ok) {
-      toast('File created', 'success');
+      toast((editorNewItemKind === 'folder' ? 'Folder' : 'File') + ' created', 'success');
       editorRefreshTree();
-      editorOpenFile(name);
+      if (editorNewItemKind === 'file') editorOpenFile(name);
     } else {
-      toast('Failed to create file', 'error');
+      toast('Failed to create ' + editorNewItemKind, 'error');
     }
   } catch (e) {
     toast('Error: ' + e.message, 'error');
   }
 }
 
-async function editorNewFolder() {
-  const name = prompt('Folder name:');
-  if (!name) return;
-  const agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
-  var encName2 = name.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
-  const url = agentId
-    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encName2
-    : BASE + '/api/workspace/files/' + encName2;
-  try {
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: '' }),
-    });
-    if (res.ok) {
-      toast('Folder created (placeholder)', 'success');
-      editorRefreshTree();
-    } else {
-      toast('Failed to create folder', 'error');
-    }
-  } catch (e) {
-    toast('Error: ' + e.message, 'error');
+// ── Find / Replace ───────────────────────────────────────────
+function editorFind() {
+  var bar = document.getElementById('editor-find-bar');
+  bar.style.display = 'flex';
+  var input = document.getElementById('editor-find-input');
+  input.focus();
+  input.select();
+  editorUpdateSearch();
+}
+function editorFindReplace() {
+  editorFind();
+  document.getElementById('editor-replace-input').focus();
+}
+function editorCloseFind() {
+  document.getElementById('editor-find-bar').style.display = 'none';
+  editorClearFind();
+}
+function editorClearFind() {
+  editorFindMarkers.forEach(function(m) { try { m.clear(); } catch(e) {} });
+  editorFindMarkers = [];
+  editorFindIdx = -1;
+  document.getElementById('editor-find-count').textContent = '0/0';
+}
+function editorUpdateSearch() {
+  editorClearFind();
+  if (!editorInstance) return;
+  var query = document.getElementById('editor-find-input').value;
+  if (!query) { document.getElementById('editor-find-count').textContent = '0/0'; return; }
+  var caseSensitive = document.getElementById('editor-find-case').checked;
+  var useRegex = document.getElementById('editor-find-regex').checked;
+  var cursor = editorInstance.getSearchCursor(query, null, { caseFold: !caseSensitive, regex: useRegex });
+  while (cursor.findNext()) {
+    editorFindMarkers.push(editorInstance.markText(cursor.from(), cursor.to(), { className: 'editor-find-highlight' }));
+  }
+  document.getElementById('editor-find-count').textContent = (editorFindMarkers.length > 0 ? '1' : '0') + '/' + editorFindMarkers.length;
+  if (editorFindMarkers.length > 0) {
+    editorFindIdx = 0;
+    editorScrollToMatch(0);
   }
 }
+function editorFindNext() {
+  if (!editorFindMarkers.length) { editorUpdateSearch(); return; }
+  editorFindIdx = (editorFindIdx + 1) % editorFindMarkers.length;
+  editorScrollToMatch(editorFindIdx);
+}
+function editorFindPrev() {
+  if (!editorFindMarkers.length) { editorUpdateSearch(); return; }
+  editorFindIdx = (editorFindIdx - 1 + editorFindMarkers.length) % editorFindMarkers.length;
+  editorScrollToMatch(editorFindIdx);
+}
+function editorScrollToMatch(idx) {
+  if (idx < 0 || idx >= editorFindMarkers.length) return;
+  var range = editorFindMarkers[idx].find();
+  if (range) {
+    editorInstance.scrollIntoView(range.from, 50);
+    editorInstance.setSelection(range.from, range.to);
+  }
+  document.getElementById('editor-find-count').textContent = (idx + 1) + '/' + editorFindMarkers.length;
+}
+function editorReplace() {
+  if (!editorInstance || editorFindIdx < 0 || editorFindIdx >= editorFindMarkers.length) return;
+  var replacement = document.getElementById('editor-replace-input').value;
+  var range = editorFindMarkers[editorFindIdx].find();
+  if (range) {
+    editorInstance.replaceRange(replacement, range.from, range.to);
+    editorUpdateSearch();
+  }
+}
+function editorReplaceAll() {
+  if (!editorInstance) return;
+  var query = document.getElementById('editor-find-input').value;
+  var replacement = document.getElementById('editor-replace-input').value;
+  if (!query) return;
+  var caseSensitive = document.getElementById('editor-find-case').checked;
+  var useRegex = document.getElementById('editor-find-regex').checked;
+  var count = 0;
+  var cursor = editorInstance.getSearchCursor(query, null, { caseFold: !caseSensitive, regex: useRegex });
+  while (cursor.findNext()) { cursor.replace(replacement); count++; }
+  toast('Replaced ' + count + ' occurrences', 'success');
+  editorUpdateSearch();
+}
+function editorToggleSidebar() {
+  var sb = document.getElementById('editor-sidebar');
+  var handle = document.getElementById('editor-sidebar-handle');
+  var isVisible = sb.style.display !== 'none';
+  sb.style.display = isVisible ? 'none' : '';
+  handle.style.display = isVisible ? 'none' : '';
+  if (editorInstance) setTimeout(function() { editorInstance.refresh(); }, 50);
+}
+
+// ── Find in files ────────────────────────────────────────────
+function editorFindInFiles() {
+  var query = prompt('Find in files:');
+  if (!query) return;
+  var panel = document.getElementById('editor-search-results');
+  panel.style.display = '';
+  document.getElementById('editor-search-title').textContent = 'Search: ' + query;
+  var list = document.getElementById('editor-search-list');
+  list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);">Searching...</div>';
+  editorSearchInTree(query).then(function(results) {
+    if (!results.length) { list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);">No results for "' + esc(query) + '"</div>'; return; }
+    list.innerHTML = results.map(function(r) {
+      return '<div class="editor-tree-item" style="gap:2px;padding:3px 10px;" onclick="editorOpenFile(\'' + escJs(r.file) + '\')">' +
+        '<span style="font-size:10px;color:var(--text3);min-width:28px;">' + r.line + '</span>' +
+        fileIcon(r.file) +
+        '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.file) + '</span>' +
+        '<span style="color:var(--text3);margin-left:auto;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%;">' + esc(r.preview) + '</span>' +
+        '</div>';
+    }).join('');
+  }).catch(function() { list.innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;">Search failed</div>'; });
+}
+function editorClearSearch() {
+  document.getElementById('editor-search-results').style.display = 'none';
+  document.getElementById('editor-search-list').innerHTML = '';
+}
+async function editorSearchInTree(query) {
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var base = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
+    : BASE + '/api/workspace/files';
+  var results = [];
+  var allFiles = editorFlatFileList.slice();
+  if (!allFiles.length) {
+    await editorFetchAllFiles();
+    allFiles = editorFlatFileList.slice();
+  }
+  query = query.toLowerCase();
+  for (var i = 0; i < allFiles.length; i++) {
+    var f = allFiles[i];
+    try {
+      var encPath = f.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
+      var res = await fetch(base + '/' + encPath);
+      if (!res.ok) continue;
+      var data = await res.json();
+      var lines = (data.content || '').split('\n');
+      for (var j = 0; j < lines.length; j++) {
+        if (lines[j].toLowerCase().indexOf(query) > -1) {
+          results.push({ file: f, line: j + 1, preview: lines[j].substring(0, 80) + (lines[j].length > 80 ? '...' : '') });
+          if (results.length >= 100) break;
+        }
+      }
+    } catch(e) {}
+    if (results.length >= 100) break;
+  }
+  return results;
+}
+
+// ── Quick open (Ctrl+P) ──────────────────────────────────────
+function editorQuickOpen() {
+  var modal = document.getElementById('editor-quick-open');
+  modal.style.display = 'flex';
+  var input = document.getElementById('editor-quick-open-input');
+  input.value = '';
+  input.focus();
+  var results = document.getElementById('editor-quick-open-results');
+  results.innerHTML = '<div style="padding:12px 16px;color:var(--text3);">Type to search files...</div>';
+  input.oninput = function() {
+    var q = input.value.toLowerCase();
+    if (!q) {
+      results.innerHTML = '<div style="padding:12px 16px;color:var(--text3);">Type to search files...</div>';
+      return;
+    }
+    var filtered = (editorFlatFileList.length ? editorFlatFileList : editorOpenFiles.slice()).filter(function(f) {
+      return f.toLowerCase().indexOf(q) > -1;
+    }).slice(0, 20);
+    if (!filtered.length) {
+      results.innerHTML = '<div style="padding:12px 16px;color:var(--text3);">No files match "' + esc(q) + '"</div>';
+      return;
+    }
+    results.innerHTML = filtered.map(function(f, idx) {
+      return '<div class="editor-quick-result' + (idx === 0 ? ' active' : '') + '" onclick="editorQuickSelect(\'' + escJs(f) + '\')" data-file="' + esc(f) + '">' +
+        fileIcon(f) + esc(f) + '</div>';
+    }).join('');
+  };
+  input.onkeydown = function(e) {
+    if (e.key === 'Escape') { editorQuickClose(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      var items = results.querySelectorAll('.editor-quick-result');
+      if (!items.length) return;
+      var cur = results.querySelector('.editor-quick-result.active');
+      var idx = cur ? Array.from(items).indexOf(cur) : (e.key === 'ArrowDown' ? -1 : items.length);
+      if (cur) cur.classList.remove('active');
+      idx = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+      items[idx].classList.add('active');
+      items[idx].scrollIntoView({ block: 'nearest' });
+    }
+    if (e.key === 'Enter') {
+      var active = results.querySelector('.editor-quick-result.active');
+      if (active) editorQuickSelect(active.dataset.file);
+    }
+  };
+}
+function editorQuickSelect(fileName) {
+  editorQuickClose();
+  editorCurrentPath = '';
+  var parts = fileName.split('/');
+  if (parts.length > 1) {
+    var fname = parts.pop();
+    editorCurrentPath = parts.join('/');
+    editorOpenFile(fname);
+    editorRefreshTree();
+  } else {
+    editorOpenFile(fileName);
+  }
+}
+function editorQuickClose() {
+  var modal = document.getElementById('editor-quick-open');
+  modal.style.display = 'none';
+  document.getElementById('editor-quick-open-results').innerHTML = '';
+}
+
+// ── Context menus ────────────────────────────────────────────
+function editorHideContextMenu() {
+  document.getElementById('editor-context-menu').style.display = 'none';
+}
+function editorShowContextMenu(x, y, items) {
+  var menu = document.getElementById('editor-context-menu');
+  menu.innerHTML = items.map(function(item) {
+    if (item === '-') return '<hr class="editor-context-sep">';
+    return '<button class="editor-context-item' + (item.danger ? ' danger' : '') + '" onclick="' + item.action + '">' +
+      '<span>' + esc(item.label) + '</span>' +
+      (item.key ? '<span style="font-size:10px;color:var(--text3);">' + esc(item.key) + '</span>' : '') +
+      '</button>';
+  }).join('');
+  menu.style.display = '';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  // Keep menu in viewport
+  var rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+  setTimeout(function() {
+    document.addEventListener('click', editorHideContextMenu, { once: true });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') editorHideContextMenu(); }, { once: true });
+  }, 0);
+}
+function editorTabContextMenu(e, fileName) {
+  var items = [
+    { label: 'Close', action: 'editorCloseTab(\'' + escJs(fileName) + '\');editorHideContextMenu();' },
+    { label: 'Close Others', action: 'editorCloseOtherTabs(\'' + escJs(fileName) + '\');editorHideContextMenu();' },
+    { label: 'Close to the Right', action: 'editorCloseTabsRight(\'' + escJs(fileName) + '\');editorHideContextMenu();' },
+    '-',
+    { label: 'Close All', action: 'editorCloseAllTabs();editorHideContextMenu();' },
+  ];
+  editorShowContextMenu(e.clientX, e.clientY, items);
+}
+function editorTreeContextMenu(e, filePath, isDir) {
+  var items;
+  if (isDir) {
+    items = [
+      { label: 'New File...', action: 'editorNewFileInline();editorHideContextMenu();' },
+      { label: 'New Folder...', action: 'editorNewFolderInline();editorHideContextMenu();' },
+    ];
+  } else {
+    items = [
+      { label: 'Open', action: 'editorOpenFile(\'' + escJs(filePath) + '\');editorHideContextMenu();' },
+      '-',
+      { label: 'Rename...', action: 'editorRenameFile(\'' + escJs(filePath) + '\');editorHideContextMenu();' },
+      { label: 'Delete', action: 'editorDeleteFileByPath(\'' + escJs(filePath) + '\');editorHideContextMenu();', danger: true },
+    ];
+  }
+  editorShowContextMenu(e.clientX, e.clientY, items);
+}
+
+// ── Deprecated wrappers for old button calls ───────────────────
+function editorNewFile() { editorNewFileInline(); }
+function editorNewFolder() { editorNewFolderInline(); }
 
 // ── Git Page ──────────────────────────────────────────────────
 let gitAgentId = '';
@@ -15351,34 +15988,32 @@ function skillsShowHealth(name) {
 var editorExtended = false;
 function extendEditorPage() {
   if (editorExtended) return;
-  var header = document.querySelector('#page-editor > div:first-of-type');
-  if (!header) { setTimeout(extendEditorPage, 500); return; }
+  var tree = document.getElementById('editor-tree');
+  if (!tree) { setTimeout(extendEditorPage, 500); return; }
   editorExtended = true;
-  var tabs = document.querySelector('#page-editor [style*="display:flex;gap"]');
-  if (tabs && !document.getElementById('editor-tab-history')) {
-    tabs.innerHTML += '<button class="btn btn-ghost" onclick="editorShowHistory()" id="editor-tab-history" style="font-size:11px;padding:4px 10px;">History</button>';
-  }
+  editorFetchAllFiles().catch(function(){});
 }
 function editorShowHistory() {
-  var content = document.querySelector('#page-editor > div:last-of-type');
+  var content = document.getElementById('editor-container');
   if (!content) return;
-  content.innerHTML = '<div class="widget-loading">Loading file history…</div>';
+  content.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);">Loading file history...</div>';
   fetch(BASE + '/api/workspace/history?limit=50')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (!data || !data.length) { content.innerHTML = '<div class="empty">No file history</div>'; return; }
-      content.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      if (!data || !data.length) { content.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);">No file history</div>'; return; }
+      content.innerHTML = '<div style="flex:1;overflow:auto;padding:16px 24px;"><table style="width:100%;border-collapse:collapse;font-size:11px;">' +
         '<thead><tr style="border-bottom:1px solid var(--border);">' +
-        '<th style="padding:4px 0;color:var(--text3);text-align:left;">File</th>' +
-        '<th style="padding:4px 0;color:var(--text3);text-align:left;">Agent</th>' +
-        '<th style="padding:4px 0;color:var(--text3);text-align:left;">Time</th></tr></thead><tbody>' +
+        '<th style="padding:6px 0;color:var(--text3);text-align:left;">File</th>' +
+        '<th style="padding:6px 0;color:var(--text3);text-align:left;">Agent</th>' +
+        '<th style="padding:6px 0;color:var(--text3);text-align:left;">Time</th></tr></thead><tbody>' +
         (Array.isArray(data) ? data : []).map(function(h) {
-          return '<tr style="border-bottom:1px solid var(--border);">' +
-            '<td style="padding:4px 0;">' + esc(h.path || h.file_path || '') + '</td>' +
+          var filePath = h.path || h.file_path || '';
+          return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="editorCurrentPath=\\'\\';editorOpenFile(\\'' + escJs(filePath) + '\\')">' +
+            '<td style="padding:4px 0;color:var(--accent2);">' + esc(filePath) + '</td>' +
             '<td style="padding:4px 0;color:var(--text2);">' + esc(h.agentId || '') + '</td>' +
             '<td style="padding:4px 0;color:var(--text2);">' + timeAgo(h.timestamp || h.created_at) + '</td></tr>';
-        }).join('') + '</tbody></table>';
-    }).catch(function() { content.innerHTML = '<div class="empty">Failed to load</div>'; });
+        }).join('') + '</tbody></table></div>';
+    }).catch(function() { content.innerHTML = '<div style="padding:24px;text-align:center;color:#f87171;">Failed to load</div>'; });
 }
 
 // ── QM/MQM: Config Buttons ──
