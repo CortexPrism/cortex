@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import {
   deleteService,
@@ -12,12 +13,11 @@ import {
 } from '../services/manager.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const serviceCommand = new Command()
-  .name('service')
+export const serviceCommand = cortexCommand('service')
   .description('Manage micro-services — long-running agent processes with health monitoring')
   .command(
     'list',
-    new Command()
+    cortexCommand('list')
       .description('List all registered micro-services')
       .action(async () => {
         const services = await listServices();
@@ -50,10 +50,10 @@ export const serviceCommand = new Command()
   )
   .command(
     'show',
-    new Command()
+    cortexCommand('show')
       .description('Show a service configuration and status')
       .arguments('<id:string>')
-      .action(async (_opts, id: string) => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         const svc = await getService(id);
         if (!svc) {
           console.error(red(i18n.t('cli.service.serviceNotFound', { id })));
@@ -86,7 +86,7 @@ export const serviceCommand = new Command()
   )
   .command(
     'create',
-    new Command()
+    cortexCommand('create')
       .description('Register a new micro-service')
       .arguments('<name:string>')
       .option('-d, --description <desc:string>', 'Service description')
@@ -99,26 +99,26 @@ export const serviceCommand = new Command()
       .option('--max-restarts <n:number>', 'Max restarts before giving up', { default: 3 })
       .option('--health-interval <n:number>', 'Health check interval in seconds', { default: 30 })
       .option('--system-prompt <prompt:string>', 'System prompt override')
-      .action(async (opts, name: string) => {
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
         const id = await registerService({
           name,
-          description: opts.description,
-          agentId: opts.agent,
-          model: opts.model,
-          provider: opts.provider,
-          systemPrompt: opts.systemPrompt,
-          tools: opts.tools,
-          port: opts.port ?? 0,
+          description: opts.description as string | undefined,
+          agentId: opts.agent as string,
+          model: opts.model as string | undefined,
+          provider: opts.provider as string | undefined,
+          systemPrompt: opts.systemPrompt as string | undefined,
+          tools: opts.tools as string | undefined,
+          port: (opts.port as number) ?? 0,
           autoStart: !!opts.autoStart,
-          maxRestarts: opts.maxRestarts ?? 3,
-          healthCheckInterval: opts.healthInterval ?? 30,
+          maxRestarts: (opts.maxRestarts as number) ?? 3,
+          healthCheckInterval: (opts.healthInterval as number) ?? 30,
         });
         console.log(green(i18n.t('cli.service.serviceRegistered', { name, id })));
       }),
   )
   .command(
     'update',
-    new Command()
+    cortexCommand('update')
       .description('Update a service configuration')
       .arguments('<id:string>')
       .option('-n, --name <name:string>', 'New name')
@@ -132,7 +132,7 @@ export const serviceCommand = new Command()
       .option('--max-restarts <n:number>', 'Max restarts')
       .option('--health-interval <n:number>', 'Health check interval')
       .option('--system-prompt <prompt:string>', 'System prompt override')
-      .action(async (opts, id: string) => {
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         const patch: Record<string, unknown> = {};
         if (opts.name) patch.name = opts.name;
         if (opts.description !== undefined) patch.description = opts.description;
@@ -151,20 +151,20 @@ export const serviceCommand = new Command()
   )
   .command(
     'delete',
-    new Command()
+    cortexCommand('delete')
       .description('Delete a service')
       .arguments('<id:string>')
-      .action(async (_opts, id: string) => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         await deleteService(id);
         console.log(green(i18n.t('cli.service.serviceDeleted', { id })));
       }),
   )
   .command(
     'start',
-    new Command()
+    cortexCommand('start')
       .description('Start a micro-service')
       .arguments('<id:string>')
-      .action(async (_opts, id: string) => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         try {
           await startService(id);
           console.log(green(i18n.t('cli.service.serviceStarted', { id })));
@@ -176,10 +176,10 @@ export const serviceCommand = new Command()
   )
   .command(
     'stop',
-    new Command()
+    cortexCommand('stop')
       .description('Stop a running micro-service')
       .arguments('<id:string>')
-      .action(async (_opts, id: string) => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
         await stopService(id);
         console.log(green(i18n.t('cli.service.serviceStopped', { id })));
       }),

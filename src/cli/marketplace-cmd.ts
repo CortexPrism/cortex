@@ -1,6 +1,6 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { runMigrations } from '../db/migrate.ts';
 import { installFromMarketplace } from '../plugins/install.ts';
 import { deserializeCapabilities } from '../plugins/registry.ts';
 import { getPluginPermissionOverrides, resolvePermissions } from '../plugins/permissions.ts';
@@ -24,27 +24,26 @@ function formatNumber(n: number): string {
   return String(n);
 }
 
-export const marketplaceCommand = new Command()
-  .name('marketplace')
+export const marketplaceCommand = cortexCommand('marketplace')
   .description('Discover and browse plugins and agents on the CortexPrism marketplace')
   .command(
     'list',
-    new Command()
+    cortexCommand('list')
       .description('List available items from the marketplace')
       .command(
         'plugins',
-        new Command()
+        cortexCommand('plugins')
           .description('List available plugins')
           .option('-s, --search <search:string>', 'Search across name and description')
           .option('-k, --kind <kind:string>', 'Filter by kind (esm, mcp, wasm)')
           .option('-c, --category <category:string>', 'Filter by category slug')
           .option('-l, --limit <limit:number>', 'Items per page', { default: 20 })
           .action(
-            async (opts: { search?: string; kind?: string; category?: string; limit?: number }) => {
+            async (opts: Record<string, unknown>, _ctx: Ctx) => {
               const params = new URLSearchParams();
-              if (opts.search) params.set('search', opts.search);
-              if (opts.kind) params.set('kind', opts.kind);
-              if (opts.category) params.set('category', opts.category);
+              if (opts.search) params.set('search', opts.search as string);
+              if (opts.kind) params.set('kind', opts.kind as string);
+              if (opts.category) params.set('category', opts.category as string);
               if (opts.limit) params.set('limit', String(opts.limit));
               try {
                 const data = await fetchJson(`${API_BASE}/plugins?${params}`) as {
@@ -94,20 +93,18 @@ export const marketplaceCommand = new Command()
       )
       .command(
         'agents',
-        new Command()
+        cortexCommand('agents')
           .description('List available agents')
           .option('-s, --search <search:string>', 'Search across name and description')
           .option('-p, --provider <provider:string>', 'Filter by LLM provider')
           .option('-c, --category <category:string>', 'Filter by category slug')
           .option('-l, --limit <limit:number>', 'Items per page', { default: 20 })
           .action(
-            async (
-              opts: { search?: string; provider?: string; category?: string; limit?: number },
-            ) => {
+            async (opts: Record<string, unknown>, _ctx: Ctx) => {
               const params = new URLSearchParams();
-              if (opts.search) params.set('search', opts.search);
-              if (opts.provider) params.set('provider', opts.provider);
-              if (opts.category) params.set('category', opts.category);
+              if (opts.search) params.set('search', opts.search as string);
+              if (opts.provider) params.set('provider', opts.provider as string);
+              if (opts.category) params.set('category', opts.category as string);
               if (opts.limit) params.set('limit', String(opts.limit));
               try {
                 const data = await fetchJson(`${API_BASE}/agents?${params}`) as {
@@ -159,9 +156,9 @@ export const marketplaceCommand = new Command()
   )
   .command(
     'categories',
-    new Command()
+    cortexCommand('categories')
       .description('List marketplace categories')
-      .action(async () => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         try {
           const data = await fetchJson(`${API_BASE}/categories`) as Array<{
             name: string;
@@ -187,9 +184,9 @@ export const marketplaceCommand = new Command()
   )
   .command(
     'stats',
-    new Command()
+    cortexCommand('stats')
       .description('Show marketplace statistics')
-      .action(async () => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         try {
           const data = await fetchJson(`${API_BASE}/stats`) as {
             totalPlugins: number;
@@ -211,12 +208,12 @@ export const marketplaceCommand = new Command()
   )
   .command(
     'install',
-    new Command()
+    cortexCommand('install')
       .description('Install a plugin from the marketplace with permission preview')
       .arguments('<slug:string>')
       .option('-y, --yes', 'Skip the permission confirmation prompt')
-      .action(async ({ yes }: { yes?: boolean }, slug: string) => {
-        await runMigrations();
+      .needs('migrations')
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx, slug: string) => {
         const downloadUrl = `${API_BASE}/plugins/${slug}/download`;
         try {
           const res = await fetch(downloadUrl);
@@ -238,7 +235,6 @@ export const marketplaceCommand = new Command()
             hash?: string;
           };
 
-          // Show permission preview
           const capabilities = (manifest.capabilities ?? []) as string[];
           const declared = capabilities as never[];
           console.log(bold(`\n  ${manifest.name} v${manifest.version}`));
@@ -294,7 +290,7 @@ export const marketplaceCommand = new Command()
             console.log(dim(i18n.t('cli.marketplace.noPermissions')));
           }
 
-          if (!yes) {
+          if (!opts.yes) {
             const answer = prompt('  Install? [y/N] ');
             if (!answer || !['y', 'yes'].includes(answer.toLowerCase())) {
               console.log(dim('  Cancelled.\n'));

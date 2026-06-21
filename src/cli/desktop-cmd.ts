@@ -1,44 +1,24 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { executeDesktopAction, getDockerfile, getEntrypointScript } from '../desktop/automation.ts';
-import { Input } from '@cliffy/prompt';
 import { dim, green } from '@std/fmt/colors';
 import { getTempDir } from '../utils/platform.ts';
 import { join } from '@std/path';
 import { i18n } from '../i18n/service.ts';
 
-const desktopCommand = new Command()
-  .name('desktop')
-  .description('Desktop automation tools and Docker sandbox')
-  .action(() => {
-    console.log('');
-    console.log('  Cortex Desktop Automation');
-    console.log('');
-    console.log('  Commands:');
-    console.log('    cortex desktop dockerfile     — Print Docker image template');
-    console.log('    cortex desktop entrypoint     — Print container entrypoint script');
-    console.log('    cortex desktop screenshot     — Take screenshot');
-    console.log('    cortex desktop click <x> <y>  — Click coordinates');
-    console.log('    cortex desktop type <text>    — Type text');
-    console.log('    cortex desktop clipboard      — Get clipboard contents');
-    console.log('');
-  });
-
-desktopCommand
-  .command('dockerfile')
+const dockerfileCmd = cortexCommand('dockerfile')
   .description('Print the XFCE+noVNC Dockerfile')
-  .action(() => {
+  .action(async () => {
     console.log(getDockerfile());
   });
 
-desktopCommand
-  .command('entrypoint')
+const entrypointCmd = cortexCommand('entrypoint')
   .description('Print the container entrypoint script')
-  .action(() => {
+  .action(async () => {
     console.log(getEntrypointScript());
   });
 
-desktopCommand
-  .command('screenshot')
+const screenshotCmd = cortexCommand('screenshot')
   .description('Take a screenshot via scrot')
   .action(async () => {
     const result = await executeDesktopAction({ action: 'screenshot', format: 'png' });
@@ -53,22 +33,22 @@ desktopCommand
     }
   });
 
-desktopCommand
-  .command('click <x:number> <y:number>')
+const clickCmd = cortexCommand('click')
+  .arguments('<x:number> <y:number>')
   .description('Click at coordinates')
-  .action(async (_opts: void, x: number, y: number) => {
-    const result = await executeDesktopAction({ action: 'click', x, y });
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx, x: string, y: string) => {
+    const result = await executeDesktopAction({ action: 'click', x: Number(x), y: Number(y) });
     console.log(
       result.success
-        ? green(i18n.t('cli.desktop.clicked', { x: String(x), y: String(y) }))
+        ? green(i18n.t('cli.desktop.clicked', { x, y }))
         : i18n.t('cli.desktop.clickFailed', { error: result.error ?? 'unknown' }),
     );
   });
 
-desktopCommand
-  .command('type <text:string>')
+const typeCmd = cortexCommand('type')
+  .arguments('<text:string>')
   .description('Type text via xdotool')
-  .action(async (_opts: void, text: string) => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx, text: string) => {
     const result = await executeDesktopAction({ action: 'type', text });
     console.log(
       result.success
@@ -77,8 +57,7 @@ desktopCommand
     );
   });
 
-desktopCommand
-  .command('clipboard')
+const clipboardCmd = cortexCommand('clipboard')
   .description('Read clipboard contents')
   .action(async () => {
     const result = await executeDesktopAction({ action: 'get_clipboard' });
@@ -89,4 +68,24 @@ desktopCommand
     }
   });
 
-export { desktopCommand };
+export const desktopCommand = cortexCommand('desktop')
+  .description('Desktop automation tools and Docker sandbox')
+  .action(async () => {
+    console.log('');
+    console.log('  Cortex Desktop Automation');
+    console.log('');
+    console.log('  Commands:');
+    console.log('    cortex desktop dockerfile     — Print Docker image template');
+    console.log('    cortex desktop entrypoint     — Print container entrypoint script');
+    console.log('    cortex desktop screenshot     — Take screenshot');
+    console.log('    cortex desktop click <x> <y>  — Click coordinates');
+    console.log('    cortex desktop type <text>    — Type text');
+    console.log('    cortex desktop clipboard      — Get clipboard contents');
+    console.log('');
+  })
+  .command('dockerfile', dockerfileCmd)
+  .command('entrypoint', entrypointCmd)
+  .command('screenshot', screenshotCmd)
+  .command('click', clickCmd)
+  .command('type', typeCmd)
+  .command('clipboard', clipboardCmd);

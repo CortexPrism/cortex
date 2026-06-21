@@ -1,6 +1,6 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { loadConfig, saveConfig } from '../config/config.ts';
 import type { LoggingConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { setLogLevel } from '../utils/logger.ts';
@@ -68,18 +68,16 @@ function formatEntry(
   return `${dim(time)} ${lvl}${ns} ${entry.msg}${data}`;
 }
 
-// ── Sub-commands ─────────────────────────────────────────────────────────────
-
-const showCommand = new Command()
+const showCommand = cortexCommand('show')
   .description('Print recent log entries with optional filtering')
   .option('-n, --lines <n:number>', 'Number of entries to show', { default: 100 })
   .option('-l, --level <level:string>', 'Minimum log level to show (trace/debug/info/warn/error)', {
     default: 'trace',
   })
   .option('--ns <namespace:string>', 'Filter by namespace pattern (e.g. agent:*, server:ws)')
-  .action(async (opts: { lines: number; level: string; ns?: string }) => {
-    const config = await loadConfig();
-    const logPath = resolveLogFile(config.logging);
+  .needs('config')
+  .action(async (opts: Record<string, unknown>, ctx: Ctx) => {
+    const logPath = resolveLogFile(ctx.config!.logging);
 
     const lines = await readLogFile(logPath);
     if (lines.length === 0) {
@@ -92,8 +90,8 @@ const showCommand = new Command()
       .map(parseEntry)
       .filter((e): e is NonNullable<typeof e> => e !== null)
       .filter((e) => LEVELS.indexOf(e.level as LogLevel) >= minRank)
-      .filter((e) => opts.ns ? matchesNamespace(e.ns ?? '', opts.ns) : true)
-      .slice(-opts.lines);
+      .filter((e) => opts.ns ? matchesNamespace(e.ns ?? '', opts.ns as string) : true)
+      .slice(-(opts.lines as number));
 
     if (filtered.length === 0) {
       console.log(dim(i18n.t('cli.log.noEntriesMatch')));
@@ -109,13 +107,13 @@ const showCommand = new Command()
     );
   });
 
-const tailCommand = new Command()
+const tailCommand = cortexCommand('tail')
   .description('Live tail the Cortex log file')
   .option('-l, --level <level:string>', 'Minimum log level to show', { default: 'trace' })
   .option('--ns <namespace:string>', 'Filter by namespace pattern')
-  .action(async (opts: { level: string; ns?: string }) => {
-    const config = await loadConfig();
-    const logPath = resolveLogFile(config.logging);
+  .needs('config')
+  .action(async (opts: Record<string, unknown>, ctx: Ctx) => {
+    const logPath = resolveLogFile(ctx.config!.logging);
 
     console.log(
       bold(cyan(i18n.t('cli.log.tailing', { path: logPath }))) + dim(' (Ctrl+C to stop)\n'),
@@ -123,18 +121,16 @@ const tailCommand = new Command()
 
     const minRank = LEVELS.indexOf(opts.level as LogLevel);
 
-    // Print existing tail
     const existing = await readLogFile(logPath);
     const tail = existing.slice(-20);
     for (const line of tail) {
       const e = parseEntry(line);
       if (!e) continue;
       if (LEVELS.indexOf(e.level as LogLevel) < minRank) continue;
-      if (opts.ns && !matchesNamespace(e.ns ?? '', opts.ns)) continue;
+      if (opts.ns && !matchesNamespace(e.ns ?? '', opts.ns as string)) continue;
       console.log(formatEntry(e));
     }
 
-    // Watch for new lines
     let offset = 0;
     try {
       const stat = await Deno.stat(logPath);
@@ -166,22 +162,21 @@ const tailCommand = new Command()
             const e = parseEntry(line);
             if (!e) continue;
             if (LEVELS.indexOf(e.level as LogLevel) < minRank) continue;
-            if (opts.ns && !matchesNamespace(e.ns ?? '', opts.ns)) continue;
+            if (opts.ns && !matchesNamespace(e.ns ?? '', opts.ns as string)) continue;
             console.log(formatEntry(e));
           }
         }
       } catch {
-        // file may have been rotated; reset
         offset = 0;
       }
     }
   });
 
-const clearCommand = new Command()
+const clearCommand = cortexCommand('clear')
   .description('Truncate the Cortex log file')
-  .action(async () => {
-    const config = await loadConfig();
-    const logPath = resolveLogFile(config.logging);
+  .needs('config')
+  .action(async (_opts: Record<string, unknown>, ctx: Ctx) => {
+    const logPath = resolveLogFile(ctx.config!.logging);
     try {
       await Deno.truncate(logPath);
       console.log(green(i18n.t('cli.log.logCleared', { path: logPath })));
@@ -190,15 +185,16 @@ const clearCommand = new Command()
     }
   });
 
-const setLevelCommand = new Command()
+const setLevelCommand = cortexCommand('set-level')
   .description('Update the log level in config.json (takes effect on next start)')
   .arguments('<level:string>')
-  .action(async (_opts: unknown, level: string) => {
+  .needs('config')
+  .action(async (_opts: Record<string, unknown>, ctx: Ctx, level: string) => {
     if (!LEVELS.includes(level as LogLevel)) {
       console.error(red(i18n.t('cli.log.invalidLevel', { level, levels: LEVELS.join(', ') })));
       Deno.exit(1);
     }
-    const config = await loadConfig();
+    const config = ctx.config!;
     if (!config.logging) {
       (config as unknown as Record<string, unknown>).logging = {
         level,
@@ -207,25 +203,26 @@ const setLevelCommand = new Command()
     } else {
       config.logging.level = level as LogLevel;
     }
+    const { saveConfig } = await import('../config/config.ts');
     await saveConfig(config);
     setLogLevel(level as LogLevel);
     console.log(green(i18n.t('cli.log.logLevelSet', { level: bold(level) })));
     console.log(dim(i18n.t('cli.log.restartHint')));
   });
 
-const pathCommand = new Command()
+const pathCommand = cortexCommand('path')
   .description('Print the path to the current log file')
-  .action(async () => {
-    const config = await loadConfig();
-    const logPath = resolveLogFile(config.logging);
+  .needs('config')
+  .action(async (_opts: Record<string, unknown>, ctx: Ctx) => {
+    const logPath = resolveLogFile(ctx.config!.logging);
     console.log(logPath);
   });
 
-const statusCommand = new Command()
+const statusCommand = cortexCommand('status')
   .description('Show current logging configuration')
-  .action(async () => {
-    const config = await loadConfig();
-    const cfg = config.logging;
+  .needs('config')
+  .action(async (_opts: Record<string, unknown>, ctx: Ctx) => {
+    const cfg = ctx.config!.logging;
     const logPath = resolveLogFile(cfg);
 
     console.log(bold('\n  Logging Configuration\n'));
@@ -271,13 +268,10 @@ const statusCommand = new Command()
     console.log(`  Current log: ${dim((fileSize / 1024).toFixed(1) + ' KB')}\n`);
   });
 
-// ── Main command ─────────────────────────────────────────────────────────────
-
-export const logCommand = new Command()
-  .name('log')
+export const logCommand = cortexCommand('log')
   .description('Manage and view Cortex logs')
-  .action(() => {
-    logCommand.showHelp();
+  .action(async () => {
+    logCommand._cmd.showHelp();
   })
   .command('show', showCommand)
   .command('tail', tailCommand)

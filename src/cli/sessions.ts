@@ -1,7 +1,7 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { countChildSessions, listSessions } from '../db/sessions.ts';
-import { runMigrations } from '../db/migrate.ts';
 import { i18n } from '../i18n/service.ts';
 
 function formatDuration(startedAt: string, closedAt: string | null): string {
@@ -28,13 +28,12 @@ function channelColor(ch: string): (s: string) => string {
   return dim;
 }
 
-export const sessionsCommand = new Command()
-  .name('sessions')
+export const sessionsCommand = cortexCommand('sessions')
   .description('List recent chat sessions')
   .option('-n, --limit <n:number>', 'Number of sessions to show', { default: 20 })
-  .action(async (options: { limit: number }) => {
-    await runMigrations();
-    const sessions = await listSessions(options.limit);
+  .needs('migrations')
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const sessions = await listSessions(opts.limit as number);
 
     if (sessions.length === 0) {
       console.log(dim('\n  ' + i18n.t('cli.sessions.empty') + '\n'));

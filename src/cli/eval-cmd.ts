@@ -1,6 +1,6 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, dim, green, red, yellow } from '@std/fmt/colors';
-import { loadConfig } from '../config/config.ts';
 import { buildProvider } from '../llm/router.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { detectRegressions, runSuite } from '../eval/runner.ts';
@@ -10,16 +10,16 @@ import { i18n } from '../i18n/service.ts';
 
 const DEFAULT_BASELINE_FILE = 'eval_baseline.json';
 
-export const evalCmd = new Command()
-  .name('eval')
+export const evalCmd = cortexCommand('eval')
   .description('Run agent evaluations and detect regressions')
   .option('-s, --suite <file:string>', 'Path to eval suite JSON file')
   .option('-b, --baseline <file:string>', 'Path to baseline results for regression check')
   .option('-m, --model <model:string>', 'Model to use for evaluation')
   .option('--save-baseline', 'Save results as new baseline')
-  .action(async (options) => {
-    const config = await loadConfig();
-    const model = options.model ?? 'claude-sonnet-4-5';
+  .needs('config')
+  .action(async (opts: Record<string, unknown>, ctx: Ctx) => {
+    const config = ctx.config!;
+    const model = (opts.model as string) ?? 'claude-sonnet-4-5';
 
     console.log(dim(`  Model: ${model}`));
 
@@ -30,7 +30,7 @@ export const evalCmd = new Command()
     }
 
     // Load suite
-    const suitePath = options.suite ?? join(Deno.cwd(), '.cortex', 'eval_suite.json');
+    const suitePath = (opts.suite as string) ?? join(Deno.cwd(), '.cortex', 'eval_suite.json');
     let suite: EvalSuite;
     try {
       const raw = await Deno.readTextFile(suitePath);
@@ -109,9 +109,9 @@ export const evalCmd = new Command()
     }
 
     // Regression check
-    if (options.baseline) {
+    if (opts.baseline) {
       try {
-        const baselineRaw = await Deno.readTextFile(options.baseline);
+        const baselineRaw = await Deno.readTextFile(opts.baseline as string);
         const baseline = JSON.parse(baselineRaw) as ReturnType<typeof runSuite> extends
           Promise<infer T> ? T : never;
         const regressions = detectRegressions(baseline, summary);
@@ -135,13 +135,14 @@ export const evalCmd = new Command()
           console.log(green(i18n.t('cli.eval.noRegressions')));
         }
       } catch {
-        console.log(dim(i18n.t('cli.eval.noBaselineFile', { path: options.baseline })));
+        console.log(dim(i18n.t('cli.eval.noBaselineFile', { path: opts.baseline as string })));
       }
     }
 
     // Save baseline
-    if (options.saveBaseline) {
-      const baselinePath = options.baseline ?? join(Deno.cwd(), '.cortex', DEFAULT_BASELINE_FILE);
+    if (opts.saveBaseline) {
+      const baselinePath = (opts.baseline as string) ??
+        join(Deno.cwd(), '.cortex', DEFAULT_BASELINE_FILE);
       await Deno.writeTextFile(baselinePath, JSON.stringify(summary, null, 2));
       console.log(dim(i18n.t('cli.eval.baselineSaved', { path: baselinePath })));
     }

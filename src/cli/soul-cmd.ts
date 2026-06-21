@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, dim, green, red, yellow } from '@std/fmt/colors';
 import { PATHS } from '../config/paths.ts';
 import { exists } from '@std/fs';
@@ -13,16 +14,16 @@ import {
 } from '../agent/soul.ts';
 import { i18n } from '../i18n/service.ts';
 
-export const soulCommand = new Command()
-  .name('soul')
+export const soulCommand = cortexCommand('soul')
   .description('Manage agent identity files (SOUL.md, USER.md, MEMORY.md)')
   .command(
     'init',
-    new Command()
+    cortexCommand('init')
       .description('Create starter SOUL.md, USER.md, and MEMORY.md files')
       .option('--force', 'Overwrite existing files')
-      .action(async (opts: { force?: boolean }) => {
-        const { created, skipped } = await initSoulFiles(opts.force ?? false);
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+        const force = (opts.force ?? false) as boolean;
+        const { created, skipped } = await initSoulFiles(force);
         for (const f of created) {
           console.log(green(i18n.t('cli.soul.created', { dir: PATHS.configDir, file: f })));
         }
@@ -36,9 +37,9 @@ export const soulCommand = new Command()
   )
   .command(
     'show',
-    new Command()
+    cortexCommand('show')
       .description('Show current soul context (SOUL.md + USER.md + MEMORY.md)')
-      .action(async () => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         const ctx = await loadSoulContext();
         console.log(bold('\n  SOUL.md'));
         console.log(dim('  ' + '─'.repeat(50)));
@@ -64,10 +65,10 @@ export const soulCommand = new Command()
   )
   .command(
     'edit',
-    new Command()
+    cortexCommand('edit')
       .description('Open a soul file in $EDITOR')
       .arguments('[file:string]')
-      .action(async (_opts: void, file = 'SOUL.md') => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, file = 'SOUL.md') => {
         const pathMap: Record<string, string> = {
           'SOUL.md': PATHS.soulFile,
           'USER.md': PATHS.userFile,
@@ -90,19 +91,19 @@ export const soulCommand = new Command()
   )
   .command(
     'note',
-    new Command()
+    cortexCommand('note')
       .description('Append a note to MEMORY.md')
       .arguments('<note:string>')
-      .action(async (_opts: void, note: string) => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, note: string) => {
         await appendToMemoryFile(note);
         console.log(green(i18n.t('cli.soul.appendedToMemory')));
       }),
   )
   .command(
     'templates',
-    new Command()
+    cortexCommand('templates')
       .description('List available personality templates')
-      .action(() => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         console.log(bold('\n  Available Personality Templates\n'));
         for (const [key, desc] of Object.entries(TEMPLATE_DESCRIPTIONS)) {
           console.log(`  ${bold(key.padEnd(16))}${dim(desc)}`);
@@ -115,10 +116,10 @@ export const soulCommand = new Command()
   )
   .command(
     'apply-template',
-    new Command()
+    cortexCommand('apply-template')
       .description('Apply a personality template to SOUL.md')
       .arguments('<template:string>')
-      .action(async (_opts: void, template: string) => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, template: string) => {
         if (!Object.hasOwn(TEMPLATE_DESCRIPTIONS, template)) {
           console.log(red(i18n.t('cli.soul.unknownTemplate', { template })));
           console.log(dim(i18n.t('cli.soul.runTemplatesHint')));
@@ -136,9 +137,9 @@ export const soulCommand = new Command()
   )
   .command(
     'validate',
-    new Command()
+    cortexCommand('validate')
       .description('Validate soul file structure')
-      .action(async () => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         if (!(await exists(PATHS.soulFile))) {
           console.log(yellow(i18n.t('cli.soul.noSoulFound')));
           return;

@@ -9,22 +9,15 @@
  *   cortex debug metrics           Print current Prometheus metrics
  *   cortex debug memory            Memory stats (episodic, semantic)
  */
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { logger } from '../utils/logger.ts';
 import { getCoreDb, getMemoryDb, getSessionDb } from '../db/client.ts';
 import { i18n } from '../i18n/service.ts';
 
 const _log = logger('cli:debug');
 
-export const debugCmd = new Command()
-  .name('debug')
-  .description('Live introspection and diagnostics')
-  .action(function () {
-    this.showHelp();
-  });
-
-debugCmd
-  .command('sessions')
+const sessionsCmd = cortexCommand('sessions')
   .description('List active sessions with metadata')
   .action(async () => {
     try {
@@ -52,11 +45,10 @@ debugCmd
     }
   });
 
-debugCmd
-  .command('session')
+const sessionCmd = cortexCommand('session')
   .arguments('<id:string>')
   .description('Inspect a single session')
-  .action(async (_opts: void, id: string) => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
     try {
       const coreDb = await getCoreDb();
       const session = await coreDb.get<Record<string, unknown>>(
@@ -93,14 +85,13 @@ debugCmd
     }
   });
 
-debugCmd
-  .command('turn')
+const turnCmd = cortexCommand('turn')
   .arguments('<turnId:string>')
   .option('-s, --session <id:string>', 'Session ID', { required: true })
   .description('Show full turn transcript')
-  .action(async (opts: { session: string }, turnId: string) => {
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx, turnId: string) => {
     try {
-      const sessionId = opts.session;
+      const sessionId = opts.session as string;
       const db = await getSessionDb(sessionId);
       const messages = await db.all<Record<string, unknown>>(
         `SELECT role, content, token_count, created_at FROM session_messages ORDER BY id`,
@@ -117,8 +108,7 @@ debugCmd
     }
   });
 
-debugCmd
-  .command('health')
+const healthCmd = cortexCommand('health')
   .description('Expanded health check')
   .action(async () => {
     const results: Record<string, string> = {};
@@ -147,7 +137,7 @@ debugCmd
     try {
       const uptime = Math.floor(Deno.osUptime() / 3600);
       results['uptime'] = `${uptime}h`;
-    } catch (e) {
+    } catch {
       results['uptime'] = 'unknown';
     }
     console.log('Health:');
@@ -156,8 +146,7 @@ debugCmd
     }
   });
 
-debugCmd
-  .command('metrics')
+const metricsCmd = cortexCommand('metrics')
   .description('Print current Prometheus metrics')
   .action(async () => {
     try {
@@ -168,8 +157,7 @@ debugCmd
     }
   });
 
-debugCmd
-  .command('memory')
+const memoryCmd = cortexCommand('memory')
   .description('Memory storage statistics')
   .action(async () => {
     try {
@@ -186,3 +174,15 @@ debugCmd
       console.error(i18n.t('cli.debug.failedToQueryMemory', { message: (e as Error).message }));
     }
   });
+
+export const debugCmd = cortexCommand('debug')
+  .description('Live introspection and diagnostics')
+  .action(async () => {
+    debugCmd._cmd.showHelp();
+  })
+  .command('sessions', sessionsCmd)
+  .command('session', sessionCmd)
+  .command('turn', turnCmd)
+  .command('health', healthCmd)
+  .command('metrics', metricsCmd)
+  .command('memory', memoryCmd);

@@ -1,11 +1,11 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, green, red, yellow } from '@std/fmt/colors';
 import { i18n } from '../i18n/service.ts';
 
-const mcpCommand = new Command()
-  .name('mcp')
+const mcpCommand = cortexCommand('mcp')
   .description('MCP server and client — run as server, or connect to external agents')
-  .action(async () => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
     console.log('');
     console.log(bold('Cortex MCP'));
     console.log('');
@@ -31,171 +31,201 @@ const mcpCommand = new Command()
   });
 
 mcpCommand
-  .command('serve')
-  .description('Start MCP server in HTTP mode on port 9187')
-  .option('-p, --port <port:number>', 'Port to listen on', { default: 9187 })
-  .option('-H, --host <host:string>', 'Host to bind to', { default: '127.0.0.1' })
-  .action(async (opts: { port: number; host: string }) => {
-    const { handleMcpHttpRequest } = await import('../mcp/server.ts');
-    console.log(
-      cyan(i18n.t('cli.mcp.startingHttpServer', { host: opts.host, port: String(opts.port) })),
-    );
-    console.log(green(i18n.t('cli.mcp.readyForMcp')));
-    await Deno.serve({ port: opts.port, hostname: opts.host }, async (req) => {
-      const res = await handleMcpHttpRequest(req);
-      return res ?? new Response('Not Found', { status: 404 });
-    }).finished;
-  });
-
-mcpCommand
-  .command('stdio')
-  .description('Start MCP server in stdio mode (for Claude Desktop, VS Code)')
-  .action(async () => {
-    const { runMcpServerStdio } = await import('../mcp/server.ts');
-    await runMcpServerStdio();
-  });
-
-mcpCommand
-  .command('connect <name:string>')
-  .description('Connect to an external MCP-compatible coding agent')
-  .option('--command <cmd:string>', 'Command to spawn the agent (stdio transport)')
-  .option('--args <args:string>', 'Comma-separated arguments for the command')
-  .option('--url <url:string>', 'HTTP URL of the MCP server (HTTP transport)')
-  .option('--env <env:string>', 'Comma-separated KEY=VAL environment variables')
-  .action(
-    async (
-      options: { url?: string; command?: string; args?: string; env?: string },
-      name: string,
-    ) => {
-      const { connectHttp, connectStdio } = await import('../mcp/client.ts');
-
-      if (options.url) {
+  .command(
+    'serve',
+    cortexCommand('serve')
+      .description('Start MCP server in HTTP mode on port 9187')
+      .option('-p, --port <port:number>', 'Port to listen on', { default: 9187 })
+      .option('-H, --host <host:string>', 'Host to bind to', { default: '127.0.0.1' })
+      .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+        const { handleMcpHttpRequest } = await import('../mcp/server.ts');
         console.log(
-          i18n.t('cli.mcp.connectingHttp', { name: green(name), url: cyan(options.url) }),
-        );
-        try {
-          const conn = await connectHttp({ name, transport: 'http', url: options.url });
-          console.log(green(i18n.t('cli.mcp.connected')));
-          console.log(
-            i18n.t('cli.mcp.serverInfo', {
-              serverName: conn.serverInfo?.name ?? 'unknown',
-              serverVersion: conn.serverInfo?.version ?? '?',
+          cyan(
+            i18n.t('cli.mcp.startingHttpServer', {
+              host: opts.host as string,
+              port: String(opts.port as number),
             }),
-          );
-          console.log(i18n.t('cli.mcp.toolsCount', { count: String(conn.tools.length) }));
-          for (const t of conn.tools) {
-            console.log(`    ${yellow(t.name)} — ${t.description}`);
-          }
-        } catch (e) {
-          console.error(red(i18n.t('cli.mcp.failedToConnect', { message: (e as Error).message })));
-        }
-      } else if (options.command) {
-        const args = options.args
-          ? String(options.args).split(',').map((s: string) => s.trim()).filter(Boolean)
-          : [];
-        const env: Record<string, string> = {};
-        if (options.env) {
-          for (const pair of String(options.env).split(',')) {
-            const [key, ...rest] = pair.trim().split('=');
-            if (key) env[key] = rest.join('=');
-          }
-        }
-
-        console.log(
-          i18n.t('cli.mcp.connectingStdio', {
-            name: green(name),
-            command: cyan(options.command + ' ' + args.join(' ')),
-          }),
+          ),
         );
-        try {
-          const conn = await connectStdio({
-            name,
-            transport: 'stdio',
-            command: options.command,
-            args,
-            env,
-          });
-          console.log(green(i18n.t('cli.mcp.connected')));
-          console.log(
-            i18n.t('cli.mcp.serverInfo', {
-              serverName: conn.serverInfo?.name ?? 'unknown',
-              serverVersion: conn.serverInfo?.version ?? '?',
-            }),
-          );
-          console.log(i18n.t('cli.mcp.toolsCount', { count: String(conn.tools.length) }));
-          for (const t of conn.tools) {
-            console.log(`    ${yellow(t.name)} — ${t.description}`);
-          }
-        } catch (e) {
-          console.error(red(i18n.t('cli.mcp.failedToConnect', { message: (e as Error).message })));
-        }
-      } else {
-        console.error(red(i18n.t('cli.mcp.specifyTransport')));
-      }
-    },
+        console.log(green(i18n.t('cli.mcp.readyForMcp')));
+        await Deno.serve(
+          { port: opts.port as number, hostname: opts.host as string },
+          async (req) => {
+            const res = await handleMcpHttpRequest(req);
+            return res ?? new Response('Not Found', { status: 404 });
+          },
+        ).finished;
+      }),
   );
 
 mcpCommand
-  .command('disconnect <name:string>')
-  .description('Disconnect from a connected MCP agent')
-  .action(async (_opts: void, name: string) => {
-    const { disconnectHttp, disconnectStdio, getConnection } = await import('../mcp/client.ts');
-    const conn = getConnection(name);
-    if (!conn) {
-      console.error(red(i18n.t('cli.mcp.noConnectionNamed', { name })));
-      return;
-    }
-    if (conn.config.transport === 'http') {
-      await disconnectHttp(name);
-    } else {
-      await disconnectStdio(name);
-    }
-    console.log(green(i18n.t('cli.mcp.disconnectedFrom', { name })));
-  });
+  .command(
+    'stdio',
+    cortexCommand('stdio')
+      .description('Start MCP server in stdio mode (for Claude Desktop, VS Code)')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
+        const { runMcpServerStdio } = await import('../mcp/server.ts');
+        await runMcpServerStdio();
+      }),
+  );
 
 mcpCommand
-  .command('connections')
-  .description('List all connected MCP servers and their tools')
-  .action(async () => {
-    const { listConnections } = await import('../mcp/client.ts');
-    const connections = listConnections();
+  .command(
+    'connect <name:string>',
+    cortexCommand('connect')
+      .arguments('<name:string>')
+      .description('Connect to an external MCP-compatible coding agent')
+      .option('--command <cmd:string>', 'Command to spawn the agent (stdio transport)')
+      .option('--args <args:string>', 'Comma-separated arguments for the command')
+      .option('--url <url:string>', 'HTTP URL of the MCP server (HTTP transport)')
+      .option('--env <env:string>', 'Comma-separated KEY=VAL environment variables')
+      .action(
+        async (opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
+          const { connectHttp, connectStdio } = await import('../mcp/client.ts');
 
-    if (!connections.length) {
-      console.log(yellow(i18n.t('cli.mcp.noMcpServers')));
-      console.log('');
-      console.log(i18n.t('cli.mcp.connectOptions'));
-      console.log(i18n.t('cli.mcp.connectStdioHint'));
-      console.log(i18n.t('cli.mcp.connectHttpHint'));
-      return;
-    }
+          if (opts.url) {
+            console.log(
+              i18n.t('cli.mcp.connectingHttp', {
+                name: green(name),
+                url: cyan(opts.url as string),
+              }),
+            );
+            try {
+              const conn = await connectHttp({ name, transport: 'http', url: opts.url as string });
+              console.log(green(i18n.t('cli.mcp.connected')));
+              console.log(
+                i18n.t('cli.mcp.serverInfo', {
+                  serverName: conn.serverInfo?.name ?? 'unknown',
+                  serverVersion: conn.serverInfo?.version ?? '?',
+                }),
+              );
+              console.log(i18n.t('cli.mcp.toolsCount', { count: String(conn.tools.length) }));
+              for (const t of conn.tools) {
+                console.log(`    ${yellow(t.name)} — ${t.description}`);
+              }
+            } catch (e) {
+              console.error(
+                red(i18n.t('cli.mcp.failedToConnect', { message: (e as Error).message })),
+              );
+            }
+          } else if (opts.command) {
+            const args = opts.args
+              ? String(opts.args).split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [];
+            const env: Record<string, string> = {};
+            if (opts.env) {
+              for (const pair of String(opts.env).split(',')) {
+                const [key, ...rest] = pair.trim().split('=');
+                if (key) env[key] = rest.join('=');
+              }
+            }
 
-    console.log('');
-    console.log(bold(i18n.t('cli.mcp.connectedMcpServers')));
-    console.log('');
+            console.log(
+              i18n.t('cli.mcp.connectingStdio', {
+                name: green(name),
+                command: cyan(opts.command as string + ' ' + args.join(' ')),
+              }),
+            );
+            try {
+              const conn = await connectStdio({
+                name,
+                transport: 'stdio',
+                command: opts.command as string,
+                args,
+                env,
+              });
+              console.log(green(i18n.t('cli.mcp.connected')));
+              console.log(
+                i18n.t('cli.mcp.serverInfo', {
+                  serverName: conn.serverInfo?.name ?? 'unknown',
+                  serverVersion: conn.serverInfo?.version ?? '?',
+                }),
+              );
+              console.log(i18n.t('cli.mcp.toolsCount', { count: String(conn.tools.length) }));
+              for (const t of conn.tools) {
+                console.log(`    ${yellow(t.name)} — ${t.description}`);
+              }
+            } catch (e) {
+              console.error(
+                red(i18n.t('cli.mcp.failedToConnect', { message: (e as Error).message })),
+              );
+            }
+          } else {
+            console.error(red(i18n.t('cli.mcp.specifyTransport')));
+          }
+        },
+      ),
+  );
 
-    for (const conn of connections) {
-      const status = conn.connected ? green('connected') : red('disconnected');
-      const info = conn.serverInfo
-        ? `${conn.serverInfo.name} v${conn.serverInfo.version}`
-        : 'unknown';
-      console.log(`  ${bold(conn.config.name)} (${conn.config.transport}, ${status}) — ${info}`);
-      console.log(`    Calls: ${conn.calls}, Errors: ${conn.errors}`);
-      console.log(`    Since: ${conn.createdAt.toISOString()}`);
-      console.log(`    Tools (${conn.tools.length}):`);
-      for (const t of conn.tools) {
-        console.log(`      ${yellow(t.name)} — ${t.description}`);
-      }
-      console.log('');
-    }
-  });
+mcpCommand
+  .command(
+    'disconnect <name:string>',
+    cortexCommand('disconnect')
+      .arguments('<name:string>')
+      .description('Disconnect from a connected MCP agent')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
+        const { disconnectHttp, disconnectStdio, getConnection } = await import('../mcp/client.ts');
+        const conn = getConnection(name);
+        if (!conn) {
+          console.error(red(i18n.t('cli.mcp.noConnectionNamed', { name })));
+          return;
+        }
+        if (conn.config.transport === 'http') {
+          await disconnectHttp(name);
+        } else {
+          await disconnectStdio(name);
+        }
+        console.log(green(i18n.t('cli.mcp.disconnectedFrom', { name })));
+      }),
+  );
+
+mcpCommand
+  .command(
+    'connections',
+    cortexCommand('connections')
+      .description('List all connected MCP servers and their tools')
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
+        const { listConnections } = await import('../mcp/client.ts');
+        const connections = listConnections();
+
+        if (!connections.length) {
+          console.log(yellow(i18n.t('cli.mcp.noMcpServers')));
+          console.log('');
+          console.log(i18n.t('cli.mcp.connectOptions'));
+          console.log(i18n.t('cli.mcp.connectStdioHint'));
+          console.log(i18n.t('cli.mcp.connectHttpHint'));
+          return;
+        }
+
+        console.log('');
+        console.log(bold(i18n.t('cli.mcp.connectedMcpServers')));
+        console.log('');
+
+        for (const conn of connections) {
+          const status = conn.connected ? green('connected') : red('disconnected');
+          const info = conn.serverInfo
+            ? `${conn.serverInfo.name} v${conn.serverInfo.version}`
+            : 'unknown';
+          console.log(
+            `  ${bold(conn.config.name)} (${conn.config.transport}, ${status}) — ${info}`,
+          );
+          console.log(`    Calls: ${conn.calls}, Errors: ${conn.errors}`);
+          console.log(`    Since: ${conn.createdAt.toISOString()}`);
+          console.log(`    Tools (${conn.tools.length}):`);
+          for (const t of conn.tools) {
+            console.log(`      ${yellow(t.name)} — ${t.description}`);
+          }
+          console.log('');
+        }
+      }),
+  );
 
 mcpCommand
   .command(
     'gateway',
-    new Command()
-      .name('gateway')
+    cortexCommand('gateway')
       .description('Manage enterprise MCP gateway servers')
-      .action(async () => {
+      .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
         console.log('');
         console.log(bold('Cortex MCP Gateway'));
         console.log('');
@@ -206,9 +236,9 @@ mcpCommand
       })
       .command(
         'status',
-        new Command()
+        cortexCommand('status')
           .description('Show managed MCP servers and their health status')
-          .action(async () => {
+          .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
             const { listServers, getHealthyServers, getDegradedServers, getServerCount } =
               await import('../mcp-gateway/mod.ts');
             const servers = listServers();
@@ -250,9 +280,9 @@ mcpCommand
       )
       .command(
         'health',
-        new Command()
+        cortexCommand('health')
           .description('Run health checks on all managed MCP servers')
-          .action(async () => {
+          .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
             const { listServers, updateServer } = await import('../mcp-gateway/mod.ts');
             const { healthCheck } = await import('../mcp-gateway/gateway.ts');
             const servers = listServers();

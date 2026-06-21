@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { ensureAgentWorkspace, getGlobalWorkspaceDir } from '../workspace/paths.ts';
 import {
   gitAdd,
@@ -23,14 +24,11 @@ async function resolveDir(agentId?: string): Promise<string> {
   return getGlobalWorkspaceDir();
 }
 
-export const gitCommand = new Command()
-  .description('Git workspace operations');
-
-const statusCmd = new Command()
+const statusCmd = cortexCommand('status')
   .description('Show working tree status')
   .option('--agent <agentId:string>', 'Agent workspace ID')
-  .action(async (opts: { agent?: string }) => {
-    const dir = await resolveDir(opts.agent);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
     const st = await gitStatus(dir);
     console.log(`On branch ${st.branch}`);
     if (st.ahead || st.behind) console.log(`  ${st.ahead} ahead, ${st.behind} behind`);
@@ -44,61 +42,63 @@ const statusCmd = new Command()
     }
   });
 
-const logCmd = new Command()
+const logCmd = cortexCommand('log')
   .description('Show commit log')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--limit <limit:number>', 'Max commits', { default: 20 })
-  .action(async (opts: { agent?: string; limit: number }) => {
-    const dir = await resolveDir(opts.agent);
-    const entries = await gitLog(dir, opts.limit);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
+    const entries = await gitLog(dir, opts.limit as number);
     for (const e of entries) {
       console.log(`${e.hash.slice(0, 8)} ${e.date.slice(0, 10)} ${e.author}  ${e.message}`);
     }
   });
 
-const diffCmd = new Command()
+const diffCmd = cortexCommand('diff')
   .description('Show working tree diff')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--stat', 'Show diffstat only')
   .option('--file <file:string>', 'Show diff for specific file')
-  .action(async (opts: { agent?: string; stat?: boolean; file?: string }) => {
-    const dir = await resolveDir(opts.agent);
-    const output = opts.stat ? await gitDiffStat(dir) : await gitDiff(dir, opts.file);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
+    const output = opts.stat
+      ? await gitDiffStat(dir)
+      : await gitDiff(dir, opts.file as string | undefined);
     console.log(output);
   });
 
-const addCmd = new Command()
+const addCmd = cortexCommand('add')
   .description('Stage files')
   .arguments('<paths...:string>')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--all', 'Stage all changes (git add -A)')
-  .action(async (opts: { agent?: string; all?: boolean }, ...paths: string[]) => {
-    const dir = await resolveDir(opts.agent);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx, ...paths: string[]) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
     const files = opts.all ? ['-A'] : paths.flat();
     const ok = await gitAdd(dir, files);
     console.log(ok ? i18n.t('cli.git.staged') : i18n.t('cli.git.failedToStage'));
   });
 
-const commitCmd = new Command()
+const commitCmd = cortexCommand('commit')
   .description('Create a commit')
   .arguments('<message:string>')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--all', 'Stage all changes before commit')
-  .action(async (opts: { agent?: string; all?: boolean }, message: string) => {
-    const dir = await resolveDir(opts.agent);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx, message: string) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
     if (opts.all) await gitAdd(dir, ['-A']);
     const ok = await gitCommit(dir, message);
     console.log(ok ? i18n.t('cli.git.committed', { message }) : i18n.t('cli.git.nothingToCommit'));
   });
 
-const pushCmd = new Command()
+const pushCmd = cortexCommand('push')
   .description('Push to remote')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--remote <remote:string>', 'Remote name', { default: 'origin' })
   .option('--branch <branch:string>', 'Branch to push')
-  .action(async (opts: { agent?: string; remote: string; branch?: string }) => {
-    const dir = await resolveDir(opts.agent);
-    const result = await gitPush(dir, opts.remote, opts.branch);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
+    const result = await gitPush(dir, opts.remote as string, opts.branch as string | undefined);
     console.log(
       result.success
         ? i18n.t('cli.git.pushSuccessful')
@@ -106,14 +106,14 @@ const pushCmd = new Command()
     );
   });
 
-const pullCmd = new Command()
+const pullCmd = cortexCommand('pull')
   .description('Pull from remote')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--remote <remote:string>', 'Remote name', { default: 'origin' })
   .option('--branch <branch:string>', 'Branch to pull')
-  .action(async (opts: { agent?: string; remote: string; branch?: string }) => {
-    const dir = await resolveDir(opts.agent);
-    const result = await gitPull(dir, opts.remote, opts.branch);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
+    const result = await gitPull(dir, opts.remote as string, opts.branch as string | undefined);
     console.log(
       result.success
         ? i18n.t('cli.git.pullSuccessful')
@@ -121,12 +121,12 @@ const pullCmd = new Command()
     );
   });
 
-const cloneCmd = new Command()
+const cloneCmd = cortexCommand('clone')
   .description('Clone a repository')
   .arguments('<url:string> <dest:string>')
   .option('--branch <branch:string>', 'Branch to clone')
-  .action(async (opts: { branch?: string }, url: string, dest: string) => {
-    const result = await gitClone(url, dest, opts.branch);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx, url: string, dest: string) => {
+    const result = await gitClone(url, dest, opts.branch as string | undefined);
     console.log(
       result.success
         ? i18n.t('cli.git.cloned', { dest })
@@ -134,25 +134,27 @@ const cloneCmd = new Command()
     );
   });
 
-const branchCmd = new Command()
+const branchCmd = cortexCommand('branch')
   .description('List or create/switch branches')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--create <name:string>', 'Create a new branch')
   .option('--checkout <name:string>', 'Switch to branch')
-  .action(async (opts: { agent?: string; create?: string; checkout?: string }) => {
-    const dir = await resolveDir(opts.agent);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
     if (opts.create) {
-      const ok = await gitCreateBranch(dir, opts.create);
+      const ok = await gitCreateBranch(dir, opts.create as string);
       return console.log(
         ok
-          ? i18n.t('cli.git.createdAndSwitched', { branch: opts.create })
+          ? i18n.t('cli.git.createdAndSwitched', { branch: opts.create as string })
           : i18n.t('cli.git.failed'),
       );
     }
     if (opts.checkout) {
-      const ok = await gitCheckout(dir, opts.checkout);
+      const ok = await gitCheckout(dir, opts.checkout as string);
       return console.log(
-        ok ? i18n.t('cli.git.switchedTo', { branch: opts.checkout }) : i18n.t('cli.git.failed'),
+        ok
+          ? i18n.t('cli.git.switchedTo', { branch: opts.checkout as string })
+          : i18n.t('cli.git.failed'),
       );
     }
     const branches = await gitListBranches(dir);
@@ -161,24 +163,30 @@ const branchCmd = new Command()
     }
   });
 
-const remoteCmd = new Command()
+const remoteCmd = cortexCommand('remote')
   .description('Manage remotes')
   .option('--agent <agentId:string>', 'Agent workspace ID')
   .option('--add <name:string>', 'Add remote')
   .option('--url <url:string>', 'Remote URL (for --add)')
-  .action(async (opts: { agent?: string; add?: string; url?: string }) => {
-    const dir = await resolveDir(opts.agent);
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
+    const dir = await resolveDir(opts.agent as string | undefined);
     if (opts.add && opts.url) {
-      const ok = await gitAddRemote(dir, opts.add, opts.url);
+      const ok = await gitAddRemote(dir, opts.add as string, opts.url as string);
       return console.log(
-        ok ? i18n.t('cli.git.addedRemote', { name: opts.add }) : i18n.t('cli.git.failedAddRemote'),
+        ok
+          ? i18n.t('cli.git.addedRemote', { name: opts.add as string })
+          : i18n.t('cli.git.failedAddRemote'),
       );
     }
     const remotes = await gitListRemotes(dir);
     for (const r of remotes) console.log(`${r.name}\t${r.url}`);
   });
 
-gitCommand
+export const gitCommand = cortexCommand('git')
+  .description('Git workspace operations')
+  .action(async () => {
+    gitCommand._cmd.showHelp();
+  })
   .command('status', statusCmd)
   .command('log', logCmd)
   .command('diff', diffCmd)

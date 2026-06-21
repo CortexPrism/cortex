@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { Input, Select } from '@cliffy/prompt';
 import {
   getChannel as getChannelFromManager,
@@ -62,44 +63,20 @@ async function loadChannelPlugin(type: string) {
   }
 }
 
-const channelsCommand = new Command()
-  .name('channels')
-  .description('Manage communication channels (Discord, Slack, Teams, Telegram, etc.)')
-  .action(async () => {
-    const channels = await listChannels();
-    if (channels.length === 0) {
-      console.log(i18n.t('cli.channels.noChannelsConfigured'));
-      console.log(i18n.t('cli.channels.useAddHint'));
-      return;
-    }
-    console.log(i18n.t('cli.channels.channelsConfigured', { count: String(channels.length) }));
-    for (const c of channels) {
-      const status = c.enabled ? green('enabled') : yellow('disabled');
-      console.log(`  ${c.id}`);
-      console.log(`    Type: ${c.channelType}`);
-      console.log(`    Name: ${c.name}`);
-      console.log(`    Status: ${status}`);
-      console.log(`    Agent: ${c.agentId}`);
-      console.log();
-    }
-  });
-
-channelsCommand
-  .command('add')
+const addCmd = cortexCommand('add')
   .description('Add a new channel')
   .option('--id <id:string>', 'Channel ID')
   .option('--type <type:string>', 'Channel type (discord, slack, teams, telegram, etc.)')
   .option('--name <name:string>', 'Channel display name')
   .option('--agent <agent:string>', 'Agent ID to handle this channel')
-  .action(async (opts) => {
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx) => {
     try {
-      // Prompt for missing values
-      const id = opts.id ?? await Input.prompt({
+      const id = (opts.id as string) ?? await Input.prompt({
         message: 'Channel ID (unique identifier):',
         validate: (value) => value.length > 0 || 'ID is required',
       });
 
-      const type = opts.type ?? await Select.prompt({
+      const type = (opts.type as string) ?? await Select.prompt({
         message: 'Channel type:',
         options: [
           { value: 'discord', name: 'Discord' },
@@ -114,17 +91,16 @@ channelsCommand
         ],
       });
 
-      const name = opts.name ?? await Input.prompt({
+      const name = (opts.name as string) ?? await Input.prompt({
         message: 'Display name:',
-        default: id,
+        default: id as string,
       });
 
-      const agentId = opts.agent ?? await Input.prompt({
+      const agentId = (opts.agent as string) ?? await Input.prompt({
         message: 'Agent ID:',
         default: 'default',
       });
 
-      // Collect credentials based on type
       const credentials: Record<string, string> = {};
       const settings: Record<string, unknown> = {};
 
@@ -195,40 +171,38 @@ channelsCommand
           });
       }
 
-      // Store credentials in vault
-      const vaultRef = await storeChannelCredentials(id, type, credentials);
+      const vaultRef = await storeChannelCredentials(id as string, type as string, credentials);
 
-      // Store channel configuration
       await storeChannel({
-        id,
-        channelType: type,
-        name,
+        id: id as string,
+        channelType: type as string,
+        name: name as string,
         enabled: false,
         settings,
         vaultRef,
-        agentId,
+        agentId: agentId as string,
       });
 
-      console.log(green(i18n.t('cli.channels.channelAdded', { name, id })));
-      console.log(i18n.t('cli.channels.useStartHint', { id }));
+      console.log(
+        green(i18n.t('cli.channels.channelAdded', { name: name as string, id: id as string })),
+      );
+      console.log(i18n.t('cli.channels.useStartHint', { id: id as string }));
     } catch (e) {
       console.error(red(i18n.t('cli.channels.failedToAdd', { message: (e as Error).message })));
       Deno.exit(1);
     }
   });
 
-channelsCommand
-  .command('start <id:string>')
+const startCmd = cortexCommand('start')
+  .arguments('<id:string>')
   .description('Start a channel')
-  .action(async (_opts: void, id: string) => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
     try {
-      // Load channel from store
       const record = await getChannel(id);
       if (!record) {
         throw new Error(`Channel "${id}" not found`);
       }
 
-      // Build config and load appropriate plugin
       const config = await buildChannelConfig(record);
 
       const plugin = await loadChannelPlugin(record.channelType);
@@ -245,10 +219,10 @@ channelsCommand
     }
   });
 
-channelsCommand
-  .command('stop <id:string>')
+const stopCmd = cortexCommand('stop')
+  .arguments('<id:string>')
   .description('Stop a channel')
-  .action(async (_opts: void, id: string) => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
     try {
       await stopChannel(id);
       await setChannelEnabled(id, false);
@@ -259,10 +233,10 @@ channelsCommand
     }
   });
 
-channelsCommand
-  .command('test <id:string>')
+const testCmd = cortexCommand('test')
+  .arguments('<id:string>')
   .description('Test channel connection')
-  .action(async (_opts: void, id: string) => {
+  .action(async (_opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
     try {
       const record = await getChannel(id);
       if (!record) {
@@ -288,12 +262,11 @@ channelsCommand
     }
   });
 
-channelsCommand
-  .command('remove <id:string>')
-  .alias('rm')
+const removeCmd = cortexCommand('remove')
+  .arguments('<id:string>')
   .description('Remove a channel')
   .option('--force', 'Skip confirmation')
-  .action(async (opts, id: string) => {
+  .action(async (opts: Record<string, unknown>, _ctx: Ctx, id: string) => {
     try {
       const record = await getChannel(id);
       if (!record) {
@@ -315,14 +288,12 @@ channelsCommand
         }
       }
 
-      // Stop channel if running
       try {
         await stopChannel(id);
       } catch {
         // Channel might not be running
       }
 
-      // Delete from store
       await deleteChannel(id);
 
       console.log(green(i18n.t('cli.channels.channelRemoved', { id })));
@@ -332,4 +303,28 @@ channelsCommand
     }
   });
 
-export { channelsCommand };
+export const channelsCommand = cortexCommand('channels')
+  .description('Manage communication channels (Discord, Slack, Teams, Telegram, etc.)')
+  .action(async () => {
+    const channels = await listChannels();
+    if (channels.length === 0) {
+      console.log(i18n.t('cli.channels.noChannelsConfigured'));
+      console.log(i18n.t('cli.channels.useAddHint'));
+      return;
+    }
+    console.log(i18n.t('cli.channels.channelsConfigured', { count: String(channels.length) }));
+    for (const c of channels) {
+      const status = c.enabled ? green('enabled') : yellow('disabled');
+      console.log(`  ${c.id}`);
+      console.log(`    Type: ${c.channelType}`);
+      console.log(`    Name: ${c.name}`);
+      console.log(`    Status: ${status}`);
+      console.log(`    Agent: ${c.agentId}`);
+      console.log();
+    }
+  })
+  .command('add', addCmd)
+  .command('start', startCmd)
+  .command('stop', stopCmd)
+  .command('test', testCmd)
+  .command('remove', removeCmd);

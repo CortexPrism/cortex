@@ -1,4 +1,5 @@
-import { Command } from '@cliffy/command';
+import { cortexCommand } from './command-builder.ts';
+import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { fromFileUrl } from '@std/path';
 import { isCompiledBinary, killDenoProcesses } from '../utils/platform.ts';
@@ -170,24 +171,27 @@ async function startDaemon(quiet = false): Promise<void> {
   Deno.exit(0);
 }
 
-export const daemonCommand = new Command()
-  .name('daemon')
+export const daemonCommand = cortexCommand('daemon')
   .description('Manage Cortex background processes (validator, executor, scheduler)')
   .command(
     'start',
-    new Command()
+    cortexCommand('start')
       .description('Start the Cortex daemon supervisor in the background')
-      .action(() => startDaemon()),
+      .action(async () => {
+        await startDaemon();
+      }),
   )
   .command(
     'stop',
-    new Command()
+    cortexCommand('stop')
       .description('Stop all Cortex background processes')
-      .action(stopDaemons),
+      .action(async () => {
+        await stopDaemons();
+      }),
   )
   .command(
     'restart',
-    new Command()
+    cortexCommand('restart')
       .description('Restart all Cortex background processes (stop then start)')
       .action(async () => {
         console.log(bold('Restarting Cortex daemon processes…'));
@@ -199,7 +203,7 @@ export const daemonCommand = new Command()
   )
   .command(
     'run',
-    new Command()
+    cortexCommand('run')
       .description('Run the daemon supervisor in the foreground (for systemd/tmux)')
       .action(async () => {
         const execPath = Deno.execPath();
@@ -221,7 +225,7 @@ export const daemonCommand = new Command()
   )
   .command(
     'status',
-    new Command()
+    cortexCommand('status')
       .description('Show status of Cortex background processes')
       .action(async () => {
         console.log(bold('Cortex Daemon Status'));
