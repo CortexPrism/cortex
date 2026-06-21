@@ -1,6 +1,6 @@
 # CortexPrism: Agent Harness → Agent Operating System — Alignment Audit
 
-**Version**: 0.47.0 | **Audit Date**: 2026-06-21 | **Status**: In Progress
+**Version**: 0.48.5 | **Audit Date**: 2026-06-21 | **Status**: Completed
 
 This is the source-of-truth document for the transition from "agentic harness" to "AI agent operating system" across every layer of CortexPrism.
 
@@ -281,7 +281,7 @@ All file paths and line numbers verified against current codebase on 2026-06-21.
 | `packaging/chocolatey/cortex.nuspec:14` | ✅ | Harness summary |
 | `packaging/chocolatey/cortex.nuspec:16` | ✅ | Harness description body |
 | `packaging/winget/CortexPrism.Cortex.yaml` | ✅ | Clean — version manifest, no description |
-| `README.md:22` | ✅ | Badge shows `version-0.46.0` (stale from 0.47.0) |
+| `README.md:22` | ✅ | Badge shows `version-0.48.5` |
 | `src/agent/soul.ts:5-25` | ✅ | DEFAULT_SOUL constant |
 | `src/agent/soul.ts:166` | ✅ | `- OS: (your operating system)` |
 | `src/server/ui-auth.ts:155` | ✅ | "Your AI operating system" |
@@ -294,7 +294,7 @@ All file paths and line numbers verified against current codebase on 2026-06-21.
 | `CHANGELOG.md:3469` | ✅ | Initial release: "open-source AI agent operating system" |
 | `docs/ARCHITECTURE.md:9` | ✅ | "single-process AI agent operating system" |
 | `src/agent/sub-agent-types.ts:3-14` | ✅ | SubAgentType union type |
-| `VERSION` | ✅ | `0.47.0` |
-| `deno.json:2` | ✅ | `"version": "0.47.0"` |
+| `VERSION` | ✅ | `0.48.5` |
+| `deno.json:2` | ✅ | `"version": "0.48.5"` |
 
 *Last updated: 2026-06-21*
