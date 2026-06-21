@@ -209,7 +209,7 @@ Daemons share the same `cortex.db` and `memory.db`. The `NoopDb` stub (`src/db/c
 | 20 | ✅ Done | `src/server/router.ts` |
 | 21 | ✅ Done | `src/kernel/mod.ts` |
 | 22 | ⏳ Deferred | — (requires marketplace redesign) |
-| 23 | ⏳ Deferred | — (UI work, separate PR) |
+| 23 | ✅ Done | `src/server/ui.ts` |
 
 ---
 
