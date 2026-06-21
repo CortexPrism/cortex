@@ -1,6 +1,7 @@
 import { getPluginsDb } from '../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 import type { PluginCapability, PluginManifest, PluginRow } from './types.ts';
+import { resolveDependencies } from './deps.ts';
 
 function serializeCapabilities(manifest: PluginManifest): string {
   return JSON.stringify(manifest.capabilities);
@@ -48,7 +49,25 @@ function normalizeManifest(manifest: PluginManifest): {
   };
 }
 
-export async function installPlugin(manifest: PluginManifest): Promise<void> {
+export async function installPlugin(manifest: PluginManifest): Promise<{ ok: boolean; missingDeps: string[]; warnings: string[] }> {
+  const warnings: string[] = [];
+  const missingDeps: string[] = [];
+
+  // Resolve dependencies before installing
+  if (manifest.dependencies && Object.keys(manifest.dependencies).length > 0) {
+    const installed = await listPluginManifests();
+    const result = resolveDependencies(manifest, installed);
+    if (!result.ok) {
+      if (result.cycle) {
+        const cycleStr = result.cycle.join(' → ');
+        warnings.push(`Dependency cycle detected: ${cycleStr}`);
+      }
+      for (const m of result.missing) {
+        missingDeps.push(`${m.plugin} requires ${m.requires}@${m.version} (not installed)`);
+      }
+    }
+  }
+
   const db = await getPluginsDb();
   const now = new Date().toISOString();
   const m = normalizeManifest(manifest);
@@ -78,11 +97,33 @@ export async function installPlugin(manifest: PluginManifest): Promise<void> {
       now,
     ] as InValue[],
   );
+
+  return { ok: missingDeps.length === 0, missingDeps, warnings };
 }
 
 export async function listPlugins(): Promise<PluginRow[]> {
   const db = await getPluginsDb();
   return await db.all<PluginRow>(`SELECT * FROM plugins ORDER BY name ASC`);
+}
+
+/** List installed plugins as PluginManifest objects for dependency resolution. */
+export async function listPluginManifests(): Promise<PluginManifest[]> {
+  const rows = await listPlugins();
+  return rows.map((r) => {
+    try {
+      return JSON.parse(r.manifest_json ?? '{}') as PluginManifest;
+    } catch {
+      return {
+        name: r.name,
+        version: r.version,
+        description: r.description ?? '',
+        kind: (r.type as PluginManifest['kind']) || 'esm',
+        entryPoint: r.entry,
+        runtime: (r.runtime as PluginManifest['runtime']) || 'deno',
+        capabilities: deserializeCapabilities(r.declared_permissions ?? '[]'),
+      };
+    }
+  });
 }
 
 export async function getPlugin(name: string): Promise<PluginRow | undefined> {

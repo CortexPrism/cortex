@@ -203,12 +203,12 @@ Daemons share the same `cortex.db` and `memory.db`. The `NoopDb` stub (`src/db/c
 | # | Status | Files |
 |---|--------|-------|
 | 16 | ✅ Done | `src/kernel/mod.ts` |
-| 17 | ⏳ Deferred | — (major refactor, separate PR) |
+| 17 | ✅ Done | `src/kernel/loop.ts` |
 | 18 | ✅ Done | `src/kernel/mod.ts`, `src/agent/sub-agent.ts`, `src/server/server.ts` |
 | 19 | ✅ Done | `src/server/router.ts` |
 | 20 | ✅ Done | `src/server/router.ts` |
 | 21 | ✅ Done | `src/kernel/mod.ts` |
-| 22 | ⏳ Deferred | — (requires marketplace redesign) |
+| 22 | ✅ Done | `src/plugins/deps.ts`, `src/plugins/registry.ts` |
 | 23 | ✅ Done | `src/server/ui.ts` |
 
 ---
