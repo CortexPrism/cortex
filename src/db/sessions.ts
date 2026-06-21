@@ -33,7 +33,7 @@ export async function createSession(
   await db.run(
     `INSERT INTO sessions (id, name, agent_id, channel, status, turn_count, sensitivity, started_at, parent_session_id)
      VALUES (?, ?, ?, ?, 'active', 0, 'sensitive', datetime('now'), ?)`,
-    [id, name ?? null, agentId ?? 'default', channel, parentSessionId ?? null],
+    [id, name ?? null, agentId ?? 'assistant', channel, parentSessionId ?? null],
   );
 
   // Record compliance metadata for session start (fire-and-forget)

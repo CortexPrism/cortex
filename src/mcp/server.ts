@@ -90,7 +90,7 @@ function registerBuiltinTools(): void {
           text: JSON.stringify(
             sessions.map((s) => ({
               id: s.id,
-              agent: s.agent_id ?? 'default',
+              agent: s.agent_id ?? 'assistant',
               status: s.status,
               channel: s.channel,
               startedAt: s.started_at,

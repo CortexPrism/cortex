@@ -649,7 +649,7 @@ class ResponsibleAIHook implements PipelineHook {
       const { auditAgentOutput } = await import('../agent/responsible-ai.ts');
       const report = auditAgentOutput(text, {
         sessionId: ctx.sessionId,
-        agentId: ctx.state.agentName ?? 'default',
+        agentId: ctx.state.agentName ?? 'assistant',
         taskDescription: ctx.state.userMessage?.slice(0, 200) ?? '',
       });
 

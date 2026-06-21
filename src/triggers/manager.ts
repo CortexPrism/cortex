@@ -63,7 +63,7 @@ export async function handleTriggerEvent(
 
   try {
     const job = await createJob(
-      trigger.action.agent ?? 'default',
+      trigger.action.agent ?? 'assistant',
       prompt,
     );
     return { job };

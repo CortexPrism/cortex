@@ -167,9 +167,9 @@ async function main(): Promise<void> {
       registry,
       toolContext: {
         workingDir: Deno.cwd(),
-        agentId: config.config.agentId ?? agentConfig.id ?? 'default',
+        agentId: config.config.agentId ?? agentConfig.id ?? 'assistant',
         workspaceDir: (await import('../workspace/paths.ts')).getAgentWorkspaceDir(
-          config.config.agentId ?? config.subAgentType ?? agentConfig.id ?? 'default',
+          config.config.agentId ?? config.subAgentType ?? agentConfig.id ?? 'assistant',
         ),
         model: inheritedModel,
         provider: inheritedProvider,
@@ -180,7 +180,7 @@ async function main(): Promise<void> {
               query: command,
               requestReason: command,
               sessionId,
-              agentId: config.config.agentId ?? agentConfig.id ?? 'default',
+              agentId: config.config.agentId ?? agentConfig.id ?? 'assistant',
               dataClassification: 'sensitive',
               sampleData,
             },

@@ -236,6 +236,8 @@ export interface AgentConfig {
   router?: RouterConfig;
   /** Categorisation tags */
   tags?: string[];
+  /** Whether this agent is a built-in (pre-installed) agent */
+  builtin?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -509,7 +511,7 @@ const DEFAULT_CONFIG: CortexConfig = {
     autoModelPool: [],
   },
   agents: {},
-  defaultAgent: 'default',
+  defaultAgent: 'assistant',
   update: {
     channel: 'stable',
     checkOnStartup: true,
@@ -606,18 +608,10 @@ export async function loadConfig(): Promise<CortexConfig> {
 
 export async function saveConfig(config: CortexConfig): Promise<void> {
   if (!config.agents) config.agents = {};
-  if (!config.defaultAgent) config.defaultAgent = 'default';
-  if (!config.agents['default']) {
-    config.agents['default'] = {
-      id: 'default',
-      name: config.agent?.name || 'Cortex',
-      description: 'Default general-purpose agent using the system soul files',
-      maxTurns: config.agent?.maxTurns || 50,
-      tools: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-  }
+  if (!config.defaultAgent || config.defaultAgent === 'default') config.defaultAgent = 'assistant';
+
+  const { ensureDefaultAgent } = await import('../agent/builtin-agents.ts');
+  ensureDefaultAgent(config);
   const toSave = { ...config };
   const encryptedProviders: Record<string, ProviderConfig | undefined> = {};
   for (const [kind, provider] of Object.entries(config.providers)) {

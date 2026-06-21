@@ -20,7 +20,7 @@ export function registerChannel(
   id: string,
   plugin: ChannelPlugin,
   config: ChannelConfig,
-  agentId = 'default',
+  agentId = 'assistant',
 ): void {
   const channel: RegisteredChannel = {
     plugin,

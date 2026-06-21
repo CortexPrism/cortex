@@ -152,7 +152,7 @@ export function createA2AExecutor() {
           registry: globalRegistry,
           toolContext: {
             workingDir: Deno.cwd(),
-            agentId: 'default',
+            agentId: 'assistant',
             workspaceDir: Deno.cwd(),
             model: sess.model,
             provider: sess.providerKind,

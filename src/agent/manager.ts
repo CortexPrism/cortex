@@ -1,8 +1,9 @@
 import { exists } from '@std/fs';
 import { loadConfig, saveConfig } from '../config/config.ts';
-import type { AgentConfig, CortexConfig } from '../config/config.ts';
+import type { AgentConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { DEFAULT_SOUL } from './soul.ts';
+import { ensureDefaultAgent, isBuiltinAgentId } from './builtin-agents.ts';
 
 /** Generate a short unique agent ID */
 function makeAgentId(name: string): string {
@@ -14,27 +15,8 @@ function now(): string {
   return new Date().toISOString();
 }
 
-/** Ensure a default agent exists in config */
-export function ensureDefaultAgent(config: CortexConfig): CortexConfig {
-  if (!config.agents) config.agents = {};
-  if (!config.defaultAgent) config.defaultAgent = 'default';
-
-  if (!config.agents['default']) {
-    config.agents['default'] = {
-      id: 'default',
-      name: config.agent?.name || 'Cortex',
-      description: 'Default general-purpose agent using the system soul files',
-      soulFile: PATHS.soulFile,
-      userFile: PATHS.userFile,
-      memoryFile: PATHS.memoryFile,
-      maxTurns: config.agent?.maxTurns || 50,
-      tools: [],
-      createdAt: now(),
-      updatedAt: now(),
-    };
-  }
-  return config;
-}
+/** Ensure default and built-in agents exist in config. Re-exported from builtin-agents. */
+export { ensureDefaultAgent } from './builtin-agents.ts';
 
 /** Register a new agent */
 export async function registerAgent(
@@ -65,10 +47,12 @@ export async function getAgent(id: string): Promise<AgentConfig | null> {
 /** Get the currently selected/default agent */
 export async function getDefaultAgent(): Promise<AgentConfig> {
   const config = await loadConfig();
-  const id = config.defaultAgent || 'default';
-  // Ensure default exists
-  const withDefault = ensureDefaultAgent(config);
-  return withDefault.agents[id] ?? withDefault.agents['default']!;
+  const id = (config.defaultAgent && config.defaultAgent !== 'default')
+    ? config.defaultAgent
+    : 'assistant';
+  // Ensure built-in agents exist
+  const withDefaults = ensureDefaultAgent(config);
+  return withDefaults.agents[id] ?? withDefaults.agents['assistant']!;
 }
 
 /** List all registered agents */
@@ -132,13 +116,13 @@ export async function cloneAgent(
 export async function deleteAgent(id: string): Promise<void> {
   const config = await loadConfig();
   if (!config.agents[id]) throw new Error(`Agent "${id}" not found`);
-  if (id === 'default') throw new Error('Cannot delete the default agent');
+  if (isBuiltinAgentId(id)) throw new Error(`Cannot delete built-in agent "${id}"`);
 
   delete config.agents[id];
 
   // Reset defaultAgent if it was the deleted one
   if (config.defaultAgent === id) {
-    config.defaultAgent = 'default';
+    config.defaultAgent = 'assistant';
   }
   await saveConfig(config);
 }
