@@ -212,10 +212,16 @@ export async function markJobRunning(id: string, runner = 'scheduler'): Promise<
   return runId;
 }
 
+const RUNNING_JOB_TIMEOUT_MS = 10 * 60_000; // 10 minutes
+
 export async function cancelJob(id: string): Promise<void> {
   const db = await getCoreDb();
   await db.run(
-    `UPDATE jobs SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND status IN ('pending', 'failed')`,
+    `UPDATE jobs SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND status IN ('pending', 'failed', 'running')`,
+    [id],
+  );
+  await db.run(
+    `UPDATE job_runs SET status = 'cancelled', finished_at = datetime('now') WHERE job_id = ? AND status = 'running'`,
     [id],
   );
 }
@@ -316,6 +322,73 @@ export async function markJobFailed(
     message: error,
     durationMs: details.durationMs ?? null,
   });
+}
+
+export async function recoverStaleJobs(
+  timeoutMs: number = RUNNING_JOB_TIMEOUT_MS,
+): Promise<{ recovered: number; failedRuns: number }> {
+  const db = await getCoreDb();
+  const cutoff = new Date(Date.now() - timeoutMs).toISOString();
+
+  const staleJobs = await db.all<{ id: string; run_id: string; attempts: number; max_attempts: number }>(
+    `SELECT j.id, j.attempts, j.max_attempts, r.id as run_id
+     FROM jobs j
+     LEFT JOIN job_runs r ON r.job_id = j.id AND r.status = 'running'
+     WHERE j.status = 'running' AND j.last_run_at < ?`,
+    [cutoff],
+  );
+
+  let recovered = 0;
+  let failedRuns = 0;
+
+  for (const j of staleJobs) {
+    const newStatus = j.attempts < j.max_attempts ? 'pending' : 'failed';
+    await db.run(
+      `UPDATE jobs
+       SET status = ?,
+           last_error = 'Job timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+           error = 'Job timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+           next_run_at = CASE WHEN ? = 'pending' THEN datetime('now', '+60 seconds') ELSE next_run_at END,
+           updated_at = datetime('now')
+       WHERE id = ?`,
+      [newStatus, newStatus, j.id],
+    );
+    recovered++;
+
+    if (j.run_id) {
+      await db.run(
+        `UPDATE job_runs
+         SET status = 'failed',
+             message = 'Job timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+             finished_at = datetime('now')
+         WHERE id = ?`,
+        [j.run_id],
+      );
+      failedRuns++;
+    }
+  }
+
+  const staleRuns = await db.all<{ id: string; job_id: string }>(
+    `SELECT r.id, r.job_id
+     FROM job_runs r
+     WHERE r.status = 'running' AND r.started_at < ?
+       AND r.job_id NOT IN (SELECT j.id FROM jobs j WHERE j.status = 'running')`,
+    [cutoff],
+  );
+
+  for (const r of staleRuns) {
+    await db.run(
+      `UPDATE job_runs
+       SET status = 'failed',
+           message = 'Run timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+           finished_at = datetime('now')
+       WHERE id = ?`,
+      [r.id],
+    );
+    failedRuns++;
+  }
+
+  return { recovered, failedRuns };
 }
 
 export async function getDueJobs(): Promise<JobRow[]> {

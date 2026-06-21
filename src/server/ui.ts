@@ -4561,6 +4561,7 @@ function injectSettingsSubNav() {
     ['providers', 'AI &amp; Models'],
     ['tools', 'Tools &amp; Integrations'],
     ['system', 'System'],
+    ['debug', 'Debug'],
   ];
   bar.setAttribute('data-group', 'settings');
   bar.setAttribute('data-active', act);
@@ -4905,9 +4906,9 @@ async function searchMemory() {
             <div style="font-size:11px;color:\${dColor};">\${(decay*100).toFixed(1)}%</div>
           </div>
           \${h.accessCount !== undefined ? \`<div><div style="font-size:10px;color:var(--text3);">Accesses</div><div style="font-size:11px;color:var(--text2);">\${h.accessCount}</div></div>\` : ''}
-        </div>
       </div>
-    \`;
+    </div>
+  \`;
     el.appendChild(d);
   }
 }
@@ -8151,45 +8152,6 @@ async function loadSettings() {
       </div>
 
       <div class="card" style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Log Level &amp; File</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Structured logging to <code style="color:var(--text2);">~/.cortex/data/logs/cortex.log</code>. Override at runtime with <code style="color:var(--text2);">CORTEX_LOG_LEVEL</code>.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Log Level</label>
-            <select class="inp" id="cfg-log-level">
-              <option value="trace" \${config.logging?.level==='trace'?'selected':''}>trace — maximum verbosity</option>
-              <option value="debug" \${config.logging?.level==='debug'?'selected':''}>debug — internal state</option>
-              <option value="info" \${config.logging?.level==='info'?'selected':''}>info — operational events</option>
-              <option value="warn" \${config.logging?.level==='warn'?'selected':''}>warn — recoverable issues</option>
-              <option value="error" \${(!config.logging?.level||config.logging?.level==='error')?'selected':''}>error — failures only (default)</option>
-              <option value="silent" \${config.logging?.level==='silent'?'selected':''}>silent — no output</option>
-            </select>
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Applies to stdout and file transports</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">File Logging</label>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-              <input type="checkbox" id="cfg-log-file-enabled" \${config.logging?.fileEnabled!==false?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
-              <span style="font-size:12px;color:var(--text2);">Write logs to file (JSON-lines)</span>
-            </div>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max File Size (MB)</label>
-            <input class="inp" id="cfg-log-maxbytes" type="number" min="1" max="500" value="\${Math.round((config.logging?.fileMaxBytes??10485760)/1048576)}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Rotate log file when it exceeds this size</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max Rotated Files</label>
-            <input class="inp" id="cfg-log-maxfiles" type="number" min="1" max="20" value="\${config.logging?.fileMaxFiles??5}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Number of rotated backup files to keep</p>
-          </div>
-        </div>
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveLoggingSettings()">Save Logging Settings</button>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:6px;">OpenTelemetry (OTLP)</div>
         <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Push traces, logs, and metrics to any OTLP-compatible collector (Grafana Tempo, Jaeger, Honeycomb, etc.)</p>
         <div style="display:grid;grid-template-columns:1fr;gap:14px;">
@@ -8250,6 +8212,81 @@ async function loadSettings() {
         </div>
       </div>
     </div>
+
+    <div id="settings-pane-debug" style="display:\${settingsActiveTab === 'debug' ? 'block' : 'none'};">
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">System Diagnostics</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Runtime diagnostics, daemon status, and database health</p>
+        <div id="debug-diag-content" style="display:flex;flex-direction:column;gap:10px;">
+          <div class="stat-row"><span>Load in progress...</span><span></span></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn btn-ghost" onclick="refreshDebugDiagnostics()" style="font-size:10px;">Refresh</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Scheduler &amp; Stuck Jobs</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Monitor running jobs, recover stale jobs, and manage scheduler health</p>
+        <div id="debug-jobs-content" style="display:flex;flex-direction:column;gap:10px;">
+          <div class="stat-row"><span>Loading...</span><span></span></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="recoverStaleJobsFromDebug()" style="font-size:10px;">Recover Stale Jobs</button>
+          <button class="btn btn-ghost" onclick="refreshDebugJobs()" style="font-size:10px;">Refresh</button>
+          <span id="debug-recover-result" style="font-size:10px;color:var(--text3);display:none;"></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Sandbox Debug</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Sandbox runtime backends, debug toggle, and execution environment</p>
+        <div id="debug-sandbox-content"></div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="cfg-sandbox-debug" onchange="toggleSandboxDebug()" style="width:16px;height:16px;accent-color:var(--accent);" />
+          <label style="font-size:12px;color:var(--text2);">Enable sandbox debug logging (<code style="color:var(--accent);">CORTEX_SANDBOX_DEBUG=1</code>)</label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Log Level &amp; File</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Structured logging to <code style="color:var(--text2);">~/.cortex/data/logs/cortex.log</code>. Override at runtime with <code style="color:var(--text2);">CORTEX_LOG_LEVEL</code>.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Log Level</label>
+            <select class="inp" id="cfg-log-level">
+              <option value="trace" \${config.logging?.level==='trace'?'selected':''}>trace — maximum verbosity</option>
+              <option value="debug" \${config.logging?.level==='debug'?'selected':''}>debug — internal state</option>
+              <option value="info" \${config.logging?.level==='info'?'selected':''}>info — operational events</option>
+              <option value="warn" \${config.logging?.level==='warn'?'selected':''}>warn — recoverable issues</option>
+              <option value="error" \${(!config.logging?.level||config.logging?.level==='error')?'selected':''}>error — failures only (default)</option>
+              <option value="silent" \${config.logging?.level==='silent'?'selected':''}>silent — no output</option>
+            </select>
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Applies to stdout and file transports</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">File Logging</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <input type="checkbox" id="cfg-log-file-enabled" \${config.logging?.fileEnabled!==false?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
+              <span style="font-size:12px;color:var(--text2);">Write logs to file (JSON-lines)</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max File Size (MB)</label>
+            <input class="inp" id="cfg-log-maxbytes" type="number" min="1" max="500" value="\${Math.round((config.logging?.fileMaxBytes??10485760)/1048576)}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Rotate log file when it exceeds this size</p>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Max Rotated Files</label>
+            <input class="inp" id="cfg-log-maxfiles" type="number" min="1" max="20" value="\${config.logging?.fileMaxFiles??5}" />
+            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Number of rotated backup files to keep</p>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button class="btn btn-primary" onclick="saveLoggingSettings()">Save Logging Settings</button>
+        </div>
+      </div>
+    </div>
   \`;
   refreshSecuritySection();
   if (settingsActiveTab === 'tools') loadToolConfigs();
@@ -8257,7 +8294,7 @@ async function loadSettings() {
 
 function switchSettingsTab(tabName) {
   settingsActiveTab = tabName;
-  var tabs = ['general', 'providers', 'tools', 'system'];
+  var tabs = ['general', 'providers', 'tools', 'system', 'debug'];
   tabs.forEach(function(t) {
     var pane = document.getElementById('settings-pane-' + t);
     if (pane) pane.style.display = t === tabName ? 'block' : 'none';
@@ -8295,13 +8332,14 @@ function switchSettingsTab(tabName) {
   }
   if (tabName === 'general') refreshSecuritySection();
   if (tabName === 'tools') loadToolConfigs();
+  if (tabName === 'debug') { refreshDebugDiagnostics(); refreshDebugJobs(); refreshDebugSandbox(); }
   // Sync global sub-nav
   var bar = document.getElementById('global-subnav');
   if (bar && bar.getAttribute('data-group') === 'settings') {
     bar.setAttribute('data-active', tabName);
     bar.querySelectorAll('button').forEach(function(b) { b.style.borderBottomColor = 'transparent'; b.classList.remove('active'); });
     bar.querySelectorAll('button').forEach(function(b) {
-      if (b.textContent.trim().replace('&amp;','&') === ({general:'General',providers:'AI & Models',tools:'Tools & Integrations',system:'System'})[tabName]) {
+      if (b.textContent.trim().replace('&amp;','&') === ({general:'General',providers:'AI & Models',tools:'Tools & Integrations',system:'System',debug:'Debug'})[tabName]) {
         b.style.borderBottomColor = 'var(--accent)';
         b.classList.add('active');
       }
@@ -15428,6 +15466,107 @@ function addEvalHarnesses() { var c=document.querySelector('#page-eval > div:las
 function addEvalRagSection() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-rag'))return;var s=document.createElement('div');s.id='e-rag';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">RAG Eval</div><input id="rag-q" class="inp" placeholder="Test query..." style="margin-bottom:6px;"><div style="display:flex;gap:8px;"><input id="rag-d" class="inp" placeholder="Retrieved docs" style="flex:1;"><button class="btn btn-ghost" onclick="runRagEval()">Evaluate</button></div><div id="rag-res" style="margin-top:8px;font-size:10px;"></div>';c.appendChild(s) }
 function runRagEval() { var q=document.getElementById('rag-q').value;var docs=document.getElementById('rag-d').value.split(',').map(function(d){return d.trim()}).filter(Boolean);fetch(BASE+'/api/eval/rag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,retrievedDocs:docs})}).then(function(r){return r.json()}).then(function(d){document.getElementById('rag-res').innerHTML='Retrieved: '+d.retrievedCount+' · Hit@1: '+(d.hitAt1?'Yes':'No')+' · Recall: '+(d.recall!=null?d.recall.toFixed(2):'N/A')+' · MRR: '+d.mrr.toFixed(2)}) }
 setTimeout(initPageEnhancements, 1500);
+
+// ── Debug page functions ──────────────────────────────────────
+function fmtBytes(b) { if (b==null) return '-'; if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+
+function refreshDebugDiagnostics() {
+  var el = document.getElementById('debug-diag-content');
+  if (!el) return;
+  fetch(BASE+'/api/system/diagnostics').then(function(r){return r.json()}).then(function(d){
+    var rows = [];
+    rows.push('<div class="stat-row"><span>Scheduler</span><span style="color:'+(d.scheduler==='alive'?'#4ade80':'#f87171')+'">'+d.scheduler+'</span></div>');
+    rows.push('<div class="stat-row"><span>Running Jobs</span><span>'+(d.jobs?.running??'?')+'</span></div>');
+    if (d.memory) {
+      rows.push('<div class="stat-row"><span>Heap Used</span><span>'+fmtBytes(d.memory.heapUsed)+'</span></div>');
+      rows.push('<div class="stat-row"><span>RSS</span><span>'+fmtBytes(d.memory.rss)+'</span></div>');
+    }
+    if (d.sandbox) {
+      rows.push('<div class="stat-row"><span>Sandbox</span><span style="color:'+(d.sandbox.available?'#4ade80':'#f87171')+'">'+d.sandbox.runtime+'</span></div>');
+    }
+    if (d.dbFiles) {
+      rows.push('<div style="font-size:10px;font-weight:600;margin-top:8px;color:var(--text2);">Database Sizes</div>');
+      for (var k in d.dbFiles) {
+        rows.push('<div class="stat-row"><span>'+k+'.db</span><span>'+fmtBytes(d.dbFiles[k])+'</span></div>');
+      }
+    }
+    el.innerHTML = rows.join('');
+  }).catch(function(e){ el.innerHTML='<div class="stat-row"><span>Error</span><span style="color:#f87171">'+e.message+'</span></div>'; });
+}
+
+function refreshDebugJobs() {
+  var el = document.getElementById('debug-jobs-content');
+  if (!el) return;
+  fetch(BASE+'/api/jobs?status=running').then(function(r){return r.json()}).then(function(jobs){
+    if (!jobs.length) { el.innerHTML='<div class="stat-row"><span>Status</span><span style="color:#4ade80">No running jobs</span></div>'; return; }
+    var rows = [];
+    rows.push('<div class="stat-row"><span>Stuck Jobs</span><span style="color:#f59e0b">'+jobs.length+' running</span></div>');
+    jobs.forEach(function(j){
+      var since = j.last_run_at ? ' since '+new Date(j.last_run_at).toLocaleTimeString() : '';
+      rows.push('<div style="padding:6px;margin:4px 0;background:var(--bg2);border-radius:4px;font-size:11px;">');
+      rows.push('<div style="font-weight:600;">'+esc(j.name)+' <span style="color:var(--text3);">'+esc(j.id)+'</span> <span style="color:#f59e0b;">('+j.attempts+'/'+j.max_attempts+')</span>'+since+'</div>');
+      rows.push('<div style="color:var(--text3);font-size:10px;">'+esc(j.command).slice(0,120)+'</div>');
+      rows.push('<button class="btn btn-ghost" onclick="cancelStuckJob(\\''+j.id+'\\')" style="font-size:9px;margin-top:4px;">Cancel</button>');
+      rows.push('</div>');
+    });
+    el.innerHTML = rows.join('');
+  }).catch(function(e){ el.innerHTML='<div class="stat-row"><span>Error</span><span style="color:#f87171">'+e.message+'</span></div>'; });
+}
+
+function cancelStuckJob(id) {
+  if (!confirm('Cancel job '+id+'? This will mark it as cancelled.')) return;
+  fetch(BASE+'/api/jobs/'+id+'/cancel', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
+    if (d.ok) { toast('Job cancelled', 'success'); refreshDebugJobs(); }
+    else toast(d.error||'Failed', 'error');
+  });
+}
+
+function recoverStaleJobsFromDebug() {
+  var btn = event.target;
+  var res = document.getElementById('debug-recover-result');
+  btn.disabled = true;
+  btn.textContent = 'Recovering...';
+  res.style.display = 'none';
+  fetch(BASE+'/api/jobs/recover', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}).then(function(r){return r.json()}).then(function(d){
+    if (d.recovered>0||d.failedRuns>0) {
+      res.textContent = 'Recovered '+d.recovered+' job(s), finalized '+d.failedRuns+' stale run(s)';
+      res.style.color = '#4ade80';
+    } else {
+      res.textContent = 'No stale jobs found';
+      res.style.color = 'var(--text3)';
+    }
+    res.style.display = '';
+    refreshDebugJobs();
+  }).catch(function(e){
+    res.textContent = 'Error: '+e.message;
+    res.style.color = '#f87171';
+    res.style.display = '';
+  }).finally(function(){ btn.disabled = false; btn.textContent = 'Recover Stale Jobs'; });
+}
+
+function refreshDebugSandbox() {
+  var el = document.getElementById('debug-sandbox-content');
+  if (!el) return;
+  el.innerHTML = '<div class="stat-row"><span>Loading...</span><span></span></div>';
+  fetch(BASE+'/api/sandbox/backends').then(function(r){return r.json()}).then(function(data){
+    el.innerHTML = (data.backends||[]).map(function(b){
+      return '<div class="stat-row"><span>'+esc(b.label)+'</span><span style="color:'+(b.available?'#4ade80':'#f87171')+'">'+(b.available?'available':'unavailable')+'</span></div>';
+    }).join('') || '<div class="stat-row"><span>No backends</span><span></span></div>';
+    // Load sandbox debug toggle state
+    fetch(BASE+'/api/sandbox/debug').then(function(r){return r.json()}).then(function(d){
+      var cb = document.getElementById('cfg-sandbox-debug');
+      if (cb) cb.checked = d.enabled===true;
+    }).catch(function(){});
+  }).catch(function(e){ el.innerHTML='<div class="stat-row"><span>Error</span><span style="color:#f87171">'+e.message+'</span></div>'; });
+}
+
+function toggleSandboxDebug() {
+  var cb = document.getElementById('cfg-sandbox-debug');
+  if (!cb) return;
+  fetch(BASE+'/api/sandbox/debug', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:cb.checked})}).then(function(){
+    toast('Sandbox debug '+(cb.checked?'enabled':'disabled'), 'success');
+  }).catch(function(){ toast('Failed to update','error'); });
+}
 
 // ── Alcove functions (#294) ─────────────────────────────────────────
 function loadAlcovePage() { loadAlcoveBrowse(); searchAlcove(); }
