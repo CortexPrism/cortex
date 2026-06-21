@@ -49,7 +49,9 @@ function normalizeManifest(manifest: PluginManifest): {
   };
 }
 
-export async function installPlugin(manifest: PluginManifest): Promise<{ ok: boolean; missingDeps: string[]; warnings: string[] }> {
+export async function installPlugin(
+  manifest: PluginManifest,
+): Promise<{ ok: boolean; missingDeps: string[]; warnings: string[] }> {
   const warnings: string[] = [];
   const missingDeps: string[] = [];
 

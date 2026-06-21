@@ -28,7 +28,10 @@ projectsCommand
   .description('Create a new project workspace')
   .action(async (_opts: void, name: string) => {
     const desc = await Input.prompt({ message: 'Description (optional):', default: '' });
-    const agent = await Input.prompt({ message: 'Agent (default = assistant):', default: 'assistant' });
+    const agent = await Input.prompt({
+      message: 'Agent (default = assistant):',
+      default: 'assistant',
+    });
     const project = await createProject(name, {
       agentId: agent === 'assistant' ? undefined : agent,
       description: desc || undefined,

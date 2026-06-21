@@ -512,7 +512,9 @@ export async function bulkInsertNodes(
     }
     return ids;
   } catch (e) {
-    try { await db.run(`ROLLBACK`); } catch { /* ignore */ }
+    try {
+      await db.run(`ROLLBACK`);
+    } catch { /* ignore */ }
     throw e;
   }
 }
@@ -581,7 +583,9 @@ export async function bulkInsertEdges(
   const inserted = Math.max(0, (afterInsert?.cnt ?? 0) - (before?.cnt ?? 0));
   if (inserted < validEdges.length) {
     console.error(
-      `[codegraph] bulkInsertEdges: inserted ${inserted} of ${validEdges.length} valid edges (${edges.length} total, filtered ${edges.length - validEdges.length} invalid)`,
+      `[codegraph] bulkInsertEdges: inserted ${inserted} of ${validEdges.length} valid edges (${edges.length} total, filtered ${
+        edges.length - validEdges.length
+      } invalid)`,
     );
   }
   return new Array(inserted).fill(0).map((_, i) => i);

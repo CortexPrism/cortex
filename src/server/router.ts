@@ -2725,7 +2725,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   const jobDeleteStatusMatch = path.match(/^\/api\/jobs\/status\/([^/]+)$/);
   if (req.method === 'DELETE' && jobDeleteStatusMatch) {
     const { deleteJobsByStatus } = await import('../scheduler/scheduler.ts');
-    await deleteJobsByStatus(jobDeleteStatusMatch[1] as import('../scheduler/scheduler.ts').JobStatus);
+    await deleteJobsByStatus(
+      jobDeleteStatusMatch[1] as import('../scheduler/scheduler.ts').JobStatus,
+    );
     return json({ ok: true });
   }
 

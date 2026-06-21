@@ -73,8 +73,13 @@ function sanitizeModelJson(raw: string): string {
     if (ch === '"') {
       if (inString) {
         let j = i + 1;
-        while (j < raw.length && (raw[j] === ' ' || raw[j] === '\t' || raw[j] === '\n' || raw[j] === '\r')) j++;
-        if (j < raw.length && (raw[j] === ':' || raw[j] === ',' || raw[j] === '}' || raw[j] === ']')) {
+        while (
+          j < raw.length &&
+          (raw[j] === ' ' || raw[j] === '\t' || raw[j] === '\n' || raw[j] === '\r')
+        ) j++;
+        if (
+          j < raw.length && (raw[j] === ':' || raw[j] === ',' || raw[j] === '}' || raw[j] === ']')
+        ) {
           inString = false;
           out += ch;
         } else {
