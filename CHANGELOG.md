@@ -69,6 +69,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **No visibility into job origin or mass deletion** — added `source` column to the jobs table (migration 036) tracking whether a job came from `ui`, `cli`, `seed`, or `tool:<agentId>`. Job cards in the UI now show a source badge. Added `DELETE /api/jobs/status/:status` and `DELETE /api/jobs/batch` endpoints, plus "Delete All Failed" and "Delete All Cancelled" buttons with confirmation dialogs in the UI. Added `deleteJobsBatch()` and `deleteJobsByStatus()` functions to the scheduler module. (`src/db/migrations/036_jobs_source.sql`, `src/scheduler/scheduler.ts`, `src/server/router.ts`, `src/server/ui.ts`, `src/cli/jobs.ts`, `src/memory/consolidate.ts`)
 
+- **LLM producing raw tool code as output instead of executing it** — DeepSeek v4 model emits malformed `<tool_call>` blocks (nested tags, unescaped double quotes in large content strings) that `parseToolCalls` silently fails on, causing raw tool call XML/JSON to be streamed as the final response. Added complete-block detection in the malformed-tool-call guard (`<tool_call>...</tool_call>` pairs with zero parsed tools), structural-quote-vs-content-quote discrimination in `sanitizeModelJson` (peek-ahead for `:`, `,`, `}`, `]` after whitespace), and propagation of `injectMessages` from `post-reason` pipeline hooks back into the agent loop's `currentMessages`. Also expanded `PreCompletionChecklistMiddleware` trigger words to include `successfully`, `created`, `written`, `saved` and strengthened its inject message to explicitly warn that no tool calls were executed. (`src/agent/loop.ts`, `src/tools/executor.ts`, `src/pipeline/builtin.ts`, `tests/toolcall_parser_test.ts`)
+
 ## [0.47.0] — 2026-06-20
 
 ### Added

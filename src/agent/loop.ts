@@ -905,6 +905,9 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
       }
       roundResponse = postReasonCtx.currentLLMResponse ?? roundResponse;
       response = roundResponse;
+      if (postReasonCtx.messages && postReasonCtx.messages !== currentMessages) {
+        currentMessages = postReasonCtx.messages;
+      }
 
       if (!registry || !toolCtx) break;
 
@@ -1089,27 +1092,35 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
 
       // Detect malformed tool calls that parseToolCalls didn't recognize.
       // Covers: nested <tool_call> tags, JSON missing "tool"/"name" keys,
-      // raw parameter-only JSON ({"task":...} without tool wrapper), etc.
+      // raw parameter-only JSON ({"task":...} without tool wrapper),
+      // and complete <tool_call>...</tool_call> blocks whose JSON failed to parse
+      // (e.g. unescaped quotes in large content strings).
+      const toolCallBlockRe = /<tool_call>[\s\S]*?<\/tool_call>/;
+      const hasToolCallBlock = toolCallBlockRe.test(roundResponse);
       const hasMalformedToolCall = toolCalls.length === 0 &&
         (/<tool_call\s+name=/.test(roundResponse) ||
           /<tool_call>[\s\S]*?<tool_call\s+name=/.test(roundResponse) ||
           /<tool_call>[\s\S]*?<tool_call>/.test(roundResponse) ||
+          hasToolCallBlock ||
           (/\{\s*"(?:task|prompt|type|description|query|path)"\s*:/.test(roundResponse) &&
             !/\{\s*"(?:tool|name)"\s*:/.test(roundResponse) &&
             /<tool_call>/.test(roundResponse)));
 
-      if (hasMalformedToolCall) {
+        if (hasMalformedToolCall) {
         _log.warn(`Malformed tool call detected, asking LLM to retry with correct format`, {
           round,
           responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
         });
+        const blockHint = hasToolCallBlock
+          ? ' The JSON inside your <tool_call> block could not be parsed — this is usually because the string values contain unescaped double quotes (\") or other special characters. Make sure ALL double quotes INSIDE string values are escaped as \\".'
+          : '';
         currentMessages = [
           ...currentMessages,
           { role: 'assistant' as const, content: roundResponse },
           {
             role: 'user' as const,
             content:
-              'Your tool call was not recognized because the JSON format was wrong. Tool calls MUST use this exact format inside <tool_call> tags:\n\n<tool_call>\n{"tool": "TOOL_NAME", "args": {"param1": "value1", "param2": "value2"}}\n</tool_call>\n\nThe "tool" key must contain the tool name. All parameters go inside the "args" object. Re-emit your tool call(s) using this exact format.',
+              `ERROR: Your tool call was NOT executed. The JSON format was not recognized. You MUST emit the tool call using the EXACT format below. Do NOT describe what happened or summarize — actually call the tool:\n\n<tool_call>\n{"tool": "TOOL_NAME", "args": {"param1": "value1", "param2": "value2"}}\n</tool_call>\n\nThe "tool" key must contain the tool name. All parameters go inside the "args" object.${blockHint}\n\nIMPORTANT: No action was taken. Re-emit your tool call NOW.`,
           },
         ];
         round++;

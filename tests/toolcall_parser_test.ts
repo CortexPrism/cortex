@@ -30,6 +30,20 @@ Content here."}}
       }}}\n</tool_call>`;
     assertGreater(parseToolCalls(bigResponse).length, 0);
   });
+
+  await t.step('handles unescaped double quotes in content string', () => {
+    const responseWithQuotes = `<tool_call>
+{"tool": "file_write", "args": {"path": "costs.md", "content": "# Analysis
+
+The "best" option is AWS.
+
+Consider the trade-offs: "latency" vs "cost".
+"GKE" is recommended for most cases."}}
+</tool_call>`;
+    const calls = parseToolCalls(responseWithQuotes);
+    assertGreater(calls.length, 0, 'should parse tool call with unescaped quotes in content');
+    assertEquals(calls[0].toolName, 'file_write');
+  });
 });
 
 Deno.test('parseToolCalls - direct tool-name-as-tag format', async (t) => {

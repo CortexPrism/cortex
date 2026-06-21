@@ -277,7 +277,9 @@ class PreCompletionChecklistMiddleware implements PipelineHook {
     const lower = response.toLowerCase();
     const isExitMessage = lower.includes('done') || lower.includes('complete') ||
       lower.includes('finished') || lower.includes('all set') ||
-      lower.includes('ready') || lower.includes('implemented');
+      lower.includes('ready') || lower.includes('implemented') ||
+      lower.includes('successfully') || lower.includes('created') ||
+      lower.includes('written') || lower.includes('saved');
 
     if (!isExitMessage) return {};
 
@@ -285,7 +287,7 @@ class PreCompletionChecklistMiddleware implements PipelineHook {
       injectMessages: [{
         role: 'system' as const,
         content:
-          'Before finalizing, verify that: (1) all changes were tested, (2) output matches requirements, (3) no errors remain. If any check fails, continue working with additional tool calls.',
+          'WARNING: Your previous response claimed completion but NO tool calls were executed. If you were asked to create or edit a file, the file does NOT exist yet. Verify: (1) all requested files were actually created, (2) all tool calls were properly emitted, (3) no claimed actions were skipped. If any action was not executed, do it NOW.',
       }],
     };
   }
