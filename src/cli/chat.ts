@@ -60,6 +60,7 @@ export const chatCommand = cortexCommand('chat')
       resume: options.resume,
       enableStream: options.stream,
       sandboxDebug: options.sandboxDebug,
+      quietLogging: true,
     });
 
     const cols = getTermCols();
