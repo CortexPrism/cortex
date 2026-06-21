@@ -10592,11 +10592,11 @@ function renderEditorTree() {
     var nameClean = name.replace(/\/$/, '');
     var active = editorCurrentFile === nameClean || editorCurrentFile === name;
     var onclick = isDir
-      ? 'editorOpenDir(\'' + escJs(nameClean) + '\')'
-      : 'editorOpenFile(\'' + escJs(nameClean) + '\')';
+      ? 'editorOpenDir(\\'' + escJs(nameClean) + '\\')'
+      : 'editorOpenFile(\\'' + escJs(nameClean) + '\\')';
     html += '<button class="editor-tree-item' + (active ? ' active' : '') + '" ' +
       'onclick="' + onclick + '" ' +
-      'oncontextmenu="event.preventDefault();editorTreeContextMenu(event, \'' + escJs(nameClean) + '\', ' + isDir + ')" ' +
+      'oncontextmenu="event.preventDefault();editorTreeContextMenu(event, \\'' + escJs(nameClean) + '\\', ' + isDir + ')" ' +
       'title="' + esc(nameClean) + '" ' +
       'data-path="' + esc(nameClean) + '">' +
       '<span class="editor-tree-chevron" style="visibility:hidden;">▶</span>' +
@@ -10632,7 +10632,7 @@ function editorUpdateBreadcrumb() {
   for (var i = 0; i < parts.length; i++) {
     var p = parts.slice(0, i + 1).join('/');
     html += '<span class="editor-breadcrumb-sep">›</span>';
-    html += '<span class="editor-breadcrumb-part" onclick="editorCurrentPath=\'' + escJs(p) + '\';editorRefreshTree();editorUpdateBreadcrumb();">' + esc(parts[i]) + '</span>';
+    html += '<span class="editor-breadcrumb-part" onclick="editorCurrentPath=\\'' + escJs(p) + '\\';editorRefreshTree();editorUpdateBreadcrumb();">' + esc(parts[i]) + '</span>';
   }
   bc.innerHTML = html;
 }
@@ -10698,12 +10698,12 @@ function renderEditorTabs() {
   var bar = document.getElementById('editor-tabs');
   bar.innerHTML = editorOpenFiles.map(function(f) {
     return '<span class="editor-tab' + (f === editorCurrentFile ? ' active' : '') + '" ' +
-      'onclick="editorSwitchTab(\'' + escJs(f) + '\')" ' +
-      'oncontextmenu="event.preventDefault();event.stopPropagation();editorTabContextMenu(event, \'' + escJs(f) + '\')" ' +
+      'onclick="editorSwitchTab(\\'' + escJs(f) + '\\')" ' +
+      'oncontextmenu="event.preventDefault();event.stopPropagation();editorTabContextMenu(event, \\'' + escJs(f) + '\\')" ' +
       'data-tab="' + esc(f) + '">' +
       fileIcon(f) + esc(f) +
       (editorContentDirty && f === editorCurrentFile ? '<span class="editor-tab-modified"></span>' : '') +
-      (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\'' + escJs(f) + '\')">✕</span>' : '') +
+      (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\\'' + escJs(f) + '\\')">✕</span>' : '') +
       '</span>';
   }).join('');
 }
@@ -10768,7 +10768,7 @@ function editorShowEditor(fileName, content) {
     editorInstance = null;
   }
   var container = document.getElementById('editor-container');
-  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:\'JetBrains Mono\',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
+  container.innerHTML = '<textarea id="editor-textarea" style="width:100%;height:100%;border:none;background:var(--bg3);color:var(--text);font-family:\\'JetBrains Mono\\',monospace;font-size:13px;resize:none;outline:none;padding:16px;">' + esc(content) + '</textarea>';
   container.style.cssText = 'flex:1;overflow:hidden;display:flex;';
   var lang = editorDetectMode(fileName);
   editorCurrentLang = lang;
@@ -11128,7 +11128,7 @@ function editorFindInFiles() {
   editorSearchInTree(query).then(function(results) {
     if (!results.length) { list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);">No results for "' + esc(query) + '"</div>'; return; }
     list.innerHTML = results.map(function(r) {
-      return '<div class="editor-tree-item" style="gap:2px;padding:3px 10px;" onclick="editorOpenFile(\'' + escJs(r.file) + '\')">' +
+      return '<div class="editor-tree-item" style="gap:2px;padding:3px 10px;" onclick="editorOpenFile(\\'' + escJs(r.file) + '\\')">' +
         '<span style="font-size:10px;color:var(--text3);min-width:28px;">' + r.line + '</span>' +
         fileIcon(r.file) +
         '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.file) + '</span>' +
@@ -11196,7 +11196,7 @@ function editorQuickOpen() {
       return;
     }
     results.innerHTML = filtered.map(function(f, idx) {
-      return '<div class="editor-quick-result' + (idx === 0 ? ' active' : '') + '" onclick="editorQuickSelect(\'' + escJs(f) + '\')" data-file="' + esc(f) + '">' +
+      return '<div class="editor-quick-result' + (idx === 0 ? ' active' : '') + '" onclick="editorQuickSelect(\\'' + escJs(f) + '\\')" data-file="' + esc(f) + '">' +
         fileIcon(f) + esc(f) + '</div>';
     }).join('');
   };
@@ -11265,9 +11265,9 @@ function editorShowContextMenu(x, y, items) {
 }
 function editorTabContextMenu(e, fileName) {
   var items = [
-    { label: 'Close', action: 'editorCloseTab(\'' + escJs(fileName) + '\');editorHideContextMenu();' },
-    { label: 'Close Others', action: 'editorCloseOtherTabs(\'' + escJs(fileName) + '\');editorHideContextMenu();' },
-    { label: 'Close to the Right', action: 'editorCloseTabsRight(\'' + escJs(fileName) + '\');editorHideContextMenu();' },
+    { label: 'Close', action: 'editorCloseTab(\\'' + escJs(fileName) + '\\');editorHideContextMenu();' },
+    { label: 'Close Others', action: 'editorCloseOtherTabs(\\'' + escJs(fileName) + '\\');editorHideContextMenu();' },
+    { label: 'Close to the Right', action: 'editorCloseTabsRight(\\'' + escJs(fileName) + '\\');editorHideContextMenu();' },
     '-',
     { label: 'Close All', action: 'editorCloseAllTabs();editorHideContextMenu();' },
   ];
@@ -11282,10 +11282,10 @@ function editorTreeContextMenu(e, filePath, isDir) {
     ];
   } else {
     items = [
-      { label: 'Open', action: 'editorOpenFile(\'' + escJs(filePath) + '\');editorHideContextMenu();' },
+      { label: 'Open', action: 'editorOpenFile(\\'' + escJs(filePath) + '\\');editorHideContextMenu();' },
       '-',
-      { label: 'Rename...', action: 'editorRenameFile(\'' + escJs(filePath) + '\');editorHideContextMenu();' },
-      { label: 'Delete', action: 'editorDeleteFileByPath(\'' + escJs(filePath) + '\');editorHideContextMenu();', danger: true },
+      { label: 'Rename...', action: 'editorRenameFile(\\'' + escJs(filePath) + '\\');editorHideContextMenu();' },
+      { label: 'Delete', action: 'editorDeleteFileByPath(\\'' + escJs(filePath) + '\\');editorHideContextMenu();', danger: true },
     ];
   }
   editorShowContextMenu(e.clientX, e.clientY, items);
