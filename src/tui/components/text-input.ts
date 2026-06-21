@@ -68,7 +68,9 @@ export class TextInput extends Component {
         this.requestRender();
         if (submitted.trim() && this.onSubmit) {
           this.addToHistory(submitted);
-          try { this.onSubmit(submitted); } catch { /* fire-and-forget */ }
+          try {
+            this.onSubmit(submitted);
+          } catch { /* fire-and-forget */ }
         }
         return true;
       }
