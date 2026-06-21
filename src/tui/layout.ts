@@ -12,12 +12,13 @@ export class HSplit extends Component {
 
   add(component: Component, size: number | string): void {
     this.items.push({ component, size });
+    component.parent = this;
+    this.children.push(component);
   }
 
   override onMount(): void {
     super.onMount();
     for (const { component } of this.items) {
-      component.parent = this;
       component.onMount();
     }
   }
@@ -85,12 +86,13 @@ export class VSplit extends Component {
 
   add(component: Component, size: number | string): void {
     this.items.push({ component, size });
+    component.parent = this;
+    this.children.push(component);
   }
 
   override onMount(): void {
     super.onMount();
     for (const { component } of this.items) {
-      component.parent = this;
       component.onMount();
     }
   }
