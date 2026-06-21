@@ -82,9 +82,7 @@ for (const [alias, target] of Object.entries(aliases)) {
       console.error(
         `Warning: 'cortex ${alias}' is deprecated. Use 'cortex ${target.join(' ')}' instead.`,
       );
-      const extraArgs = Deno.args.slice(Deno.args.indexOf(alias) + 1);
-      const args = [...target, ...extraArgs];
-      await program.parse(args);
+      Deno.exit(1);
     });
   // deno-lint-ignore no-explicit-any
   (program as any).command(alias, aliasCmd);
