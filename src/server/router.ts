@@ -1031,6 +1031,71 @@ export async function handleApi(req: Request): Promise<Response | null> {
     return json(runs);
   }
 
+  // POST /api/jobs/recover — trigger stale job recovery
+  if (req.method === 'POST' && path === '/api/jobs/recover') {
+    const { recoverStaleJobs } = await import('../scheduler/scheduler.ts');
+    const body = await req.json().catch(() => ({})) as { timeoutMs?: number };
+    const result = await recoverStaleJobs(body.timeoutMs);
+    return json(result);
+  }
+
+  // GET /api/system/diagnostics — system-level debug info
+  if (req.method === 'GET' && path === '/api/system/diagnostics') {
+    let runningJobs = 0;
+    try {
+      const { getCoreDb: getDb } = await import('../db/client.ts');
+      const db = await getDb();
+      const r = await db.get<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM jobs WHERE status = 'running'",
+      );
+      runningJobs = r?.cnt ?? 0;
+    } catch { /* ignore */ }
+
+    let schedulerAlive = false;
+    try {
+      schedulerAlive = await pingProcess(SCHEDULER_SOCK);
+    } catch { /* ignore */ }
+
+    let sandboxAvailable = false;
+    let sandboxRuntime = 'none';
+    try {
+      const { getAvailableRuntime } = await import('../sandbox/executor.ts');
+      sandboxRuntime = await getAvailableRuntime();
+      sandboxAvailable = sandboxRuntime !== 'none';
+    } catch { /* ignore */ }
+
+    const dbFiles: Record<string, number> = {};
+    try {
+      for (const [name, fname] of Object.entries({
+        core: 'cortex.db',
+        lens: 'lens.db',
+        memory: 'memory.db',
+        sessions: 'sessions.db',
+      })) {
+        try {
+          const fi = await Deno.stat(join(PATHS.dataDir, fname));
+          dbFiles[name] = fi.size;
+        } catch { /* file doesn't exist */ }
+      }
+    } catch { /* ignore */ }
+
+    const memUsage = (() => {
+      try {
+        const m = Deno.memoryUsage();
+        return { heapUsed: m.heapUsed, heapTotal: m.heapTotal, external: m.external, rss: m.rss };
+      } catch { return null; }
+    })();
+
+    return json({
+      ts: new Date().toISOString(),
+      dbFiles,
+      jobs: { running: runningJobs },
+      scheduler: schedulerAlive ? 'alive' : 'down',
+      sandbox: { available: sandboxAvailable, runtime: sandboxRuntime },
+      memory: memUsage,
+    });
+  }
+
   // GET /api/memory/search?q=...
   if (req.method === 'GET' && path === '/api/memory/search') {
     const q = url.searchParams.get('q');

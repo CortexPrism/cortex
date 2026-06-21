@@ -5,6 +5,20 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.48.4] — 2026-06-21
+
+### Added
+
+- **Stale job recovery** — `recoverStaleJobs()` in the scheduler detects jobs stuck in `running` state longer than 10 minutes and transitions them to `pending` (if under `max_attempts`) or `failed` (if exhausted). Orphaned `job_runs` with no associated running job are also finalized. Recovery runs at daemon startup and every poll cycle (30s). A new `cortex jobs recover` CLI command allows manual recovery with configurable timeout. (`src/scheduler/scheduler.ts`, `src/processes/scheduler-process.ts`, `src/cli/jobs.ts`)
+- **Scheduler structured logging** — the scheduler daemon now uses the project's `logger()` (namespace `'scheduler'`) instead of raw `console.log`. Job lifecycle events (started, completed, failed, crashed) are logged at appropriate levels with structured data including jobId, runId, duration, exitCode, and attempts. Set `CORTEX_LOG_LEVEL=debug` to see per-job execution details. (`src/processes/scheduler-process.ts`)
+- **Jobs CLI verbose mode** — `cortex jobs list -v` shows full job details: timestamps, duration, source, and the last 5 job runs with status and messages. `cortex jobs list -r` filters to only running/stuck jobs. The `cancel` subcommand now accepts running jobs as well. (`src/cli/jobs.ts`)
+- **Debug settings page** — new **Debug** tab in the web UI Settings with four diagnostic cards: **System Diagnostics** (scheduler status, heap/RSS, sandbox runtime, per-DB file sizes), **Scheduler & Stuck Jobs** (lists all running jobs with per-job Cancel buttons and a Recover Stale Jobs action), **Sandbox Debug** (backend availability and sandbox debug toggle), and **Log Level & File** (interactive log level dropdown, file logging toggle, size/rotation config with Save button — moved from System tab). All cards have Refresh buttons. (`src/server/ui.ts`)
+- **System diagnostics API** — `GET /api/system/diagnostics` returns scheduler aliveness, running job count, DB file sizes, sandbox runtime, and Deno memory usage (heap, RSS). `POST /api/jobs/recover` triggers stale job recovery with optional `timeoutMs`. (`src/server/router.ts`)
+
+### Fixed
+
+- **Jobs stuck in running state** — previously if the scheduler daemon crashed or was killed mid-execution, running jobs were left stuck indefinitely with escalating attempt counts because `getDueJobs()` only picked up `pending` jobs and there was no timeout mechanism. Now handled by `recoverStaleJobs()` (see Added). Also fixed `cancelJob` to work on `running` jobs, closing orphaned `job_runs` entries too.
+
 ## [0.48.3] — 2026-06-21
 
 ### Fixed
