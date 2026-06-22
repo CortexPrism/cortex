@@ -11,6 +11,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Remote Agents deploy modal tier mismatch** — the deploy modal dropdown listed nonexistent tiers `operator` and `observer`. Fixed to use the actual capability tiers: `unprivileged`, `sudo`, `root`. (`src/server/ui/pages/modals.ts`, `packages/server/src/server/ui/pages/modals.ts`)
 
+- **A2A remote agents were dead config** — `createA2AToolWrapper()` was defined and exported but never called by any code path. Remote A2A agents configured under `a2a.remoteAgents` in `config.json` were never registered as tools, making the entire feature a no-op. Added registration at the end of `registerAllBuiltins()` that reads `config.a2a.remoteAgents` and registers each agent as a tool (`a2a_<name>`). Gracefully skips when config or remote agents are absent. (`src/tools/registry.ts`)
+
+- **A2A config contract type was `Record<string, unknown>`** — the `a2a` field in `ICortexConfig` (contracts) used a bare generic object type instead of a typed interface. Added `IA2ARemoteAgentConfig` and `IA2AConfig` interfaces with proper fields (`enabled`, `server`, `remoteAgents`). (`packages/core/contracts/config.ts`)
+
 - **Node agent TLS fields were dead code** — `NodeAgentOptions` declared `tlsCert` and `tlsKey` fields that were never consumed by `createWebSocket()`. Removed both fields from the interface and destructuring. (`src/remote/agent.ts`)
 
 - **Node `rekey` handler was a no-op** — the Hub-to-Node `rekey` message handler only logged the event. Now stores the rotated token in mutable state and closes the WebSocket to trigger an automatic reconnect using the new credential. (`src/remote/agent.ts`)
@@ -40,6 +44,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **`<thinking>` tags rendered inline on page refresh** — during live streaming, `<thinking>...</thinking>` blocks were extracted into a reasoning accordion and stripped from display text. But when messages were restored from the database on page refresh (`restoreSession()`) or session switch (`loadSessionMessages()`), raw thinking tags were passed directly to the markdown parser, causing garbled display. Added `renderThinkingForRestore()` helper that extracts thinking blocks into reasoning accordions from restored messages, mirroring the live streaming behavior. (`src/server/ui/js/04_chat_ui.ts`, `src/server/ui/js/02_chat_setup.ts`, `src/server/ui/js/16_agent_panel.ts`)
 
 - **Template literal newline escaping in UI JS export** — a `'\n\n'` in the `renderThinkingForRestore` function was processed as actual newline characters by the TypeScript template literal export, breaking string literals in the concatenated browser-side JS. Fixed to `'\\n\\n'`. (`src/server/ui/js/04_chat_ui.ts`)
+
+### Added
+
+- **`cortex mcp a2a remote` CLI command** — new subcommand that lists all configured remote A2A agents with endpoint, auth status, timeout, and tool name. Shows a config example when no agents are configured. The main `cortex mcp a2a` help text now includes a full `config.json` example for adding remote agents. (`src/cli/a2a-cmd.ts`, `packages/cli/src/cli/a2a-cmd.ts`)
 
 ## [0.49.1] - 2026-06-22
 
