@@ -1,7 +1,12 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { retrieve, searchEpisodic, searchSemantic, writeSemantic } from '../../../../src/memory/store.ts';
+import {
+  retrieve,
+  searchEpisodic,
+  searchSemantic,
+  writeSemantic,
+} from '../../../../src/memory/store.ts';
 import { buildEmbedder } from '../../../../src/memory/embeddings.ts';
 import { getMemoryHealth, runHeuristicCycle } from '../../../../src/memory/heuristics.ts';
 import { i18n } from '../../../../src/i18n/service.ts';

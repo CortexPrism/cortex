@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -7,7 +7,9 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const body = await req.json() as { code: string; language: string };
       if (!body.code) return err('Missing code', 400);
-      const { runInSandbox, formatSandboxResult } = await import('../../../../../src/sandbox/executor.ts');
+      const { runInSandbox, formatSandboxResult } = await import(
+        '../../../../../src/sandbox/executor.ts'
+      );
       const result = await runInSandbox({ code: body.code, language: body.language || 'python' });
       const output = formatSandboxResult(result);
       return json({

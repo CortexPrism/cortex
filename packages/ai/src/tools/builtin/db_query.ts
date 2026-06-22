@@ -6,7 +6,13 @@
  */
 
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import { getCoreDb, getLensDb, getMemoryDb, getPluginsDb, getSessionDb } from '../../../../../src/db/client.ts';
+import {
+  getCoreDb,
+  getLensDb,
+  getMemoryDb,
+  getPluginsDb,
+  getSessionDb,
+} from '../../../../../src/db/client.ts';
 import { classifyContent, requiresSupervisor } from '../../../../../src/security/classification.ts';
 import { requestSupervisorDecision } from '../../../../../src/security/supervisor.ts';
 import type { SensitivityLevel } from '../../../../../src/security/classification.ts';

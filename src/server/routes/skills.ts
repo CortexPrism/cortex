@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 import {
   deleteSkills,
   deprecateSkill,
@@ -121,7 +121,11 @@ export const routes: RouteHandler[] = [
       }
       if (names.length === 0) return err('Missing skill name(s)', 400);
       const result = await deleteSkills(names);
-      return json({ ok: result.errors.length === 0, deleted: result.deleted, errors: result.errors });
+      return json({
+        ok: result.errors.length === 0,
+        deleted: result.deleted,
+        errors: result.errors,
+      });
     },
   },
   {

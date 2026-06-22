@@ -1,5 +1,10 @@
-import { type RouteHandler, json } from './_helpers.ts';
-import { pingProcess, EXECUTOR_SOCK, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../../../../../src/ipc/transport.ts';
+import { json, type RouteHandler } from './_helpers.ts';
+import {
+  EXECUTOR_SOCK,
+  pingProcess,
+  SCHEDULER_SOCK,
+  VALIDATOR_SOCK,
+} from '../../../../../src/ipc/transport.ts';
 import { loadConfig } from '../../../../../src/config/config.ts';
 import { listSessions } from '../../../../../src/db/sessions.ts';
 import { resolveHomeDir } from '../../../../../src/utils/platform.ts';
@@ -24,7 +29,11 @@ export const routes: RouteHandler[] = [
         const memText = new TextDecoder().decode(memRaw.stdout);
         const memLine = memText.split('\n')[1]?.split(/\s+/);
         if (memLine) {
-          memInfo = { total: Number(memLine[1]), used: Number(memLine[2]), free: Number(memLine[3]) };
+          memInfo = {
+            total: Number(memLine[1]),
+            used: Number(memLine[2]),
+            free: Number(memLine[3]),
+          };
         }
       } catch { /* non-linux */ }
       try {

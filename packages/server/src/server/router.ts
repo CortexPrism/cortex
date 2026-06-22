@@ -85,7 +85,12 @@ import {
   updatePolicy,
 } from '../../../../src/security/policy.ts';
 import { getMemoryDb } from '../../../../src/db/client.ts';
-import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../../../../src/ipc/transport.ts';
+import {
+  EXECUTOR_SOCK,
+  pingProcess,
+  SCHEDULER_SOCK,
+  VALIDATOR_SOCK,
+} from '../../../../src/ipc/transport.ts';
 import {
   changePassword,
   clearSessionCookie,
@@ -100,11 +105,19 @@ import {
   verifyPassword,
 } from './auth.ts';
 import { runMigrations } from '../../../../src/db/migrate.ts';
-import { type installPlugin, listPlugins, type removePlugin } from '../../../../src/plugins/registry.ts';
+import {
+  type installPlugin,
+  listPlugins,
+  type removePlugin,
+} from '../../../../src/plugins/registry.ts';
 import { pluginManager } from '../../../../src/plugins/manager.ts';
 import type { PluginManifest } from '../../../../src/plugins/types.ts';
 import { extractSettingsSchema } from '../../../../src/plugins/extensions/config.ts';
-import { applyPluginUpdate, checkAllUpdates, enrichPluginVersions } from '../../../../src/plugins/update.ts';
+import {
+  applyPluginUpdate,
+  checkAllUpdates,
+  enrichPluginVersions,
+} from '../../../../src/plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../../../../src/plugins/extensions/ui.ts';
 import { cancelJob, createJob } from '../../../../src/scheduler/scheduler.ts';
 import type { CreateJobOptions } from '../../../../src/scheduler/scheduler.ts';
@@ -2824,7 +2837,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/soul/templates — return all personality template names + content (no side effects)
   if (req.method === 'GET' && path === '/api/soul/templates') {
-    const { PERSONALITY_TEMPLATES, TEMPLATE_DESCRIPTIONS } = await import('../../../../src/agent/soul.ts');
+    const { PERSONALITY_TEMPLATES, TEMPLATE_DESCRIPTIONS } = await import(
+      '../../../../src/agent/soul.ts'
+    );
     const templates = Object.entries(PERSONALITY_TEMPLATES).map(([id, content]) => ({
       id,
       description: TEMPLATE_DESCRIPTIONS[id] ?? '',
@@ -3704,7 +3719,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'POST' && path === '/api/code/exec') {
     const body = await req.json() as { code: string; language: string };
     if (!body.code) return err('Missing code', 400);
-    const { runInSandbox, formatSandboxResult } = await import('../../../../src/sandbox/executor.ts');
+    const { runInSandbox, formatSandboxResult } = await import(
+      '../../../../src/sandbox/executor.ts'
+    );
     const result = await runInSandbox({ code: body.code, language: body.language || 'python' });
     const output = formatSandboxResult(result);
     return json({
@@ -5003,7 +5020,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // POST /api/cacp/conflicts/resolve
   if (req.method === 'POST' && path === '/api/cacp/conflicts/resolve') {
     const body = await req.json() as { key: string; acceptSessionId: string };
-    const { resolveContextConflict } = await import('../../../../src/memory/cross-agent-context.ts');
+    const { resolveContextConflict } = await import(
+      '../../../../src/memory/cross-agent-context.ts'
+    );
     resolveContextConflict(body.key, body.acceptSessionId);
     return json({ ok: true });
   }
@@ -5037,7 +5056,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // GET /api/sandbox/backends
   if (req.method === 'GET' && path === '/api/sandbox/backends') {
-    const { isDockerAvailable, isGVisorAvailable } = await import('../../../../src/sandbox/executor.ts');
+    const { isDockerAvailable, isGVisorAvailable } = await import(
+      '../../../../src/sandbox/executor.ts'
+    );
     const dockerOk = await isDockerAvailable();
     const gvisorOk = await isGVisorAvailable();
     return json({
@@ -5284,13 +5305,17 @@ export async function handleApi(req: Request): Promise<Response | null> {
   // GET /api/sessions/links — cross-session context bridge (#64)
   if (req.method === 'GET' && path === '/api/sessions/links') {
     const sessionId = url.searchParams.get('sessionId');
-    const { getLinkedSessions, getSessionLinks } = await import('../../../../src/memory/cross-agent-context.ts');
+    const { getLinkedSessions, getSessionLinks } = await import(
+      '../../../../src/memory/cross-agent-context.ts'
+    );
     return json(sessionId ? getSessionLinks(sessionId) : getLinkedSessions());
   }
 
   // GET /api/agent/preferences — user preference learner (#68)
   if (req.method === 'GET' && path === '/api/agent/preferences') {
-    const { generatePreferenceReport } = await import('../../../../src/memory/preference-learner.ts');
+    const { generatePreferenceReport } = await import(
+      '../../../../src/memory/preference-learner.ts'
+    );
     const report = await generatePreferenceReport();
     return json(report);
   }
@@ -5692,7 +5717,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!body.workspacePath) return err('workspacePath required', 400);
     const pathErrW = await validateSandboxPath(body.workspacePath, 'workspacePath');
     if (pathErrW) return err(pathErrW, 400);
-    const { captureWorkspaceSnapshot } = await import('../../../../src/sandbox/workspace-snapshot.ts');
+    const { captureWorkspaceSnapshot } = await import(
+      '../../../../src/sandbox/workspace-snapshot.ts'
+    );
     return json(
       await captureWorkspaceSnapshot({
         name: body.name,
@@ -5712,7 +5739,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
   if (req.method === 'GET' && path === '/api/workspace/snapshots') {
     const sessionId = url.searchParams.get('sessionId') ?? undefined;
     const limit = Number(url.searchParams.get('limit') ?? 50);
-    const { listWorkspaceSnapshots } = await import('../../../../src/sandbox/workspace-snapshot.ts');
+    const { listWorkspaceSnapshots } = await import(
+      '../../../../src/sandbox/workspace-snapshot.ts'
+    );
     return json(await listWorkspaceSnapshots({ sessionId, limit }));
   }
 
@@ -5729,7 +5758,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
 
   // DELETE /api/workspace/snapshots/:id
   if (req.method === 'DELETE' && wsSnapMatch) {
-    const { deleteWorkspaceSnapshot } = await import('../../../../src/sandbox/workspace-snapshot.ts');
+    const { deleteWorkspaceSnapshot } = await import(
+      '../../../../src/sandbox/workspace-snapshot.ts'
+    );
     const ok = await deleteWorkspaceSnapshot(wsSnapMatch[1]);
     if (!ok) return notFound('Workspace snapshot not found');
     return json({ ok: true });
@@ -5742,7 +5773,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     if (!body.targetWorkspacePath) return err('targetWorkspacePath required', 400);
     const pathErrR = await validateSandboxPath(body.targetWorkspacePath, 'targetWorkspacePath');
     if (pathErrR) return err(pathErrR, 400);
-    const { restoreWorkspaceSnapshot } = await import('../../../../src/sandbox/workspace-snapshot.ts');
+    const { restoreWorkspaceSnapshot } = await import(
+      '../../../../src/sandbox/workspace-snapshot.ts'
+    );
     return json(await restoreWorkspaceSnapshot(wsRestMatch[1], body.targetWorkspacePath));
   }
 
@@ -5751,7 +5784,9 @@ export async function handleApi(req: Request): Promise<Response | null> {
     const id1 = url.searchParams.get('id1');
     const id2 = url.searchParams.get('id2');
     if (!id1 || !id2) return err('id1 and id2 required', 400);
-    const { diffWorkspaceSnapshots } = await import('../../../../src/sandbox/workspace-snapshot.ts');
+    const { diffWorkspaceSnapshots } = await import(
+      '../../../../src/sandbox/workspace-snapshot.ts'
+    );
     const result = await diffWorkspaceSnapshots(id1, id2);
     if (!result) return notFound('One or both snapshots not found');
     return json(result);

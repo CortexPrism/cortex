@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -32,7 +32,12 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/voice\/synthesize$/,
     handler: async (req) => {
       try {
-        const body = await req.json() as { text: string; voice?: string; speed?: number; format?: string; };
+        const body = await req.json() as {
+          text: string;
+          voice?: string;
+          speed?: number;
+          format?: string;
+        };
         if (!body.text?.trim()) return err('No text provided', 400);
         const { initVoiceSystem, getTTS } = await import('../../voice/manager.ts');
         const { loadConfig } = await import('../../../../../src/config/config.ts');
@@ -41,7 +46,9 @@ export const routes: RouteHandler[] = [
         const tts = getTTS();
         if (!tts) return err('TTS provider not available', 503);
         const audio = await tts.synthesize(body.text, {
-          voice: body.voice, speed: body.speed, format: (body.format as 'wav' | 'mp3') || 'mp3',
+          voice: body.voice,
+          speed: body.speed,
+          format: (body.format as 'wav' | 'mp3') || 'mp3',
         });
         return new Response(audio.data.buffer as ArrayBuffer, {
           status: 200,
@@ -95,7 +102,17 @@ export const routes: RouteHandler[] = [
         sttProviders: listSTTProviders(),
         ttsProviders: listTTSProviders(),
         openaiVoices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'],
-        elevenLabsVoices: ['rachel', 'domi', 'bella', 'antoni', 'elli', 'josh', 'arnold', 'adam', 'sam'],
+        elevenLabsVoices: [
+          'rachel',
+          'domi',
+          'bella',
+          'antoni',
+          'elli',
+          'josh',
+          'arnold',
+          'adam',
+          'sam',
+        ],
       });
     },
   },

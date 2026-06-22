@@ -1,6 +1,9 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
 import { getCoreDb } from '../../../../../../src/db/client.ts';
-import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../../../../src/workspace/paths.ts';
+import {
+  ensureAgentWorkspace,
+  resolveWorkspacePath,
+} from '../../../../../../src/workspace/paths.ts';
 
 const RESTORE_TOOLS = new Set(['file_write', 'file_edit', 'file_patch']);
 

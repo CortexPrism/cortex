@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { PATHS } from '../../../../../src/config/paths.ts';
 import { exists } from '@std/fs';
 import { generatePersonalitySoul } from '../../../../../src/agent/soul.ts';
@@ -8,7 +8,9 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/soul\/templates$/,
     handler: async () => {
-      const { PERSONALITY_TEMPLATES, TEMPLATE_DESCRIPTIONS } = await import('../../../../../src/agent/soul.ts');
+      const { PERSONALITY_TEMPLATES, TEMPLATE_DESCRIPTIONS } = await import(
+        '../../../../../src/agent/soul.ts'
+      );
       const templates = Object.entries(PERSONALITY_TEMPLATES).map(([id, content]) => ({
         id,
         description: TEMPLATE_DESCRIPTIONS[id] ?? '',

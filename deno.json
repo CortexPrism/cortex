@@ -1,7 +1,14 @@
 {
   "version": "0.48.6",
   "nodeModulesDir": "auto",
-  "workspace": ["packages/core", "packages/gate", "packages/ai", "packages/server", "packages/infra", "packages/cli"],
+  "workspace": [
+    "packages/core",
+    "packages/gate",
+    "packages/ai",
+    "packages/server",
+    "packages/infra",
+    "packages/cli"
+  ],
   "tasks": {
     "dev": "deno run --allow-all src/main.ts",
     "chat": "deno run --allow-all src/main.ts agent chat",

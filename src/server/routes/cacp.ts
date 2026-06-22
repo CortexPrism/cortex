@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -15,11 +15,21 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/cacp\/context$/,
     handler: async (req) => {
-      const body = await req.json() as { namespace?: string; key: string; value: string; sessionId?: string; };
+      const body = await req.json() as {
+        namespace?: string;
+        key: string;
+        value: string;
+        sessionId?: string;
+      };
       if (!body.key) return err('key is required', 400);
       if (body.value === undefined) return err('value is required', 400);
       const { writeSharedContext } = await import('../../memory/cross-agent-context.ts');
-      const ctx = await writeSharedContext(body.namespace || 'default', body.key, body.value, body.sessionId || 'api');
+      const ctx = await writeSharedContext(
+        body.namespace || 'default',
+        body.key,
+        body.value,
+        body.sessionId || 'api',
+      );
       return json(ctx, 201);
     },
   },

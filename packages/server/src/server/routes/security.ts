@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { loadConfig, saveConfig } from '../../../../../src/config/config.ts';
 import type { ProviderKind } from '../../../../../src/config/config.ts';
 

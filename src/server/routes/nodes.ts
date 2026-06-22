@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { getLensDb } from '../../db/client.ts';
 import { getPendingDirectives } from '../../hub/ws-node.ts';
 
@@ -8,16 +8,21 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/nodes$/,
     handler: async (req) => {
       const body = await req.json() as {
-        name: string; endpoint: string; tier?: string;
-        capabilities?: string[]; group?: string;
+        name: string;
+        endpoint: string;
+        tier?: string;
+        capabilities?: string[];
+        group?: string;
       };
       if (!body.name?.trim()) return err('Missing name', 400);
       if (!body.endpoint?.trim()) return err('Missing endpoint', 400);
       const { registerNode } = await import('../../hub/node-registry.ts');
       const result = await registerNode({
-        name: body.name, endpoint: body.endpoint,
+        name: body.name,
+        endpoint: body.endpoint,
         tier: (body.tier as 'root' | 'sudo' | 'unprivileged') ?? 'unprivileged',
-        capabilities: body.capabilities, group: body.group,
+        capabilities: body.capabilities,
+        group: body.group,
       });
       return json({ node: result.node, token: result.token }, 201);
     },
@@ -118,9 +123,15 @@ export const routes: RouteHandler[] = [
       const { listNodes } = await import('../../hub/node-registry.ts');
       const nodes = await listNodes();
       const agents = nodes.map((n) => ({
-        id: n.id, name: n.name, nodeId: n.id, node: n.endpoint,
-        tier: n.tier, status: n.status, capabilities: n.capabilities,
-        lastHeartbeat: n.last_heartbeat, registeredAt: n.registered_at,
+        id: n.id,
+        name: n.name,
+        nodeId: n.id,
+        node: n.endpoint,
+        tier: n.tier,
+        status: n.status,
+        capabilities: n.capabilities,
+        lastHeartbeat: n.last_heartbeat,
+        registeredAt: n.registered_at,
       }));
       return json(agents);
     },
@@ -144,9 +155,13 @@ export const routes: RouteHandler[] = [
       if (!body.nodeId?.trim()) return err('Missing nodeId', 400);
       const node = await getNode(body.nodeId);
       if (!node) return notFound('Node not found');
-      const directiveId = `dir_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+      const directiveId = `dir_${Date.now().toString(36)}_${
+        Math.random().toString(36).slice(2, 7)
+      }`;
       const result = await dispatchDirective(body.nodeId, {
-        id: directiveId, sessionId: body.agentId, action: 'deploy',
+        id: directiveId,
+        sessionId: body.agentId,
+        action: 'deploy',
         params: { agentId: body.agentId, tier: body.tier ?? node.tier },
       });
       if (!result.dispatched) {

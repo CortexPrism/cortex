@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 import { getLensDb } from '../../../../../src/db/client.ts';
 
 export const routes: RouteHandler[] = [

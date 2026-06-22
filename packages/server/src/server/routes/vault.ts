@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -16,7 +16,10 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const { vaultStore, vaultGet } = await import('../../../../../src/security/vault.ts');
       const body = await req.json() as {
-        key: string; value: string; expiration?: string; maxUses?: number;
+        key: string;
+        value: string;
+        expiration?: string;
+        maxUses?: number;
       };
       if (!body.key?.trim()) return err('Key name is required', 400);
       let existingService = 'vault';
@@ -25,14 +28,17 @@ export const routes: RouteHandler[] = [
         if (existing) {
           const db2 = await import('../../../../../src/db/client.ts').then((m) => m.getVaultDb());
           const row = await db2.get<{ service: string }>(
-            `SELECT service FROM vault_entries WHERE name = ?`, [body.key.trim()],
+            `SELECT service FROM vault_entries WHERE name = ?`,
+            [body.key.trim()],
           );
           if (row?.service) existingService = row.service;
         }
       } catch { /* new credential */ }
       await vaultStore({
-        name: body.key.trim(), service: existingService,
-        value: body.value ?? '', credentialType: 'api_key',
+        name: body.key.trim(),
+        service: existingService,
+        value: body.value ?? '',
+        credentialType: 'api_key',
       });
       if (body.expiration || body.maxUses !== undefined) {
         const db = await import('../../../../../src/db/client.ts').then((m) => m.getVaultDb());
@@ -42,15 +48,25 @@ export const routes: RouteHandler[] = [
           if (/^\d+[dmy]$/i.test(exp)) {
             const num = parseInt(exp);
             const unit = exp.slice(-1).toLowerCase();
-            const multipliers: Record<string, number> = { d: 86_400_000, m: 2_592_000_000, y: 31_536_000_000 };
+            const multipliers: Record<string, number> = {
+              d: 86_400_000,
+              m: 2_592_000_000,
+              y: 31_536_000_000,
+            };
             expiresAt = new Date(Date.now() + num * (multipliers[unit] || 0)).toISOString();
           } else {
             expiresAt = exp;
           }
-          await db.run(`UPDATE vault_entries SET expires_at = ? WHERE name = ?`, [expiresAt, body.key.trim()]);
+          await db.run(`UPDATE vault_entries SET expires_at = ? WHERE name = ?`, [
+            expiresAt,
+            body.key.trim(),
+          ]);
         }
         if (body.maxUses !== undefined && body.maxUses > 0) {
-          await db.run(`UPDATE vault_entries SET usage_limit = ? WHERE name = ?`, [body.maxUses, body.key.trim()]);
+          await db.run(`UPDATE vault_entries SET usage_limit = ? WHERE name = ?`, [
+            body.maxUses,
+            body.key.trim(),
+          ]);
         }
       }
       return json({ ok: true });
@@ -75,8 +91,13 @@ export const routes: RouteHandler[] = [
     handler: async () => {
       const db = await import('../../../../../src/db/client.ts').then((m) => m.getVaultDb());
       const rows = await db.all<{
-        id: string; credential_id: string; requestor: string;
-        granted: number; reason: string | null; accessed_at: string; name: string | null;
+        id: string;
+        credential_id: string;
+        requestor: string;
+        granted: number;
+        reason: string | null;
+        accessed_at: string;
+        name: string | null;
       }>(
         `SELECT al.id, al.credential_id, al.requestor, al.granted, al.reason, al.accessed_at, ve.name
          FROM vault_access_log al
@@ -84,7 +105,9 @@ export const routes: RouteHandler[] = [
          ORDER BY al.accessed_at DESC LIMIT 200`,
       );
       return json(rows.map((r) => ({
-        ...r, key: r.name ?? r.credential_id, granted: r.granted === 1,
+        ...r,
+        key: r.name ?? r.credential_id,
+        granted: r.granted === 1,
       })));
     },
   },
@@ -100,7 +123,12 @@ export const routes: RouteHandler[] = [
           const value = await vaultGet(e.name, 'system');
           exported.push({ name: e.name, service: e.service, value });
         } catch {
-          exported.push({ name: e.name, service: e.service, value: null, error: 'decryption_failed' });
+          exported.push({
+            name: e.name,
+            service: e.service,
+            value: null,
+            error: 'decryption_failed',
+          });
         }
       }
       return json(exported);
@@ -119,8 +147,10 @@ export const routes: RouteHandler[] = [
       for (const item of body.data) {
         if (!item.name || !item.value) continue;
         await vaultStore({
-          name: item.name, service: item.service || 'imported',
-          value: item.value, credentialType: 'api_key',
+          name: item.name,
+          service: item.service || 'imported',
+          value: item.value,
+          credentialType: 'api_key',
         });
         imported++;
       }

@@ -29,7 +29,9 @@ export const execCommand = cortexCommand('exec')
     const useStream = (opts.stream as boolean) !== false;
     const agentId = opts.agent as string | undefined;
 
-    const agent = agentId ? await (await import('../../../../src/agent/manager.ts')).getAgent(agentId) : null;
+    const agent = agentId
+      ? await (await import('../../../../src/agent/manager.ts')).getAgent(agentId)
+      : null;
     const effectiveAgent = agent ?? await getDefaultAgent();
 
     let resolvedConfig = { ...config };

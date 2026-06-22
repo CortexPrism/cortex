@@ -1,6 +1,11 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
-import { getHookCount, listHooks, registerHook, unregisterHook } from '../../../../src/pipeline/manager.ts';
+import {
+  getHookCount,
+  listHooks,
+  registerHook,
+  unregisterHook,
+} from '../../../../src/pipeline/manager.ts';
 import { getBuiltinHook, registerBuiltinHooks } from '../../../../src/pipeline/builtin.ts';
 import { i18n } from '../../../../src/i18n/service.ts';
 

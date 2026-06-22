@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { pingProcess, SCHEDULER_SOCK } from '../../ipc/transport.ts';
 import { PATHS } from '../../config/paths.ts';
 import { join } from '@std/path';

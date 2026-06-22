@@ -9,7 +9,7 @@ import {
   traceCreate,
 } from '../../../../../src/observability/langfuse.ts';
 import { OBS_CONTEXT } from '../../../../../src/observability/provider-wrapper.ts';
-import type { Message, CompletionOptions } from '../../llm/types.ts';
+import type { CompletionOptions, Message } from '../../llm/types.ts';
 import type { ToolCallRequest, ToolCallResult } from '../../tools/types.ts';
 import type { TurnContext } from '../pipeline/context.ts';
 

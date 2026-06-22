@@ -55,8 +55,25 @@ export interface ISemanticStore {
 }
 
 export interface IGraphStore {
-  addEntity(name: string, type: string, description?: string, metadata?: Record<string, unknown>): Promise<string>;
-  addRelation(sourceName: string, sourceType: string, targetName: string, targetType: string, relation: string, strength?: number, context?: string): Promise<string>;
-  getGraph(entityName?: string, depth?: number, limit?: number): Promise<{ nodes: unknown[]; edges: unknown[] }>;
+  addEntity(
+    name: string,
+    type: string,
+    description?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<string>;
+  addRelation(
+    sourceName: string,
+    sourceType: string,
+    targetName: string,
+    targetType: string,
+    relation: string,
+    strength?: number,
+    context?: string,
+  ): Promise<string>;
+  getGraph(
+    entityName?: string,
+    depth?: number,
+    limit?: number,
+  ): Promise<{ nodes: unknown[]; edges: unknown[] }>;
   traverse(entity: string, depth?: number): Promise<unknown[]>;
 }

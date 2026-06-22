@@ -3,7 +3,10 @@ import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { installFromMarketplace } from '../../../../src/plugins/install.ts';
 import type { deserializeCapabilities } from '../../../../src/plugins/registry.ts';
-import type { getPluginPermissionOverrides, resolvePermissions } from '../../../../src/plugins/permissions.ts';
+import type {
+  getPluginPermissionOverrides,
+  resolvePermissions,
+} from '../../../../src/plugins/permissions.ts';
 import type { pluginManager } from '../../../../src/plugins/manager.ts';
 import { enrichPluginVersions } from '../../../../src/plugins/update.ts';
 import { i18n } from '../../../../src/i18n/service.ts';

@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { getJob, listJobRuns, listJobs } from '../../scheduler/scheduler.ts';
 
 export const routes: RouteHandler[] = [

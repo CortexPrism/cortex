@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound } from './_helpers.ts';
+import { json, notFound, type RouteHandler } from './_helpers.ts';
 import { getSession, updateSessionProgress } from '../../db/sessions.ts';
 
 export const routes: RouteHandler[] = [

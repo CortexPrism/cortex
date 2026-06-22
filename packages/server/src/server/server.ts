@@ -81,7 +81,9 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // Register built-in skills and load filesystem skills
   try {
-    const { registerBuiltinSkills: registerSkills } = await import('../../../../src/memory/skills.ts');
+    const { registerBuiltinSkills: registerSkills } = await import(
+      '../../../../src/memory/skills.ts'
+    );
     const { buildEmbedder } = await import('../../../../src/memory/embeddings.ts');
     const config = await loadConfig();
     const embedder = buildEmbedder(config);
@@ -116,7 +118,9 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // Register built-in tools into global registry for API listing
   try {
-    const { globalRegistry, registerAllBuiltins } = await import('../../../../src/tools/registry.ts');
+    const { globalRegistry, registerAllBuiltins } = await import(
+      '../../../../src/tools/registry.ts'
+    );
     await registerAllBuiltins(globalRegistry, true);
     _log.info('Built-in tools registered');
   } catch (e) {

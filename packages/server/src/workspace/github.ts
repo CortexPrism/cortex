@@ -80,9 +80,9 @@ async function ghFetch(
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
-      'User-Agent': `CortexPrism-Agent-OS/${await import('../../../../src/config/version.ts').then((m) =>
-        m.getVersion()
-      )}`,
+      'User-Agent': `CortexPrism-Agent-OS/${await import('../../../../src/config/version.ts').then((
+        m,
+      ) => m.getVersion())}`,
       ...((options.headers as Record<string, string>) ?? {}),
     },
   });

@@ -1,5 +1,10 @@
-import { type RouteHandler, json } from './_helpers.ts';
-import { pingProcess, EXECUTOR_SOCK, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../../../../../src/ipc/transport.ts';
+import { json, type RouteHandler } from './_helpers.ts';
+import {
+  EXECUTOR_SOCK,
+  pingProcess,
+  SCHEDULER_SOCK,
+  VALIDATOR_SOCK,
+} from '../../../../../src/ipc/transport.ts';
 import { getMemoryHealth } from '../../../../../src/memory/heuristics.ts';
 import { loadConfig } from '../../../../../src/config/config.ts';
 

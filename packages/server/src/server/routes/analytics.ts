@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { getLensDb } from '../../../../../src/db/client.ts';
 import type { loadConfig } from '../../../../../src/config/config.ts';
 
@@ -79,7 +79,13 @@ export const routes: RouteHandler[] = [
 
       const agentStats = new Map<
         string,
-        { sessions: Set<string>; llmCalls: number; tokensIn: number; tokensOut: number; cost: number }
+        {
+          sessions: Set<string>;
+          llmCalls: number;
+          tokensIn: number;
+          tokensOut: number;
+          cost: number;
+        }
       >();
       for (const ev of rawEvents) {
         const aid = agentMap.get(ev.session_id) || 'unknown';

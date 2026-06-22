@@ -2,12 +2,24 @@ import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { dirname } from '@std/path';
-import { getPlugin, installPlugin, listPlugins, removePlugin } from '../../../../src/plugins/registry.ts';
+import {
+  getPlugin,
+  installPlugin,
+  listPlugins,
+  removePlugin,
+} from '../../../../src/plugins/registry.ts';
 import { pluginManager } from '../../../../src/plugins/manager.ts';
 import { deserializeCapabilities } from '../../../../src/plugins/registry.ts';
 import { verifyEntryPointIntegrity } from '../../../../src/plugins/integrity.ts';
-import { getPluginPermissionOverrides, resolvePermissions } from '../../../../src/plugins/permissions.ts';
-import { applyPluginUpdate, checkAllUpdates, checkPluginUpdate } from '../../../../src/plugins/update.ts';
+import {
+  getPluginPermissionOverrides,
+  resolvePermissions,
+} from '../../../../src/plugins/permissions.ts';
+import {
+  applyPluginUpdate,
+  checkAllUpdates,
+  checkPluginUpdate,
+} from '../../../../src/plugins/update.ts';
 import { installFromMarketplace, installFromUrl } from '../../../../src/plugins/install.ts';
 import type { PluginCapability, PluginKind } from '../../../../src/plugins/types.ts';
 import { resolve } from '@std/path';

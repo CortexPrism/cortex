@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import {
   deleteAgent,
   getAgent,
@@ -190,7 +190,9 @@ export const routes: RouteHandler[] = [
         const processes: Array<{ pid: number; cmd: string }> = [];
         for (const line of text.split('\n').slice(1)) {
           if (!line.trim()) continue;
-          if (line.includes('sub-agent') || line.includes('sub_agent') || line.includes('subagent')) {
+          if (
+            line.includes('sub-agent') || line.includes('sub_agent') || line.includes('subagent')
+          ) {
             const m2 = line.trim().match(/^(\d+)\s+(.+)$/);
             if (m2) processes.push({ pid: parseInt(m2[1]), cmd: m2[2] });
           }

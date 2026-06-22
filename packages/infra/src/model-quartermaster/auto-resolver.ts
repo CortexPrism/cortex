@@ -1,4 +1,8 @@
-import type { AutoModelPoolEntry, CortexConfig, ProviderKind } from '../../../../src/config/config.ts';
+import type {
+  AutoModelPoolEntry,
+  CortexConfig,
+  ProviderKind,
+} from '../../../../src/config/config.ts';
 import type { ModelCandidate } from './types.ts';
 import { buildRequestContext } from './contexts.ts';
 import { predictModel } from './mod.ts';

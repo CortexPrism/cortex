@@ -1,6 +1,11 @@
 import type { ChromeBridgeConfig } from '../../../../../src/config/config.ts';
 import type { ToolRegistry } from '../registry.ts';
-import { callStdioTool, connectStdio, disconnectStdio, getConnection } from '../../../../../src/mcp/client.ts';
+import {
+  callStdioTool,
+  connectStdio,
+  disconnectStdio,
+  getConnection,
+} from '../../../../../src/mcp/client.ts';
 import { logger } from '../../../../../src/utils/logger.ts';
 import { CHROME_BRIDGE_CAPABILITIES } from './chrome_bridge_capabilities.ts';
 

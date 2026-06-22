@@ -1,12 +1,12 @@
 export type IpcMessageType =
-  | "intent"
-  | "intent_response"
-  | "execute"
-  | "execute_result"
-  | "credential_request"
-  | "credential_response"
-  | "heartbeat"
-  | "error";
+  | 'intent'
+  | 'intent_response'
+  | 'execute'
+  | 'execute_result'
+  | 'credential_request'
+  | 'credential_response'
+  | 'heartbeat'
+  | 'error';
 
 export interface IIpcMessage {
   type: IpcMessageType;
@@ -21,7 +21,7 @@ export interface IIPCTransport {
 }
 
 export interface IIntentMessage extends IIpcMessage {
-  type: "intent";
+  type: 'intent';
   sessionId: string;
   turnId: string;
   timestamp: string;
@@ -32,7 +32,7 @@ export interface IIntentMessage extends IIpcMessage {
   };
   context?: {
     userMessage?: string;
-    riskLevel?: "low" | "medium" | "high";
+    riskLevel?: 'low' | 'medium' | 'high';
   };
 }
 

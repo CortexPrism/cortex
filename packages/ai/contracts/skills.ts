@@ -14,7 +14,10 @@ export interface ISkillStore {
   findMatching(input: string, k: number, embedder?: unknown): Promise<ISkillEntry[]>;
   store(skill: ISkillEntry): Promise<string>;
   delete(name: string): Promise<boolean>;
-  list(origin?: 'core' | 'human', lifecycle?: 'stable' | 'experimental' | 'deprecated'): Promise<ISkillEntry[]>;
+  list(
+    origin?: 'core' | 'human',
+    lifecycle?: 'stable' | 'experimental' | 'deprecated',
+  ): Promise<ISkillEntry[]>;
   get(name: string): Promise<ISkillEntry | undefined>;
   stats(): Promise<Record<string, number>>;
   health(name: string): Promise<Record<string, number> | null>;

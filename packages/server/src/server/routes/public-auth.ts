@@ -1,18 +1,23 @@
-import { type RouteHandler, json, checkAuthRateLimit, type savePartialProfile } from './_helpers.ts';
 import {
-  hasPassword,
-  createSession,
-  setSessionCookie,
-  parseCookies,
-  destroySession,
+  checkAuthRateLimit,
+  json,
+  type RouteHandler,
+  type savePartialProfile,
+} from './_helpers.ts';
+import {
+  changePassword,
   clearSessionCookie,
+  createSession,
+  destroySession,
+  hasPassword,
+  parseCookies,
+  setSessionCookie,
+  setupPassword,
   validateSession,
   verifyPassword,
-  setupPassword,
-  changePassword,
 } from '../auth.ts';
 import { loadConfig, type saveConfig } from '../../../../../src/config/config.ts';
-import type { ProviderKind, ProviderConfig } from '../../../../../src/config/config.ts';
+import type { ProviderConfig, ProviderKind } from '../../../../../src/config/config.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -42,7 +47,11 @@ export const routes: RouteHandler[] = [
       try {
         await setupPassword(password);
         const session = createSession();
-        return json({ success: true, sessionId: session.id }, 201, setSessionCookie(session.id, req));
+        return json(
+          { success: true, sessionId: session.id },
+          201,
+          setSessionCookie(session.id, req),
+        );
       } catch (e) {
         return json({ error: (e as Error).message }, 400);
       }
@@ -120,7 +129,8 @@ export const routes: RouteHandler[] = [
         (config as unknown as Record<string, unknown>).onboarding as Record<string, unknown> || {};
       const steps = (onboarding.steps as Record<string, boolean>) || {};
       const userProfile =
-        ((config as unknown as Record<string, unknown>).userProfile as Record<string, unknown>) || {};
+        ((config as unknown as Record<string, unknown>).userProfile as Record<string, unknown>) ||
+        {};
       return json({
         completed: onboarding.completed === true,
         currentStep: onboarding.currentStep ?? null,

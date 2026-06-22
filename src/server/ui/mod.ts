@@ -2,9 +2,9 @@ import { CSS } from './css.ts';
 import { PROVIDER_OPTIONS_HTML } from './providers.ts';
 import {
   APP_WRAPPER_OPEN,
-  SIDEBAR_OVERLAY,
-  SIDEBAR_HTML,
   MAIN_AREA_OPEN,
+  SIDEBAR_HTML,
+  SIDEBAR_OVERLAY,
   WRAPPER_CLOSE,
 } from './shell.ts';
 import { MODALS_IN_MAIN, MODALS_OUTSIDE } from './pages/modals.ts';
@@ -152,8 +152,7 @@ const ALL_PAGES = PAGE_CHAT +
   PAGE_TOOLS +
   PAGE_METACOGNITION;
 
-const ALL_JS =
-  JS_00_INIT +
+const ALL_JS = JS_00_INIT +
   JS_01_HELPERS +
   JS_02_CHAT_SETUP +
   JS_03_WEBSOCKET +

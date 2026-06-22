@@ -7,7 +7,12 @@ import type { LLMProvider } from '../../../../src/llm/types.ts';
 import { initSessionDb, runMigrations } from '../../../../src/db/migrate.ts';
 import { runSetupWizard } from './setup.ts';
 import { buildSystemPrompt } from '../../../../src/agent/soul.ts';
-import { closeSession, createSession, getSession, resumeSession } from '../../../../src/db/sessions.ts';
+import {
+  closeSession,
+  createSession,
+  getSession,
+  resumeSession,
+} from '../../../../src/db/sessions.ts';
 import { logEvent } from '../../../../src/db/lens.ts';
 import { globalRegistry } from '../../../../src/tools/registry.ts';
 import type { ToolRegistry } from '../../../../src/tools/registry.ts';

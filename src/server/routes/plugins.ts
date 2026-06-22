@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { installPlugin, listPlugins, removePlugin } from '../../plugins/registry.ts';
 import { pluginManager } from '../../plugins/manager.ts';
 import type { PluginManifest } from '../../plugins/types.ts';
@@ -58,8 +58,12 @@ export const routes: RouteHandler[] = [
       const githubToken = config.pluginUpdate?.githubToken ?? null;
       const checks = await checkAllUpdates(githubToken);
       const available = checks.filter((r) => r.updateAvailable);
-      const results: { name: string; previousVersion: string; newVersion: string; error?: string }[] =
-        [];
+      const results: {
+        name: string;
+        previousVersion: string;
+        newVersion: string;
+        error?: string;
+      }[] = [];
       for (const r of available) {
         try {
           const upd = await applyPluginUpdate(r.pluginName, githubToken);

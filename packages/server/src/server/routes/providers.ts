@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 import { loadConfig } from '../../../../../src/config/config.ts';
 import type { ProviderKind } from '../../../../../src/config/config.ts';
 
@@ -21,7 +21,8 @@ export const routes: RouteHandler[] = [
       const { vaultList, vaultGet } = await import('../../../../../src/security/vault.ts');
       try {
         const entries = await vaultList();
-        const toolConfigs: Record<string, { configured: boolean; masked?: string; url?: string }> = {};
+        const toolConfigs: Record<string, { configured: boolean; masked?: string; url?: string }> =
+          {};
 
         const knownTools = [
           'brave_search_api_key',
