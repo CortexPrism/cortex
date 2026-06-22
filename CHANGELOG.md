@@ -5,6 +5,24 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.49.2] - Unreleased
+
+### Fixed
+
+- **Remote Agents deploy modal tier mismatch** — the deploy modal dropdown listed nonexistent tiers `operator` and `observer`. Fixed to use the actual capability tiers: `unprivileged`, `sudo`, `root`. (`src/server/ui/pages/modals.ts`, `packages/server/src/server/ui/pages/modals.ts`)
+
+- **Node agent TLS fields were dead code** — `NodeAgentOptions` declared `tlsCert` and `tlsKey` fields that were never consumed by `createWebSocket()`. Removed both fields from the interface and destructuring. (`src/remote/agent.ts`)
+
+- **Node `rekey` handler was a no-op** — the Hub-to-Node `rekey` message handler only logged the event. Now stores the rotated token in mutable state and closes the WebSocket to trigger an automatic reconnect using the new credential. (`src/remote/agent.ts`)
+
+- **Node `config_update` handler was a no-op** — the Hub-to-Node `config_update` message logged the allow-list but never applied it. Now stores `toolsAllowList` and `blockedTools` in mutable config overrides that `localPolicyCheck()` checks before tier-based rules. The `config_update` message type and `pushConfigUpdate()` signature updated to carry `blockedTools`. (`src/remote/agent.ts`, `src/remote/types.ts`, `src/hub/ws-node.ts`)
+
+- **Dead `RemoteAgentManager` removed** — `src/remote/manager.ts` (47 lines of pure `Map` wrappers) was not imported by any file in the codebase. Superseded by the persisted `hub/node-registry.ts`. Removed from both `src/remote/` and `packages/server/src/remote/`. (`src/remote/manager.ts`, `packages/server/src/remote/manager.ts`)
+
+- **Unused packages/ duplicates cleaned up** — removed 9 dead duplicate files under `packages/server/src/` and `packages/ai/src/` that existed as migration scaffold but were never imported (all imports resolve to `src/`). Fixed broken references in the dead-but-kept `packages/server/src/server/ui/mod.ts`. (`packages/server/src/remote/types.ts`, `packages/server/src/remote/agent.ts`, `packages/server/src/hub/node-registry.ts`, `packages/server/src/hub/ws-node.ts`, `packages/server/src/hub/capability-tiers.ts`, `packages/server/src/hub/session-routing.ts`, `packages/server/src/server/ui/pages/remote.ts`, `packages/server/src/server/ui/js/19_devtools.ts`, `packages/ai/src/agent/node-context.ts`)
+
+- **Directive cancellation not audited** — `cancelPending()` in the session routing layer deleted the directive map entry without logging a lens event. Now logs `node_directive_cancelled`. Added `node_directive_cancelled` to the `EventType` union. (`src/hub/session-routing.ts`, `src/db/lens.ts`)
+
 ## [0.49.1] - 2026-06-22
 
 ### Changed

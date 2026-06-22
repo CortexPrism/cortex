@@ -95,6 +95,7 @@ export type NodeMessage =
     agentId: string;
     policies?: Record<string, unknown>;
     toolsAllowList?: string[];
+    blockedTools?: string[];
   }
   | { type: 'rekey'; agentId: string; newToken: string }
   // Bidirectional
