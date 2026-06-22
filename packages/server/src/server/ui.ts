@@ -10904,10 +10904,10 @@ function initTerminal() {
 
   terminalInstance.onData(function(data) {
     if (!terminalConnected) return;
-    if (data === '\r') {
+    if (data === '\\r') {
       terminalInstance.write('\r\n');
       if (terminalInputBuffer.length > 0) {
-        sendWs({ type: 'terminal_input', data: terminalInputBuffer + '\n' });
+        sendWs({ type: 'terminal_input', data: terminalInputBuffer + '\\n' });
       }
       terminalInputBuffer = '';
     } else if (data === '\x7f') {
@@ -10955,7 +10955,7 @@ function sendWs(msg) {
 
 function handleTerminalOutput(data) {
   if (!terminalInstance) return;
-  if (data.endsWith('\n')) {
+  if (data.endsWith('\\n')) {
     terminalInstance.write(data.slice(0, -1).replace(/\n/g, '\r\n') + '\r\n$ ');
   } else {
     terminalInstance.write(data.replace(/\n/g, '\r\n'));
