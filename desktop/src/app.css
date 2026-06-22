@@ -2,7 +2,7 @@
   --bg: #0a0e1a;
   --bg2: #0d1117;
   --bg3: #151b26;
-  --border: rgba(255,255,255,0.08);
+  --border: rgba(255, 255, 255, 0.08);
   --accent: #06b6d4;
   --accent2: #22d3ee;
   --accent-green: #22c55e;
@@ -17,7 +17,11 @@
   --toolbar-h: 44px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 html, body {
   height: 100%;
@@ -68,7 +72,11 @@ html, body {
   margin: 0 auto 16px;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .status-text {
   font-size: 12px;
@@ -105,9 +113,17 @@ html, body {
   -webkit-app-region: no-drag;
 }
 
-.toolbar-left { flex: 1; }
-.toolbar-center { flex: 2; justify-content: center; }
-.toolbar-right { flex: 1; justify-content: flex-end; }
+.toolbar-left {
+  flex: 1;
+}
+.toolbar-center {
+  flex: 2;
+  justify-content: center;
+}
+.toolbar-right {
+  flex: 1;
+  justify-content: flex-end;
+}
 
 .toolbar-title {
   font-size: 12px;
@@ -180,8 +196,12 @@ html, body {
   flex-shrink: 0;
 }
 
-.status-dot.running { background: var(--accent-green); }
-.status-dot.error { background: var(--accent-red); }
+.status-dot.running {
+  background: var(--accent-green);
+}
+.status-dot.error {
+  background: var(--accent-red);
+}
 
 .status-label {
   font-size: 11px;
@@ -211,7 +231,7 @@ html, body {
 .modal-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
 
@@ -222,7 +242,7 @@ html, body {
   border-radius: 12px;
   width: 560px;
   max-width: 90vw;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -288,10 +308,22 @@ html, body {
   max-width: 360px;
 }
 
-.toast.success { border-color: var(--accent-green); color: var(--accent-green); }
-.toast.error { border-color: var(--accent-red); color: var(--accent-red); }
+.toast.success {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+.toast.error {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
 
 @keyframes slideUp {
-  from { transform: translateY(10px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

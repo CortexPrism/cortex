@@ -1,59 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Cortex Desktop</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:* https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://d3js.org; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://d3js.org; connect-src http://localhost:* ws://localhost:* https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://d3js.org; img-src 'self' data:;" />
-<link rel="stylesheet" href="app.css" />
-</head>
-<body>
-<div class="splash" id="splash">
-  <div class="splash-content">
-    <div class="logo">Cortex</div>
-    <div class="tagline">AI Agent Operating System</div>
-    <div class="loader"></div>
-    <div class="status-text" id="splash-status">Starting server…</div>
-  </div>
-</div>
-
-<div class="app" id="app" style="display:none">
-  <div class="toolbar" id="toolbar">
-    <div class="toolbar-left">
-      <button class="toolbar-btn" id="btn-home" title="Dashboard">⌂</button>
-      <span class="toolbar-divider"></span>
-      <span class="toolbar-title">Cortex Desktop</span>
-    </div>
-    <div class="toolbar-center">
-      <div class="quick-ask" id="quick-ask-bar">
-        <input type="text" id="quick-ask-input" placeholder="Quick ask… (Ctrl+Shift+K)" autocomplete="off" />
-        <button class="toolbar-btn" id="btn-send" title="Send">→</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cortex Desktop</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' http://localhost:* https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://d3js.org; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://d3js.org; connect-src http://localhost:* ws://localhost:* https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://d3js.org; img-src 'self' data:;"
+    />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="splash" id="splash">
+      <div class="splash-content">
+        <div class="logo">Cortex</div>
+        <div class="tagline">AI Agent Operating System</div>
+        <div class="loader"></div>
+        <div class="status-text" id="splash-status">Starting server…</div>
       </div>
     </div>
-    <div class="toolbar-right">
-      <span class="status-dot" id="status-dot" title="Server status"></span>
-      <span class="status-label" id="status-label">checking…</span>
-      <button class="toolbar-btn" id="btn-refresh" title="Refresh Dashboard">↻</button>
-      <button class="toolbar-btn" id="btn-settings" title="Open Cortex Settings">⚙</button>
-    </div>
-  </div>
-  <iframe id="dashboard-frame" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"></iframe>
-</div>
 
-<div class="quick-ask-modal" id="quick-ask-modal" style="display:none">
-  <div class="modal-overlay" id="modal-overlay"></div>
-  <div class="modal-content">
-    <div class="modal-header">
-      <span>Quick Ask</span>
-      <button class="toolbar-btn" id="btn-close-modal">✕</button>
+    <div class="app" id="app" style="display: none">
+      <div class="toolbar" id="toolbar">
+        <div class="toolbar-left">
+          <button class="toolbar-btn" id="btn-home" title="Dashboard">⌂</button>
+          <span class="toolbar-divider"></span>
+          <span class="toolbar-title">Cortex Desktop</span>
+        </div>
+        <div class="toolbar-center">
+          <div class="quick-ask" id="quick-ask-bar">
+            <input
+              type="text"
+              id="quick-ask-input"
+              placeholder="Quick ask… (Ctrl+Shift+K)"
+              autocomplete="off"
+            />
+            <button class="toolbar-btn" id="btn-send" title="Send">→</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <span class="status-dot" id="status-dot" title="Server status"></span>
+          <span class="status-label" id="status-label">checking…</span>
+          <button class="toolbar-btn" id="btn-refresh" title="Refresh Dashboard">↻</button>
+          <button class="toolbar-btn" id="btn-settings" title="Open Cortex Settings">⚙</button>
+        </div>
+      </div>
+      <iframe
+        id="dashboard-frame"
+        src="about:blank"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+      ></iframe>
     </div>
-    <textarea id="modal-input" placeholder="Ask Cortex anything…" rows="4"></textarea>
-    <div class="modal-actions">
-      <button class="btn-primary" id="btn-modal-send">Ask Cortex</button>
-    </div>
-  </div>
-</div>
 
-<script src="app.js"></script>
-</body>
+    <div class="quick-ask-modal" id="quick-ask-modal" style="display: none">
+      <div class="modal-overlay" id="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <span>Quick Ask</span>
+          <button class="toolbar-btn" id="btn-close-modal">✕</button>
+        </div>
+        <textarea id="modal-input" placeholder="Ask Cortex anything…" rows="4"></textarea>
+        <div class="modal-actions">
+          <button class="btn-primary" id="btn-modal-send">Ask Cortex</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
 </html>

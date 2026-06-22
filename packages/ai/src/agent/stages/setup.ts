@@ -91,7 +91,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
       effectiveInput,
       state,
       messages: [],
-      maxToolRounds: options.maxToolRounds ?? config.agentRuntime?.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS,
+      maxToolRounds: options.maxToolRounds ?? config.agentRuntime?.maxToolRounds ??
+        DEFAULT_MAX_TOOL_ROUNDS,
       response: '',
       tokensIn: 0,
       tokensOut: 0,
@@ -127,7 +128,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     recordUserMessage(sessionId, effectiveInput);
   }).catch(() => {});
 
-  const maxToolRounds = options.maxToolRounds ?? config.agentRuntime?.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
+  const maxToolRounds = options.maxToolRounds ?? config.agentRuntime?.maxToolRounds ??
+    DEFAULT_MAX_TOOL_ROUNDS;
 
   const registry = options.registry;
   const toolCtx = registry && options.toolContext
