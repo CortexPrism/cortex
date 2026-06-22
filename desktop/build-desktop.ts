@@ -7,13 +7,8 @@ try {
   // directory exists
 }
 
-async function readText(filename) {
+async function readText(filename: string) {
   return await Deno.readTextFile(new URL(filename, srcDir));
-}
-
-async function copyStatic(filename) {
-  const content = await readText(filename);
-  await Deno.writeTextFile(new URL(filename, distDir), content);
 }
 
 const html = await readText('index.html');

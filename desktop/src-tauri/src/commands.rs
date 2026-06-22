@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::process::{Child, Command};
 use std::sync::MutexGuard;
 use tauri::State;
+use tokio::time::{sleep, Duration};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemInfo {
@@ -26,50 +27,31 @@ fn check_port(port: u16) -> bool {
 }
 
 fn find_cortex_command() -> Option<String> {
-    for cmd in &["cortex", "deno"] {
-        if Command::new(if cfg!(windows) { "where" } else { "which" })
-            .arg(cmd)
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-        {
-            return Some(cmd.to_string());
-        }
+    if Command::new(if cfg!(windows) { "where" } else { "which" })
+        .arg("cortex")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        return Some("cortex".to_string());
     }
     None
 }
 
 fn spawn_server(port: u16) -> Result<Child, String> {
-    let cortex = find_cortex_command().ok_or_else(|| {
+    find_cortex_command().ok_or_else(|| {
         "Cortex CLI not found in PATH. Install CortexPrism first.".to_string()
     })?;
 
-    let child = if cortex == "deno" {
-        Command::new("deno")
-            .args([
-                "run",
-                "--allow-all",
-                "src/main.ts",
-                "server",
-                "start",
-                "--port",
-                &port.to_string(),
-            ])
-            .spawn()
-            .map_err(|e| format!("Failed to start server via deno: {}", e))?
-    } else {
-        Command::new("cortex")
-            .args([
-                "server",
-                "start",
-                "--port",
-                &port.to_string(),
-            ])
-            .spawn()
-            .map_err(|e| format!("Failed to start server via cortex: {}", e))?
-    };
-
-    Ok(child)
+    Command::new("cortex")
+        .args([
+            "server",
+            "start",
+            "--port",
+            &port.to_string(),
+        ])
+        .spawn()
+        .map_err(|e| format!("Failed to start server via cortex: {}", e))
 }
 
 #[tauri::command]
@@ -118,67 +100,76 @@ pub async fn get_server_status(state: State<'_, AppState>) -> Result<ServerStatu
 
 #[tauri::command]
 pub async fn start_server(state: State<'_, AppState>) -> Result<ServerStatus, String> {
-    let mut server: MutexGuard<'_, crate::ServerProcess> = state.server.lock().map_err(|e| e.to_string())?;
+    let port = {
+        let server = state.server.lock().map_err(|e| e.to_string())?;
+        server.port
+    };
 
-    if check_port(server.port) {
+    if check_port(port) {
         return Ok(ServerStatus {
             running: true,
-            port: server.port,
+            port,
             pid: None,
         });
     }
 
-    let child = spawn_server(server.port)?;
+    let child = spawn_server(port)?;
     let pid = child.id();
-    server.child = Some(child);
 
-    std::thread::sleep(std::time::Duration::from_millis(1500));
+    {
+        let mut server = state.server.lock().map_err(|e| e.to_string())?;
+        server.child = Some(child);
+    }
 
-    let running = check_port(server.port);
+    sleep(Duration::from_millis(1500)).await;
+
+    let running = check_port(port);
 
     Ok(ServerStatus {
         running,
-        port: server.port,
+        port,
         pid: if running { Some(pid) } else { None },
     })
 }
 
 #[tauri::command]
 pub async fn stop_server(state: State<'_, AppState>) -> Result<ServerStatus, String> {
-    let mut server: MutexGuard<'_, crate::ServerProcess> = state.server.lock().map_err(|e| e.to_string())?;
-
-    if let Some(ref mut child) = server.child {
-        let _ = child.kill();
-        let _ = child.wait();
-        server.child = None;
-    }
-
-    if !check_port(server.port) {
-        Ok(ServerStatus {
-            running: false,
-            port: server.port,
-            pid: None,
-        })
-    } else {
-        let cortex = find_cortex_command().ok_or_else(|| {
-            "Cortex CLI not found in PATH.".to_string()
-        })?;
-
-        let status = Command::new(&cortex)
-            .args(["daemon", "stop"])
-            .status()
-            .map_err(|e| format!("Failed to stop server: {}", e))?;
-
-        if status.success() {
-            std::thread::sleep(std::time::Duration::from_millis(500));
+    let port = {
+        let mut server: MutexGuard<'_, crate::ServerProcess> = state.server.lock().map_err(|e| e.to_string())?;
+        if let Some(ref mut child) = server.child {
+            let _ = child.kill();
+            let _ = child.wait();
+            server.child = None;
         }
+        server.port
+    };
 
-        Ok(ServerStatus {
-            running: check_port(server.port),
-            port: server.port,
+    if !check_port(port) {
+        return Ok(ServerStatus {
+            running: false,
+            port,
             pid: None,
-        })
+        });
     }
+
+    let cortex = find_cortex_command().ok_or_else(|| {
+        "Cortex CLI not found in PATH.".to_string()
+    })?;
+
+    let status = Command::new(&cortex)
+        .args(["daemon", "stop"])
+        .status()
+        .map_err(|e| format!("Failed to stop server: {}", e))?;
+
+    if status.success() {
+        sleep(Duration::from_millis(500)).await;
+    }
+
+    Ok(ServerStatus {
+        running: check_port(port),
+        port,
+        pid: None,
+    })
 }
 
 #[tauri::command]
