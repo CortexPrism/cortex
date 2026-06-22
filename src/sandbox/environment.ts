@@ -11,10 +11,7 @@ import {
   validateSandboxPath,
   warnLog,
 } from './logger.ts';
-import {
-  buildContainerSecurityArgs,
-  buildWorkspaceMountArg,
-} from './security-args.ts';
+import { buildContainerSecurityArgs, buildWorkspaceMountArg } from './security-args.ts';
 
 const CONTAINER_PREFIX = 'cortex-env-';
 const SLEEP_COMMAND = 'while true; do sleep 3600; done';

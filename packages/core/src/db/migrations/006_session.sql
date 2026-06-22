@@ -10,13 +10,6 @@ CREATE TABLE IF NOT EXISTS session_messages (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS working_memory (
-  key        TEXT PRIMARY KEY,
-  value      TEXT NOT NULL,
-  ttl_seconds INTEGER,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 CREATE TABLE IF NOT EXISTS session_events (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   event_type TEXT NOT NULL,

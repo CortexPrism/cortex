@@ -57,4 +57,21 @@ export const routes: RouteHandler[] = [
       return json(entries);
     },
   },
+  {
+    method: 'POST',
+    pattern: /^\/api\/security\/approvals\/bulk$/,
+    handler: async (req) => {
+      const body = await req.json() as { requestIds: string[]; action: 'approve' | 'deny' };
+      if (!body.requestIds || !body.requestIds.length) {
+        return json({ error: 'requestIds required' }, 400);
+      }
+      const approved = body.action === 'approve';
+      const results = body.requestIds.map((id) => ({
+        id,
+        action: body.action,
+        resolved: approved,
+      }));
+      return json({ results });
+    },
+  },
 ];

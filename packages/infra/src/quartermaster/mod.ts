@@ -17,7 +17,7 @@ import {
 import { gatherSignalScores } from './signals.ts';
 import { fuseSignals, getTopPrediction } from './fusion.ts';
 import { applyReflectionFeedback } from './learn.ts';
-import { buildContextFingerprint } from './contexts.ts';
+import type { buildContextFingerprint } from './contexts.ts';
 import {
   emitQmModeChangedEvent,
   emitQmObservationEvent,

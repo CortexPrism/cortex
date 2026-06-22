@@ -199,4 +199,24 @@ export const registry: CommandEntry[] = [
     path: ['memori'],
     load: () => import('./memori-cmd.ts').then((m) => m.memoriCommand._cmd),
   },
+  {
+    path: ['import'],
+    load: () => import('./import-cmd.ts').then((m) => m.importCommand._cmd),
+    needs: ['config', 'migrations'],
+  },
+  {
+    path: ['qm'],
+    load: () => import('./quartermaster-cmd.ts').then((m) => m.quartermasterCommand._cmd),
+    needs: ['config'],
+  },
+  {
+    path: ['mqm'],
+    load: () => import('./model-qm-cmd.ts').then((m) => m.mqmCommand._cmd),
+    needs: ['config'],
+  },
+  {
+    path: ['service'],
+    load: () => import('./service-cmd.ts').then((m) => m.serviceCommand._cmd),
+    needs: ['config', 'migrations'],
+  },
 ];

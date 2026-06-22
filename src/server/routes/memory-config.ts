@@ -189,4 +189,13 @@ export const routes: RouteHandler[] = [
       return json({ ok: true });
     },
   },
+  {
+    method: 'GET',
+    pattern: /^\/api\/agent\/preferences$/,
+    handler: async () => {
+      const { generatePreferenceReport } = await import('../../memory/preference-learner.ts');
+      const report = await generatePreferenceReport();
+      return json(report);
+    },
+  },
 ];

@@ -66,8 +66,13 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
   let subAgentsCompleted = false;
 
   const searchToolNames = new Set([
-    'search', 'web_search', 'web_search_enhanced', 'brave_search', 'tavily_search',
-    'web_fetch', 'serpapi_search',
+    'search',
+    'web_search',
+    'web_search_enhanced',
+    'brave_search',
+    'tavily_search',
+    'web_fetch',
+    'serpapi_search',
   ]);
   let consecutiveSearchRounds = 0;
   const recentAssistantOutputs: string[] = [];
@@ -509,7 +514,8 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
               toolName: tc.toolName,
               queryPreview: query.slice(0, 80),
             });
-            recursionWarning = `\n\n[SYSTEM WARNING: Your last search query appears to recycle text from your own prior responses. This indicates you are chasing noise, not the user's request. REREAD the original user message and focus ONLY on what the user asked for. Do not search for or analyze your own output — produce results for the user.]`;
+            recursionWarning =
+              `\n\n[SYSTEM WARNING: Your last search query appears to recycle text from your own prior responses. This indicates you are chasing noise, not the user's request. REREAD the original user message and focus ONLY on what the user asked for. Do not search for or analyze your own output — produce results for the user.]`;
             consecutiveSearchRounds = 999;
             break;
           }
@@ -519,12 +525,16 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
     }
 
     if (!recursionWarning && consecutiveSearchRounds >= 3) {
-      _log.warn(`Confusion spiral detected: ${consecutiveSearchRounds} consecutive search-only rounds`, {
-        turnId,
-        round,
-        toolNames: toolCalls.map((t) => t.toolName).join(','),
-      });
-      recursionWarning = `\n\n[SYSTEM WARNING: You have spent ${consecutiveSearchRounds} rounds doing searches without producing user-facing output. This may indicate you are chasing tangents or processing noise from search results. REREAD the original user message. Ignore any sidebar suggestions, auto-complete text, or "related topics" from search engines. Produce your answer NOW based on the first batch of search results you collected.]`;
+      _log.warn(
+        `Confusion spiral detected: ${consecutiveSearchRounds} consecutive search-only rounds`,
+        {
+          turnId,
+          round,
+          toolNames: toolCalls.map((t) => t.toolName).join(','),
+        },
+      );
+      recursionWarning =
+        `\n\n[SYSTEM WARNING: You have spent ${consecutiveSearchRounds} rounds doing searches without producing user-facing output. This may indicate you are chasing tangents or processing noise from search results. REREAD the original user message. Ignore any sidebar suggestions, auto-complete text, or "related topics" from search engines. Produce your answer NOW based on the first batch of search results you collected.]`;
       consecutiveSearchRounds = 0;
     }
 

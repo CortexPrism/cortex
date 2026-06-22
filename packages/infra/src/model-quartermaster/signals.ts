@@ -120,7 +120,9 @@ export async function computeCostSignal(
   const complexityFactor = Math.max(0.1, context.taskComplexity);
 
   for (const candidate of candidates) {
-    const stats = await db.get<{ avg_cost_usd: number; total_calls: number; last_used: string | null }>(
+    const stats = await db.get<
+      { avg_cost_usd: number; total_calls: number; last_used: string | null }
+    >(
       `SELECT avg_cost_usd, total_calls, last_used
        FROM mqm_model_stats
        WHERE provider = ? AND model = ?`,
@@ -194,7 +196,9 @@ export async function computeQualitySignal(
 
   for (const candidate of candidates) {
     // Get historical quality for this model
-    const stats = await db.get<{ avg_quality: number; total_calls: number; last_used: string | null }>(
+    const stats = await db.get<
+      { avg_quality: number; total_calls: number; last_used: string | null }
+    >(
       `SELECT avg_quality, total_calls, last_used
        FROM mqm_model_stats
        WHERE provider = ? AND model = ?`,
@@ -357,14 +361,22 @@ function estimateModelCost(modelName: string): number {
   if (m.includes('opus') || m.includes('o3') || m.includes('o1-pro')) return 0.015;
   if (m.includes('o1') || m.includes('o4-mini')) return 0.011;
   if (m.includes('gpt-4.5') || m.includes('gemini-2.5-pro')) return 0.010;
-  if (m.includes('gpt-4') || m.includes('gpt-4o') || m.includes('gpt-4.1') ||
-      m.includes('gemini-2.0-pro') || m.includes('nova-pro') || m.includes('sonnet')) return 0.006;
-  if (m.includes('gpt-4o-mini') || m.includes('gemini-1.5-pro') ||
-      m.includes('gemini-2.0-flash') || m.includes('nova-lite') || m.includes('haiku')) return 0.002;
-  if (m.includes('gpt-3.5') || m.includes('gemini-1.5-flash') || m.includes('nova-micro') ||
-      m.includes('llama-3.3') || m.includes('llama-3.1-405')) return 0.001;
-  if (m.includes('flash') || m.includes('mini') || m.includes('llama') ||
-      m.includes('mistral') || m.includes('phi')) return 0.0005;
+  if (
+    m.includes('gpt-4') || m.includes('gpt-4o') || m.includes('gpt-4.1') ||
+    m.includes('gemini-2.0-pro') || m.includes('nova-pro') || m.includes('sonnet')
+  ) return 0.006;
+  if (
+    m.includes('gpt-4o-mini') || m.includes('gemini-1.5-pro') ||
+    m.includes('gemini-2.0-flash') || m.includes('nova-lite') || m.includes('haiku')
+  ) return 0.002;
+  if (
+    m.includes('gpt-3.5') || m.includes('gemini-1.5-flash') || m.includes('nova-micro') ||
+    m.includes('llama-3.3') || m.includes('llama-3.1-405')
+  ) return 0.001;
+  if (
+    m.includes('flash') || m.includes('mini') || m.includes('llama') ||
+    m.includes('mistral') || m.includes('phi')
+  ) return 0.0005;
 
   return 0.003;
 }
@@ -375,23 +387,39 @@ function estimateModelCost(modelName: string): number {
 function estimateModelQuality(modelName: string, taskComplexity: number): number {
   const m = modelName.toLowerCase();
 
-  if (m.includes('opus') || m.includes('o3') || m.includes('o1-pro'))
+  if (m.includes('opus') || m.includes('o3') || m.includes('o1-pro')) {
     return Math.min(1.0, 0.92 + taskComplexity * 0.08);
-  if (m.includes('o1') || m.includes('o4-mini') || m.includes('gpt-4.5') ||
-      m.includes('gemini-2.5-pro'))
+  }
+  if (
+    m.includes('o1') || m.includes('o4-mini') || m.includes('gpt-4.5') ||
+    m.includes('gemini-2.5-pro')
+  ) {
     return Math.min(1.0, 0.88 + taskComplexity * 0.10);
-  if (m.includes('gpt-4') || m.includes('gpt-4o') || m.includes('gpt-4.1') ||
-      m.includes('gemini-2.0-pro') || m.includes('nova-pro') || m.includes('sonnet'))
+  }
+  if (
+    m.includes('gpt-4') || m.includes('gpt-4o') || m.includes('gpt-4.1') ||
+    m.includes('gemini-2.0-pro') || m.includes('nova-pro') || m.includes('sonnet')
+  ) {
     return Math.min(1.0, 0.83 + taskComplexity * 0.12);
-  if (m.includes('gpt-4o-mini') || m.includes('gemini-1.5-pro') ||
-      m.includes('gemini-2.0-flash') || m.includes('nova-lite') || m.includes('haiku'))
+  }
+  if (
+    m.includes('gpt-4o-mini') || m.includes('gemini-1.5-pro') ||
+    m.includes('gemini-2.0-flash') || m.includes('nova-lite') || m.includes('haiku')
+  ) {
     return Math.min(1.0, 0.72 + taskComplexity * 0.16);
-  if (m.includes('gpt-3.5') || m.includes('gemini-1.5-flash') || m.includes('nova-micro') ||
-      m.includes('llama-3.3') || m.includes('llama-3.1-405'))
+  }
+  if (
+    m.includes('gpt-3.5') || m.includes('gemini-1.5-flash') || m.includes('nova-micro') ||
+    m.includes('llama-3.3') || m.includes('llama-3.1-405')
+  ) {
     return Math.min(1.0, 0.60 + taskComplexity * 0.20);
-  if (m.includes('flash') || m.includes('mini') || m.includes('llama') ||
-      m.includes('mistral') || m.includes('phi'))
+  }
+  if (
+    m.includes('flash') || m.includes('mini') || m.includes('llama') ||
+    m.includes('mistral') || m.includes('phi')
+  ) {
     return Math.min(1.0, 0.50 + taskComplexity * 0.22);
+  }
 
   return Math.min(1.0, 0.65 + taskComplexity * 0.15);
 }

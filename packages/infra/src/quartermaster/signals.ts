@@ -1,8 +1,8 @@
 import type { QmSignalWeight, SignalScores } from './types.ts';
-import { findPatterns, getSignalWeights, getToolStat, getToolStats } from './store.ts';
+import { findPatterns, type getSignalWeights, getToolStat, type getToolStats } from './store.ts';
 import { type MemoryHit, searchEpisodic } from '../memory/store.ts';
 import type { MetaAssessment } from '../agent/metacog.ts';
-import { fingerprintSimilarity } from './contexts.ts';
+import type { fingerprintSimilarity } from './contexts.ts';
 
 export async function computeTrajectorySignal(
   recentToolCalls: string[],

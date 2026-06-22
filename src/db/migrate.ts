@@ -368,6 +368,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '040_linked_sessions.sql',
       label: 'memory.db (linked sessions)',
     },
+    {
+      db: coreDb,
+      sqlFile: '041_cleanup_orphaned.sql',
+      label: 'cortex.db (cleanup orphaned tables)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

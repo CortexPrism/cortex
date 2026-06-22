@@ -278,9 +278,7 @@ export async function findPatterns(
 ): Promise<QmPattern[]> {
   const db = await getCoreDb();
   const seqJson = JSON.stringify(sequence);
-  const where = prefix
-    ? `WHERE tool_sequence LIKE ? || '%'`
-    : 'WHERE tool_sequence = ?';
+  const where = prefix ? `WHERE tool_sequence LIKE ? || '%'` : 'WHERE tool_sequence = ?';
   const rows = await db.all<{
     id: string;
     tool_sequence: string;
@@ -320,7 +318,9 @@ export async function upsertPattern(
   const db = await getCoreDb();
   const seqJson = JSON.stringify(sequence);
 
-  const existing = await db.get<{ id: string; hit_count: number; success_count: number; avg_confidence: number }>(
+  const existing = await db.get<
+    { id: string; hit_count: number; success_count: number; avg_confidence: number }
+  >(
     `SELECT id, hit_count, success_count, avg_confidence FROM qm_patterns
      WHERE tool_sequence = ? AND context_fingerprint = ?`,
     [seqJson, JSON.stringify(fingerprint)],

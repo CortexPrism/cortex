@@ -80,4 +80,37 @@ export const routes: RouteHandler[] = [
       return json({ ok: true });
     },
   },
+  {
+    method: 'GET',
+    pattern: /^\/api\/settings\/compressor$/,
+    handler: async () => {
+      const config = await loadConfig();
+      const c = config as unknown as Record<string, unknown>;
+      return json({
+        tokenBudget: c.tokenBudget ?? 128_000,
+        compressionEnabled: c.compressionEnabled ?? true,
+        compressionThreshold: c.compressionThreshold ?? 0.7,
+      });
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/settings\/compressor$/,
+    handler: async (req) => {
+      const body = await req.json() as {
+        tokenBudget?: number;
+        compressionEnabled?: boolean;
+        compressionThreshold?: number;
+      };
+      const config = await loadConfig();
+      const c = config as unknown as Record<string, unknown>;
+      if (body.tokenBudget !== undefined) c.tokenBudget = body.tokenBudget;
+      if (body.compressionEnabled !== undefined) c.compressionEnabled = body.compressionEnabled;
+      if (body.compressionThreshold !== undefined) {
+        c.compressionThreshold = body.compressionThreshold;
+      }
+      await saveConfig(config);
+      return json({ ok: true });
+    },
+  },
 ];

@@ -51,7 +51,41 @@ export const routes: RouteHandler[] = [
     handler: async (_req, path) => {
       const m = path.match(/^\/api\/daemons\/(validator|executor|scheduler)\/restart$/);
       if (!m) return err('Not found', 404);
-      return json({ ok: true, restarted: m[1] });
+      const name = m[1];
+      const pidPath = join(PATHS.dataDir, `daemon-${name}.pid`);
+
+      try {
+        const pidStr = await Deno.readTextFile(pidPath);
+        const pid = parseInt(pidStr);
+        if (pid) {
+          try {
+            Deno.kill(pid, 'SIGTERM');
+          } catch { /* already gone */ }
+        }
+      } catch { /* no PID file */ }
+
+      try {
+        await Deno.remove(pidPath);
+      } catch { /* already removed */ }
+
+      const deadline = Date.now() + 15_000;
+      let started = false;
+      while (Date.now() < deadline) {
+        const alive = await pingProcess(
+          name === 'validator'
+            ? VALIDATOR_SOCK
+            : name === 'executor'
+            ? EXECUTOR_SOCK
+            : SCHEDULER_SOCK,
+        );
+        if (alive) {
+          started = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      return json({ ok: started, restarted: name });
     },
   },
 ];

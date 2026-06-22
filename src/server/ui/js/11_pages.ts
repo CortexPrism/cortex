@@ -4998,8 +4998,8 @@ async function loadWorkflowApprovals() {
         '<div><div style="font-size:12px;font-weight:500;">' + esc(a.workflow || a.name || '') + '</div>' +
         '<div style="font-size:10px;color:var(--text3);">' + timeAgo(a.timestamp || a.createdAt) + '</div></div>' +
         '<div style="display:flex;gap:6px;">' +
-        '<button class="btn btn-primary" style="font-size:10px;padding:3px 10px;" onclick="approveWorkflow(\\'' + escAttr(a.id) + '\\', true)">Approve</button>' +
-        '<button class="btn btn-danger" style="font-size:10px;padding:3px 10px;" onclick="approveWorkflow(\\'' + escAttr(a.id) + '\\', false)">Reject</button></div></div>';
+        '<button class="btn btn-primary" style="font-size:10px;padding:3px 10px;" onclick="approveWorkflow(\\'' + escAttr(a.name) + '\\', true)">Approve</button>' +
+        '<button class="btn btn-danger" style="font-size:10px;padding:3px 10px;" onclick="approveWorkflow(\\'' + escAttr(a.name) + '\\', false)">Reject</button></div></div>';
     }).join('');
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load approvals</div>'; }
 }

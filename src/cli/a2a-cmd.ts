@@ -1,6 +1,6 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
-import { bold, cyan, green, yellow, dim } from '@std/fmt/colors';
+import { bold, cyan, dim, green, yellow } from '@std/fmt/colors';
 import { i18n } from '../i18n/service.ts';
 
 export const a2aCommand = cortexCommand('a2a')
@@ -95,7 +95,8 @@ a2aCommand
       .action(async (_opts: Record<string, unknown>, ctx: Ctx) => {
         const config = ctx.config! as unknown as Record<string, unknown>;
         const a2a = config.a2a as Record<string, unknown> | undefined;
-        const agents = (a2a?.remoteAgents as Record<string, Record<string, unknown>> | undefined) ?? {};
+        const agents = (a2a?.remoteAgents as Record<string, Record<string, unknown>> | undefined) ??
+          {};
 
         console.log(bold('\nConfigured Remote A2A Agents'));
         console.log('');
@@ -104,7 +105,9 @@ a2aCommand
         if (entries.length === 0) {
           console.log(`  ${dim('No remote A2A agents configured.')}`);
           console.log('');
-          console.log(`  Add agents in ${yellow('~/.cortex/config.json')} under ${cyan('a2a.remoteAgents')}:`);
+          console.log(
+            `  Add agents in ${yellow('~/.cortex/config.json')} under ${cyan('a2a.remoteAgents')}:`,
+          );
           console.log('');
           console.log(`  "a2a": {`);
           console.log(`    "remoteAgents": {`);

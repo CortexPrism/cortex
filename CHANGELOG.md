@@ -5,9 +5,43 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
-## [0.49.2] - Unreleased
+## [0.50.0] - 2026-06-22
+
+### Added
+
+- **`cortex import` CLI command** — full data migration system (openclaw, hermes, zeroclaw, transcripts) was implemented (314 lines) but not registered in the CLI registry. Now accessible via `cortex import <source>`. (`packages/cli/src/cli/registry.ts`, `packages/cli/src/cli/import-cmd.ts`)
+
+- **`cortex qm` / `cortex mqm` CLI commands** — Quartermaster (tool orchestration learning, 293 lines) and Model Quartermaster (model selection intelligence, 243 lines) were fully implemented but not registered. Now accessible via `cortex qm` and `cortex mqm` with subcommands for patterns, weights, stats, decisions, accuracy, and reset. (`packages/cli/src/cli/registry.ts`, `packages/cli/src/cli/quartermaster-cmd.ts`, `packages/cli/src/cli/model-qm-cmd.ts`)
+
+- **`cortex service` CLI command** — full micro-service CRUD (list, show, create, update, delete, start, stop — 186 lines) registered. Previously only `service install`/`uninstall` were accessible. (`packages/cli/src/cli/registry.ts`, `packages/cli/src/cli/service-cmd.ts`)
+
+- **`file_diff` tool registered** — the 476-line file diff tool (unified diffs, side-by-side, syntax hints) was fully implemented and tested but never registered in the tool registry. Agents can now diff files. (`packages/ai/src/tools/registry.ts`, `packages/ai/src/tools/builtin/workspace/file_diff.ts`)
+
+- **Search cache eviction route** — `clearSearchCache()` was exported but never called. Added `DELETE /api/cache/search` endpoint to flush the web search cache. (`src/server/routes/eval-routes.ts`)
 
 ### Fixed
+
+- **Daemon restart was a no-op** — `POST /api/daemons/*/restart` returned `{ok: true}` without actually restarting anything. Daemon processes now write PID files on spawn (`src/processes/supervisor-process.ts`), and the restart handler reads the PID, sends SIGTERM, and waits up to 15s for the supervisor to auto-restart the process. (`src/server/routes/daemons.ts`, `src/processes/supervisor-process.ts`)
+
+- **Workflow approvals always returned empty** — `GET /api/workflows/approvals` hardcoded `json([])`. Now queries all registered workflows for pending approval state. Added `POST /api/workflows/approvals/:name` route for approve/reject actions. UI updated to use `name` instead of `id` for approval actions. (`src/server/routes/workflows.ts`, `src/server/ui/js/11_pages.ts`)
+
+- **Memori preview returned stub** — `GET /api/memori/preview` always returned `{checkpoints: []}`. Now queries the actual checkpoint store with a limit of 5. (`src/server/routes/eval-routes.ts`)
+
+- **Observability traces and embeddings pipeline endpoints marked 501** — `GET /api/observability/traces` and `GET /api/embeddings/pipeline` returned hardcoded empty data. Now return HTTP 501 Not Implemented to signal these features are pending. (`src/server/routes/eval-routes.ts`)
+
+### Changed
+
+- **Misfiled routes reorganized** — `session-links.ts` contained 6 unrelated route groups (security approvals bulk, settings compressor, codegraph pilot-config, agentlint check, agent preferences, sessions links). Routes moved to their semantically correct files: `security.ts`, `config-routes.ts`, `codegraph.ts`, `agents.ts`, `memory-config.ts`. (`src/server/routes/session-links.ts`, `src/server/routes/security.ts`, `src/server/routes/config-routes.ts`, `src/server/routes/codegraph.ts`, `src/server/routes/agents.ts`, `src/server/routes/memory-config.ts`)
+
+### Removed
+
+- **Dead `packages/core/src/db/migrate.ts`** — 409-line duplicate of `src/db/migrate.ts` that was never imported (all 13+ consumers resolve to `src/db/migrate.ts`). Contained a broken import (`../security/backfill.ts` resolving to a non-existent path). Removed to prevent confusion and staleness risk. (`packages/core/src/db/migrate.ts`)
+
+- **Orphaned `working_memory` table** — the `working_memory` table in the per-session schema (006_session.sql) had zero runtime references. Removed from the session schema. (`src/db/migrations/006_session.sql`, `packages/core/src/db/migrations/006_session.sql`)
+
+- **Orphaned `channel_sessions` and `channel_messages` tables** — these tables in `cortex.db` had zero runtime references (incomplete channel message persistence feature). Dropped via migration 041. (`src/db/migrations/041_cleanup_orphaned.sql`, `packages/core/src/db/migrations/041_cleanup_orphaned.sql`)
+
+- **Dead `savePartialProfile` import** — `workspace-snapshots.ts` imported `savePartialProfile` from `_helpers.ts` but never called it. Import removed. (`src/server/routes/workspace-snapshots.ts`)
 
 - **Remote Agents deploy modal tier mismatch** — the deploy modal dropdown listed nonexistent tiers `operator` and `observer`. Fixed to use the actual capability tiers: `unprivileged`, `sudo`, `root`. (`src/server/ui/pages/modals.ts`, `packages/server/src/server/ui/pages/modals.ts`)
 

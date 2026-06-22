@@ -103,11 +103,13 @@ export async function listComputerScreenshots(): Promise<
   return shots.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 24);
 }
 
-export async function getComputerScreenshot(name: string): Promise<{
-  name: string;
-  data: string;
-  timestamp: string;
-} | null> {
+export async function getComputerScreenshot(name: string): Promise<
+  {
+    name: string;
+    data: string;
+    timestamp: string;
+  } | null
+> {
   const dir = await getComputerScreenshotDir();
   const path = join(dir, name);
 
