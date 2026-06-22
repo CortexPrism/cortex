@@ -6,6 +6,8 @@ import {
   isToolAllowedByTier,
 } from '../../../../src/hub/capability-tiers.ts';
 import type { NodeTier } from '../../../../src/hub/node-registry.ts';
+import { resolveAndCheck } from './ssrf.ts';
+import { isPathAllowed } from './isolation.ts';
 
 export interface ValidationResult {
   allowed: boolean;
@@ -67,6 +69,26 @@ export async function validateToolCall(
       });
       return { allowed: false, reason: shellDecision.reason };
     }
+
+    const urlPattern = /https?:\/\/[^\s"'`;|&<>]+/gi;
+    const urls = command.match(urlPattern);
+    if (urls) {
+      for (const url of urls) {
+        const ssrfCheck = await resolveAndCheck(url);
+        if (!ssrfCheck.valid) {
+          await logEvent({
+            event_type: 'policy_check',
+            session_id: sessionId,
+            actor: 'validator',
+            action: `shell:ssrf:${toolName}`,
+            summary: `Shell SSRF blocked: ${ssrfCheck.error}`,
+            started_at: new Date().toISOString(),
+            payload: { url: url.slice(0, 200), error: ssrfCheck.error },
+          });
+          return { allowed: false, reason: `SSRF protection: ${ssrfCheck.error}` };
+        }
+      }
+    }
   }
 
   const WEB_TOOLS = new Set([
@@ -122,6 +144,22 @@ export async function validateToolCall(
           payload: { tool: toolName, path: pathArg.slice(0, 200), rule: pathDecision.rule?.id },
         });
         return { allowed: false, reason: pathDecision.reason };
+      }
+
+      if (!isPathAllowed(sessionId, pathArg)) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'validator',
+          action: `isolation:${toolName}`,
+          summary: `Path outside session boundary: ${pathArg.slice(0, 200)}`,
+          started_at: new Date().toISOString(),
+          payload: { tool: toolName, path: pathArg.slice(0, 200) },
+        });
+        return {
+          allowed: false,
+          reason: `Path "${pathArg.slice(0, 100)}" outside session isolation boundary`,
+        };
       }
     }
   }
@@ -292,7 +330,31 @@ export async function validateShellCommand(
     payload: { command: command.slice(0, 200), rule: decision.rule?.id ?? 'default' },
   });
 
-  return { allowed: decision.allowed, reason: decision.reason };
+  if (!decision.allowed) {
+    return { allowed: false, reason: decision.reason };
+  }
+
+  const urlPattern = /https?:\/\/[^\s"'`;|&<>]+/gi;
+  const urls = command.match(urlPattern);
+  if (urls) {
+    for (const url of urls) {
+      const ssrfCheck = await resolveAndCheck(url);
+      if (!ssrfCheck.valid) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'validator',
+          action: 'shell:ssrf',
+          summary: `Shell SSRF blocked: ${ssrfCheck.error}`,
+          started_at: new Date().toISOString(),
+          payload: { url: url.slice(0, 200), error: ssrfCheck.error },
+        });
+        return { allowed: false, reason: `SSRF protection: ${ssrfCheck.error}` };
+      }
+    }
+  }
+
+  return { allowed: true, reason: 'Passed shell policy and SSRF checks' };
 }
 
 export async function validateNodeDirective(

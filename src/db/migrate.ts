@@ -373,6 +373,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '041_cleanup_orphaned.sql',
       label: 'cortex.db (cleanup orphaned tables)',
     },
+    {
+      db: coreDb,
+      sqlFile: '042_policy_review.sql',
+      label: 'cortex.db (policy review — regex fixes, path/domain/computer rules)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
