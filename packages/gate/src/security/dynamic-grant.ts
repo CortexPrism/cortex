@@ -72,9 +72,18 @@ const TOOL_RISK_PROFILES: Record<
   chrome_execute_js: { baseRisk: 'high', defaultGuardrails: { requireConfirmation: true } },
   chrome_navigate: { baseRisk: 'medium', defaultGuardrails: { allowedDomains: [] } },
   chrome_create_tab: { baseRisk: 'medium', defaultGuardrails: { allowedDomains: [] } },
-  chrome_upload_file: { baseRisk: 'medium', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
-  chrome_save_page: { baseRisk: 'medium', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
-  chrome_manage_downloads: { baseRisk: 'medium', defaultGuardrails: { restrictedPaths: [], requireConfirmation: true } },
+  chrome_upload_file: {
+    baseRisk: 'medium',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
+  chrome_save_page: {
+    baseRisk: 'medium',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
+  chrome_manage_downloads: {
+    baseRisk: 'medium',
+    defaultGuardrails: { restrictedPaths: [], requireConfirmation: true },
+  },
   chrome_network_rules: { baseRisk: 'high', defaultGuardrails: { requireConfirmation: true } },
   chrome_fill_form: { baseRisk: 'medium', defaultGuardrails: { requireConfirmation: true } },
   chrome_type_text: { baseRisk: 'medium', defaultGuardrails: { requireConfirmation: true } },

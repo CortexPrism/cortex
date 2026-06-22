@@ -16,6 +16,149 @@ export interface SessionRow {
   parent_session_id?: string | null;
 }
 
+export interface SessionTokenStats {
+  session_id: string;
+  tokens_in: number;
+  tokens_out: number;
+  total_tokens: number;
+  cost_usd: number;
+  llm_calls: number;
+  tool_calls: number;
+  errors: number;
+  avg_duration_ms: number;
+}
+
+export interface EnrichedSessionRow extends SessionRow {
+  tokens_in: number;
+  tokens_out: number;
+  total_tokens: number;
+  cost_usd: number;
+  llm_calls: number;
+  tool_calls: number;
+  errors: number;
+  avg_duration_ms: number;
+  child_count: number;
+}
+
+/**
+ * Get aggregated token usage and activity stats for a list of session IDs.
+ */
+export async function getSessionTokenStats(
+  sessionIds: string[],
+): Promise<Map<string, SessionTokenStats>> {
+  if (sessionIds.length === 0) return new Map();
+  const lensDb = await getLensDb();
+  const placeholders = sessionIds.map(() => '?').join(',');
+  const rows = await lensDb.all<
+    SessionTokenStats & { avg_duration: number }
+  >(
+    `SELECT
+       session_id,
+       SUM(CASE WHEN event_type='llm_call' THEN COALESCE(tokens_in,0) ELSE 0 END) as tokens_in,
+       SUM(CASE WHEN event_type='llm_call' THEN COALESCE(tokens_out,0) ELSE 0 END) as tokens_out,
+       SUM(CASE WHEN event_type='llm_call' THEN COALESCE(tokens_in,0) + COALESCE(tokens_out,0) ELSE 0 END) as total_tokens,
+       SUM(COALESCE(cost_usd,0)) as cost_usd,
+       SUM(CASE WHEN event_type='llm_call' THEN 1 ELSE 0 END) as llm_calls,
+       SUM(CASE WHEN event_type IN ('tool_call','tool_approved','shell_exec','shell_approved') THEN 1 ELSE 0 END) as tool_calls,
+       SUM(CASE WHEN event_type='error' THEN 1 ELSE 0 END) as errors,
+       AVG(CASE WHEN event_type='llm_call' AND duration_ms > 0 THEN duration_ms ELSE NULL END) as avg_duration
+     FROM lens_events
+     WHERE session_id IN (${placeholders})
+     GROUP BY session_id`,
+    sessionIds,
+  );
+  const map = new Map<string, SessionTokenStats>();
+  for (const r of rows) {
+    map.set(r.session_id, {
+      session_id: r.session_id,
+      tokens_in: r.tokens_in,
+      tokens_out: r.tokens_out,
+      total_tokens: r.total_tokens,
+      cost_usd: r.cost_usd,
+      llm_calls: r.llm_calls,
+      tool_calls: r.tool_calls,
+      errors: r.errors,
+      avg_duration_ms: Math.round(r.avg_duration ?? 0),
+    });
+  }
+  return map;
+}
+
+/**
+ * Get enriched sessions with token stats and child counts.
+ * Uses the session tree structure — returns top-level parents with children nested.
+ */
+export async function listEnrichedSessions(
+  limit = 50,
+  agentId?: string,
+): Promise<(EnrichedSessionRow & { children: EnrichedSessionRow[] })[]> {
+  const db = await getCoreDb();
+
+  let query =
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
+     FROM sessions WHERE parent_session_id IS NULL`;
+  const params: string[] = [];
+  if (agentId) {
+    query += ` AND agent_id = ?`;
+    params.push(agentId);
+  }
+  query += ` ORDER BY last_turn_at DESC, started_at DESC LIMIT ?`;
+  params.push(String(limit));
+
+  const parents = await db.all<SessionRow>(query, params);
+  if (parents.length === 0) return [];
+
+  const parentIds = parents.map((p) => p.id);
+
+  // Get all children for these parents
+  const placeholders = parentIds.map(() => '?').join(',');
+  const children = await db.all<SessionRow>(
+    `SELECT id, name, agent_id, channel, status, turn_count, context_size, started_at, last_turn_at, closed_at, parent_session_id
+     FROM sessions WHERE parent_session_id IN (${placeholders})
+     ORDER BY started_at ASC`,
+    parentIds,
+  );
+
+  // Get token stats for all sessions (parents + children)
+  const allIds = [...parentIds, ...children.map((c) => c.id)];
+  const tokenStats = await getSessionTokenStats(allIds);
+
+  // Count direct children per parent
+  const childCountByParent = new Map<string, number>();
+  for (const c of children) {
+    const pid = c.parent_session_id!;
+    childCountByParent.set(pid, (childCountByParent.get(pid) ?? 0) + 1);
+  }
+
+  function enrich(row: SessionRow): EnrichedSessionRow {
+    const stats = tokenStats.get(row.id);
+    return {
+      ...row,
+      tokens_in: stats?.tokens_in ?? 0,
+      tokens_out: stats?.tokens_out ?? 0,
+      total_tokens: stats?.total_tokens ?? 0,
+      cost_usd: stats?.cost_usd ?? 0,
+      llm_calls: stats?.llm_calls ?? 0,
+      tool_calls: stats?.tool_calls ?? 0,
+      errors: stats?.errors ?? 0,
+      avg_duration_ms: stats?.avg_duration_ms ?? 0,
+      child_count: childCountByParent.get(row.id) ?? 0,
+    };
+  }
+
+  const childrenByParent = new Map<string, SessionRow[]>();
+  for (const c of children) {
+    const pid = c.parent_session_id!;
+    if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+    childrenByParent.get(pid)!.push(c);
+  }
+
+  return parents.map((p) => ({
+    ...enrich(p),
+    children: (childrenByParent.get(p.id) || []).map(enrich),
+  }));
+}
+
 export async function createSession(
   id: string,
   channel = 'cli',

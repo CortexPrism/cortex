@@ -2,10 +2,10 @@ export const PAGE_SESSIONS = `
   <div id="page-sessions" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
     <!-- List view -->
     <div id="sessions-list-view" style="display:flex;flex:1;overflow:hidden;flex-direction:column;">
-      <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-        <div style="flex:1;">
+      <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
           <h1 style="font-size:15px;font-weight:600;">Sessions</h1>
-          <p style="font-size:12px;color:var(--text3);margin-top:2px;">Browse, search, export, and delete sessions</p>
+          <p style="font-size:12px;color:var(--text3);margin-top:2px;">Parent sessions with sub-agent children — token usage &amp; metrics</p>
         </div>
         <select id="sess-agent-filter" class="inp" style="width:140px;font-size:12px;" onchange="loadSessionsList()">
           <option value="">All agents</option>
@@ -13,7 +13,7 @@ export const PAGE_SESSIONS = `
         <input id="sess-search" class="inp" placeholder="Search sessions…" style="width:220px;" oninput="searchSessions()" />
         <button class="btn btn-ghost" onclick="loadSessionsList()">↻ Refresh</button>
       </div>
-      <div id="sessions-table" style="flex:1;overflow-y:auto;padding:16px 24px;"></div>
+      <div id="sessions-table" style="flex:1;overflow-y:auto;padding:12px 20px;"></div>
     </div>
     <!-- Detail view -->
     <div id="sessions-detail-view" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
@@ -25,8 +25,8 @@ export const PAGE_SESSIONS = `
           <span id="session-breadcrumb-id" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;"></span>
         </nav>
         <span id="session-detail-title" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);"></span>
-        <span id="session-detail-meta" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;"></span>
-        <span id="session-detail-children" style="font-size:11px;display:flex;align-items:center;gap:6px;"></span>
+        <span id="session-detail-meta" style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px;flex-wrap:wrap;"></span>
+        <span id="session-detail-children" style="font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"></span>
         <button class="btn" style="margin-left:auto;font-size:12px;background:rgba(99,102,241,0.15);color:var(--accent2);" onclick="continueSession(document.getElementById('session-detail-title').textContent)">▶ Continue</button>
         <button class="btn btn-ghost" style="font-size:12px;" onclick="exportSession(document.getElementById('session-detail-title').textContent)">⬇ Export JSON</button>
         <button class="btn btn-ghost" style="font-size:12px;" onclick="captureSessionWorkspaceSnapshot()">📸 Snapshot</button>
