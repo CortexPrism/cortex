@@ -587,5 +587,7 @@ export const CSS = `
   .graph-controls { position:absolute; bottom:8px; right:8px; display:flex; gap:4px; z-index:5; }
   .graph-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--bg2); color:var(--text2); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
   .graph-btn:hover { background:var(--bg3); color:var(--text); border-color:rgba(255,255,255,0.15); }
+  .entity-rel-row { transition:background 0.1s; }
+  .entity-rel-row:hover { background:rgba(255,255,255,0.05); }
 </style>
 `;

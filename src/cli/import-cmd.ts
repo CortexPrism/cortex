@@ -5,102 +5,15 @@ import { exists } from '@std/fs';
 import { join } from '@std/path';
 import { resolveHomeDir } from '../utils/platform.ts';
 import { importOpenClaw } from './openclaw-migrate.ts';
-import { writeEpisodic } from '../memory/store.ts';
-import { addPolicy } from '../security/policy.ts';
-import type { PolicyEffect, PolicyKind } from '../security/policy.ts';
-import { detectHermesDir, importHermes } from './import/hermes.ts';
+import { detectHermesDir, importHermes, importHermesStateDb, importHermesMemoryFiles } from './import/hermes.ts';
 import { detectZeroClawDir, importZeroClaw } from './import/zeroclaw.ts';
 import { importJSONLTranscripts } from './import/jsonl.ts';
+import { importOpenClawSessions } from './import/jsonl.ts';
 import { i18n } from '../i18n/service.ts';
-
-interface OpenClawMemory {
-  id?: string;
-  content: string;
-  timestamp?: string;
-  tags?: string[];
-  type?: string;
-}
-
-interface OpenClawConversation {
-  id: string;
-  title?: string;
-  messages: Array<{ role: string; content: string; timestamp?: string }>;
-}
-
-interface OpenClawExport {
-  version?: number;
-  exportedAt?: string;
-  memories?: OpenClawMemory[];
-  conversations?: OpenClawConversation[];
-  policies?: Array<{ kind: string; effect: string; pattern: string; reason?: string }>;
-}
-
-async function importFromFile(filePath: string): Promise<{
-  memories: number;
-  messages: number;
-  policies: number;
-  errors: number;
-}> {
-  const raw = await Deno.readTextFile(filePath);
-  let data: OpenClawExport;
-
-  try {
-    data = JSON.parse(raw) as OpenClawExport;
-  } catch {
-    throw new Error(`Invalid JSON in export file: ${filePath}`);
-  }
-
-  let memories = 0;
-  let messages = 0;
-  let policies = 0;
-  let errors = 0;
-
-  for (const mem of data.memories ?? []) {
-    try {
-      await writeEpisodic({
-        summary: mem.content,
-        sessionId: 'openclaw_import',
-        topics: mem.tags,
-        importance: 0.6,
-      });
-      memories++;
-    } catch {
-      errors++;
-    }
-  }
-
-  for (const conv of data.conversations ?? []) {
-    for (const msg of conv.messages) {
-      if (!msg.content?.trim()) continue;
-      try {
-        await writeEpisodic({
-          summary: `[${msg.role}] ${msg.content}`,
-          sessionId: `openclaw_conv_${conv.id}`,
-          topics: conv.title ? [conv.title] : [],
-        });
-        messages++;
-      } catch {
-        errors++;
-      }
-    }
-  }
-
-  for (const pol of data.policies ?? []) {
-    try {
-      await addPolicy({
-        kind: pol.kind as PolicyKind,
-        effect: pol.effect as PolicyEffect,
-        pattern: pol.pattern,
-        reason: pol.reason,
-      });
-      policies++;
-    } catch {
-      errors++;
-    }
-  }
-
-  return { memories, messages, policies, errors };
-}
+import { openclawConfigMapper } from './import/config/openclaw.ts';
+import type { OpenClawConfig } from './import/config/types.ts';
+import { hermesConfigMapper, parseHermesYaml } from './import/config/hermes.ts';
+import { loadConfig, saveConfig } from '../config/config.ts';
 
 async function detectOpenClawDir(): Promise<string | null> {
   const candidates = [
@@ -139,101 +52,205 @@ function printSummary(
 }
 
 const openclawCmd = cortexCommand('openclaw')
-  .description('Import memories and conversations from an OpenClaw export')
+  .description('Import everything from an OpenClaw installation — config, sessions, memory, workspaces')
   .arguments('[path:string]')
   .option('--dry-run', 'Preview what would be imported without writing')
+  .option('--sessions-only', 'Import only session transcripts')
+  .option('--config-only', 'Import only configuration (providers, agents)')
+  .option('--memory-only', 'Import only memory files (MEMORY.md, memory/*.md)')
+  .needs('config')
   .needs('migrations')
-  .action(async (opts: Record<string, unknown>, _ctx: Ctx, sourcePath?: string) => {
+  .action(async (opts: Record<string, unknown>, ctx: Ctx, sourcePath?: string) => {
     let source = sourcePath;
     if (!source) {
-      const detected = await detectZeroClawDir();
+      const detected = await detectOpenClawDir();
       if (!detected) {
-        console.log(red(i18n.t('cli.import.noZeroClawFound')));
-        console.log(dim(i18n.t('cli.import.passZeroClawPathHint')));
+        console.log(red(i18n.t('cli.import.noOpenclawFound')));
+        console.log(dim(i18n.t('cli.import.passPathHint')));
         return;
       }
       source = detected;
       console.log(dim(i18n.t('cli.import.autoDetected', { source })));
     }
 
-    let files: string[] = [];
+    const dryRun = !!opts.dryRun;
+    const sessionsOnly = !!opts.sessionsOnly;
+    const configOnly = !!opts.configOnly;
+    const memoryOnly = !!opts.memoryOnly;
+    const importAll = !sessionsOnly && !configOnly && !memoryOnly;
+
+    console.log(bold(`\n  OpenClaw Import${dryRun ? dim(' (dry-run)') : ''}`));
+    console.log(dim('  ' + '─'.repeat(60)));
+
+    let sourceStat;
     try {
-      const stat = await Deno.stat(source);
-      if (stat.isDirectory) {
-        for await (const entry of Deno.readDir(source)) {
-          if (entry.isFile && entry.name.endsWith('.json')) {
-            files.push(join(source, entry.name));
-          }
-        }
-      } else {
-        files = [source];
-      }
+      sourceStat = await Deno.stat(source);
     } catch {
       console.log(red(i18n.t('cli.import.cannotRead', { source })));
       return;
     }
 
-    if (!files.length) {
-      console.log(yellow(i18n.t('cli.import.noJsonFound')));
-      return;
-    }
+    const isConfigFile = sourceStat.isFile && source.endsWith('.json');
+    const openClawDir = sourceStat.isDirectory ? source : undefined;
 
-    console.log(bold(`\n  OpenClaw Import${opts.dryRun ? dim(' (dry-run)') : ''}`));
-    console.log(dim('  ' + '─'.repeat(50)));
-
-    let totalMemories = 0;
+    const totalProviders = { count: 0 };
+    const totalAgents = { count: 0 };
+    let totalSessions = 0;
     let totalMessages = 0;
+    let totalMemories = 0;
     let totalPolicies = 0;
     let totalErrors = 0;
+    let settings = 0;
 
-    for (const file of files) {
-      await Deno.stdout.write(new TextEncoder().encode(`  Processing: ${dim(file)} ... `));
+    if ((importAll || configOnly) && isConfigFile) {
+      console.log(bold(`\n  ${dim('─')} Config`));
+      let raw: string;
       try {
-        if (opts.dryRun) {
-          const raw = await Deno.readTextFile(file);
-          const data = JSON.parse(raw) as OpenClawExport;
-          const mems = (data.memories ?? []).length;
-          const msgs = (data.conversations ?? []).reduce((s, c) => s + c.messages.length, 0);
-          const pols = (data.policies ?? []).length;
-          console.log(dim(`[dry-run] memories=${mems} messages=${msgs} policies=${pols}`));
-        } else {
-          const result = await importFromFile(file);
-          totalMemories += result.memories;
-          totalMessages += result.messages;
-          totalPolicies += result.policies;
-          totalErrors += result.errors;
-          console.log(
-            green(
-              `✓  memories=${result.memories} messages=${result.messages} policies=${result.policies}${
-                result.errors ? red(` errors=${result.errors}`) : ''
-              }`,
-            ),
-          );
-        }
+        raw = await Deno.readTextFile(source);
       } catch (e) {
-        console.log(red(`✗  ${(e as Error).message}`));
+        console.log(red(`  ✗ Cannot read config: ${(e as Error).message}`));
         totalErrors++;
+        raw = '';
+      }
+      if (raw) {
+        try {
+          const sourceConfig = JSON.parse(raw) as OpenClawConfig;
+          const existing = (ctx.config ?? {}) as unknown as Record<string, unknown>;
+          const { config: imported, warnings } = openclawConfigMapper(sourceConfig, existing);
+
+          for (const w of warnings) {
+            console.log(yellow(`  ⚠ ${w}`));
+          }
+
+          if (imported.providers) {
+            totalProviders.count = Object.keys(imported.providers as Record<string, unknown>).length;
+            console.log(`  Providers: ${totalProviders.count}`);
+          }
+          if (imported.agents) {
+            totalAgents.count = Object.keys(imported.agents as Record<string, unknown>).length;
+            console.log(`  Agents: ${totalAgents.count}`);
+          }
+          if (imported.defaultProvider) {
+            console.log(`  Default provider: ${imported.defaultProvider}`);
+          }
+          if (imported.modelSelection) {
+            console.log(`  Model selection pool: enabled`);
+          }
+          if (imported.plugins) {
+            console.log(`  Plugins: ${Object.keys(imported.plugins as Record<string, unknown>).length}`);
+          }
+          settings = Object.keys(imported).filter((k) =>
+            k !== 'providers' && k !== 'agents' && k !== 'defaultProvider',
+          ).length;
+
+          if (!dryRun) {
+            const currentConfig = await loadConfig();
+            const merged = { ...currentConfig };
+            const importedAny = imported as Record<string, unknown>;
+
+            if (importedAny.providers) {
+              const srcProvs = importedAny.providers as Record<string, unknown>;
+              merged.providers = { ...merged.providers };
+              for (const [kind, cfg] of Object.entries(srcProvs)) {
+                (merged.providers as Record<string, unknown>)[kind] = cfg;
+              }
+            }
+            if (importedAny.agents) {
+              const srcAgents = importedAny.agents as Record<string, unknown>;
+              merged.agents = { ...merged.agents };
+              for (const [id, cfg] of Object.entries(srcAgents)) {
+                (merged.agents as Record<string, unknown>)[id] = cfg;
+              }
+            }
+            if (importedAny.defaultProvider) {
+              merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+            }
+            if (importedAny.defaultAgent) {
+              merged.defaultAgent = importedAny.defaultAgent as string;
+            }
+            if (importedAny.modelSelection) {
+              merged.modelSelection = {
+                ...merged.modelSelection,
+                ...(importedAny.modelSelection as Partial<typeof merged.modelSelection>),
+              } as typeof merged.modelSelection;
+            }
+            if (importedAny.plugins) {
+              const srcPlugins = importedAny.plugins as Record<string, Record<string, unknown>>;
+              merged.plugins = { ...(merged.plugins ?? {}) };
+              for (const [name, cfg] of Object.entries(srcPlugins)) {
+                (merged.plugins as Record<string, Record<string, unknown>>)[name] = cfg;
+              }
+            }
+            if (importedAny.voice) {
+              merged.voice = { ...(merged.voice ?? {}), ...(importedAny.voice as Record<string, unknown>) } as typeof merged.voice;
+            }
+            if (importedAny.server) {
+              const base = merged.server ?? {};
+              merged.server = { ...base, ...(importedAny.server as Record<string, unknown>) } as typeof merged.server;
+            }
+
+            try {
+              await saveConfig(merged);
+              console.log(green('  ✓ Config saved'));
+            } catch (e) {
+              console.log(red(`  ✗ Failed to save config: ${(e as Error).message}`));
+              totalErrors++;
+            }
+          }
+        } catch (e) {
+          console.log(red(`  ✗ Config parse error: ${(e as Error).message}`));
+          totalErrors++;
+        }
       }
     }
 
-    if (!opts.dryRun) {
-      console.log(bold(i18n.t('cli.import.importComplete')));
-      printSummary({
-        memories: totalMemories,
-        messages: totalMessages,
-        policies: totalPolicies,
-        errors: totalErrors,
-      });
+    if (importAll || sessionsOnly) {
+      if (openClawDir) {
+        console.log(bold(`\n  ${dim('─')} Sessions`));
+        const sessionResult = await importOpenClawSessions(openClawDir, { dryRun });
+        totalSessions += sessionResult.sessions;
+        totalMessages += sessionResult.messages;
+        totalMemories += sessionResult.memories;
+        totalErrors += sessionResult.errors;
+      }
     }
+
+    if (importAll || memoryOnly) {
+      if (openClawDir) {
+        console.log(bold(`\n  ${dim('─')} Memory files`));
+        try {
+          await importOpenClaw(openClawDir, { dryRun });
+          totalMemories += 1;
+          console.log(dryRun ? dim('  [dry-run] Memory files would be imported') : green('  ✓ Memory files imported'));
+        } catch (e) {
+          console.log(red(`  ✗ Memory import error: ${(e as Error).message}`));
+          totalErrors++;
+        }
+      }
+    }
+
+    console.log(bold(`\n  Import summary:`));
+    if (totalProviders.count > 0) console.log(`    ${cyan('Providers:')}     ${totalProviders.count}`);
+    if (totalAgents.count > 0) console.log(`    ${cyan('Agents:')}        ${totalAgents.count}`);
+    if (totalSessions > 0) console.log(`    ${cyan('Sessions:')}      ${totalSessions}`);
+    if (totalMessages > 0) console.log(`    ${cyan('Messages:')}      ${totalMessages}`);
+    if (totalMemories > 0) console.log(`    ${cyan('Memories:')}      ${totalMemories}`);
+    if (settings > 0) console.log(`    ${cyan('Settings:')}      ${settings}`);
+    if (totalPolicies > 0) console.log(`    ${cyan('Policies:')}      ${totalPolicies}`);
+    if (totalErrors > 0) console.log(`    ${red('Errors:')}        ${totalErrors}`);
     console.log('');
   });
 
 const hermesCmd = cortexCommand('hermes')
-  .description('Import sessions and messages from a Hermes JSONL export')
+  .description('Import everything from a Hermes installation — config, sessions, state.db, memory')
   .arguments('[path:string]')
   .option('--dry-run', 'Preview what would be imported without writing')
+  .option('--sessions-only', 'Import only sessions from JSONL exports')
+  .option('--config-only', 'Import only configuration (config.yaml)')
+  .option('--memory-only', 'Import only memory files (SOUL.md, MEMORY.md, USER.md)')
+  .needs('config')
   .needs('migrations')
-  .action(async (opts: Record<string, unknown>, _ctx: Ctx, sourcePath?: string) => {
+  .action(async (opts: Record<string, unknown>, ctx: Ctx, sourcePath?: string) => {
     let source = sourcePath;
     if (!source) {
       const detected = await detectHermesDir();
@@ -246,15 +263,150 @@ const hermesCmd = cortexCommand('hermes')
       console.log(dim(i18n.t('cli.import.autoDetected', { source })));
     }
 
-    console.log(bold(`\n  Hermes Import${opts.dryRun ? dim(' (dry-run)') : ''}`));
-    console.log(dim('  ' + '─'.repeat(50)));
+    const dryRun = !!opts.dryRun;
+    const sessionsOnly = !!opts.sessionsOnly;
+    const configOnly = !!opts.configOnly;
+    const memoryOnly = !!opts.memoryOnly;
+    const importAll = !sessionsOnly && !configOnly && !memoryOnly;
 
-    const result = await importHermes(source, { dryRun: !!opts.dryRun });
+    console.log(bold(`\n  Hermes Import${dryRun ? dim(' (dry-run)') : ''}`));
+    console.log(dim('  ' + '─'.repeat(60)));
 
-    if (!opts.dryRun) {
-      console.log(bold(`\n  Import complete:`));
-      printSummary(result);
+    const isDbFile = source.endsWith('.db');
+    const isJsonlFile = source.endsWith('.jsonl') || source.endsWith('.json');
+    const isDirectory = (await Deno.stat(source).catch(() => null))?.isDirectory ?? false;
+
+    const hermesDir = isDbFile ? join(source, '..') : isDirectory ? source : join(source, '..', '..');
+    const configPath = join(hermesDir, 'config.yaml');
+    const hasConfig = await exists(configPath).catch(() => false);
+
+    let totalSessions = 0;
+    let totalMessages = 0;
+    let totalMemories = 0;
+    let totalErrors = 0;
+    let configProviders = 0;
+    let configAgents = 0;
+
+    if ((importAll || configOnly) && hasConfig) {
+      console.log(bold(`\n  ${dim('─')} Config`));
+      try {
+        const raw = await Deno.readTextFile(configPath);
+        const yamlConfig = parseHermesYaml(raw);
+        const existing = (ctx.config ?? {}) as unknown as Record<string, unknown>;
+        const { config: imported, warnings } = hermesConfigMapper(yamlConfig as unknown as Record<string, unknown>, existing);
+
+        for (const w of warnings) {
+          console.log(yellow(`  ⚠ ${w}`));
+        }
+
+        if (imported.defaultProvider) {
+          console.log(`  Default provider: ${imported.defaultProvider}`);
+        }
+        if (imported.providers) {
+          configProviders = Object.keys(imported.providers as Record<string, unknown>).length;
+          console.log(`  Providers: ${configProviders}`);
+        }
+        if (imported.agents) {
+          configAgents = Object.keys(imported.agents as Record<string, unknown>).length;
+          console.log(`  Agent personalities: ${configAgents}`);
+        }
+        if (imported.sandbox) {
+          console.log(`  Sandbox config: imported`);
+        }
+        if (imported.mcpServers) {
+          console.log(`  MCP servers: ${Object.keys(imported.mcpServers as Record<string, unknown>).length}`);
+        }
+
+        if (!dryRun && Object.keys(imported).length > 0) {
+          const currentConfig = await loadConfig();
+          const merged = { ...currentConfig };
+          const importedAny = imported as Record<string, unknown>;
+
+          if (importedAny.providers) {
+            const srcProvs = importedAny.providers as Record<string, unknown>;
+            merged.providers = { ...merged.providers };
+            for (const [kind, cfg] of Object.entries(srcProvs)) {
+              (merged.providers as Record<string, unknown>)[kind] = cfg;
+            }
+          }
+          if (importedAny.agents) {
+            const srcAgents = importedAny.agents as Record<string, unknown>;
+            merged.agents = { ...merged.agents };
+            for (const [id, cfg] of Object.entries(srcAgents)) {
+              (merged.agents as Record<string, unknown>)[id] = cfg;
+            }
+          }
+          if (importedAny.defaultProvider) {
+            merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+          }
+          if (importedAny.defaultAgent) {
+            merged.defaultAgent = importedAny.defaultAgent as string;
+          }
+          if (importedAny.agentRuntime) {
+            merged.agentRuntime = { ...merged.agentRuntime, ...(importedAny.agentRuntime as Record<string, unknown>) };
+          }
+          if (importedAny.sandbox) {
+            merged.sandbox = { ...merged.sandbox, ...(importedAny.sandbox as Record<string, unknown>) };
+          }
+
+          try {
+            await saveConfig(merged);
+            console.log(green('  ✓ Config saved'));
+          } catch (e) {
+            console.log(red(`  ✗ Failed to save config: ${(e as Error).message}`));
+            totalErrors++;
+          }
+        }
+      } catch (e) {
+        console.log(yellow(`  Warning: could not read config.yaml: ${(e as Error).message}`));
+      }
     }
+
+    if (importAll || sessionsOnly) {
+      console.log(bold(`\n  ${dim('─')} Sessions`));
+
+      if (isDbFile || (isDirectory && await exists(join(source, 'state.db')).catch(() => false))) {
+        const dbPath = isDbFile ? source : join(source, 'state.db');
+        console.log(`  Reading state.db directly...`);
+        const dbResult = await importHermesStateDb(dbPath, { dryRun });
+        totalSessions += dbResult.sessions;
+        totalMessages += dbResult.messages;
+        totalMemories += dbResult.memories;
+        totalErrors += dbResult.errors;
+      } else if (isJsonlFile || isDirectory) {
+        console.log(`  Importing from JSONL exports...`);
+        const jsonlResult = await importHermes(source, { dryRun });
+        totalSessions += jsonlResult.sessions;
+        totalMessages += jsonlResult.messages;
+        totalMemories += jsonlResult.memories;
+        totalErrors += jsonlResult.errors;
+      } else {
+        console.log(yellow('  No session data found.'));
+      }
+    }
+
+    if (importAll || memoryOnly) {
+      console.log(bold(`\n  ${dim('─')} Memory files`));
+      try {
+        const memResult = await importHermesMemoryFiles(hermesDir, { dryRun });
+        totalMemories += memResult.memories;
+        totalErrors += memResult.errors;
+        if (!dryRun && memResult.memories > 0) {
+          console.log(green(`  ✓ Imported ${memResult.memories} memory entries`));
+        }
+      } catch (e) {
+        console.log(red(`  ✗ Memory import error: ${(e as Error).message}`));
+        totalErrors++;
+      }
+    }
+
+    console.log(bold(`\n  Import summary:`));
+    if (configProviders > 0) console.log(`    ${cyan('Providers:')}     ${configProviders}`);
+    if (configAgents > 0) console.log(`    ${cyan('Agents:')}        ${configAgents}`);
+    if (totalSessions > 0) console.log(`    ${cyan('Sessions:')}      ${totalSessions}`);
+    if (totalMessages > 0) console.log(`    ${cyan('Messages:')}      ${totalMessages}`);
+    if (totalMemories > 0) console.log(`    ${cyan('Memories:')}      ${totalMemories}`);
+    if (totalErrors > 0) console.log(`    ${red('Errors:')}        ${totalErrors}`);
     console.log('');
   });
 
@@ -266,10 +418,10 @@ const zeroclawCmd = cortexCommand('zeroclaw')
   .action(async (opts: Record<string, unknown>, _ctx: Ctx, sourcePath?: string) => {
     let source = sourcePath;
     if (!source) {
-      const detected = await detectOpenClawDir();
+      const detected = await detectZeroClawDir();
       if (!detected) {
-        console.log(red(i18n.t('cli.import.noOpenclawFound')));
-        console.log(dim(i18n.t('cli.import.passPathHint')));
+        console.log(red(i18n.t('cli.import.noZeroClawFound')));
+        console.log(dim(i18n.t('cli.import.passZeroClawPathHint')));
         return;
       }
       source = detected;
@@ -306,9 +458,164 @@ const transcriptsCmd = cortexCommand('transcripts')
     console.log('');
   });
 
+const configCmd = cortexCommand('config')
+  .description('Import configuration settings from another system')
+  .arguments('<path:string>')
+  .option('-f, --from <source:string>', 'Source system to import from (openclaw)', {
+    default: 'openclaw',
+  })
+  .option('--dry-run', 'Preview what would be imported without writing')
+  .needs('config')
+  .action(async (opts: Record<string, unknown>, ctx: Ctx, sourcePath: string) => {
+    const from = (opts.from as string) ?? 'openclaw';
+    const dryRun = !!opts.dryRun;
+
+    console.log(bold(`\n  Config Import from ${cyan(from)}`));
+    console.log(dim('  ' + '─'.repeat(50)));
+    console.log(`  Source: ${dim(sourcePath)}`);
+
+    let raw: string;
+    try {
+      raw = await Deno.readTextFile(sourcePath);
+    } catch (e) {
+      console.log(red(`✗  Cannot read source file: ${(e as Error).message}`));
+      console.log('');
+      return;
+    }
+
+    let sourceConfig: OpenClawConfig;
+    try {
+      sourceConfig = JSON.parse(raw) as OpenClawConfig;
+    } catch {
+      console.log(red('✗  Invalid JSON in source file'));
+      console.log('');
+      return;
+    }
+
+    if (from !== 'openclaw') {
+      console.log(red(`✗  Unsupported source system: "${from}". Currently supported: openclaw`));
+      console.log('');
+      return;
+    }
+
+    const existing = (ctx.config ?? {}) as unknown as Record<string, unknown>;
+    const { config: imported, warnings } = openclawConfigMapper(sourceConfig, existing);
+
+    if (warnings.length > 0) {
+      console.log(yellow(`  Warnings:`));
+      for (const w of warnings) {
+        console.log(yellow(`    ⚠ ${w}`));
+      }
+    }
+
+    if (Object.keys(imported).length === 0) {
+      console.log(yellow('  No config settings to import.'));
+      console.log('');
+      return;
+    }
+
+    const summaryKeys = Object.keys(imported);
+    console.log(bold(`\n  Settings to import:`));
+
+    let totalProviders = 0;
+    if (imported.providers) {
+      const provs = imported.providers as Record<string, unknown>;
+      totalProviders = Object.keys(provs).length;
+      console.log(`    ${cyan('Providers:')}     ${totalProviders} (${Object.keys(provs).map((k) => dim(k)).join(', ')})`);
+    }
+
+    let totalAgents = 0;
+    if (imported.agents) {
+      const agts = imported.agents as Record<string, unknown>;
+      totalAgents = Object.keys(agts).length;
+      console.log(`    ${cyan('Agents:')}        ${totalAgents} (${Object.keys(agts).map((k) => dim(k)).join(', ')})`);
+    }
+
+    if (imported.defaultProvider) {
+      console.log(`    ${cyan('Default provider:')} ${dim(String(imported.defaultProvider))}`);
+    }
+
+    const settings: string[] = [];
+    for (const key of summaryKeys) {
+      if (key === 'providers' || key === 'agents' || key === 'defaultProvider') continue;
+      settings.push(`${key} (${typeof imported[key] === 'object' ? Object.keys(imported[key] as Record<string, unknown>).length + ' entries' : JSON.stringify(imported[key])})`);
+    }
+    for (const s of settings) {
+      console.log(`    ${cyan('Setting:')}       ${dim(s)}`);
+    }
+
+    if (dryRun) {
+      console.log(dim('\n  (dry-run) No changes written.'));
+      console.log('');
+      return;
+    }
+
+    const currentConfig = await loadConfig();
+    const merged = { ...currentConfig };
+    const importedAny = imported as Record<string, unknown>;
+
+    if (importedAny.providers) {
+      const srcProvs = importedAny.providers as Record<string, unknown>;
+      merged.providers = { ...merged.providers };
+      for (const [kind, cfg] of Object.entries(srcProvs)) {
+        (merged.providers as Record<string, unknown>)[kind] = cfg;
+      }
+    }
+
+    if (importedAny.agents) {
+      const srcAgents = importedAny.agents as Record<string, unknown>;
+      merged.agents = { ...merged.agents };
+      for (const [id, cfg] of Object.entries(srcAgents)) {
+        (merged.agents as Record<string, unknown>)[id] = cfg;
+      }
+    }
+
+    if (importedAny.defaultProvider) {
+      merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+    }
+
+    if (importedAny.defaultAgent) {
+      merged.defaultAgent = importedAny.defaultAgent as string;
+    }
+
+    if (importedAny.modelSelection) {
+      merged.modelSelection = {
+        ...merged.modelSelection,
+        ...(importedAny.modelSelection as Partial<typeof merged.modelSelection>),
+      } as typeof merged.modelSelection;
+    }
+
+    if (importedAny.plugins) {
+      const srcPlugins = importedAny.plugins as Record<string, Record<string, unknown>>;
+      merged.plugins = { ...(merged.plugins ?? {}) };
+      for (const [name, cfg] of Object.entries(srcPlugins)) {
+        (merged.plugins as Record<string, Record<string, unknown>>)[name] = cfg;
+      }
+    }
+
+    if (importedAny.voice) {
+      merged.voice = { ...(merged.voice ?? {}), ...(importedAny.voice as Record<string, unknown>) } as typeof merged.voice;
+    }
+
+    if (importedAny.server) {
+      const base = merged.server ?? {};
+      merged.server = { ...base, ...(importedAny.server as Record<string, unknown>) } as typeof merged.server;
+    }
+
+    try {
+      await saveConfig(merged);
+      console.log(green(`\n  ✓  Imported ${totalProviders} providers, ${totalAgents} agents, and ${settings.length} settings.`));
+      console.log(dim('     Config saved to ~/.cortex/config.json'));
+    } catch (e) {
+      console.log(red(`\n  ✗  Failed to save config: ${(e as Error).message}`));
+    }
+    console.log('');
+  });
+
 export const importCommand = cortexCommand('import')
   .description('Import data from OpenClaw, Hermes, ZeroClaw, or a Cortex export file')
   .command('openclaw', openclawCmd)
   .command('hermes', hermesCmd)
   .command('zeroclaw', zeroclawCmd)
-  .command('transcripts', transcriptsCmd);
+  .command('transcripts', transcriptsCmd)
+  .command('config', configCmd);
