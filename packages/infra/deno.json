@@ -1,0 +1,12 @@
+{
+  "name": "@cortex/infra",
+  "version": "0.48.6",
+  "exports": {
+    ".": "./mod.ts",
+    "./contracts": "./contracts/mod.ts",
+    "./contracts/ipc": "./contracts/ipc.ts",
+    "./contracts/scheduler": "./contracts/scheduler.ts",
+    "./contracts/services": "./contracts/services.ts",
+    "./contracts/triggers": "./contracts/triggers.ts"
+  }
+}

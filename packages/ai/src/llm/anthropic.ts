@@ -1,0 +1,188 @@
+import Anthropic from 'npm:@anthropic-ai/sdk';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+  PricingMap,
+} from './types.ts';
+
+const COST_PER_1M: Record<string, { in: number; out: number }> = {
+  'claude-opus-4-5': { in: 15.0, out: 75.0 },
+  'claude-sonnet-4-5': { in: 3.0, out: 15.0 },
+  'claude-haiku-4-5': { in: 0.8, out: 4.0 },
+  'claude-opus-4': { in: 15.0, out: 75.0 },
+  'claude-sonnet-4': { in: 3.0, out: 15.0 },
+  'claude-haiku-4': { in: 0.8, out: 4.0 },
+};
+
+const REASONING_BUDGET: Record<string, number> = {
+  low: 1024,
+  medium: 4096,
+  high: 16384,
+};
+
+function toAnthropicContent(
+  content: string | ContentBlock[],
+): string | Anthropic.ContentBlockParam[] {
+  if (typeof content === 'string') return content;
+  return content.map((block): Anthropic.ContentBlockParam => {
+    if (block.type === 'text') return { type: 'text', text: block.text };
+    if (block.type === 'image') {
+      return {
+        type: 'image',
+        source: {
+          type: 'base64' as const,
+          media_type: block.source.mediaType,
+          data: block.source.data,
+        },
+      } as Anthropic.ImageBlockParam;
+    }
+    if (block.type === 'document') {
+      return {
+        type: 'document',
+        source: {
+          type: 'base64' as const,
+          media_type: block.source.mediaType,
+          data: block.source.data,
+        },
+      } as Anthropic.DocumentBlockParam;
+    }
+    return { type: 'text', text: '' };
+  });
+}
+
+export class AnthropicProvider implements LLMProvider {
+  readonly name = 'anthropic';
+  readonly defaultModel = 'claude-sonnet-4-5';
+
+  private client: Anthropic;
+  private pricing: PricingMap;
+
+  constructor(apiKey: string, pricingOverrides?: PricingMap) {
+    this.client = new Anthropic({ apiKey });
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
+  }
+
+  async complete(options: CompletionOptions): Promise<CompletionResult> {
+    const messages: Anthropic.MessageParam[] = options.messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: toAnthropicContent(m.content),
+      }));
+
+    const systemMsg: string | undefined = (() => {
+      if (typeof options.systemPrompt === 'string' && options.systemPrompt) {
+        return options.systemPrompt;
+      }
+      const sysMsg = options.messages.find((m) => m.role === 'system');
+      if (!sysMsg) return undefined;
+      return typeof sysMsg.content === 'string' ? sysMsg.content : undefined;
+    })();
+
+    const thinking = options.reasoningEffort
+      ? {
+        type: 'enabled' as const,
+        budget_tokens: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
+      }
+      : undefined;
+
+    const response = await this.client.messages.create({
+      model: options.model,
+      max_tokens: options.maxTokens ?? 4096,
+      system: systemMsg,
+      messages,
+      ...(thinking ? { thinking } : {}),
+    }, { signal: options.signal });
+
+    const content = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    const rates = this.pricing[options.model] ?? { in: 3.0, out: 15.0 };
+    const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
+
+    return { content, model: options.model, tokensIn, tokensOut, costUsd };
+  }
+
+  async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
+    const messages: Anthropic.MessageParam[] = options.messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: toAnthropicContent(m.content),
+      }));
+
+    const systemMsg: string | undefined = (() => {
+      if (typeof options.systemPrompt === 'string' && options.systemPrompt) {
+        return options.systemPrompt;
+      }
+      const sysMsg = options.messages.find((m) => m.role === 'system');
+      if (!sysMsg) return undefined;
+      return typeof sysMsg.content === 'string' ? sysMsg.content : undefined;
+    })();
+
+    const thinking = options.reasoningEffort
+      ? {
+        type: 'enabled' as const,
+        budget_tokens: REASONING_BUDGET[options.reasoningEffort] ?? 4096,
+      }
+      : undefined;
+
+    const stream = this.client.messages.stream({
+      model: options.model,
+      max_tokens: options.maxTokens ?? 4096,
+      system: systemMsg,
+      messages,
+      ...(thinking ? { thinking } : {}),
+    }, { signal: options.signal });
+
+    let tokensIn = 0;
+    let tokensOut = 0;
+    let blockIndex = 0;
+    let blockIsTool = false;
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_start') {
+        blockIndex = event.index;
+        blockIsTool = event.content_block.type === 'tool_use';
+        if (blockIsTool && event.content_block.type === 'tool_use') {
+          yield {
+            delta: '',
+            done: false,
+            event: 'tool_use_start',
+            blockIndex: event.index,
+            blockName: event.content_block.name,
+          };
+        }
+      } else if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          yield { delta: event.delta.text, done: false };
+        } else if (event.delta.type === 'input_json_delta') {
+          yield {
+            delta: event.delta.partial_json,
+            done: false,
+            event: 'input_json_delta',
+            blockIndex,
+            blockIsToolInput: true,
+          };
+        }
+      } else if (event.type === 'content_block_stop') {
+        blockIsTool = false;
+      } else if (event.type === 'message_delta' && event.usage) {
+        tokensOut = event.usage.output_tokens;
+      } else if (event.type === 'message_start' && event.message.usage) {
+        tokensIn = event.message.usage.input_tokens;
+      }
+    }
+
+    const rates = this.pricing[options.model] ?? { in: 3.0, out: 15.0 };
+    const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
+    yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@cortex/gate",
+  "version": "0.48.6",
+  "exports": {
+    ".": "./mod.ts",
+    "./contracts": "./contracts/mod.ts",
+    "./contracts/policy": "./contracts/policy.ts",
+    "./contracts/sandbox": "./contracts/sandbox.ts",
+    "./contracts/validator": "./contracts/validator.ts",
+    "./contracts/vault": "./contracts/vault.ts"
+  }
+}

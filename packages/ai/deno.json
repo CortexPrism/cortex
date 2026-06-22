@@ -1,0 +1,15 @@
+{
+  "name": "@cortex/ai",
+  "version": "0.48.6",
+  "exports": {
+    ".": "./mod.ts",
+    "./contracts": "./contracts/mod.ts",
+    "./contracts/agent": "./contracts/agent.ts",
+    "./contracts/embeddings": "./contracts/embeddings.ts",
+    "./contracts/llm": "./contracts/llm.ts",
+    "./contracts/memory": "./contracts/memory.ts",
+    "./contracts/pipeline": "./contracts/pipeline.ts",
+    "./contracts/skills": "./contracts/skills.ts",
+    "./contracts/tools": "./contracts/tools.ts"
+  }
+}
