@@ -487,4 +487,104 @@ async function loadMetacognitionHistory() {
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
 }
 
+// ── Debug page functions ──────────────────────────────────────
+function fmtBytes(b) { if (b==null) return '-'; if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+
+function refreshDebugDiagnostics() {
+  var el = document.getElementById('debug-diag-content');
+  if (!el) return;
+  fetch(BASE+'/api/system/diagnostics').then(function(r){return r.json()}).then(function(d){
+    var rows = [];
+    rows.push('<div class="stat-row"><span>Scheduler</span><span style="color:'+(d.scheduler==='alive'?'#4ade80':'#f87171')+'">'+d.scheduler+'</span></div>');
+    rows.push('<div class="stat-row"><span>Running Jobs</span><span>'+(d.jobs?.running??'?')+'</span></div>');
+    if (d.memory) {
+      rows.push('<div class="stat-row"><span>Heap Used</span><span>'+fmtBytes(d.memory.heapUsed)+'</span></div>');
+      rows.push('<div class="stat-row"><span>RSS</span><span>'+fmtBytes(d.memory.rss)+'</span></div>');
+    }
+    if (d.sandbox) {
+      rows.push('<div class="stat-row"><span>Sandbox</span><span style="color:'+(d.sandbox.available?'#4ade80':'#f87171')+'">'+d.sandbox.runtime+'</span></div>');
+    }
+    if (d.dbFiles) {
+      rows.push('<div style="font-size:10px;font-weight:600;margin-top:8px;color:var(--text2);">Database Sizes</div>');
+      for (var k in d.dbFiles) {
+        rows.push('<div class="stat-row"><span>'+k+'.db</span><span>'+fmtBytes(d.dbFiles[k])+'</span></div>');
+      }
+    }
+    el.innerHTML = rows.join('');
+  }).catch(function(e){ el.innerHTML='<div class="stat-row"><span>Error</span><span style="color:#f87171">'+e.message+'</span></div>'; });
+}
+
+function refreshDebugJobs() {
+  var el = document.getElementById('debug-jobs-content');
+  if (!el) return;
+  fetch(BASE+'/api/jobs?status=running').then(function(r){return r.json()}).then(function(jobs){
+    if (!jobs.length) { el.innerHTML='<div class="stat-row"><span>Status</span><span style="color:#4ade80">No running jobs</span></div>'; return; }
+    var rows = [];
+    rows.push('<div class="stat-row"><span>Stuck Jobs</span><span style="color:#f59e0b">'+jobs.length+' running</span></div>');
+    jobs.forEach(function(j){
+      var since = j.last_run_at ? ' since '+new Date(j.last_run_at).toLocaleTimeString() : '';
+      rows.push('<div style="padding:6px;margin:4px 0;background:var(--bg2);border-radius:4px;font-size:11px;">');
+      rows.push('<div style="font-weight:600;">'+esc(j.name)+' <span style="color:var(--text3);">'+esc(j.id)+'</span> <span style="color:#f59e0b;">('+j.attempts+'/'+j.max_attempts+')</span>'+since+'</div>');
+      rows.push('<div style="color:var(--text3);font-size:10px;">'+esc(j.command).slice(0,120)+'</div>');
+      rows.push('<button class="btn btn-ghost" onclick="cancelStuckJob(\\''+j.id+'\\')" style="font-size:9px;margin-top:4px;">Cancel</button>');
+      rows.push('</div>');
+    });
+    el.innerHTML = rows.join('');
+  }).catch(function(e){ el.innerHTML='<div class="stat-row"><span>Error</span><span style="color:#f87171">'+e.message+'</span></div>'; });
+}
+
+function cancelStuckJob(id) {
+  if (!confirm('Cancel job '+id+'? This will mark it as cancelled.')) return;
+  fetch(BASE+'/api/jobs/'+id+'/cancel', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
+    if (d.ok) { toast('Job cancelled', 'success'); refreshDebugJobs(); }
+    else toast(d.error||'Failed', 'error');
+  });
+}
+
+function recoverStaleJobsFromDebug() {
+  var btn = event.target;
+  var res = document.getElementById('debug-recover-result');
+  btn.disabled = true;
+  btn.textContent = 'Recovering...';
+  res.style.display = 'none';
+  fetch(BASE+'/api/jobs/recover', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}).then(function(r){return r.json()}).then(function(d){
+    if (d.recovered>0||d.failedRuns>0) {
+      res.textContent = 'Recovered '+d.recovered+' job(s), finalized '+d.failedRuns+' stale run(s)';
+      res.style.color = '#4ade80';
+    } else {
+      res.textContent = 'No stale jobs found';
+      res.style.color = 'var(--text3)';
+    }
+    res.style.display = '';
+    refreshDebugJobs();
+  }).catch(function(e){
+    res.textContent = 'Error: '+e.message;
+    res.style.color = '#f87171';
+    res.style.display = '';
+  }).finally(function(){ btn.disabled = false; btn.textContent = 'Recover Stale Jobs'; });
+}
+
+function refreshDebugSandbox() {
+  var el = document.getElementById('debug-sandbox-content');
+  if (!el) return;
+  el.innerHTML = '<div class="stat-row"><span>Loading...</span><span></span></div>';
+  fetch(BASE+'/api/sandbox/backends').then(function(r){return r.json()}).then(function(data){
+    el.innerHTML = (data.backends||[]).map(function(b){
+      return '<div class="stat-row"><span>'+esc(b.label)+'</span><span style="color:'+(b.available?'#4ade80':'#f87171')+'">'+(b.available?'available':'unavailable')+'</span></div>';
+    }).join('') || '<div class="stat-row"><span>No backends</span><span></span></div>';
+    fetch(BASE+'/api/sandbox/debug').then(function(r){return r.json()}).then(function(d){
+      var cb = document.getElementById('cfg-sandbox-debug');
+      if (cb) cb.checked = d.enabled===true;
+    }).catch(function(){});
+  }).catch(function(e){ el.innerHTML='<div class="stat-row"><span>Error</span><span style="color:#f87171">'+e.message+'</span></div>'; });
+}
+
+function toggleSandboxDebug() {
+  var cb = document.getElementById('cfg-sandbox-debug');
+  if (!cb) return;
+  fetch(BASE+'/api/sandbox/debug', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:cb.checked})}).then(function(){
+    toast('Sandbox debug '+(cb.checked?'enabled':'disabled'), 'success');
+  }).catch(function(){ toast('Failed to update','error'); });
+}
+
 `;

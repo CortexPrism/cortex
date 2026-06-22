@@ -180,4 +180,15 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Memory page patching ─────────────────────────────────────────────
+var origLoadMemoryOverview;
+function patchMemoryLoader() {
+  if (origLoadMemoryOverview) return;
+  origLoadMemoryOverview = loadMemoryOverview;
+  loadMemoryOverview = function() {
+    origLoadMemoryOverview();
+    setTimeout(extendMemoryPage, 500);
+  };
+}
+
 `;
