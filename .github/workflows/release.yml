@@ -166,7 +166,7 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Build dashboard
-        run: deno task build-dashboard
+        run: deno task build-desktop
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
