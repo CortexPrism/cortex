@@ -47,8 +47,22 @@ export const PAGE_CHAT = `
 
     <div style="flex:1;display:flex;overflow:hidden;">
     <!-- Message list -->
-    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
-      <div id="chat-log" style="flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:14px;"></div>
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative;">
+      <div id="chat-log" style="flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:20px;">
+        <!-- Welcome screen shown when no messages exist -->
+        <div id="chat-welcome" class="chat-welcome">
+          <div class="chat-welcome-icon">&#9670;</div>
+          <div class="chat-welcome-title">CortexPrism</div>
+          <div class="chat-welcome-sub">Your AI agent operating system. Ask anything, run code, browse the web, or orchestrate multi-agent tasks.</div>
+          <div class="chat-welcome-hints" id="chat-welcome-hints">
+            <span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Summarize a research paper</span>
+            <span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Write a Python script</span>
+            <span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Explain how the agent loop works</span>
+            <span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Search the web for recent AI news</span>
+          </div>
+        </div>
+      </div>
+      <button id="scroll-bottom-btn" onclick="scrollToBottom()">↓ Jump to latest</button>
 
       <!-- Input bar -->
       <div style="border-top:1px solid var(--border);padding:16px 24px;background:var(--bg2);">

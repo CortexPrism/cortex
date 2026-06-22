@@ -2,42 +2,128 @@ export const JS_04_CHAT_UI = `
 // ── Chat ────────────────────────────────────────────────────
 const chatLog = document.getElementById('chat-log');
 
+// Smart scroll — track if user is near bottom
+const SCROLL_NEAR_BOTTOM = 120;
+const scrollBtn = document.getElementById('scroll-bottom-btn');
+
+if (chatLog) {
+  chatLog.addEventListener('scroll', () => {
+    const dist = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight;
+    userScrolledUp = dist > SCROLL_NEAR_BOTTOM;
+    if (scrollBtn) {
+      if (userScrolledUp) scrollBtn.classList.add('visible');
+      else scrollBtn.classList.remove('visible');
+    }
+  });
+}
+
+function scrollToBottom() {
+  chatLog.scrollTop = chatLog.scrollHeight;
+  userScrolledUp = false;
+  if (scrollBtn) scrollBtn.classList.remove('visible');
+}
+
+function scrollChat() {
+  if (!userScrolledUp) {
+    requestAnimationFrame(() => { chatLog.scrollTop = chatLog.scrollHeight; });
+  }
+}
+
+function hideWelcome() {
+  const welcome = document.getElementById('chat-welcome');
+  if (welcome) welcome.style.display = 'none';
+}
+
+function showWelcome() {
+  const welcome = document.getElementById('chat-welcome');
+  if (welcome) welcome.style.display = '';
+}
+
+function quickPrompt(text) {
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.value = text;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+    sendMessage();
+  }
+}
+
 function appendBubble(role, content, messageId) {
+  hideWelcome();
+
   const wrap = document.createElement('div');
-  wrap.style.display = 'flex';
-  wrap.style.flexDirection = 'column';
-  wrap.style.alignItems = role === 'user' ? 'flex-end' : 'flex-start';
   wrap.style.position = 'relative';
   if (messageId !== undefined) {
     wrap.dataset.messageId = messageId;
   }
 
-  const bubble = document.createElement('div');
-  if (role === 'user') { 
-    bubble.className = 'bubble-user md'; 
-    bubble.style.fontSize = '14px'; 
-    bubble.innerHTML = md(content);
+  // Sender label
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  if (role === 'user') {
+    wrap.className = 'msg-row user';
+    sender.textContent = 'You';
+  } else if (role === 'agent') {
+    wrap.className = 'msg-row assistant';
+    sender.textContent = document.getElementById('chat-agent-name')?.textContent || 'Cortex';
+  } else if (role === 'tool') {
+    wrap.className = 'msg-row tool';
+    sender.textContent = '⚙ Tool';
+  } else {
+    wrap.className = 'msg-row error';
+    sender.textContent = 'Error';
   }
-  else if (role === 'agent') {
-    bubble.className = 'bubble-agent md';
-    bubble.style.fontSize = '14px';
-    bubble.innerHTML = md(content);
-    // Add speaker button for TTS
-    const voiceBtn = document.createElement('button');
-    voiceBtn.textContent = '🔊';
-    voiceBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;margin-top:4px;color:var(--text3);';
-    voiceBtn.title = 'Read aloud';
-    voiceBtn.onclick = () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'speak', text: content }));
-      }
-    };
-    bubble.appendChild(voiceBtn);
-  }
-  else if (role === 'tool') { bubble.className = 'bubble-tool'; bubble.textContent = content; }
-  else { bubble.className = 'bubble-error'; bubble.textContent = content; }
 
-  // Add delete button if messageId is provided
+  const body = document.createElement('div');
+  if (role === 'user') {
+    body.className = 'msg-body md';
+    body.style.fontSize = '14px';
+    body.innerHTML = md(content);
+  } else if (role === 'agent') {
+    body.className = 'msg-body md';
+    body.style.fontSize = '14px';
+    body.innerHTML = md(content);
+  } else if (role === 'tool') {
+    body.className = 'msg-body';
+    body.textContent = content;
+  } else {
+    body.className = 'msg-body';
+    body.textContent = content;
+  }
+
+  // Actions bar (for agent messages only — copy, regenerate)
+  if (role === 'agent' || role === 'user') {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'msg-action';
+    copyBtn.textContent = 'Copy';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(content).then(() => {
+        copyBtn.textContent = 'Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1800);
+      }).catch(() => {});
+    };
+    actions.appendChild(copyBtn);
+    if (role === 'user') {
+      const editBtn = document.createElement('button');
+      editBtn.className = 'msg-action';
+      editBtn.textContent = 'Edit';
+      editBtn.onclick = () => {
+        const input = document.getElementById('chat-input');
+        input.value = content;
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+        input.focus();
+      };
+      actions.appendChild(editBtn);
+    }
+    wrap.appendChild(actions);
+  }
+
+  // Delete button
   if (messageId !== undefined) {
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-msg-btn';
@@ -47,26 +133,226 @@ function appendBubble(role, content, messageId) {
       if (confirm('Delete this message?')) {
         await deleteMessage(messageId);
         wrap.remove();
+        // Show welcome if no messages left
+        if (!chatLog.querySelector('.msg-row')) showWelcome();
       }
     };
     wrap.appendChild(deleteBtn);
   }
 
-  wrap.appendChild(bubble);
+  wrap.appendChild(sender);
+  wrap.appendChild(body);
   chatLog.appendChild(wrap);
-  requestAnimationFrame(() => scrollChat());
-  return bubble;
+
+  // Auto-expand code block copy buttons
+  body.querySelectorAll('pre').forEach(pre => {
+    if (pre.querySelector('.copy-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const code = pre.textContent || '';
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      }).catch(() => {});
+    };
+    pre.style.position = 'relative';
+    pre.appendChild(btn);
+  });
+
+  scrollChat();
+  return body;
 }
 
 function appendMeta(tokIn, tokOut, cost, ms) {
   const div = document.createElement('div');
-  div.style.cssText = 'font-size:11px;color:var(--text3);text-align:right;padding:0 2px;';
+  div.style.cssText = 'font-size:11px;color:var(--text3);padding:0 2px;align-self:flex-start;';
   const parts = [];
   if (ms) parts.push(\`\${ms}ms\`);
   if (tokIn || tokOut) parts.push(\`\${(tokIn||0)}↑ \${(tokOut||0)}↓ tokens\`);
   if (cost > 0) parts.push(\`$\${cost.toFixed(5)}\`);
   div.textContent = parts.join(' · ');
   chatLog.appendChild(div);
+  scrollChat();
+}
+
+// ── Tool call cards ──────────────────────────────────────────
+function createToolCard(id, toolName, input) {
+  hideWelcome();
+  const card = document.createElement('div');
+  card.id = 'tc-' + id;
+  card.className = 'tool-card open';
+
+  const header = document.createElement('div');
+  header.className = 'tool-card-header';
+  header.onclick = () => card.classList.toggle('open');
+  header.innerHTML =
+    '<span class="tool-card-icon">🔧</span>' +
+    '<span class="tool-card-name">' + esc(toolName) + '</span>' +
+    '<span class="tool-card-status running">Running</span>' +
+    '<span class="tool-card-chevron">▶</span>';
+
+  const body = document.createElement('div');
+  body.className = 'tool-card-body';
+  body.innerHTML =
+    '<div class="tool-card-output-label">Input</div>' +
+    '<div class="tool-card-input">' + esc(typeof input === 'string' ? input : JSON.stringify(input, null, 2)) + '</div>' +
+    '<div class="tool-card-output-label" style="margin-top:8px;">Output</div>' +
+    '<div class="tool-card-output">…</div>';
+
+  card.appendChild(header);
+  card.appendChild(body);
+  chatLog.appendChild(card);
+  scrollChat();
+  return { card, header, body };
+}
+
+function updateToolCard(id, status, output) {
+  const card = document.getElementById('tc-' + id);
+  if (!card) return;
+  const statusEl = card.querySelector('.tool-card-status');
+  const outputEl = card.querySelector('.tool-card-output');
+  const iconEl = card.querySelector('.tool-card-icon');
+  if (statusEl) {
+    statusEl.textContent = status;
+    statusEl.className = 'tool-card-status ' + (status === 'Done' ? 'done' : status === 'Error' ? 'error' : 'running');
+  }
+  if (outputEl && output !== undefined) {
+    outputEl.textContent = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+  }
+  if (iconEl && status === 'Done') iconEl.textContent = '✓';
+  if (iconEl && status === 'Error') iconEl.textContent = '✗';
+}
+
+// ── Inline reasoning accordion ───────────────────────────────
+function showReasoningAccordion(thinkingText, parentMsgEl) {
+  // Remove any existing reasoning accordion
+  if (reasoningEl) reasoningEl.remove();
+
+  const accordion = document.createElement('div');
+  accordion.className = 'reasoning-inline open';
+
+  const durSec = reasoningStartTime ? Math.round((Date.now() - reasoningStartTime) / 1000) : 0;
+  const header = document.createElement('div');
+  header.className = 'reasoning-inline-header';
+  header.innerHTML =
+    '<span class="ri-icon">▶</span>' +
+    '<span style="color:var(--accent2);font-weight:600;">Thought for ' + durSec + 's</span>' +
+    '<span style="color:var(--text3);margin-left:auto;font-size:10px;">click to expand</span>';
+  header.onclick = () => accordion.classList.toggle('open');
+
+  const body = document.createElement('div');
+  body.className = 'reasoning-inline-body';
+  let content = thinkingText || '';
+  const tagMatch = content.match(/<(?:thinking|think)>([\\s\\S]*?)<\\/(?:thinking|think)>/i);
+  if (tagMatch) content = tagMatch[1].trim();
+  if (!content) content = (thinkingText || '').replace(/<[^>]+>/g, '').trim();
+  body.innerHTML = content ? md(content) : '<span style="opacity:0.5;">(No reasoning data yet)</span>';
+
+  accordion.appendChild(header);
+  accordion.appendChild(body);
+
+  if (parentMsgEl && parentMsgEl.parentNode) {
+    parentMsgEl.parentNode.insertBefore(accordion, parentMsgEl.nextSibling);
+  } else {
+    chatLog.appendChild(accordion);
+  }
+
+  reasoningEl = accordion;
+  scrollChat();
+  return accordion;
+}
+
+function updateReasoningTime() {
+  if (!reasoningEl) return;
+  const durSec = reasoningStartTime ? Math.round((Date.now() - reasoningStartTime) / 1000) : 0;
+  const label = reasoningEl.querySelector('.reasoning-inline-header span:nth-child(2)');
+  if (label) label.textContent = 'Thought for ' + durSec + 's';
+}
+
+// ── Sub-agent display (updated styling) ──────────────────────
+function createSubAgentContainer(id, task, type) {
+  hideWelcome();
+  const existing = document.getElementById('sa-' + id);
+  if (existing) return existing;
+
+  const outer = document.createElement('div');
+  outer.id = 'sa-' + id;
+  outer.className = 'tool-card open';
+
+  const header = document.createElement('div');
+  header.className = 'tool-card-header';
+  header.onclick = () => outer.classList.toggle('open');
+  header.innerHTML =
+    '<span class="tool-card-icon">🤖</span>' +
+    '<span style="font-weight:600;color:var(--accent);text-transform:uppercase;font-size:11px;letter-spacing:0.04em;">' + esc(type || 'general') + '</span>' +
+    '<span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:4px;">' + esc(task.slice(0, 80)) + '</span>' +
+    '<span class="tool-card-status running">Running</span>' +
+    '<span class="tool-card-chevron">▶</span>';
+
+  const body = document.createElement('div');
+  body.className = 'tool-card-body';
+  body.id = 'sa-body-' + id;
+  body.style.maxHeight = '400px';
+  body.style.overflowY = 'auto';
+  body.style.fontSize = '13px';
+  body.style.lineHeight = '1.5';
+  body.style.whiteSpace = 'pre-wrap';
+  body.style.wordBreak = 'break-word';
+
+  outer.appendChild(header);
+  outer.appendChild(body);
+  chatLog.appendChild(outer);
+
+  subAgentContainers[id] = outer;
+  subAgentChunks[id] = '';
+  scrollChat();
+  return { outer, body, header };
+}
+
+function updateSubAgentContent(id, delta) {
+  const body = document.getElementById('sa-body-' + id);
+  if (!body) return;
+  subAgentChunks[id] += delta;
+  body.textContent = subAgentChunks[id];
+  body.scrollTop = body.scrollHeight;
+  scrollChat();
+}
+
+function finalizeSubAgent(id, result, success, error) {
+  const container = subAgentContainers[id];
+  if (!container) return;
+
+  const statusEl = container.querySelector('.tool-card-status');
+  if (statusEl) {
+    if (success) {
+      statusEl.textContent = 'Completed';
+      statusEl.className = 'tool-card-status done';
+    } else {
+      statusEl.textContent = 'Failed';
+      statusEl.className = 'tool-card-status error';
+      statusEl.title = error || 'Sub-agent failed';
+    }
+  }
+  const iconEl = container.querySelector('.tool-card-icon');
+  if (iconEl) {
+    iconEl.textContent = success ? '✓' : '✗';
+  }
+
+  const body = document.getElementById('sa-body-' + id);
+  if (body) {
+    body.textContent = subAgentChunks[id] || result || '';
+  }
+
+  // Auto-expand
+  if (!container.classList.contains('open')) container.classList.add('open');
+
+  setTimeout(() => {
+    delete subAgentContainers[id];
+    delete subAgentChunks[id];
+  }, 5000);
 }
 
 // ── Voice / Audio ───────────────────────────────────────────
@@ -174,8 +460,6 @@ async function checkVoiceEnabled() {
     }
   } catch {}
 }
-
-function scrollChat() { chatLog.scrollTop = chatLog.scrollHeight; }
 
 function setLastChatRequest(request) {
   lastChatRequest = request;
