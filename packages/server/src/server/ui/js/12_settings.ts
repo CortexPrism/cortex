@@ -1600,6 +1600,30 @@ function loadSettingsExtensions() {
 function switchSettingsExtTab(btn, tab) {
   settingsActiveTab = 'ext-' + tab;
   var el = document.getElementById('settings-ext-content');
+  if (!el) return;
+  var panels = document.querySelectorAll(\"#settings-content > div[id^=\\\"settings-pane-\\\"]\");
+  panels.forEach(function(p) { p.style.display = 'none'; });
+  var metricsEl = document.getElementById('metrics-content');
+  if (metricsEl) metricsEl.style.display = 'none';
+  ['providers','router','supervisor'].forEach(function(t) {
+    var b = document.getElementById('settings-ext-tab-' + t);
+    if (b) b.classList.toggle('active', t === tab);
+  });
+  var mt = document.getElementById('settings-tab-metrics');
+  if (mt) mt.classList.remove('active');
+  var extBar = document.getElementById('settings-ext-tab-bar');
+  if (extBar) {
+    extBar.style.display = 'flex';
+    document.getElementById('settings-ext-tab-providers')?.style && (document.getElementById('settings-ext-tab-providers').style.display = '');
+    document.getElementById('settings-ext-tab-router')?.style && (document.getElementById('settings-ext-tab-router').style.display = '');
+    document.getElementById('settings-ext-tab-supervisor')?.style && (document.getElementById('settings-ext-tab-supervisor').style.display = '');
+    if (mt) mt.style.display = 'none';
+  }
+  el.style.display = 'block';
+  if (tab === 'providers') loadProviderComparison();
+  else if (tab === 'router') loadRouterDashboard();
+  else loadSupervisorConfig();
+}
 // ── CPL Policy YAML Editor ──
 function extendCPLEditor() {
   var panel = document.getElementById('pol-classification-panel');
