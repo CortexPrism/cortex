@@ -1,4 +1,3 @@
-import { parse as parseYaml } from '@std/yaml';
 import type { ProviderKind } from '../../../../packages/core/contracts/config.ts';
 
 interface HermesYamlConfig {
@@ -207,6 +206,18 @@ export const hermesConfigMapper: ConfigMapper = (source, _existing) => {
   return { config: result, warnings };
 };
 
-export function parseHermesYaml(content: string): HermesYamlConfig {
-  return parseYaml(content) as HermesYamlConfig ?? {};
+export async function parseHermesYaml(content: string): Promise<HermesYamlConfig> {
+  if (content.trim().startsWith('{')) {
+    try {
+      return JSON.parse(content) as HermesYamlConfig;
+    } catch {
+      return {};
+    }
+  }
+  try {
+    const { parse: parseYaml } = await import('@std/yaml');
+    return parseYaml(content) as HermesYamlConfig ?? {};
+  } catch {
+    return {};
+  }
 }

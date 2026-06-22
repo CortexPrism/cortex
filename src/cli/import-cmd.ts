@@ -318,7 +318,7 @@ const hermesCmd = cortexCommand('hermes')
       console.log(bold(`\n  ${dim('─')} Config`));
       try {
         const raw = await Deno.readTextFile(configPath);
-        const yamlConfig = parseHermesYaml(raw);
+        const yamlConfig = await parseHermesYaml(raw);
         const existing = (ctx.config ?? {}) as unknown as Record<string, unknown>;
         const { config: imported, warnings } = hermesConfigMapper(
           yamlConfig as unknown as Record<string, unknown>,
