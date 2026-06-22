@@ -5458,4 +5458,336 @@ async function restartChromeBridge() {
 
 // ── Phase 5: Remaining Partial Coverage Gaps ────────────────────────────────
 
+// ── Prompt Lab functions ───────────────────────────────────────
+var plTemplates = [], plRuns = [], plCurrentId = null;
+function loadPromptLab() { fetch(BASE+'/api/prompts').then(function(r){return r.json()}).then(function(data){ plTemplates=data.templates||[]; plRuns=data.runs||[]; renderPromptTemplates(); renderPromptRuns(); }).catch(function(){}); }
+function renderPromptTemplates() { var el=document.getElementById('pl-templates'); if(!el)return; el.innerHTML=plTemplates.length?plTemplates.map(function(t){ return '<div class="card-sm" style="cursor:pointer;margin-bottom:4px;padding:8px 12px;'+(plCurrentId===t.id?'border-left:3px solid var(--accent);':'')+'" onclick="selectPromptTemplate(\\''+t.id+'\\')"><div style="font-weight:500;font-size:12px;">'+esc(t.name)+'</div><div style="font-size:10px;color:var(--text3);">v'+t.version+' · '+(t.tags||[]).join(', ')+'</div></div>' }).join(''):'<div class="empty">No templates yet</div>'; }
+function selectPromptTemplate(id) { plCurrentId=id; var t=plTemplates.find(function(x){return x.id===id}); if(!t)return; document.getElementById('pl-editor-title').textContent=t.name+' (v'+t.version+')'; document.getElementById('pl-editor-text').style.display='block'; document.getElementById('pl-editor-text').value=t.content; document.getElementById('pl-editor-actions').style.display='flex'; renderPromptTemplates(); renderPromptRuns(); }
+function showPromptCreateModal() { var n=prompt('Template name:');if(!n)return;var c=prompt('Prompt content:');if(!c)return;fetch(BASE+'/api/prompts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,content:c})}).then(function(r){return r.json()}).then(function(){loadPromptLab()}); }
+function savePromptTemplate() { if(!plCurrentId)return;var c=document.getElementById('pl-editor-text').value;fetch(BASE+'/api/prompts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:plCurrentId,content:c})}).then(function(){toast('Saved','success');loadPromptLab()}); }
+function testPromptTemplate() { if(!plCurrentId)return;var c=document.getElementById('pl-editor-text').value;fetch(BASE+'/api/prompts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:plCurrentId,input:'test',output:c,score:1})}).then(function(){toast('Run recorded','success');loadPromptLab()}); }
+function renderPromptRuns() { var el=document.getElementById('pl-runs-list');if(!el)return;var f=plCurrentId?plRuns.filter(function(r){return r.templateId===plCurrentId}):plRuns;el.innerHTML=f.length?f.map(function(r){return '<div style="padding:6px;margin-bottom:4px;border:1px solid var(--border);border-radius:4px;font-size:10px;"><span style="color:var(--text2);">'+esc(r.model)+'</span> · <span style="color:'+(r.score&&r.score>0.5?'#4ade80':'#f87171')+'">score:'+(r.score!=null?r.score.toFixed(2):'—')+'</span> · <span style="color:var(--text3);">'+timeAgo(r.createdAt)+'</span></div>'}).join(''):'<div style="font-size:10px;color:var(--text3);">No runs yet</div>'; }
+
+// ── PKM functions ───────────────────────────────────────────────
+var pkmConnections = [];
+function loadPkmPage() { fetch(BASE+'/api/pkm').then(function(r){return r.json()}).then(function(data){pkmConnections=data.connections||[];renderPkmConnections()}).catch(function(){}) }
+function renderPkmConnections() { var el=document.getElementById('pkm-connections');if(!el)return;var icons={obsidian:'O',logseq:'L',notion:'N',roam:'R'};el.innerHTML=pkmConnections.length?pkmConnections.map(function(c){return '<div class="card-sm" style="margin-bottom:6px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">'+(icons[c.kind]||'?')+'</span><div style="flex:1;"><div style="font-weight:500;font-size:12px;">'+esc(c.name)+'</div><div style="font-size:10px;color:var(--text3);">'+esc(c.kind)+' · '+c.fileCount+' files</div></div><span style="font-size:10px;color:'+(c.status==='connected'?'#4ade80':'#f87171')+'">'+esc(c.status)+'</span></div><div style="display:flex;gap:6px;margin-top:6px;"><button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="syncPkmConnection(\\''+c.id+'\\')">Sync</button><button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:#f87171;" onclick="disconnectPkm(\\''+c.id+'\\')">x</button></div></div>'}).join(''):'<div class="empty">No PKM connections</div>' }
+function showPkmConnectModal() { var k=prompt('PKM kind (obsidian, logseq, notion, roam):');if(!k)return;var p=prompt('Path:');if(!p)return;fetch(BASE+'/api/pkm/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:k,path:p,name:p.split('/').pop()||p})}).then(function(r){return r.json()}).then(function(){loadPkmPage()}) }
+function syncPkmConnection(id) { fetch(BASE+'/api/pkm/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(function(r){return r.json()}).then(function(d){toast('Synced '+(d.fileCount||0)+' files','success');loadPkmPage()}) }
+function disconnectPkm(id) { pkmConnections=pkmConnections.filter(function(c){return c.id!==id});renderPkmConnections();toast('Disconnected','info') }
+
+// ── Eval extension functions ─────────────────────────────────────
+function addEvalHarnesses() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-harn'))return;var s=document.createElement('div');s.id='e-harn';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Eval Harness Presets</div><div id="e-harn-list"></div>';c.appendChild(s);fetch(BASE+'/api/eval/harnesses').then(function(r){return r.json()}).then(function(data){document.getElementById('e-harn-list').innerHTML=(data.presets||[]).map(function(p){return'<div style="padding:8px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;"><div style="font-weight:500;font-size:11px;">'+esc(p.name)+'</div><div style="font-size:10px;color:var(--text3);">'+(p.tasks||[]).join(' · ')+'</div><div style="font-size:9px;color:var(--accent2);">scoring: '+esc(p.scoring)+'</div></div>'}).join('')}).catch(function(){}) }
+function addEvalRagSection() { var c=document.querySelector('#page-eval > div:last-of-type');if(!c||document.getElementById('e-rag'))return;var s=document.createElement('div');s.id='e-rag';s.className='card-sm';s.style.cssText='padding:14px;margin-top:12px;';s.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">RAG Eval</div><input id="rag-q" class="inp" placeholder="Test query..." style="margin-bottom:6px;"><div style="display:flex;gap:8px;"><input id="rag-d" class="inp" placeholder="Retrieved docs" style="flex:1;"><button class="btn btn-ghost" onclick="runRagEval()">Evaluate</button></div><div id="rag-res" style="margin-top:8px;font-size:10px;"></div>';c.appendChild(s) }
+function runRagEval() { var q=document.getElementById('rag-q').value;var docs=document.getElementById('rag-d').value.split(',').map(function(d){return d.trim()}).filter(Boolean);fetch(BASE+'/api/eval/rag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,retrievedDocs:docs})}).then(function(r){return r.json()}).then(function(d){document.getElementById('rag-res').innerHTML='Retrieved: '+d.retrievedCount+' · Hit@1: '+(d.hitAt1?'Yes':'No')+' · Recall: '+(d.recall!=null?d.recall.toFixed(2):'N/A')+' · MRR: '+d.mrr.toFixed(2)}) }
+
+// ── Alcove functions (#294) ─────────────────────────────────────────
+function loadAlcovePage() { loadAlcoveBrowse(); searchAlcove(); }
+async function searchAlcove() {
+  var q = document.getElementById('alcove-search-input').value.trim();
+  var el = document.getElementById('alcove-results');
+  if (!q) { el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;">Enter a search query above</div>'; return; }
+  el.innerHTML = '<div class="widget-loading">Searching docs…</div>';
+  try {
+    var data = await fetch(BASE + '/api/alcove/search?q=' + encodeURIComponent(q)).then(r => r.json());
+    if (!data || !data.results || !data.results.length) { el.innerHTML = '<div class="empty">No results for "' + esc(q) + '"</div>'; return; }
+    el.innerHTML = data.results.map(function(r) {
+      return '<div class="card-sm" style="margin-bottom:6px;padding:8px 10px;cursor:pointer;" onclick="showAlcoveDoc(\\'' + escAttr(r.file) + '\\')">' +
+        '<div style="font-size:11px;font-weight:500;color:var(--accent2);margin-bottom:4px;">' + esc(r.file) + '</div>' +
+        '<div style="font-size:10px;color:var(--text3);white-space:pre-wrap;max-height:80px;overflow-y:hidden;">' + esc(r.snippet || '') + '</div>' +
+        '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="empty">Search failed</div>'; }
+}
+async function loadAlcoveBrowse() {
+  var sel = document.getElementById('alcove-browse-dir');
+  try {
+    var data = await fetch(BASE + '/api/alcove/browse').then(r => r.json());
+    var dirs = data.dirs || [];
+    sel.innerHTML = '<option value="">All documents</option>' +
+      dirs.map(function(d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('');
+    if (data.files && data.files.length) {
+      renderAlcoveFiles(data.files);
+    }
+  } catch(e) { sel.innerHTML = '<option value="">Error loading</option>'; }
+}
+async function browseAlcoveDir(dir) {
+  try {
+    var url = BASE + '/api/alcove/browse';
+    if (dir) url += '?dir=' + encodeURIComponent(dir);
+    var data = await fetch(url).then(r => r.json());
+    renderAlcoveFiles(data.files || []);
+  } catch(e) {}
+}
+function renderAlcoveFiles(files) {
+  var el = document.getElementById('alcove-browse-content');
+  if (!files.length) { el.innerHTML = '<div class="empty">No documents found</div>'; return; }
+  el.innerHTML = files.map(function(f) {
+    var icon = /\.md$/i.test(f) ? '📝' : /\.html?$/i.test(f) ? '🌐' : /\.txt$/i.test(f) ? '📄' : '📁';
+    return '<div class="list-item" style="padding:8px 10px;cursor:pointer;" onclick="showAlcoveDoc(\\'' + escAttr(f) + '\\')">' +
+      '<span style="font-size:14px;margin-right:8px;">' + icon + '</span>' +
+      '<div style="flex:1;min-width:0;"><div style="font-size:12px;">' + esc(f) + '</div></div>' +
+      '</div>';
+  }).join('');
+}
+async function showAlcoveDoc(file) {
+  var el = document.getElementById('alcove-browse-content');
+  el.innerHTML = '<div class="widget-loading">Loading ' + esc(file) + '…</div>';
+  try {
+    var data = await fetch(BASE + '/api/alcove/doc?file=' + encodeURIComponent(file)).then(r => r.json());
+    document.getElementById('alcove-browse-content').innerHTML =
+      '<div style="padding:8px 0;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">' +
+      '<span style="font-weight:500;font-size:13px;">' + esc(data.file || file) + '</span>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;" onclick="loadAlcoveBrowse()">← Back</button>' +
+      '</div>' +
+      '<div style="font-size:12px;line-height:1.7;color:var(--text2);white-space:pre-wrap;">' + esc(data.content || '') + '</div>' +
+      '</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load document</div>'; }
+}
+async function indexAlcove() {
+  var btn = event.target;
+  btn.textContent = 'Indexing…';
+  btn.disabled = true;
+  try {
+    var data = await fetch(BASE + '/api/alcove/index', { method: 'POST' }).then(r => r.json());
+    toast('Indexed ' + (data.indexed || 0) + ' documents', 'success');
+    loadAlcoveBrowse();
+  } catch(e) { toast('Index failed', 'error'); }
+  btn.textContent = '🔁 Index';
+  btn.disabled = false;
+}
+
+// ── Memory Extension Functions ─────────────────────────────────
+function extendMemoryPage() {
+  if (document.getElementById('mem-tab-privacy')) return;
+  var existingTab = document.querySelector('#page-memory .mem-tab');
+  if (!existingTab) { setTimeout(extendMemoryPage, 300); return; }
+  var tabBar = existingTab.parentElement;
+  if (!tabBar) return;
+  [
+    { id: 'privacy', label: 'Privacy' },
+    { id: 'heuristics', label: 'Heuristics' },
+    { id: 'embeddings', label: 'Embeddings' },
+    { id: 'vector-store', label: 'Vector Store' },
+  ].forEach(function(tab) {
+    var id = 'mem-tab-' + tab.id;
+    var btn = document.createElement('button');
+    btn.className = 'mem-tab';
+    btn.id = id;
+    btn.textContent = tab.label;
+    btn.onclick = function() { switchMemExtTab(tab.id); };
+    tabBar.appendChild(btn);
+  });
+  var container = document.getElementById('page-memory');
+  var extDiv = document.createElement('div');
+  extDiv.id = 'mem-ext-content';
+  extDiv.style.cssText = 'flex:1;overflow-y:auto;padding:16px;display:none;';
+  container.appendChild(extDiv);
+}
+function switchMemExtTab(tab) {
+  var el = document.getElementById('mem-ext-content');
+  if (!el) return;
+  document.querySelectorAll('.mem-tab').forEach(function(b) { b.classList.remove('active'); });
+  ['privacy','heuristics','embeddings','vector-store'].forEach(function(t) {
+    var b = document.getElementById('mem-tab-' + t);
+    if (b) b.classList.toggle('active', t === tab);
+  });
+  ['overview','search','graph'].forEach(function(p) {
+    var pane = document.getElementById('mem-pane-' + p);
+    if (pane) pane.style.display = 'none';
+  });
+  el.style.display = 'block';
+  if (tab === 'privacy') loadMemPrivacy();
+  else if (tab === 'heuristics') loadMemHeuristics();
+  else if (tab === 'vector-store') loadMemVectorStore();
+  else loadMemEmbeddings();
+}
+async function loadMemPrivacy() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/privacy').then(r => r.json()).catch(function() { return {}; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:12px;">Privacy Settings</h3>' +
+      '<div class="stat-row"><span>PII Redaction</span><input type="checkbox" id="mem-privacy-pii" ' + (data.piiRedaction !== false ? 'checked' : '') + ' onchange="saveMemPrivacy()"></div>' +
+      '<div class="stat-row"><span>Max Retention (days)</span><input id="mem-privacy-retention" class="inp" type="number" value="' + (data.maxRetentionDays || 90) + '" style="width:80px;font-size:11px;" onchange="saveMemPrivacy()"></div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:8px;">PII patterns: email, IP, SSN, credit card, API keys</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function saveMemPrivacy() {
+  var body = {
+    piiRedaction: document.getElementById('mem-privacy-pii').checked,
+    maxRetentionDays: parseInt(document.getElementById('mem-privacy-retention').value) || 90,
+  };
+  await fetch(BASE + '/api/memory/privacy', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Privacy updated', 'success');
+}
+async function loadMemHeuristics() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/heuristics').then(r => r.json()).catch(function() { return {}; });
+    var catalog = Array.isArray(data.catalog) ? data.catalog : [];
+    var rules = data.ruleCount || catalog.reduce(function(sum, entry) { return sum + (entry.patterns || 0); }, 0) || 12;
+    var labels = ['api','database','devops','frontend','debugging','testing','security','performance','vcs','containers','ai-ml','programming'];
+    var items = catalog.length ? catalog : labels.map(function(c) { return { category: c, tags: [], patterns: 1 }; });
+    el.innerHTML =
+      '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<h3 style="font-size:13px;font-weight:600;margin:0 0 4px 0;">Heuristic Categories</h3>' +
+          '<div style="font-size:10px;color:var(--text3);">' + rules + ' patterns across ' + items.length + ' categories</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="btn btn-primary" onclick="runHeuristicCycle()" style="font-size:11px;">Run Cycle</button>' +
+          '<button class="btn btn-ghost" onclick="loadMemHeuristics()" style="font-size:11px;">Refresh</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:12px;">' +
+        items.map(function(entry) {
+          var chips = (entry.tags || []).slice(0, 4).map(function(tag) {
+            return '<span style="display:inline-block;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,0.06);color:var(--text2);font-size:10px;">' + esc(tag) + '</span>';
+          }).join('');
+          return '<div class="card-sm" style="min-height:88px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
+              '<div style="font-size:12px;font-weight:600;text-transform:capitalize;">' + esc(entry.category) + '</div>' +
+              '<div style="font-size:10px;color:var(--text3);">' + (entry.patterns || 0) + ' rules</div>' +
+            '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:4px;">' + (chips || '<span style="font-size:10px;color:var(--text3);">No tag hints</span>') + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="card-sm" id="heuristic-cycle-result" style="display:none;"></div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function runHeuristicCycle() {
+  var resultBox = document.getElementById('heuristic-cycle-result');
+  if (resultBox) {
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = '<div style="font-size:11px;color:var(--text3);">Running heuristic cycle…</div>';
+  }
+  try {
+    var result = await fetch(BASE + '/api/memory/heuristics', { method: 'PUT' }).then(r => r.json());
+    var parts = Object.entries(result.affected || {}).map(function(pair) {
+      return '<div class="stat-row"><span>' + esc(pair[0]) + '</span><span>' + esc(String(pair[1])) + '</span></div>';
+    }).join('');
+    if (resultBox) {
+      resultBox.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Cycle Complete</div>' + parts;
+    }
+    toast('Heuristic cycle complete', 'success');
+  } catch (e) {
+    if (resultBox) {
+      resultBox.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:4px;">Cycle failed</div>' +
+        '<div style="font-size:11px;color:var(--text3);">' + esc(e && e.message ? e.message : 'Unknown error') + '</div>';
+    }
+    toast('Heuristic cycle failed', 'error');
+  }
+}
+async function loadMemVectorStore() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/vector-store').then(r => r.json()).catch(function() { return {}; });
+    var current = data.current || {};
+    var options = Array.isArray(data.options) ? data.options : [
+      { kind: 'sqlite', label: 'SQLite', description: 'Local file-backed fallback' },
+      { kind: 'qdrant', label: 'Qdrant', description: 'Vector DB with payload filters' },
+      { kind: 'chromadb', label: 'ChromaDB', description: 'Collection-based vector store' },
+      { kind: 'pinecone', label: 'Pinecone', description: 'Managed hosted vector index' },
+    ];
+    var health = data.health || {};
+    var healthLabel = health.ok === false ? 'Unavailable' : current.kind ? 'Configured' : 'Not configured';
+    var healthColor = health.ok === false ? '#f87171' : '#4ade80';
+    window._memVectorStoreCurrent = current;
+    el.innerHTML =
+      '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">' +
+        '<div>' +
+          '<h3 style="font-size:13px;font-weight:600;margin:0 0 4px 0;">Vector Store</h3>' +
+          '<div style="font-size:10px;color:var(--text3);">Configure a remote vector index for mirrored memory search.</div>' +
+        '</div>' +
+        '<div style="font-size:10px;color:' + healthColor + ';">' + esc(healthLabel) + (health.detail ? ' · ' + esc(health.detail) : '') + '</div>' +
+      '</div>' +
+      '<div class="card-sm" style="margin-bottom:12px;">' +
+        '<div class="stat-row"><span>Backend</span><select id="mem-vector-kind" class="inp" style="width:180px;font-size:11px;" onchange="renderMemVectorStoreFields(this.value)">' +
+          options.map(function(o) {
+            return '<option value="' + escAttr(o.kind) + '"' + (o.kind === (current.kind || 'sqlite') ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+          }).join('') +
+        '</select></div>' +
+        '<div style="font-size:10px;color:var(--text3);margin-top:6px;">' + esc((options.find(function(o) { return o.kind === (current.kind || 'sqlite'); }) || {}).description || 'Local file-backed fallback') + '</div>' +
+      '</div>' +
+      '<div id="mem-vector-form"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px;align-items:center;">' +
+        '<button class="btn btn-primary" onclick="saveMemVectorStore()" style="font-size:11px;">Save Vector Store</button>' +
+        '<span style="font-size:10px;color:var(--text3);">SQLite leaves this mirrored index disabled.</span>' +
+      '</div>';
+    renderMemVectorStoreFields(current.kind || 'sqlite');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function renderMemVectorStoreFields(kind) {
+  var el = document.getElementById('mem-vector-form');
+  if (!el) return;
+  var current = window._memVectorStoreCurrent || {};
+  if (kind === 'sqlite') {
+    el.innerHTML = '<div class="card-sm"><div style="font-size:11px;color:var(--text2);">SQLite uses the local memory database only. No remote settings are required.</div></div>';
+    return;
+  }
+  if (kind === 'pinecone') {
+    el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">' +
+      '<div class="card-sm"><div class="stat-row"><span>Index Host</span><input id="mem-vector-url" class="inp" value="' + escAttr(current.url || '') + '" placeholder="https://index-host.svc.<region>.pinecone.io" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for Pinecone queries and writes.</div></div>' +
+      '<div class="card-sm"><div class="stat-row"><span>API Key</span><input id="mem-vector-apikey" class="inp" value="' + escAttr(current.apiKey || '') + '" placeholder="Pinecone API key" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for Pinecone authentication.</div></div>' +
+    '</div>';
+    return;
+  }
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">' +
+    '<div class="card-sm"><div class="stat-row"><span>URL</span><input id="mem-vector-url" class="inp" value="' + escAttr(current.url || '') + '" placeholder="' + (kind === 'qdrant' ? 'http://localhost:6333' : 'http://localhost:8000') + '" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Required for ' + (kind === 'qdrant' ? 'Qdrant' : 'ChromaDB') + '.</div></div>' +
+    '<div class="card-sm"><div class="stat-row"><span>Collection</span><input id="mem-vector-collection" class="inp" value="' + escAttr(current.collection || '') + '" placeholder="cortex_memory" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Collection name.</div></div>' +
+    '<div class="card-sm"><div class="stat-row"><span>API Key</span><input id="mem-vector-apikey" class="inp" value="' + escAttr(current.apiKey || '') + '" placeholder="Optional for self-hosted' + (kind === 'qdrant' ? ', required for Qdrant Cloud' : '') + '" style="width:180px;font-size:11px;"></div><div style="font-size:10px;color:var(--text3);margin-top:6px;">Authentication key for hosted instances.</div></div>' +
+  '</div>';
+}
+async function saveMemVectorStore() {
+  var kind = document.getElementById('mem-vector-kind').value;
+  var body = { kind: kind };
+  if (kind === 'pinecone') {
+    body.url = document.getElementById('mem-vector-url').value.trim() || undefined;
+    body.apiKey = document.getElementById('mem-vector-apikey').value.trim() || undefined;
+  } else if (kind === 'qdrant' || kind === 'chromadb') {
+    body.url = document.getElementById('mem-vector-url').value.trim() || undefined;
+    body.collection = document.getElementById('mem-vector-collection').value.trim() || undefined;
+    body.apiKey = document.getElementById('mem-vector-apikey').value.trim() || undefined;
+  }
+  await fetch(BASE + '/api/memory/vector-store', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Vector store updated', 'success');
+}
+async function loadMemEmbeddings() {
+  var el = document.getElementById('mem-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/memory/embeddings').then(r => r.json()).catch(function() { return {}; });
+    var current = data.current || {};
+    var options = Array.isArray(data.options) ? data.options : [
+      { provider: 'stub', label: 'Stub / Local fallback' },
+      { provider: 'ollama', label: 'Ollama' },
+      { provider: 'openai', label: 'OpenAI' },
+    ];
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Embedding Provider</h3>' +
+      '<div class="stat-row"><span>Provider</span><select id="mem-embed-provider" class="inp" style="width:180px;font-size:11px;">' +
+        options.map(function(o) {
+          return '<option value="' + escAttr(o.provider) + '"' + (o.provider === (current.provider || data.provider || 'stub') ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+        }).join('') +
+      '</select></div>' +
+      '<div class="stat-row"><span>Model</span><input id="mem-embed-model" class="inp" value="' + escAttr(current.model || '') + '" placeholder="text-embedding-3-small / nomic-embed-text" style="width:180px;font-size:11px;"></div>' +
+      '<div class="stat-row"><span>Base URL</span><input id="mem-embed-baseurl" class="inp" value="' + escAttr(current.baseUrl || '') + '" placeholder="http://localhost:11434" style="width:180px;font-size:11px;"></div>' +
+      '<div class="stat-row"><span>API Key</span><input id="mem-embed-apikey" class="inp" value="' + escAttr(current.apiKey || '') + '" placeholder="optional" style="width:180px;font-size:11px;"></div>' +
+      '<div class="stat-row"><span>Dimensions</span><input id="mem-embed-dims" class="inp" type="number" value="' + (current.dimensions || data.dimensions || 64) + '" style="width:100px;font-size:11px;"></div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-primary" onclick="saveMemEmbeddings()" style="font-size:11px;">Save Embeddings</button></div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-top:8px;">Changes affect future memory writes and vector searches.</div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function saveMemEmbeddings() {
+  var body = {
+    provider: document.getElementById('mem-embed-provider').value,
+    model: document.getElementById('mem-embed-model').value.trim() || undefined,
+    baseUrl: document.getElementById('mem-embed-baseurl').value.trim() || undefined,
+    apiKey: document.getElementById('mem-embed-apikey').value.trim() || undefined,
+    dimensions: parseInt(document.getElementById('mem-embed-dims').value) || undefined,
+  };
+  await fetch(BASE + '/api/memory/embeddings', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Embedding settings updated', 'success');
+}
+
 `;

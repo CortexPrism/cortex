@@ -411,4 +411,117 @@ function vcsShowDiff() {
 
 // ── Phase 5: Remaining Partial Coverage Gaps ────────────────────────────────
 
+// ── Page Enhancement Initializers ─────────────────────────────────
+var _enhanced = false;
+function initPageEnhancements() { if(_enhanced)return;_enhanced=true;var os=loadSettings;loadSettings=function(){os();setTimeout(function(){addSettingsCompressor();addSettingsPreferences();addSettingsSandbox();addSettingsA2A()},600)};var oe=loadEvalPage;loadEvalPage=function(){oe();setTimeout(function(){addEvalHarnesses();addEvalRagSection()},600)} }
+function addSettingsCompressor() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-comp-card'))return;var d=document.createElement('div');d.id='s-comp-card';d.className='card-sm';d.style.cssText='margin-top:16px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Context Compressor</div><div class="stat-row"><span>Token Budget</span><span><input type="range" id="comp-budget" min="16000" max="256000" step="8000" value="128000" oninput="document.getElementById(\\'comp-bval\\').textContent=this.value" style="width:120px;"> <span id="comp-bval">128000</span></span></div><div class="stat-row"><span>Compression</span><span><input type="checkbox" id="comp-enabled" checked> Enabled</span></div><button class="btn btn-ghost" onclick="saveCompressorConfig()" style="font-size:10px;margin-top:8px;">Save</button>';c.appendChild(d);fetch(BASE+'/api/settings/compressor').then(function(r){return r.json()}).then(function(d2){document.getElementById('comp-budget').value=d2.tokenBudget||128000;document.getElementById('comp-bval').textContent=d2.tokenBudget||128000;document.getElementById('comp-enabled').checked=d2.compressionEnabled!==false}).catch(function(){}) }
+function saveCompressorConfig() { fetch(BASE+'/api/settings/compressor',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tokenBudget:parseInt(document.getElementById('comp-budget').value),compressionEnabled:document.getElementById('comp-enabled').checked,compressionThreshold:0.7})}).then(function(){toast('Compressor saved','success')}) }
+function addSettingsPreferences() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-pref-card'))return;var d=document.createElement('div');d.id='s-pref-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Learned Preferences</div><div id="s-pref-list"></div>';c.appendChild(d);fetch(BASE+'/api/agent/preferences').then(function(r){return r.json()}).then(function(prefs){document.getElementById('s-pref-list').innerHTML=prefs.length?prefs.map(function(p){return'<div class="stat-row"><span>'+esc(p.key)+'</span><span>'+esc(p.value)+'</span></div>'}).join(''):'<div style="font-size:10px;color:var(--text3);">No learned preferences yet</div>'}).catch(function(){}) }
+function addSettingsSandbox() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-sbx-card'))return;var d=document.createElement('div');d.id='s-sbx-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Sandbox Backends</div><div id="s-sbx-list"></div>';c.appendChild(d);fetch(BASE+'/api/sandbox/backends').then(function(r){return r.json()}).then(function(data){document.getElementById('s-sbx-list').innerHTML=(data.backends||[]).map(function(b){return'<div class="stat-row"><span>'+esc(b.label)+'</span><span style="color:'+(b.available?'#4ade80':'#f87171')+'">'+(b.available?'available':'unavailable')+'</span></div>'}).join('')}).catch(function(){}) }
+function addSettingsA2A() { var c=document.getElementById('settings-content');if(!c||document.getElementById('s-a2a-card'))return;var d=document.createElement('div');d.id='s-a2a-card';d.className='card-sm';d.style.cssText='margin-top:10px;padding:14px;';d.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px;">A2A Protocol Bridge</div><div class="stat-row"><span>Status</span><span style="color:#4ade80;">Active</span></div><div class="stat-row"><span>Agent Card</span><span style="font-size:10px;">GET /.well-known/agent-card.json</span></div>';c.appendChild(d) }
+setTimeout(initPageEnhancements, 1500);
+
+// ── Supervisor & Router functions ─────────────────────────────────
+async function loadProviderComparison() {
+  var el = document.getElementById('settings-ext-content');
+  el.innerHTML = '<div class="widget-loading">Loading provider comparison…</div>';
+  try {
+    var providers = await fetch(BASE + '/api/providers/comparison').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Provider Comparison</h3>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Provider</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:left;">Model</th>' +
+      '<th style="padding:4px 0;color:var(--text3);text-align:right;">Context Window</th></tr></thead><tbody>' +
+      (Array.isArray(providers) ? providers : []).map(function(p) {
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:4px 0;">' + esc(p.kind) + '</td>' +
+          '<td style="padding:4px 0;color:var(--text2);">' + esc(p.model || '—') + '</td>' +
+          '<td style="padding:4px 0;text-align:right;color:var(--text2);">' + (p.contextWindow ? fmtNum(p.contextWindow) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadRouterDashboard() {
+  var el = document.getElementById('settings-ext-content');
+  el.innerHTML = '<div class="widget-loading">Loading router dashboard…</div>';
+  try {
+    var history = await fetch(BASE + '/api/router/history').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Router Dashboard</h3>' +
+      '<div class="stat-row"><span>Strategy</span><span id="router-strategy">cascade</span></div>' +
+      '<div class="stat-row"><span>Fallthrough Events</span><span>' + (Array.isArray(history) ? history.length : 0) + '</span></div>' +
+      '<div class="stat-row"><span>Cost Estimation</span><span>Enter prompt below</span></div>' +
+      '<input id="router-cost-input" class="inp" placeholder="Sample prompt for cost estimation..." style="font-size:11px;margin-top:8px;">' +
+      '<div id="router-cost-result" style="margin-top:4px;font-size:11px;color:var(--text3);"></div>';
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadSupervisorConfig() {
+  var el = document.getElementById('settings-ext-content');
+  try {
+    var data = await fetch(BASE + '/api/security/supervisor').then(r => r.json()).catch(function() { return {}; });
+    var providers = await fetch(BASE + '/api/providers/configured').then(r => r.json()).catch(function() { return []; });
+    var providerOpts = providers.map(function(p) { return '<option value="' + esc(p.kind) + '"' + (p.kind === data.provider ? ' selected' : '') + '>' + esc(p.kind) + '</option>'; }).join('');
+    if (!providerOpts) providerOpts = '<option value="' + esc(data.provider || '') + '">' + esc(data.provider || '') + '</option>';
+    el.innerHTML = '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Security Supervisor</h3>' +
+      '<div style="margin-bottom:8px;"><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:2px;">Provider</label>' +
+      '<select id="sup-provider" class="inp" onchange="onSupervisorProviderChange()" style="font-size:11px;">' + providerOpts + '</select></div>' +
+      '<div style="margin-bottom:8px;"><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:2px;">Model</label>' +
+      '<select id="sup-model" class="inp" style="font-size:11px;"><option value="">Loading...</option></select></div>' +
+      '<div style="margin-bottom:12px;"><label style="font-size:10px;color:var(--text2);display:block;margin-bottom:2px;">Cache TTL (seconds)</label>' +
+      '<input id="sup-cachettl" class="inp" type="number" value="' + (data.cacheTTL || 3600) + '" style="font-size:11px;width:120px;"></div>' +
+      '<button class="btn btn-primary" onclick="saveSupervisorConfig()" style="font-size:10px;margin-right:4px;">Save</button>' +
+      '<button class="btn btn-ghost" onclick="clearSupervisorCache()" style="font-size:10px;margin-right:4px;">Clear Decision Cache</button>' +
+      '<button class="btn btn-ghost" onclick="loadSupervisorHistory()" style="font-size:10px;">View History</button>' +
+      '<div id="supervisor-extra" style="margin-top:8px;"></div>';
+    loadSupervisorModels(data.model || '');
+  } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+async function loadSupervisorModels(currentModel) {
+  var provider = document.getElementById('sup-provider').value;
+  var sel = document.getElementById('sup-model');
+  if (!sel) return;
+  try {
+    var models = await fetch(BASE + '/api/providers/' + encodeURIComponent(provider) + '/models').then(r => r.json()).catch(function() { return []; });
+    var arr = Array.isArray(models) ? models : (models.models || models.data || []);
+    var opts = arr.map(function(m) {
+      var id = typeof m === 'string' ? m : (m.id || m.name || '');
+      return '<option value="' + esc(id) + '"' + (id === currentModel ? ' selected' : '') + '>' + esc(id) + '</option>';
+    }).join('');
+    if (!opts && currentModel) opts = '<option value="' + esc(currentModel) + '">' + esc(currentModel) + '</option>';
+    sel.innerHTML = opts || '<option value="">No models available</option>';
+  } catch(e) { sel.innerHTML = currentModel ? '<option value="' + esc(currentModel) + '">' + esc(currentModel) + '</option>' : '<option value="">Error loading</option>'; }
+}
+function onSupervisorProviderChange() {
+  loadSupervisorModels('');
+}
+async function saveSupervisorConfig() {
+  var provider = document.getElementById('sup-provider').value;
+  var model = document.getElementById('sup-model').value;
+  var cacheTTL = parseInt(document.getElementById('sup-cachettl').value) || 3600;
+  if (!provider || !model) { toast('Provider and model are required', 'warning'); return; }
+  try {
+    await fetch(BASE + '/api/security/supervisor', {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ provider: provider, model: model, cacheTTL: cacheTTL })
+    });
+    toast('Supervisor config saved', 'success');
+    loadSupervisorConfig();
+  } catch(e) { toast('Save failed', 'error'); }
+}
+async function clearSupervisorCache() {
+  await fetch(BASE + '/api/security/supervisor/cache', { method: 'DELETE' });
+  toast('Cache cleared', 'success');
+}
+async function loadSupervisorHistory() {
+  var el = document.getElementById('supervisor-extra');
+  try {
+    var history = await fetch(BASE + '/api/security/supervisor/history').then(r => r.json()).catch(function() { return []; });
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:8px;">' +
+      '<thead><tr style="border-bottom:1px solid var(--border);">' +
+      '<th style="padding:2px 0;color:var(--text3);">Time</th><th style="padding:2px 0;color:var(--text3);">Decision</th><th style="padding:2px 0;color:var(--text3);">Tool</th></tr></thead><tbody>' +
+      (Array.isArray(history) ? history : []).map(function(h) {
+        return '<tr><td style="padding:2px 0;">' + timeAgo(h.timestamp) + '</td><td style="padding:2px 0;">' + renderBadge(h.allowed ? 'ALLOW' : 'DENY', h.allowed ? 'green' : 'red') + '</td><td style="padding:2px 0;">' + esc(h.tool || '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div class="empty">No history</div>'; }
+}
+
 `;
