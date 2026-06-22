@@ -425,13 +425,6 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
         }
       };
 
-      ws.onclose = () => {
-        console.error(`[node-agent] Connection closed. Reconnecting in ${currentReconnectMs}ms...`);
-        if (heartbeatTimer) clearInterval(heartbeatTimer);
-        heartbeatTimer = null;
-        cancelAllDirectives();
-      };
-
       ws.onerror = () => {
         // onclose will fire next
       };
@@ -455,24 +448,4 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, currentReconnectMs));
     currentReconnectMs = Math.min(currentReconnectMs * 2, MAX_RECONNECT_MS);
   }
-}
-
-export async function runRemoteAgent(opts: {
-  endpoint: string;
-  token: string;
-  agentId: string;
-  name: string;
-  reconnectMs: number;
-  heartbeatMs: number;
-}): Promise<void> {
-  await runNodeAgent({
-    endpoint: opts.endpoint,
-    token: opts.token,
-    agentId: opts.agentId,
-    name: opts.name,
-    tier: 'unprivileged',
-    reconnectMs: opts.reconnectMs,
-    heartbeatMs: opts.heartbeatMs,
-    directiveTimeoutMs: DEFAULT_DIRECTIVE_TIMEOUT_MS,
-  });
 }

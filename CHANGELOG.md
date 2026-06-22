@@ -23,6 +23,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Directive cancellation not audited** — `cancelPending()` in the session routing layer deleted the directive map entry without logging a lens event. Now logs `node_directive_cancelled`. Added `node_directive_cancelled` to the `EventType` union. (`src/hub/session-routing.ts`, `src/db/lens.ts`)
 
+- **Computer Use Xvfb start/kill per action** — `executeComputerAction()` created a new `ComputerUseExecutor` (starting Xvfb) for every single tool call, then destroyed it. Every mouse click, keypress, and screenshot incurred ~1s Xvfb startup overhead. Replaced with a module-level singleton executor that persists across tool calls and auto-shuts down after 5 minutes of inactivity. Also eliminated a redundant second `loadConfig()` call. (`src/tools/builtin/computer.ts`, `packages/ai/src/tools/builtin/computer.ts`)
+
+- **Computer Use screenshot API returned full base64 blob per request** — the screenshot gallery API loaded every PNG file (~5MB for 24 screenshots) into memory, base64-encoded them all, and sent them inline in the JSON response. Split into a metadata-only list (`GET /api/computer/screenshots`) plus a per-file endpoint (`GET /api/computer/screenshots/:name`). Thumbnails now lazy-load via `fetch()` + data URIs. Config endpoint expanded from 3 fields to 8 (enabled, runtime, screenshot format/quality, action timeout). (`src/server/routes/computer-use.ts`, `src/server/routes/_helpers.ts`, `src/server/ui/js/19_devtools.ts`, `packages/server/src/server/routes/computer-use.ts`, `packages/server/src/server/routes/_helpers.ts`)
+
+- **Remote agent dead code removed** — removed 7 unused type exports from `src/remote/types.ts` (`RemoteAgentStatus`, `RemoteAgentInfo`, `RemoteAgentConfig`, `RemoteDirective`, `RemoteResult`, `StreamChunk`, `RemoteMessage`) and the dead `runRemoteAgent()` wrapper. Extraneous `ws.onclose` handler removed. (`src/remote/types.ts`, `src/remote/agent.ts`)
+
+- **Dead duplicate computer-use files removed** — 6 files under `packages/server/src/computer-use/` were identical duplicates of `src/computer-use/` with adjusted import paths, never imported by any file. (`packages/server/src/computer-use/`)
+
 ## [0.49.1] - 2026-06-22
 
 ### Changed

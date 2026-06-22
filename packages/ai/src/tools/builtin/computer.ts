@@ -11,7 +11,7 @@ import type {
   ComputerActionRequest,
   ComputerUseConfig,
 } from '../../../../../src/computer-use/types.ts';
-import { executeComputerAction } from '../../../../../src/computer-use/executor.ts';
+import { ComputerUseExecutor } from '../../../../../src/computer-use/executor.ts';
 import { isComputerUseAvailable } from '../../../../../src/computer-use/display.ts';
 import { loadConfig } from '../../../../../src/config/config.ts';
 
@@ -23,37 +23,58 @@ const DEFAULT_CONFIG: ComputerUseConfig = {
   screenshot_format: 'png',
   screenshot_quality: 85,
   action_timeout_ms: 5000,
-  save_screenshots: true, // Save to disk to avoid truncation issues
+  save_screenshots: true,
 };
 
-/**
- * Get computer use configuration
- *
- * Loads configuration from the global config file, falling back to defaults.
- */
-async function getComputerUseConfig(_context: ToolContext): Promise<ComputerUseConfig> {
-  try {
-    const config = await loadConfig();
-    const cu = config.computerUse;
+const AUTO_SHUTDOWN_MS = 5 * 60 * 1000;
 
-    if (!cu || !cu.enabled) {
-      return DEFAULT_CONFIG;
+let singletonExecutor: ComputerUseExecutor | null = null;
+let singletonConfig: ComputerUseConfig | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleAutoShutdown(): void {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(async () => {
+    if (singletonExecutor) {
+      try {
+        await singletonExecutor.shutdown();
+      } catch { /* ignore */ }
+      singletonExecutor = null;
+      singletonConfig = null;
     }
+  }, AUTO_SHUTDOWN_MS);
+}
 
-    return {
-      display_width: cu.displayWidth ?? DEFAULT_CONFIG.display_width,
-      display_height: cu.displayHeight ?? DEFAULT_CONFIG.display_height,
-      runtime: cu.runtime ?? DEFAULT_CONFIG.runtime,
-      docker_image: cu.dockerImage,
-      enable_scaling: DEFAULT_CONFIG.enable_scaling,
-      screenshot_format: cu.screenshotFormat ?? DEFAULT_CONFIG.screenshot_format,
-      screenshot_quality: cu.screenshotQuality ?? DEFAULT_CONFIG.screenshot_quality,
-      action_timeout_ms: cu.actionTimeoutMs ?? DEFAULT_CONFIG.action_timeout_ms,
-      save_screenshots: true,
-    };
-  } catch {
-    return DEFAULT_CONFIG;
+function cancelAutoShutdown(): void {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
   }
+}
+
+async function getOrCreateExecutor(
+  config: ComputerUseConfig,
+): Promise<ComputerUseExecutor> {
+  if (singletonExecutor && singletonConfig) {
+    const configChanged =
+      singletonConfig.display_width !== config.display_width ||
+      singletonConfig.display_height !== config.display_height ||
+      singletonConfig.runtime !== config.runtime;
+    if (!configChanged) {
+      cancelAutoShutdown();
+      return singletonExecutor;
+    }
+    await singletonExecutor.shutdown();
+    singletonExecutor = null;
+    singletonConfig = null;
+  }
+
+  const executor = new ComputerUseExecutor(config);
+  await executor.initialize();
+  singletonExecutor = executor;
+  singletonConfig = config;
+  cancelAutoShutdown();
+  return executor;
 }
 
 export const computerTool: Tool = {
@@ -168,8 +189,8 @@ COMMON KEY NAMES:
   ): Promise<ToolCallResult> {
     const start = Date.now();
 
-    // Check if computer use is enabled in configuration
     const configData = await loadConfig();
+
     if (!configData.computerUse?.enabled) {
       return {
         toolName: 'computer',
@@ -180,7 +201,6 @@ COMMON KEY NAMES:
       };
     }
 
-    // Check if computer use is available on this system
     const available = await isComputerUseAvailable();
     if (!available) {
       return {
@@ -195,14 +215,11 @@ COMMON KEY NAMES:
 
     const action = String(args.action ?? 'unknown');
 
-    // Approval gate for computer use
     if (context.approvalGate) {
       let preview = `Computer use: ${action}`;
 
-      // Add more context for certain actions
       if (action === 'type' && args.text) {
         const text = String(args.text);
-        // Truncate long text for preview
         const truncated = text.length > 50 ? text.slice(0, 50) + '...' : text;
         preview += ` "${truncated}"`;
       } else if (action === 'key' && args.text) {
@@ -224,7 +241,6 @@ COMMON KEY NAMES:
       }
     }
 
-    // Build action request
     const actionRequest: ComputerActionRequest = {
       action: args.action as ComputerAction,
       coordinate: args.coordinate as [number, number] | undefined,
@@ -235,11 +251,24 @@ COMMON KEY NAMES:
       duration: args.duration as number | undefined,
     };
 
-    // Get config
-    const config = await getComputerUseConfig(context);
+    const cu = configData.computerUse;
+    const config: ComputerUseConfig = {
+      display_width: cu.displayWidth ?? DEFAULT_CONFIG.display_width,
+      display_height: cu.displayHeight ?? DEFAULT_CONFIG.display_height,
+      runtime: cu.runtime ?? DEFAULT_CONFIG.runtime,
+      docker_image: cu.dockerImage,
+      enable_scaling: DEFAULT_CONFIG.enable_scaling,
+      screenshot_format: cu.screenshotFormat ?? DEFAULT_CONFIG.screenshot_format,
+      screenshot_quality: cu.screenshotQuality ?? DEFAULT_CONFIG.screenshot_quality,
+      action_timeout_ms: cu.actionTimeoutMs ?? DEFAULT_CONFIG.action_timeout_ms,
+      save_screenshots: true,
+    };
 
     try {
-      const result = await executeComputerAction(actionRequest, config);
+      const executor = await getOrCreateExecutor(config);
+      const result = await executor.execute(actionRequest);
+
+      scheduleAutoShutdown();
 
       if (!result.success) {
         return {
@@ -251,13 +280,11 @@ COMMON KEY NAMES:
         };
       }
 
-      // Format output
       let output = `Action "${action}" completed successfully.`;
 
       if (result.screenshot_path) {
         output += `\nScreenshot saved to: ${result.screenshot_path}`;
       } else if (result.screenshot) {
-        // If returned as base64 (shouldn't happen with save_screenshots=true, but just in case)
         output += `\nScreenshot captured (${result.screenshot.length} bytes base64)`;
       }
 

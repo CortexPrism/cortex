@@ -144,11 +144,32 @@ async function loadComputerScreenshots() {
     if (!shots.length) { el.innerHTML = '<div class="empty">No screenshots captured</div>'; return; }
     el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">' +
       shots.map(function(s, i) {
-        return '<div class="card" style="cursor:pointer;" onclick="showComputerScreenshot(' + i + ')">' +
-          '<img src="data:image/png;base64,' + s.data + '" style="width:100%;height:180px;object-fit:cover;border-radius:4px;" onerror="this.src=\\'\\'">' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:4px;">' + timeAgo(s.timestamp) + '</div></div>';
+        return '<div class="card" style="cursor:pointer;overflow:hidden;" onclick="showComputerScreenshot(' + i + ')">' +
+          '<img src="" data-src="' + escAttr(s.name) + '" style="width:100%;height:180px;object-fit:cover;background:var(--bg2);opacity:0;transition:opacity .3s;">' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:4px;">' + timeAgo(s.timestamp) + ' · ' + fmtBytes(s.size) + '</div></div>';
       }).join('') + '</div>';
+    loadVisibleScreenshots();
   } catch(e) { el.innerHTML = '<div class="empty">Failed to load</div>'; }
+}
+function loadVisibleScreenshots() {
+  var imgs = document.querySelectorAll('#comp-content img[data-src]');
+  for (var i = 0; i < imgs.length; i++) {
+    var img = imgs[i];
+    if (img.src && img.src.indexOf('data:') === 0) continue;
+    var name = img.getAttribute('data-src');
+    if (!name) continue;
+    fetch(BASE + '/api/computer/screenshots/' + encodeURIComponent(name))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.data) {
+          img.src = 'data:image/png;base64,' + data.data;
+          img.onload = function() { img.style.opacity = '1'; };
+        } else {
+          img.style.display = 'none';
+        }
+      })
+      .catch(function() { img.style.display = 'none'; });
+  }
 }
 function showComputerScreenshot(idx) {
   var shots = window._computerScreenshots || [];
@@ -162,13 +183,28 @@ function showComputerScreenshot(idx) {
     modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
     document.body.appendChild(modal);
   }
+  modal.style.display = 'flex';
   modal.innerHTML = '<div style="max-width:min(96vw,1400px);max-height:92vh;background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45);">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);">' +
-    '<div>' + esc(shot.name || 'Screenshot') + '</div>' +
+    '<div>' + esc(shot.name) + ' · ' + fmtBytes(shot.size) + '</div>' +
     '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="document.getElementById(\\'computer-screenshot-modal\\').remove()">Close</button></div>' +
-    '<div style="max-height:calc(92vh - 48px);overflow:auto;background:#000;">' +
-    '<img src="data:image/png;base64,' + shot.data + '" style="display:block;max-width:100%;height:auto;margin:0 auto;" />' +
+    '<div style="max-height:calc(92vh - 48px);overflow:auto;background:#000;display:flex;align-items:center;justify-content:center;">' +
+    '<img src="" style="display:block;max-width:100%;height:auto;margin:0 auto;" />' +
+    '<div id="screenshot-modal-spinner" style="color:#666;">Loading…</div>' +
     '</div></div>';
+  var fullImg = modal.querySelector('img');
+  var spinner = document.getElementById('screenshot-modal-spinner');
+  fetch(BASE + '/api/computer/screenshots/' + encodeURIComponent(shot.name))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.data) {
+        fullImg.src = 'data:image/png;base64,' + data.data;
+        fullImg.onload = function() { if (spinner) spinner.remove(); };
+      } else {
+        if (spinner) spinner.textContent = 'Screenshot not found';
+      }
+    })
+    .catch(function() { if (spinner) spinner.textContent = 'Failed to load'; });
 }
 async function loadComputerActions() {
   var el = document.getElementById('comp-content');
@@ -199,10 +235,15 @@ async function loadComputerConfig() {
 function renderComputerConfig() {
   var el = document.getElementById('comp-content');
   var c = window._compConfig || {};
-  el.innerHTML = '<div style="max-width:400px;">' +
+  el.innerHTML = '<div style="max-width:500px;">' +
     '<div class="stat-row"><span>Available</span><span>' + renderBadge(c.available ? 'Yes' : 'No', c.available ? 'green' : 'red') + '</span></div>' +
+    '<div class="stat-row"><span>Enabled</span><span>' + renderBadge(c.enabled ? 'Yes' : 'No', c.enabled ? 'green' : 'amber') + '</span></div>' +
     '<div class="stat-row"><span>Resolution</span><span>' + esc(c.resolution || '1920x1080') + '</span></div>' +
+    '<div class="stat-row"><span>Runtime</span><span>' + esc(c.runtime || 'native') + '</span></div>' +
     '<div class="stat-row"><span>DPI</span><span>' + (c.dpi || 96) + '</span></div>' +
+    '<div class="stat-row"><span>Screenshot Format</span><span>' + esc(c.screenshotFormat || 'png') + '</span></div>' +
+    '<div class="stat-row"><span>Screenshot Quality</span><span>' + (c.screenshotQuality || 85) + '</span></div>' +
+    '<div class="stat-row"><span>Action Timeout</span><span>' + (c.actionTimeoutMs || 5000) + 'ms</span></div>' +
     '</div>';
 }
 
