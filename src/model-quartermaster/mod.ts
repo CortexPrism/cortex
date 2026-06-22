@@ -19,8 +19,8 @@ import { fuseModelSignals, getTopModelPrediction } from './fusion.ts';
 import { applyModelFeedback } from './learn.ts';
 import {
   getModelSignalWeights,
-  getSessionState,
   getRecentDecisions,
+  getSessionState,
   logModelObservation,
   updateDecisionCorrectness,
   upsertSessionState,

@@ -11,11 +11,14 @@ export const routes: RouteHandler[] = [
       const url = new URL(req.url);
       const sessionId = url.searchParams.get('sessionId');
       if (!sessionId) return err('sessionId required', 400);
-      return json({
-        sessionId,
-        checkpoints: [],
-        note: 'Use /api/memori/checkpoints for full checkpoint listing',
-      });
+      try {
+        const db = await (await import('../../db/client.ts')).getCoreDb();
+        const { listCheckpoints } = await import('../../memori/store.ts');
+        const checkpoints = await listCheckpoints(db, { sessionId, limit: 5 });
+        return json({ sessionId, checkpoints });
+      } catch {
+        return json({ sessionId, checkpoints: [] });
+      }
     },
   },
   {
@@ -209,7 +212,7 @@ export const routes: RouteHandler[] = [
         traces: [],
         otelEnabled: !!Deno.env.get('OTEL_EXPORTER_OTLP_ENDPOINT'),
         langfuseEnabled: !!Deno.env.get('LANGFUSE_PUBLIC_KEY'),
-      });
+      }, 501);
     },
   },
   {
@@ -377,7 +380,16 @@ export const routes: RouteHandler[] = [
         backends: ['lancedb', 'chroma', 'pinecone'],
         active: false,
         config: { chunkSize: 512, chunkOverlap: 64, batchSize: 32 },
-      });
+      }, 501);
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/cache\/search$/,
+    handler: async () => {
+      const { clearSearchCache } = await import('../../tools/builtin/web/cache.ts');
+      const cleared = await clearSearchCache();
+      return json({ ok: true, cleared });
     },
   },
 ];

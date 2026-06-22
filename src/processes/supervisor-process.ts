@@ -82,6 +82,9 @@ async function spawnDaemon(proc: ProcDef): Promise<Deno.ChildProcess> {
   const child = cmd.spawn();
   parentsToKill.add(child.pid);
 
+  const pidPath = join(PATHS.dataDir, `daemon-${proc.name}.pid`);
+  await Deno.writeTextFile(pidPath, String(child.pid));
+
   (async () => {
     try {
       const file = await Deno.open(logPath, { write: true, create: true, append: true });

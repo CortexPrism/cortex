@@ -60,6 +60,7 @@ function showPage(name) {
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
     sandbox: loadSandboxPage,
+    coderunner: () => { if (typeof extendCoderunnerPage === 'function') extendCoderunnerPage(); },
   };
   if (loaders[name]) loaders[name]();
   // Highlight nav-settings for all settings-group pages

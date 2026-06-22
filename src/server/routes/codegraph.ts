@@ -2,6 +2,7 @@ import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { PATHS } from '../../config/paths.ts';
 import { exists } from '@std/fs';
 import { join } from '@std/path';
+import { loadConfig } from '../../config/config.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -483,6 +484,37 @@ export const routes: RouteHandler[] = [
         }),
       ];
       return json({ paths: [pathNodes] });
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/codegraph\/pilot-config$/,
+    handler: async () => {
+      const config = await loadConfig();
+      const c = config as unknown as Record<string, unknown>;
+      return json({
+        pilotBudget: c.pilotBudget ?? 16384,
+        pruningMode: c.pilotPruningMode ?? 'semantic',
+        includeTests: c.pilotIncludeTests ?? false,
+      });
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/codegraph\/pilot-config$/,
+    handler: async (req) => {
+      const body = await req.json() as {
+        pilotBudget?: number;
+        pruningMode?: string;
+        includeTests?: boolean;
+      };
+      const config = await loadConfig();
+      const c = config as unknown as Record<string, unknown>;
+      if (body.pilotBudget !== undefined) c.pilotBudget = body.pilotBudget;
+      if (body.pruningMode !== undefined) c.pilotPruningMode = body.pruningMode;
+      if (body.includeTests !== undefined) c.pilotIncludeTests = body.includeTests;
+      await (await import('../../config/config.ts')).saveConfig(config);
+      return json({ ok: true });
     },
   },
 ];

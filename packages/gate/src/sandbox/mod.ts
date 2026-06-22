@@ -17,11 +17,11 @@ export {
 } from './agent-sandbox.ts';
 
 export {
-  type ContainerSecurityConfig,
-  type WorkspaceMountConfig,
   buildContainerSecurityArgs,
   buildWorkspaceMountArg,
+  type ContainerSecurityConfig,
   mergeContainerSecurityArgs,
+  type WorkspaceMountConfig,
 } from './security-args.ts';
 
 export {

@@ -14,13 +14,13 @@ import type {
 } from './types.ts';
 import type { ProviderKind } from '../config/config.ts';
 import { buildRequestContext } from './contexts.ts';
-import { gatherModelSignals } from './signals.ts';
-import { fuseModelSignals, getTopModelPrediction } from './fusion.ts';
+import type { gatherModelSignals } from './signals.ts';
+import type { fuseModelSignals, getTopModelPrediction } from './fusion.ts';
 import { applyModelFeedback } from './learn.ts';
 import {
-  getModelSignalWeights,
-  getSessionState,
+  type getModelSignalWeights,
   getRecentDecisions,
+  getSessionState,
   logModelObservation,
   updateDecisionCorrectness,
   upsertSessionState,

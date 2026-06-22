@@ -49,6 +49,7 @@ import {
 import {
   fileCopyTool,
   fileDeleteTool,
+  fileDiffTool,
   fileEditTool,
   fileInfoTool,
   fileListTool,
@@ -185,6 +186,7 @@ export async function registerAllBuiltins(
     file_write: fileWriteTool,
     file_edit: fileEditTool,
     file_patch: filePatchTool,
+    file_diff: fileDiffTool,
     file_delete: fileDeleteTool,
     file_rename: fileRenameTool,
     file_copy: fileCopyTool,

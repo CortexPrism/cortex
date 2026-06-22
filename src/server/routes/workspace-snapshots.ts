@@ -1,4 +1,4 @@
-import { err, json, notFound, type RouteHandler, savePartialProfile } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import type { SandboxRuntime } from '../../sandbox/executor.ts';
 import { loadConfig } from '../../config/config.ts';
 import { join } from '@std/path';

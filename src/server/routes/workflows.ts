@@ -127,6 +127,38 @@ export const routes: RouteHandler[] = [
   {
     method: 'GET',
     pattern: /^\/api\/workflows\/approvals$/,
-    handler: async () => json([]),
+    handler: async () => {
+      const { listWorkflows, getWorkflow } = await import('../../workflow/engine.ts');
+      const names = listWorkflows().map((w) => w.name);
+      const pending: { name: string; timestamp: string }[] = [];
+      for (const name of names) {
+        const wf = getWorkflow(name);
+        if (wf && (wf as unknown as Record<string, unknown>).pendingApproval) {
+          pending.push({ name, timestamp: new Date().toISOString() });
+        }
+      }
+      return json(pending);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/workflows\/approvals\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/workflows\/approvals\/([^/]+)$/);
+      if (!m) return notFound();
+      const name = m[1];
+      const body = await req.json() as { decision?: string };
+      const { getWorkflow } = await import('../../workflow/engine.ts');
+      const wf = getWorkflow(name);
+      if (!wf) return notFound('Workflow not found');
+      if (!(wf as unknown as Record<string, unknown>).pendingApproval) {
+        return json({ error: 'No pending approval for this workflow' }, 400);
+      }
+      if (body.decision === 'approve') {
+        wf.approve();
+        return json({ ok: true, name, decision: 'approved' });
+      }
+      return json({ ok: true, name, decision: 'rejected' });
+    },
   },
 ];

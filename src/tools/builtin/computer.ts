@@ -56,8 +56,7 @@ async function getOrCreateExecutor(
   config: ComputerUseConfig,
 ): Promise<ComputerUseExecutor> {
   if (singletonExecutor && singletonConfig) {
-    const configChanged =
-      singletonConfig.display_width !== config.display_width ||
+    const configChanged = singletonConfig.display_width !== config.display_width ||
       singletonConfig.display_height !== config.display_height ||
       singletonConfig.runtime !== config.runtime;
     if (!configChanged) {
