@@ -5456,6 +5456,9 @@ async function restartChromeBridge() {
   setTimeout(function() { startChromeBridge(); }, 500);
 }
 
+function switchSettingsExtTab(btn, tab) {
+  settingsActiveTab = 'ext-' + tab;
+  var el = document.getElementById('settings-ext-content');
   if (!el) return;
   var panels = document.querySelectorAll('#settings-content > div[id^="settings-pane-"]');
   panels.forEach(function(p) { p.style.display = 'none'; });
