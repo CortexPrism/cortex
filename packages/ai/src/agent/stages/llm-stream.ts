@@ -148,9 +148,9 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
         }
       }
     } else {
-      _log.debug(`Using buffered stream with timeout`, { round, timeoutMs: 180_000 });
+      _log.debug(`Using buffered stream with timeout`, { round, timeoutMs: ctx.streamTimeoutMs });
       const abortCtrl = new AbortController();
-      const abortTimer = setTimeout(() => abortCtrl.abort(), 180_000);
+      const abortTimer = setTimeout(() => abortCtrl.abort(), ctx.streamTimeoutMs);
 
       if (externalSignal) {
         if (externalSignal.aborted) abortCtrl.abort();
@@ -206,7 +206,7 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
         clearTimeout(abortTimer);
         const err = streamErr as Error;
         if (err.name === 'AbortError' || err.message.includes('abort')) {
-          _log.warn(`Streaming timeout after 180s`, {
+          _log.warn(`Streaming timeout`, {
             round,
             turnId,
             responseLength: roundResponse.length,

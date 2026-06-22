@@ -54,6 +54,27 @@ const DEFAULT_CONFIG: ApprovalWorkflowConfig = {
 const pendingApprovals = new Map<string, ApprovalRequest>();
 const approvalResolvers = new Map<string, (approved: boolean) => void>();
 const activeConfig: ApprovalWorkflowConfig = { ...DEFAULT_CONFIG };
+let _configInitialized = false;
+
+export async function initApprovalWorkflowFromCortexConfig(): Promise<void> {
+  if (_configInitialized) return;
+  try {
+    const { loadConfig } = await import('../../../../src/config/config.ts');
+    const cortexConfig = await loadConfig();
+    if (cortexConfig.approvals) {
+      if (cortexConfig.approvals.autoApproveRiskBelow !== undefined) {
+        activeConfig.autoApproveRiskBelow = cortexConfig.approvals.autoApproveRiskBelow;
+      }
+      if (cortexConfig.approvals.defaultTimeoutMs !== undefined) {
+        activeConfig.defaultTimeoutMs = cortexConfig.approvals.defaultTimeoutMs;
+      }
+      if (cortexConfig.approvals.maxTimeoutMs !== undefined) {
+        activeConfig.maxTimeoutMs = cortexConfig.approvals.maxTimeoutMs;
+      }
+    }
+  } catch { /* use defaults */ }
+  _configInitialized = true;
+}
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [id, req] of pendingApprovals) {

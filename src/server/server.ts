@@ -260,7 +260,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       }
 
       const locale = await extractLocale(req);
-      const ui = serveUi(locale);
+      const ui = serveUi(locale, config.uiCdn);
       const headers = new Headers(ui.headers);
       for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
         if (!headers.has(key)) headers.set(key, value);

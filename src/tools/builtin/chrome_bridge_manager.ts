@@ -7,15 +7,22 @@ import { CHROME_BRIDGE_CAPABILITIES } from './chrome_bridge_capabilities.ts';
 const _log = logger('chrome-bridge:manager');
 
 const CONNECTION_NAME = 'chrome-bridge';
-const HEALTH_CHECK_MS = 30_000;
-const MAX_RETRIES = 5;
-const INITIAL_BACKOFF_MS = 100;
-const MAX_BACKOFF_MS = 1600;
+const FALLBACK_HEALTH_CHECK_MS = 30_000;
+const FALLBACK_MAX_RETRIES = 5;
+const FALLBACK_INITIAL_BACKOFF_MS = 100;
+const FALLBACK_MAX_BACKOFF_MS = 1600;
 
 let _running = false;
 let _healthTimer: ReturnType<typeof setInterval> | null = null;
 let _retryCount = 0;
 let _retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+let _activeConfig = {
+  healthCheckMs: FALLBACK_HEALTH_CHECK_MS,
+  maxRetries: FALLBACK_MAX_RETRIES,
+  initialBackoffMs: FALLBACK_INITIAL_BACKOFF_MS,
+  maxBackoffMs: FALLBACK_MAX_BACKOFF_MS,
+};
 
 export function isChromeBridgeRunning(): boolean {
   return _running && getConnection(CONNECTION_NAME)?.connected === true;
@@ -26,6 +33,13 @@ export async function startChromeBridge(config: ChromeBridgeConfig): Promise<voi
     _log.warn('chrome-bridge is already running');
     return;
   }
+
+  _activeConfig = {
+    healthCheckMs: config.healthCheckMs ?? FALLBACK_HEALTH_CHECK_MS,
+    maxRetries: config.maxRetries ?? FALLBACK_MAX_RETRIES,
+    initialBackoffMs: config.initialBackoffMs ?? FALLBACK_INITIAL_BACKOFF_MS,
+    maxBackoffMs: config.maxBackoffMs ?? FALLBACK_MAX_BACKOFF_MS,
+  };
 
   const nodePath = config.nodePath ?? 'node';
   const serverPath = config.serverPath;
@@ -88,7 +102,7 @@ function startHealthCheck(config: ChromeBridgeConfig): void {
         await attemptReconnect(config);
       }
     }
-  }, HEALTH_CHECK_MS);
+  }, _activeConfig.healthCheckMs);
 }
 
 function stopHealthCheck(): void {
@@ -106,15 +120,20 @@ function clearRetryTimer(): void {
 }
 
 async function attemptReconnect(config: ChromeBridgeConfig): Promise<void> {
-  if (_retryCount >= MAX_RETRIES) {
-    _log.error(`chrome-bridge reconnect failed after ${MAX_RETRIES} attempts`);
+  if (_retryCount >= _activeConfig.maxRetries) {
+    _log.error(`chrome-bridge reconnect failed after ${_activeConfig.maxRetries} attempts`);
     _running = false;
     return;
   }
 
-  const backoff = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, _retryCount), MAX_BACKOFF_MS);
+  const backoff = Math.min(
+    _activeConfig.initialBackoffMs * Math.pow(2, _retryCount),
+    _activeConfig.maxBackoffMs,
+  );
   _retryCount++;
-  _log.info(`Reconnecting chrome-bridge in ${backoff}ms (attempt ${_retryCount}/${MAX_RETRIES})`);
+  _log.info(
+    `Reconnecting chrome-bridge in ${backoff}ms (attempt ${_retryCount}/${_activeConfig.maxRetries})`,
+  );
 
   clearRetryTimer();
   _retryTimer = setTimeout(async () => {

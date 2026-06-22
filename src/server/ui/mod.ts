@@ -83,28 +83,8 @@ const HEAD = `<!DOCTYPE html>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Cortex</title>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/css/css.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/markdown/markdown.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/yaml/yaml.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/sql/sql.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/search.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.css">
-<script src="https://cdn.jsdelivr.net/npm/xterm@4.19.0/lib/xterm.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@4.19.0/css/xterm.css">
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"></script>
-<script src="https://d3js.org/d3.v7.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+{CDN_ASSETS}
+{CDN_CSS}
 ${CSS}
 </head>
 <body>
@@ -178,7 +158,54 @@ const ALL_JS = JS_00_INIT +
   JS_23_SANDBOX +
   JS_24_DEFERRED;
 
-const HTML = `${HEAD}
+function buildCdnAssets(cdn: string, fonts: string, d3: string): string {
+  return `<script src="${cdn}/npm/marked/marked.min.js"></script>
+<script src="${cdn}/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<link rel="stylesheet" href="${cdn}/npm/codemirror@5.65.16/lib/codemirror.min.css">
+<script src="${cdn}/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/css/css.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/markdown/markdown.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/yaml/yaml.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/sql/sql.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/addon/search/search.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="${cdn}/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
+<link rel="stylesheet" href="${cdn}/npm/codemirror@5.65.16/addon/dialog/dialog.css">
+<script src="${cdn}/npm/xterm@4.19.0/lib/xterm.js"></script>
+<link rel="stylesheet" href="${cdn}/npm/xterm@4.19.0/css/xterm.css">
+<script src="${cdn}/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"></script>
+<script src="${d3}/d3.v7.min.js"></script>
+<link rel="preconnect" href="${fonts}">
+<link href="${fonts}/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">`;
+}
+
+function buildCssCdnAssets(cdn: string): string {
+  return `<link rel="stylesheet" href="${cdn}/npm/codemirror@5.65.16/lib/codemirror.min.css">
+<link rel="stylesheet" href="${cdn}/npm/codemirror@5.65.16/addon/dialog/dialog.css">
+<link rel="stylesheet" href="${cdn}/npm/xterm@4.19.0/css/xterm.css">`;
+}
+
+export interface UICdnOptions {
+  cdnBase?: string;
+  googleFontsBase?: string;
+  d3Base?: string;
+}
+
+let _cachedHtml: string | null = null;
+let _cachedHtmlCdn: string | undefined;
+
+function buildHtml(cdn?: UICdnOptions): string {
+  const cdnBase = cdn?.cdnBase || 'https://cdn.jsdelivr.net';
+  const fontsBase = cdn?.googleFontsBase || 'https://fonts.googleapis.com';
+  const d3 = cdn?.d3Base || 'https://d3js.org';
+  const head = HEAD
+    .replace('{CDN_ASSETS}', buildCdnAssets(cdnBase, fontsBase, d3))
+    .replace('{CDN_CSS}', buildCssCdnAssets(cdnBase));
+  return `${head}
 ${APP_WRAPPER_OPEN}
 ${SIDEBAR_OVERLAY}
 ${SIDEBAR_HTML}
@@ -191,9 +218,15 @@ ${MODALS_OUTSIDE}
 ${ALL_JS}
 </script>
 </body></html>`;
+}
 
-export function serveUi(locale = 'en'): Response {
-  const html = HTML.replaceAll('{LOCALE}', locale);
+export function serveUi(locale = 'en', cdn?: UICdnOptions): Response {
+  const cdnKey = JSON.stringify(cdn ?? {});
+  if (!_cachedHtml || _cachedHtmlCdn !== cdnKey) {
+    _cachedHtml = buildHtml(cdn);
+    _cachedHtmlCdn = cdnKey;
+  }
+  const html = _cachedHtml.replaceAll('{LOCALE}', locale);
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });

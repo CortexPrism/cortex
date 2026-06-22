@@ -212,7 +212,18 @@ export async function markJobRunning(id: string, runner = 'scheduler'): Promise<
   return runId;
 }
 
-const RUNNING_JOB_TIMEOUT_MS = 10 * 60_000; // 10 minutes
+const RUNNING_JOB_TIMEOUT_MS = 10 * 60_000; // 10 minutes (overridable via config.scheduler.runningJobTimeoutMs)
+
+async function resolveTimeoutMs(requestedMs: number): Promise<number> {
+  try {
+    const { loadConfig } = await import('../../../../src/config/config.ts');
+    const config = await loadConfig();
+    if (config.scheduler?.runningJobTimeoutMs && requestedMs === RUNNING_JOB_TIMEOUT_MS) {
+      return config.scheduler.runningJobTimeoutMs;
+    }
+  } catch { /* use default */ }
+  return requestedMs;
+}
 
 export async function cancelJob(id: string): Promise<void> {
   const db = await getCoreDb();
@@ -328,7 +339,8 @@ export async function recoverStaleJobs(
   timeoutMs: number = RUNNING_JOB_TIMEOUT_MS,
 ): Promise<{ recovered: number; failedRuns: number }> {
   const db = await getCoreDb();
-  const cutoff = new Date(Date.now() - timeoutMs).toISOString();
+  const effectiveTimeoutMs = await resolveTimeoutMs(timeoutMs);
+  const cutoff = new Date(Date.now() - effectiveTimeoutMs).toISOString();
 
   const staleJobs = await db.all<
     { id: string; run_id: string; attempts: number; max_attempts: number }
@@ -348,8 +360,8 @@ export async function recoverStaleJobs(
     await db.run(
       `UPDATE jobs
        SET status = ?,
-           last_error = 'Job timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
-           error = 'Job timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+            last_error = 'Job timed out (stuck in running for >${Math.round(effectiveTimeoutMs / 1000)}s)',
+            error = 'Job timed out (stuck in running for >${Math.round(effectiveTimeoutMs / 1000)}s)',
            next_run_at = CASE WHEN ? = 'pending' THEN datetime('now', '+60 seconds') ELSE next_run_at END,
            updated_at = datetime('now')
        WHERE id = ?`,
@@ -361,7 +373,7 @@ export async function recoverStaleJobs(
       await db.run(
         `UPDATE job_runs
          SET status = 'failed',
-             message = 'Job timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+             message = 'Job timed out (stuck in running for >${Math.round(effectiveTimeoutMs / 1000)}s)',
              finished_at = datetime('now')
          WHERE id = ?`,
         [j.run_id],
@@ -382,7 +394,7 @@ export async function recoverStaleJobs(
     await db.run(
       `UPDATE job_runs
        SET status = 'failed',
-           message = 'Run timed out (stuck in running for >${Math.round(timeoutMs / 1000)}s)',
+           message = 'Run timed out (stuck in running for >${Math.round(effectiveTimeoutMs / 1000)}s)',
            finished_at = datetime('now')
        WHERE id = ?`,
       [r.id],

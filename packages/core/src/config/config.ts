@@ -416,6 +416,10 @@ export interface ChromeBridgeConfig {
   autoRegisterTools?: boolean;
   toolPrefix?: string;
   env?: Record<string, string>;
+  healthCheckMs?: number;
+  maxRetries?: number;
+  initialBackoffMs?: number;
+  maxBackoffMs?: number;
 }
 
 export interface ComputerUseConfig {
@@ -481,6 +485,18 @@ export interface CortexConfig {
   computerUse?: ComputerUseConfig;
   /** Chrome Bridge MCP server integration configuration */
   chromeBridge?: ChromeBridgeConfig;
+  /** Agent runtime tuning (max rounds, timeouts) */
+  agentRuntime?: AgentRuntimeConfig;
+  /** Sandbox execution tuning */
+  sandbox?: SandboxRuntimeConfig;
+  /** Approval workflow settings */
+  approvals?: ApprovalsConfig;
+  /** Job scheduler settings */
+  scheduler?: SchedulerConfig;
+  /** UI CDN endpoint overrides */
+  uiCdn?: UICdnConfig;
+  /** Code graph indexing settings */
+  codeGraph?: CodeGraphConfig;
   /** A2A (Agent-to-Agent) protocol configuration */
   a2a?: import('../../../../src/a2a/types.ts').A2AConfig;
   /** Server-level security configuration */
@@ -510,6 +526,41 @@ export interface ComplianceConfig {
   };
   /** Webhook URL for critical-risk turn alerts */
   alertWebhook?: string;
+}
+
+export interface AgentRuntimeConfig {
+  maxToolRounds?: number;
+  subAgentTimeoutMs?: number;
+  streamTimeoutMs?: number;
+}
+
+export interface SandboxRuntimeConfig {
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  scrollAmount?: number;
+  dockerImages?: Record<string, string>;
+}
+
+export interface ApprovalsConfig {
+  autoApproveRiskBelow?: 'low' | 'medium' | 'high';
+  defaultTimeoutMs?: number;
+  maxTimeoutMs?: number;
+}
+
+export interface SchedulerConfig {
+  runningJobTimeoutMs?: number;
+}
+
+export interface UICdnConfig {
+  cdnBase?: string;
+  googleFontsBase?: string;
+  d3Base?: string;
+}
+
+export interface CodeGraphConfig {
+  maxGrammarSize?: number;
+  ignoreDirs?: string[];
+  ignoreFiles?: string[];
 }
 
 const DEFAULT_CONFIG: CortexConfig = {
@@ -595,6 +646,27 @@ const DEFAULT_CONFIG: CortexConfig = {
     corsOrigin: 'same-origin',
     maxBodyBytes: 10_485_760,
   },
+  agentRuntime: {
+    maxToolRounds: 12,
+    subAgentTimeoutMs: 120_000,
+    streamTimeoutMs: 180_000,
+  },
+  sandbox: {
+    timeoutMs: 30_000,
+    maxOutputBytes: 65_536,
+    scrollAmount: 3,
+  },
+  approvals: {
+    autoApproveRiskBelow: 'low',
+    defaultTimeoutMs: 300_000,
+    maxTimeoutMs: 3_600_000,
+  },
+  scheduler: {
+    runningJobTimeoutMs: 600_000,
+  },
+  codeGraph: {
+    maxGrammarSize: 5_242_880,
+  },
 };
 
 let _config: CortexConfig | null = null;
@@ -648,6 +720,21 @@ export async function loadConfig(): Promise<CortexConfig> {
       update,
       pluginUpdate,
       logging,
+      agentRuntime: disk.agentRuntime
+        ? { ...DEFAULT_CONFIG.agentRuntime, ...disk.agentRuntime }
+        : DEFAULT_CONFIG.agentRuntime,
+      sandbox: disk.sandbox
+        ? { ...DEFAULT_CONFIG.sandbox, ...disk.sandbox }
+        : DEFAULT_CONFIG.sandbox,
+      approvals: disk.approvals
+        ? { ...DEFAULT_CONFIG.approvals, ...disk.approvals }
+        : DEFAULT_CONFIG.approvals,
+      scheduler: disk.scheduler
+        ? { ...DEFAULT_CONFIG.scheduler, ...disk.scheduler }
+        : DEFAULT_CONFIG.scheduler,
+      codeGraph: disk.codeGraph
+        ? { ...DEFAULT_CONFIG.codeGraph, ...disk.codeGraph }
+        : DEFAULT_CONFIG.codeGraph,
     } as CortexConfig;
   } else {
     _config = { ...DEFAULT_CONFIG };
