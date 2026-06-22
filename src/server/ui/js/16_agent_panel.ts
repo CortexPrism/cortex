@@ -155,7 +155,7 @@ async function loadSessionMessages(id) {
       appendBubble('user', m.content, m.id);
     } else if (m.role === 'assistant') {
       const b = appendBubble('agent', m.content, m.id);
-      b.innerHTML = md(m.content);
+      b.innerHTML = md(renderThinkingForRestore(m.content, b));
       if (m.token_count) appendMeta(0, m.token_count, 0, 0);
     }
   }

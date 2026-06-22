@@ -198,7 +198,7 @@ async function restoreSession() {
             appendBubble('tool', '⚙ ' + label);
           } else {
             const b = appendBubble('agent', m.content);
-            b.innerHTML = md(m.content);
+            b.innerHTML = md(renderThinkingForRestore(m.content, b));
             if (m.token_count) appendMeta(0, m.token_count, 0, 0);
           }
         }

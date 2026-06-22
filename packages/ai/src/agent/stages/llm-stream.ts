@@ -68,6 +68,13 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
 
   let subAgentsCompleted = false;
 
+  const searchToolNames = new Set([
+    'search', 'web_search', 'web_search_enhanced', 'brave_search', 'tavily_search',
+    'web_fetch', 'serpapi_search',
+  ]);
+  let consecutiveSearchRounds = 0;
+  const recentAssistantOutputs: string[] = [];
+
   while (round < maxToolRounds) {
     checkAborted();
     let roundResponse = '';
@@ -481,6 +488,49 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
 
     const resultText = formatToolResults(toolResults);
 
+    const allSearchTools = toolCalls.length > 0 &&
+      toolCalls.every((tc) => searchToolNames.has(tc.toolName));
+    if (allSearchTools) {
+      consecutiveSearchRounds++;
+    } else {
+      consecutiveSearchRounds = 0;
+    }
+    recentAssistantOutputs.push(roundResponse);
+    if (recentAssistantOutputs.length > 4) recentAssistantOutputs.shift();
+
+    let recursionWarning = '';
+    if (allSearchTools) {
+      for (const tc of toolCalls) {
+        const query = String(tc.args.query ?? tc.args.q ?? tc.args.prompt ?? '');
+        if (query.length < 20) continue;
+        for (const pastOutput of recentAssistantOutputs) {
+          const normalizedQuery = query.replace(/\s+/g, ' ').toLowerCase().slice(0, 80);
+          const normalizedPast = pastOutput.replace(/\s+/g, ' ').toLowerCase();
+          if (normalizedPast.includes(normalizedQuery) && normalizedQuery.length > 30) {
+            _log.warn(`Self-referential tool call detected`, {
+              round,
+              toolName: tc.toolName,
+              queryPreview: query.slice(0, 80),
+            });
+            recursionWarning = `\n\n[SYSTEM WARNING: Your last search query appears to recycle text from your own prior responses. This indicates you are chasing noise, not the user's request. REREAD the original user message and focus ONLY on what the user asked for. Do not search for or analyze your own output — produce results for the user.]`;
+            consecutiveSearchRounds = 999;
+            break;
+          }
+        }
+        if (recursionWarning) break;
+      }
+    }
+
+    if (!recursionWarning && consecutiveSearchRounds >= 3) {
+      _log.warn(`Confusion spiral detected: ${consecutiveSearchRounds} consecutive search-only rounds`, {
+        turnId,
+        round,
+        toolNames: toolCalls.map((t) => t.toolName).join(','),
+      });
+      recursionWarning = `\n\n[SYSTEM WARNING: You have spent ${consecutiveSearchRounds} rounds doing searches without producing user-facing output. This may indicate you are chasing tangents or processing noise from search results. REREAD the original user message. Ignore any sidebar suggestions, auto-complete text, or "related topics" from search engines. Produce your answer NOW based on the first batch of search results you collected.]`;
+      consecutiveSearchRounds = 0;
+    }
+
     let qmHint = '';
     try {
       const { predict } = await import('../../../../../src/quartermaster/mod.ts');
@@ -524,8 +574,8 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
     }
 
     const followUpInstruction = roundsLeft <= 2
-      ? `${resultText}\n\nYou have ${roundsLeft} tool round(s) remaining. Your next response must be your final answer. If the user asked you to create a file, use file_write NOW. Do not make more research calls — produce the deliverable.${subAgentHint}${qmHint}`
-      : `${resultText}\n\nBased on the tool output above, continue the task. If you have gathered enough context to act, do so now — prefer producing artifacts (files, code, plans) over further research. Only read more files if absolutely necessary.${subAgentHint}${qmHint}`;
+      ? `${resultText}\n\nYou have ${roundsLeft} tool round(s) remaining. Your next response must be your final answer. If the user asked you to create a file, use file_write NOW. Do not make more research calls — produce the deliverable.${subAgentHint}${qmHint}${recursionWarning}`
+      : `${resultText}\n\nBased on the tool output above, continue the task. If you have gathered enough context to act, do so now — prefer producing artifacts (files, code, plans) over further research. Only read more files if absolutely necessary.${subAgentHint}${qmHint}${recursionWarning}`;
 
     currentMessages = [
       ...currentMessages,

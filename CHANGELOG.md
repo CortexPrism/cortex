@@ -31,6 +31,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Dead duplicate computer-use files removed** — 6 files under `packages/server/src/computer-use/` were identical duplicates of `src/computer-use/` with adjusted import paths, never imported by any file. (`packages/server/src/computer-use/`)
 
+- **DuckDuckGo "Related" sidebar content confused the LLM** — the `web_search` tool's `instantAnswers()` function labeled DuckDuckGo's `RelatedTopics` API field simply as `**Related:**`, causing the LLM to interpret algorithmically-suggested Wikipedia sidebar snippets as conversation context. This could trigger a recursive tool-call feedback loop where the LLM chased noise through 12 rounds of search before delivering a confused error. Now labeled `**DuckDuckGo Sidebar (algorithmically suggested — may be unrelated to your query):**` with an explicit ignore instruction. (`src/tools/builtin/web_search.ts`, `packages/ai/src/tools/builtin/web_search.ts`)
+
+- **Recursive self-referential tool calls in LLM stream** — the agent loop had no guard against the LLM generating search queries that recycled text from its own prior responses. Added detection: if any search/fetch tool query matches a >30-char substring of recent assistant output, a `[SYSTEM WARNING]` is injected telling the LLM to reread the user's original message. (`src/agent/stages/llm-stream.ts`, `packages/ai/src/agent/stages/llm-stream.ts`)
+
+- **Confusion spiral detection in agent loop** — added a counter tracking consecutive rounds where all tool calls are search/fetch tools. At 3+ rounds with no user-facing output, a `[SYSTEM WARNING]` interrupts the loop telling the LLM it is chasing tangents and to produce results from already-collected data. (`src/agent/stages/llm-stream.ts`, `packages/ai/src/agent/stages/llm-stream.ts`)
+
+- **`<thinking>` tags rendered inline on page refresh** — during live streaming, `<thinking>...</thinking>` blocks were extracted into a reasoning accordion and stripped from display text. But when messages were restored from the database on page refresh (`restoreSession()`) or session switch (`loadSessionMessages()`), raw thinking tags were passed directly to the markdown parser, causing garbled display. Added `renderThinkingForRestore()` helper that extracts thinking blocks into reasoning accordions from restored messages, mirroring the live streaming behavior. (`src/server/ui/js/04_chat_ui.ts`, `src/server/ui/js/02_chat_setup.ts`, `src/server/ui/js/16_agent_panel.ts`)
+
+- **Template literal newline escaping in UI JS export** — a `'\n\n'` in the `renderThinkingForRestore` function was processed as actual newline characters by the TypeScript template literal export, breaking string literals in the concatenated browser-side JS. Fixed to `'\\n\\n'`. (`src/server/ui/js/04_chat_ui.ts`)
+
 ## [0.49.1] - 2026-06-22
 
 ### Changed
