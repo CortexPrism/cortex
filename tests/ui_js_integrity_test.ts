@@ -82,3 +82,92 @@ Deno.test('UI JS output is syntactically valid JavaScript', async () => {
     throw new Error(`Generated UI JS syntax error: ${msg}`);
   }
 });
+
+Deno.test('Prompt Lab JS functions are present', async () => {
+  const { serveUi } = await import('../src/server/ui/mod.ts');
+  const html = await serveUi('en').text();
+  const { js } = getScriptJs(html);
+
+  const required = [
+    'function switchPLTab',
+    'function loadPromptLab',
+    'function renderPLStats',
+    'function renderPromptTemplates',
+    'function selectPromptTemplate',
+    'function showPromptCreateModal',
+    'function savePromptTemplate',
+    'function deletePromptTemplate',
+    'function showTestRunModal',
+    'function closeTestRunModal',
+    'function recordTestRun',
+    'function renderPromptRuns',
+    'function generatePLVariations',
+    'function applyVariation',
+    'function generatePrompt',
+    'function useGeneratedPrompt',
+    'function copyGeneratedPrompt',
+    'function loadABTests',
+    'function renderABTests',
+    'function selectABTest',
+    'function showABTestCreateModal',
+    'function closeABTestModal',
+    'function createABTest',
+    'function updateABTestStatus',
+    'function plPauseABTest',
+    'function plResumeABTest',
+    'function plCompleteABTest',
+  ];
+
+  for (const fn of required) {
+    assertEquals(
+      js.includes(fn),
+      true,
+      `Missing Prompt Lab function: ${fn}`,
+    );
+  }
+});
+
+Deno.test('Prompt Lab page HTML has expected structure', async () => {
+  const html = await (await import('../src/server/ui/mod.ts')).serveUi('en').text();
+
+  const requiredIds = [
+    'id="pl-tab-templates"',
+    'id="pl-tab-abtests"',
+    'id="pl-tab-generator"',
+    'id="pl-templates"',
+    'id="pl-editor-title"',
+    'id="pl-editor-text"',
+    'id="pl-editor-actions"',
+    'id="pl-editor-btns"',
+    'id="pl-variables"',
+    'id="pl-runs-list"',
+    'id="pl-stats"',
+    'id="pl-abtests-list"',
+    'id="pl-abtest-detail"',
+    'id="pl-abtest-modal"',
+    'id="pl-testrun-modal"',
+    'id="pl-gen-task"',
+    'id="pl-gen-result"',
+    'id="pl-gen-output"',
+    'id="page-promptlab"',
+  ];
+
+  for (const id of requiredIds) {
+    assertEquals(
+      html.includes(id),
+      true,
+      `Missing Prompt Lab element: ${id}`,
+    );
+  }
+});
+
+Deno.test('Generated JS is free of template-literal escaping gotchas', async () => {
+  const { serveUi } = await import('../src/server/ui/mod.ts');
+  const html = await serveUi('en').text();
+  const { js } = getScriptJs(html);
+
+  // Verify split(/\\n/) exists — the correct pattern for splitting textarea values on newlines
+  // In template literals, \\\\n produces \\n which the JS parser sees as regex /\\n/
+  const correctSplit = js.includes('split(/\\n/)');
+  assertEquals(correctSplit, true, 'Missing split(/\\\\n/) — the prompt lab generator needs this for textarea line splitting');
+});

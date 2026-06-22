@@ -19,6 +19,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Search cache eviction route** — `clearSearchCache()` was exported but never called. Added `DELETE /api/cache/search` endpoint to flush the web search cache. (`src/server/routes/eval-routes.ts`)
 
+- **Memory graph entity detail panel** — clicking a graph node now opens a side panel showing full entity information (name, type, description, importance, sensitivity, aliases, metadata), all inbound/outbound relations with strength percentages and relation type breakdowns, and entity ID/creation date. Includes `GET /api/memory/graph/entity` endpoint with `name` and optional `type` query params. Graph nodes and relation rows are clickable to navigate between entities. (`src/memory/graph.ts`, `src/server/routes/memory-graph.ts`, `src/server/ui/pages/memory.ts`, `src/server/ui/js/11_pages.ts`, `src/server/ui/css.ts`)
+
+- **Prompt Lab A/B testing and generation** — major expansion of the prompt engineering workspace: adds A/B test creation with variant comparison (avg score, latency, tokens, winner detection with confidence), prompt generation from structured parameters (role, tone, style, length, constraints, examples), automatic prompt variation generation (5 strategies: restructure, clarity, specificity, format, persona), `{{variable}}` interpolation and extraction, test run recording with score/latency/tokens, template CRUD with delete, and a redesigned three-tab UI (Templates, A/B Tests, Generator). 14 API endpoints replace the original 2: `GET/POST/PUT/DELETE /api/prompts`, `GET /api/prompts/:id`, `POST /api/prompts/runs`, `GET/POST /api/prompts/ab-tests`, `GET/PUT /api/prompts/ab-tests/:id`, `POST /api/prompts/generate`, `POST /api/prompts/variations`. Run buffer increased from 100 to 500. (`src/prompt-lab.ts`, `src/server/routes/eval-routes.ts`, `src/server/ui/pages/promptlab.ts`, `src/server/ui/js/11_pages.ts`)
+
+- **Prompt Lab UI integrity tests** — three new tests in the UI JS integrity suite: validates all 26 prompt lab functions exist in the generated output, all 18 DOM element IDs are present in the page HTML, and `split(/\\n/)` (the correct template-literal-safe regex pattern for newline splitting) exists in the output. Catches the exact class of escaping bugs where `/\n/` inside a template literal produces a literal newline breaking the regex. (`tests/ui_js_integrity_test.ts`)
+
 ### Fixed
 
 - **Daemon restart was a no-op** — `POST /api/daemons/*/restart` returned `{ok: true}` without actually restarting anything. Daemon processes now write PID files on spawn (`src/processes/supervisor-process.ts`), and the restart handler reads the PID, sends SIGTERM, and waits up to 15s for the supervisor to auto-restart the process. (`src/server/routes/daemons.ts`, `src/processes/supervisor-process.ts`)
@@ -28,6 +34,22 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **Memori preview returned stub** — `GET /api/memori/preview` always returned `{checkpoints: []}`. Now queries the actual checkpoint store with a limit of 5. (`src/server/routes/eval-routes.ts`)
 
 - **Observability traces and embeddings pipeline endpoints marked 501** — `GET /api/observability/traces` and `GET /api/embeddings/pipeline` returned hardcoded empty data. Now return HTTP 501 Not Implemented to signal these features are pending. (`src/server/routes/eval-routes.ts`)
+
+- **Memory graph entity detail panel — XSS via inline onclick** — the `esc()` function converts `'` to `&#39;`, which the browser HTML parser decodes back to `'` before evaluating inline `onclick` handlers. Entity names containing single quotes could break out of the JS string context and execute arbitrary code. Fixed by using `escJs()` for values inside JavaScript string contexts. (`src/server/ui/js/11_pages.ts`)
+
+- **Memory graph entity detail — uncaught URIError on malformed name** — `decodeURIComponent(name)` in the `/api/memory/graph/entity` route threw `URIError` on invalid percent-encoding with no try/catch, causing an unhandled rejection. Added try/catch returning HTTP 400. (`src/server/routes/memory-graph.ts`)
+
+- **Memory graph entity detail — non-unique entity name** — `getEntityDetail()` matched only on `name` with `LIMIT 1`, returning an arbitrary entity when duplicates exist (different types share the same name). Added optional `type` query parameter; frontend now passes `d.type` from graph nodes and `r.entity.type` from relation rows. Query uses `WHERE name = ? AND type = ?` when type is provided. (`src/memory/graph.ts`, `src/server/routes/memory-graph.ts`, `src/server/ui/js/11_pages.ts`)
+
+- **Memory graph entity detail — total counts included deleted peers** — `totalInbound`/`totalOutbound` counted raw DB rows including relations to deleted entities, while the displayed relations list filters them out. Counts now computed from the filtered `relations` array. (`src/memory/graph.ts`)
+
+- **Memory graph entity detail — unbounded relation queries** — outbound and inbound `SELECT` queries on `graph_relations` had no `LIMIT`, unlike the existing `traverseGraph` which uses `LIMIT 10`. Added `LIMIT 200` to both queries. (`src/memory/graph.ts`)
+
+- **Memory graph entity detail — unbounded IN clause** — peer entity lookup used `WHERE id IN (...)` with no cap on placeholders, risking SQLite's 999-parameter limit for heavily-connected entities. Capped `peerIds` to 900 before constructing the IN clause. (`src/memory/graph.ts`)
+
+- **Prompt Lab AB test onclicks — raw comma after backslash-escaped quote** — inline `onclick` handlers using `\\'` (backslash-escaped quote boundary) followed by bare `,` produced a `SyntaxError: Unexpected string` because `,` is invalid JS outside a string context. Fixed by replacing complex ternary-in-onclick handlers with simple helper functions (`plPauseABTest`, `plResumeABTest`, `plCompleteABTest`) that call `updateABTestStatus` internally, avoiding quote-escaping entirely. (`src/server/ui/js/11_pages.ts`)
+
+- **Prompt Lab generator — `split(/\n/)` produced literal newline in template literal** — the `11_pages.ts` file is a TypeScript template literal export (`export const JS_11_PAGES = \`...\``). Inside it, `\n` is interpreted as a template literal escape producing an actual newline character, breaking the regex literal across lines. Fixed by using `split(/\\n/)` (double-escaped backslash) which produces the correct `split(/\n/)` in the output. (`src/server/ui/js/11_pages.ts`)
 
 ### Changed
 
