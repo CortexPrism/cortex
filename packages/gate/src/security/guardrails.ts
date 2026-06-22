@@ -154,8 +154,8 @@ export const builtinClassifiers: GuardrailClassifier[] = [
       const patterns = [
         /\b(?:curl|wget)\s+.*\|\s*(?:bash|sh|zsh)/i,
         /\b(?:eval|exec)\s*\(?\s*['"]?\s*(?:rm|dd|mkfs)/i,
-        /`[^`]*`/,
-        /\$\([^)]*\)/,
+        /`[^`]{1,200}`/,
+        /\$\([^)]{1,200}\)/,
         /\|\s*(?:bash|sh|zsh|python|ruby|perl)/i,
       ];
 

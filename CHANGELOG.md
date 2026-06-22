@@ -41,6 +41,28 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Enhanced `cortex import hermes` command** — rebuilt from a JSONL-only importer into a comprehensive migration entry point. Supports `--config-only` (config.yaml), `--sessions-only` (auto-detects state.db vs JSONL exports), `--memory-only` (SOUL.md, MEMORY.md, USER.md, skills/), and `--dry-run`. Auto-discovers Hermes' config.yaml, state.db, and memory files from the detected directory. (`src/cli/import-cmd.ts`)
 
+### Security
+
+- **Comprehensive security policy audit and hardening** — reviewed all 6 layers of built-in security policies (DB rules, validator, guardrails, DLP, capability tiers, auxiliary modules). Identified and resolved 18 issues across critical, high, medium, and low priority tiers.
+
+- **SSRF protection wired into shell command validation** — the existing SSRF module (`resolveAndCheck()` with private IP/DNS blocking) was never called from the validator. Shell commands containing URLs (e.g., `curl http://169.254.169.254/`) now undergo SSRF checks, blocking cloud metadata endpoints, loopback addresses, and RFC 1918 private IPs. (`packages/gate/src/security/validator.ts`)
+
+- **Session isolation enforced at tool-call boundary** — `isPathAllowed()` from the isolation module was registered but never consulted by the validator. File tool path arguments now checked against registered session boundaries, preventing cross-session file access. (`packages/gate/src/security/validator.ts`)
+
+- **Policy table CHECK constraint widened** — migration 009 only allowed `('tool', 'shell', 'domain', 'capability')` kinds, but the validator also checks `'path'` and `'computer'` kinds which could never be inserted. Migration 042 recreates the table with the full set. (`src/db/migrations/042_policy_review.sql`, `packages/core/src/db/migrations/042_policy_review.sql`)
+
+- **16 new default deny rules seeded** — 5 shell rules (`mkfs`, `/proc/sys/` writes, `iptables`/`ufw`, `crontab -`, `git push`), 7 path rules (`/etc/shadow`, `/root/.ssh/`, `.gnupg/`, `.env`, `id_rsa`, `sshd_config`, `sudoers`), 3 domain rules (AWS/GCP metadata endpoints, loopback), 1 computer action rule (`type`). All use `INSERT OR IGNORE` to avoid overwriting user customizations. (`042_policy_review.sql`)
+
+- **4 existing shell regex patterns hardened** — `rm -rf` now catches `-r -f`, `--recursive --force`, and `-fr` variants; fork bomb pattern matches actual `:(){ :|: & };:` syntax; `dd` catches bare device names (`/dev/sda`); `chmod 777` catches `-R 777` and non-root paths. Updates only apply when the original pattern is unmodified. (`042_policy_review.sql`)
+
+- **12 chrome_* and codegraph tool risk profiles added** — `chrome_execute_js`, `chrome_http_auth`, and `chrome_network_rules` set to `'high'` with confirmation required; `chrome_navigate`, `chrome_create_tab`, `chrome_upload_file`, `chrome_save_page`, `chrome_manage_downloads`, `chrome_fill_form`, and `chrome_type_text` set to `'medium'` with appropriate guardrails; `code_index` and `code_pilot` profiled. Previously all fell through to a blanket `'medium'`. (`packages/gate/src/security/dynamic-grant.ts`)
+
+- **`CORTEX_VAULT_KEY` removed from safe environment variables** — the vault encryption key was listed as accessible from any session, creating a path for agents to exfiltrate the master key. Removed from the safe-var set. (`packages/gate/src/security/isolation.ts`)
+
+- **Guardrail shell injection patterns narrowed** — backtick and `$()` patterns matched empty content and blocked legitimate code examples. Changed to `{1,200}` quantifier requiring 1+ characters and bounded to inline code length. (`packages/gate/src/security/guardrails.ts`)
+
+- **Data classification default relaxed from `'sensitive'` to `'normal'`** — the security-first default classified all non-empty content as sensitive, triggering excessive supervisor LLM calls. Following the defense-in-depth review, only content matching explicit SENSITIVE_PATTERNS or SECRET_PATTERNS is now elevated. (`packages/gate/src/security/classification.ts`)
+
 ### Fixed
 
 - **`cortex import` command was not registered** — the `import` command entry existed in `packages/cli/src/cli/registry.ts` but was missing from `src/cli/registry.ts`, the actual registry consumed by `src/main.ts`. Added the entry so `cortex import` is now accessible. (`src/cli/registry.ts`)

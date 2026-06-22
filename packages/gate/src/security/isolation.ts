@@ -84,7 +84,6 @@ export function isEnvVarAllowed(sessionId: string, envVar: string): boolean {
     'TZ',
     'NODE_ENV',
     'DENO_DIR',
-    'CORTEX_VAULT_KEY',
     ...config.allowedEnvVars,
   ]);
 

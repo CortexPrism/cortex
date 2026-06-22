@@ -92,9 +92,7 @@ export function classifyContent(text: string | null | undefined): SensitivityLev
     }
   }
 
-  // Default to 'sensitive' for non-empty content (security-first per plan)
-  // Only known-safe content should be downgraded to 'normal' or 'public'
-  return 'sensitive';
+  return 'normal';
 }
 
 /**
