@@ -3,7 +3,12 @@ import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red } from '@std/fmt/colors';
 import { fromFileUrl } from '@std/path';
 import { isCompiledBinary, killDenoProcesses } from '../../../../src/utils/platform.ts';
-import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../../../../src/ipc/transport.ts';
+import {
+  EXECUTOR_SOCK,
+  pingProcess,
+  SCHEDULER_SOCK,
+  VALIDATOR_SOCK,
+} from '../../../../src/ipc/transport.ts';
 import { checkForUpdates } from '../../../../src/update/mod.ts';
 import { loadConfig } from '../../../../src/config/config.ts';
 import { applyPluginUpdate, checkAllUpdates } from '../../../../src/plugins/update.ts';

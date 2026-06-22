@@ -1,9 +1,11 @@
 // APP_WRAPPER_OPEN: outermost flex container
-export const APP_WRAPPER_OPEN = `<div style="display:flex;height:100vh;overflow:hidden;" role="application">
+export const APP_WRAPPER_OPEN =
+  `<div style="display:flex;height:100vh;overflow:hidden;" role="application">
 `;
 
 // SIDEBAR_OVERLAY: mobile sidebar overlay (before sidebar)
-export const SIDEBAR_OVERLAY = `<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()" role="presentation"></div>
+export const SIDEBAR_OVERLAY =
+  `<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()" role="presentation"></div>
 `;
 
 // SIDEBAR_HTML: navigation sidebar

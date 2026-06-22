@@ -1,5 +1,8 @@
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../../../../src/workspace/paths.ts';
+import {
+  ensureAgentWorkspace,
+  resolveWorkspacePath,
+} from '../../../../../../src/workspace/paths.ts';
 
 interface DiffLine {
   type: 'unchanged' | 'added' | 'removed' | 'modified';

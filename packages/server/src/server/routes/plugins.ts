@@ -1,9 +1,17 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
-import { type installPlugin, listPlugins, type removePlugin } from '../../../../../src/plugins/registry.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
+import {
+  type installPlugin,
+  listPlugins,
+  type removePlugin,
+} from '../../../../../src/plugins/registry.ts';
 import { pluginManager } from '../../../../../src/plugins/manager.ts';
 import type { PluginManifest } from '../../../../../src/plugins/types.ts';
 import { extractSettingsSchema } from '../../../../../src/plugins/extensions/config.ts';
-import { applyPluginUpdate, checkAllUpdates, type enrichPluginVersions } from '../../../../../src/plugins/update.ts';
+import {
+  applyPluginUpdate,
+  checkAllUpdates,
+  type enrichPluginVersions,
+} from '../../../../../src/plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../../../../../src/plugins/extensions/ui.ts';
 import { loadConfig, saveConfig } from '../../../../../src/config/config.ts';
 
@@ -58,8 +66,12 @@ export const routes: RouteHandler[] = [
       const githubToken = config.pluginUpdate?.githubToken ?? null;
       const checks = await checkAllUpdates(githubToken);
       const available = checks.filter((r) => r.updateAvailable);
-      const results: { name: string; previousVersion: string; newVersion: string; error?: string }[] =
-        [];
+      const results: {
+        name: string;
+        previousVersion: string;
+        newVersion: string;
+        error?: string;
+      }[] = [];
       for (const r of available) {
         try {
           const upd = await applyPluginUpdate(r.pluginName, githubToken);
@@ -121,7 +133,9 @@ export const routes: RouteHandler[] = [
       if (!plugin) return notFound('Plugin not found');
       try {
         const manifest = JSON.parse(plugin.manifest_json) as PluginManifest;
-        const { verifyPluginIntegrity } = await import('../../../../../src/plugins/supply-chain.ts');
+        const { verifyPluginIntegrity } = await import(
+          '../../../../../src/plugins/supply-chain.ts'
+        );
         const report = await verifyPluginIntegrity(plugin.entry, {
           name: manifest.name,
           version: manifest.version,

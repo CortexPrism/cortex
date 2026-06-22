@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {

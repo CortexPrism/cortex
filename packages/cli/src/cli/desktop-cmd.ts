@@ -1,6 +1,10 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
-import { executeDesktopAction, getDockerfile, getEntrypointScript } from '../../../../src/desktop/automation.ts';
+import {
+  executeDesktopAction,
+  getDockerfile,
+  getEntrypointScript,
+} from '../../../../src/desktop/automation.ts';
 import { dim, green } from '@std/fmt/colors';
 import { getTempDir } from '../../../../src/utils/platform.ts';
 import { join } from '@std/path';

@@ -1,6 +1,10 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { type getNode, listNodes, type NodeRecord } from '../../../../../src/hub/node-registry.ts';
-import { dispatchAndWait, getConnectedNodes, type getNodeConnectionCount } from '../../../../../src/hub/ws-node.ts';
+import {
+  dispatchAndWait,
+  getConnectedNodes,
+  type getNodeConnectionCount,
+} from '../../../../../src/hub/ws-node.ts';
 
 function directiveId(): string {
   return `dir_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;

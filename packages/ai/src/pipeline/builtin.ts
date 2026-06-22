@@ -454,7 +454,9 @@ class QuartermasterHook implements PipelineHook {
 
   async run(ctx: PipelineContext): Promise<HookResult> {
     try {
-      const { observe, predict, recordUserMessage } = await import('../../../../src/quartermaster/mod.ts');
+      const { observe, predict, recordUserMessage } = await import(
+        '../../../../src/quartermaster/mod.ts'
+      );
 
       if (ctx.stage === 'pre-tool') {
         recordUserMessage(ctx.sessionId, ctx.state.userMessage);

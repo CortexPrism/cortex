@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -36,7 +36,9 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/workflows\/tasks$/,
     handler: async () => {
-      const { getSubAgentTaskBoard } = await import('../../../../../src/agent/sub-agent-tracker.ts');
+      const { getSubAgentTaskBoard } = await import(
+        '../../../../../src/agent/sub-agent-tracker.ts'
+      );
       return json(getSubAgentTaskBoard());
     },
   },
@@ -67,7 +69,10 @@ export const routes: RouteHandler[] = [
       const { getWorkflow } = await import('../../workflow/engine.ts');
       const wf = getWorkflow(m[1]);
       if (!wf) return notFound('Workflow not found');
-      return json({ name: wf.name, description: (wf as unknown as Record<string, unknown>).description });
+      return json({
+        name: wf.name,
+        description: (wf as unknown as Record<string, unknown>).description,
+      });
     },
   },
   {
@@ -104,7 +109,13 @@ export const routes: RouteHandler[] = [
       const { getWorkflow, recordWorkflowRun } = await import('../../workflow/engine.ts');
       const wf = getWorkflow(m[1]);
       if (!wf) return notFound('Workflow not found');
-      try { const result = await wf.execute(); await recordWorkflowRun(result); return json(result); } catch (e) { return err((e as Error).message, 500); }
+      try {
+        const result = await wf.execute();
+        await recordWorkflowRun(result);
+        return json(result);
+      } catch (e) {
+        return err((e as Error).message, 500);
+      }
     },
   },
   {

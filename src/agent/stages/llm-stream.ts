@@ -4,12 +4,9 @@ import { executeTool, formatToolResults } from '../../tools/executor.ts';
 import { parseToolCalls } from '../../tools/executor.ts';
 import { stripToolCallMarkup } from '../helpers/strip-tool-calls.ts';
 import { runToolCalls } from './tool-executor.ts';
-import {
-  isConfigured as langfuseConfigured,
-  traceCreate,
-} from '../../observability/langfuse.ts';
+import { isConfigured as langfuseConfigured, traceCreate } from '../../observability/langfuse.ts';
 import { OBS_CONTEXT } from '../../observability/provider-wrapper.ts';
-import type { Message, CompletionOptions } from '../../llm/types.ts';
+import type { CompletionOptions, Message } from '../../llm/types.ts';
 import type { ToolCallRequest, ToolCallResult } from '../../tools/types.ts';
 import type { TurnContext } from '../pipeline/context.ts';
 

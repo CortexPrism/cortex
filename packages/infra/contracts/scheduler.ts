@@ -1,6 +1,6 @@
-export type JobStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-export type JobKind = "once" | "cron" | "interval";
+export type JobKind = 'once' | 'cron' | 'interval';
 
 export interface IJobRow {
   id: string;

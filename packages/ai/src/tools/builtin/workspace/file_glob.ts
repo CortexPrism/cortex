@@ -1,6 +1,9 @@
 import type { join } from '@std/path';
 import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
-import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../../../../src/workspace/paths.ts';
+import {
+  ensureAgentWorkspace,
+  resolveWorkspacePath,
+} from '../../../../../../src/workspace/paths.ts';
 
 const MAX_RESULTS = 200;
 const MAX_DEPTH = 20;

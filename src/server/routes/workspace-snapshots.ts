@@ -1,9 +1,12 @@
-import { type RouteHandler, json, notFound, err, savePartialProfile } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler, savePartialProfile } from './_helpers.ts';
 import type { SandboxRuntime } from '../../sandbox/executor.ts';
 import { loadConfig } from '../../config/config.ts';
 import { join } from '@std/path';
 
-const validateSandboxPath = async (inputPath: string, fieldName: string): Promise<string | null> => {
+const validateSandboxPath = async (
+  inputPath: string,
+  fieldName: string,
+): Promise<string | null> => {
   if (!inputPath || inputPath.includes('..')) {
     return `Invalid ${fieldName}: path traversal not allowed`;
   }
@@ -28,20 +31,33 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/workspace\/snapshots$/,
     handler: async (req) => {
       const body = await req.json() as {
-        name?: string; sessionId: string; agentId: string; workspacePath: string;
-        memoryContext?: string[]; toolState?: Array<Record<string, unknown>>;
-        tags?: string[]; includeContent?: boolean;
+        name?: string;
+        sessionId: string;
+        agentId: string;
+        workspacePath: string;
+        memoryContext?: string[];
+        toolState?: Array<Record<string, unknown>>;
+        tags?: string[];
+        includeContent?: boolean;
       };
       if (!body.sessionId) return err('sessionId required', 400);
       if (!body.workspacePath) return err('workspacePath required', 400);
       const pathErrW = await validateSandboxPath(body.workspacePath, 'workspacePath');
       if (pathErrW) return err(pathErrW, 400);
       const { captureWorkspaceSnapshot } = await import('../../sandbox/workspace-snapshot.ts');
-      return json(await captureWorkspaceSnapshot({
-        name: body.name, sessionId: body.sessionId, agentId: body.agentId ?? '',
-        workspacePath: body.workspacePath, memoryContext: body.memoryContext,
-        toolState: body.toolState as any, tags: body.tags, includeContent: body.includeContent,
-      }), 201);
+      return json(
+        await captureWorkspaceSnapshot({
+          name: body.name,
+          sessionId: body.sessionId,
+          agentId: body.agentId ?? '',
+          workspacePath: body.workspacePath,
+          memoryContext: body.memoryContext,
+          toolState: body.toolState as any,
+          tags: body.tags,
+          includeContent: body.includeContent,
+        }),
+        201,
+      );
     },
   },
   {

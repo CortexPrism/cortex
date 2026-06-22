@@ -1,6 +1,10 @@
 import { injectMemory } from '../../memory/inject.ts';
 import { bridgeSessionContext } from '../../memory/context-bridge.ts';
-import { findMatchingSkills, filterReliableSkills, formatSkillsForPrompt } from '../../memory/skills.ts';
+import {
+  filterReliableSkills,
+  findMatchingSkills,
+  formatSkillsForPrompt,
+} from '../../memory/skills.ts';
 import { buildPreferenceContext } from '../../memory/preference-learner.ts';
 import { applyMetaCogPrefix } from '../metacog.ts';
 import { injectToolsIntoPrompt } from '../../tools/executor.ts';

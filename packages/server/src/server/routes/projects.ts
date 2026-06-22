@@ -1,4 +1,4 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { PATHS } from '../../../../../src/config/paths.ts';
 import { join } from '@std/path';
 
@@ -24,7 +24,10 @@ export const routes: RouteHandler[] = [
         const repo = await getRepo(body.fullName, token);
         const name = body.projectName || repo.name;
         if (/[^a-zA-Z0-9_-]/.test(name)) {
-          return err('Project name may only contain letters, numbers, hyphens, and underscores', 400);
+          return err(
+            'Project name may only contain letters, numbers, hyphens, and underscores',
+            400,
+          );
         }
         const agentId = body.agentId || 'assistant';
         const cloneDir = join(PATHS.workspacesDir, agentId, name);

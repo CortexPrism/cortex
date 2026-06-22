@@ -1,6 +1,10 @@
-import { type RouteHandler, json, savePartialProfile } from './_helpers.ts';
+import { json, type RouteHandler, savePartialProfile } from './_helpers.ts';
 import { loadConfig, saveConfig } from '../../../../../src/config/config.ts';
-import type { ProviderKind, ProviderConfig, CortexConfig } from '../../../../../src/config/config.ts';
+import type {
+  CortexConfig,
+  ProviderConfig,
+  ProviderKind,
+} from '../../../../../src/config/config.ts';
 import { generatePersonalitySoul } from '../../../../../src/agent/soul.ts';
 import { runMigrations } from '../../../../../src/db/migrate.ts';
 
@@ -76,7 +80,8 @@ export const routes: RouteHandler[] = [
       if (body.vectorStore) {
         config.memory = {
           ...config.memory,
-          vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V } ? V
+          vectorStore: body.vectorStore as CortexConfig['memory'] extends { vectorStore: infer V }
+            ? V
             : never,
         };
       }
@@ -136,7 +141,8 @@ export const routes: RouteHandler[] = [
       cfg.onboarding = {
         ...(cfg.onboarding as Record<string, unknown> || {}),
         ...body,
-        startedAt: (cfg.onboarding as Record<string, unknown>)?.startedAt || new Date().toISOString(),
+        startedAt: (cfg.onboarding as Record<string, unknown>)?.startedAt ||
+          new Date().toISOString(),
       };
       await saveConfig(config);
       return json({ success: true });

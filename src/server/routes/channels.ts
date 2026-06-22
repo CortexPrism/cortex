@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -103,7 +103,11 @@ export const routes: RouteHandler[] = [
         {
           id: 'google-chat',
           name: 'Google Chat',
-          auth: [{ key: 'serviceAccountKey', label: 'Service Account Key (JSON)', type: 'password' }],
+          auth: [{
+            key: 'serviceAccountKey',
+            label: 'Service Account Key (JSON)',
+            type: 'password',
+          }],
           extra: [],
         },
         {
@@ -162,7 +166,9 @@ export const routes: RouteHandler[] = [
         const { stopChannel } = await import('../../channels/manager.ts');
         const { deleteChannel } = await import('../../channels/store.ts');
         const id = m[1];
-        try { await stopChannel(id); } catch { /* not running */ }
+        try {
+          await stopChannel(id);
+        } catch { /* not running */ }
         await deleteChannel(id);
         return json({ ok: true });
       } catch (e) {

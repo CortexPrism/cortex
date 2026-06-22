@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { enrichPluginVersions } from '../../plugins/update.ts';
 
 const MARKETPLACE_BASE = 'https://cortexprism.io';
@@ -57,9 +57,17 @@ export const routes: RouteHandler[] = [
       const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins/${slug}/download`);
       if (!dlRes.ok) return json({ error: `Plugin "${slug}" not found` }, 404);
       const manifest = await dlRes.json() as {
-        name: string; version: string; description?: string; kind: string;
-        entryPoint: string; capabilities?: string[]; author?: string;
-        homepage?: string; runtime?: string; license?: string; hash?: string;
+        name: string;
+        version: string;
+        description?: string;
+        kind: string;
+        entryPoint: string;
+        capabilities?: string[];
+        author?: string;
+        homepage?: string;
+        runtime?: string;
+        license?: string;
+        hash?: string;
       };
       const { installFromMarketplace } = await import('../../plugins/install.ts');
       try {
@@ -80,18 +88,29 @@ export const routes: RouteHandler[] = [
       const dlRes = await fetch(`${MARKETPLACE_BASE}/api/marketplace/agents/${slug}/download`);
       if (!dlRes.ok) return json({ error: `Agent "${slug}" not found` }, 404);
       const data = await dlRes.json() as {
-        name: string; description?: string; provider?: string; model?: string;
-        temperature?: number; tools?: string[]; tags?: string[];
-        systemPrompt?: string; soulContent?: string;
+        name: string;
+        description?: string;
+        provider?: string;
+        model?: string;
+        temperature?: number;
+        tools?: string[];
+        tags?: string[];
+        systemPrompt?: string;
+        soulContent?: string;
       };
       if (!data.name) return json({ error: 'Invalid agent config: missing name' }, 400);
       const { registerAgent } = await import('../../agent/manager.ts');
       try {
         const agent = await registerAgent({
-          name: data.name, description: data.description,
-          provider: data.provider as never, model: data.model,
-          temperature: data.temperature, soul: data.soulContent,
-          systemPrompt: data.systemPrompt, tools: data.tools, tags: data.tags,
+          name: data.name,
+          description: data.description,
+          provider: data.provider as never,
+          model: data.model,
+          temperature: data.temperature,
+          soul: data.soulContent,
+          systemPrompt: data.systemPrompt,
+          tools: data.tools,
+          tags: data.tags,
         });
         return json({ ok: true, name: agent.name, id: agent.id });
       } catch (e) {

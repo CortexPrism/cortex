@@ -6,7 +6,10 @@
  */
 
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
-import { type classifyContent, requiresSupervisor } from '../../../../../src/security/classification.ts';
+import {
+  type classifyContent,
+  requiresSupervisor,
+} from '../../../../../src/security/classification.ts';
 import { requestSupervisorDecision } from '../../../../../src/security/supervisor.ts';
 import type { SensitivityLevel } from '../../../../../src/security/classification.ts';
 

@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -88,7 +88,8 @@ export const routes: RouteHandler[] = [
       try {
         const cmd = new Deno.Command('git', {
           args: ['-C', dir, 'log', '--oneline', '-20'],
-          stdout: 'piped', stderr: 'null',
+          stdout: 'piped',
+          stderr: 'null',
         });
         const result = await cmd.output();
         const log = new TextDecoder().decode(result.stdout).trim();
@@ -109,7 +110,8 @@ export const routes: RouteHandler[] = [
       try {
         const cmd = new Deno.Command('git', {
           args: ['-C', dir, 'diff', '--stat'],
-          stdout: 'piped', stderr: 'null',
+          stdout: 'piped',
+          stderr: 'null',
         });
         const result = await cmd.output();
         const diff = new TextDecoder().decode(result.stdout).trim();
@@ -131,12 +133,15 @@ export const routes: RouteHandler[] = [
       const msg = body.message ?? 'manual commit';
       try {
         const addCmd = new Deno.Command('git', {
-          args: ['-C', dir, 'add', '-A'], stdout: 'null', stderr: 'null',
+          args: ['-C', dir, 'add', '-A'],
+          stdout: 'null',
+          stderr: 'null',
         });
         await addCmd.output();
         const commitCmd = new Deno.Command('git', {
           args: ['-C', dir, 'commit', '--no-gpg-sign', '-m', msg, '--allow-empty'],
-          stdout: 'piped', stderr: 'piped',
+          stdout: 'piped',
+          stderr: 'piped',
         });
         const result = await commitCmd.output();
         const out = new TextDecoder().decode(result.stdout).trim();

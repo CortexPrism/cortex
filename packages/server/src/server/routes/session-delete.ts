@@ -1,5 +1,5 @@
-import { type RouteHandler, json, notFound } from './_helpers.ts';
-import { getSession, deleteSession as deleteSessionDb } from '../../../../../src/db/sessions.ts';
+import { json, notFound, type RouteHandler } from './_helpers.ts';
+import { deleteSession as deleteSessionDb, getSession } from '../../../../../src/db/sessions.ts';
 
 export const routes: RouteHandler[] = [
   {

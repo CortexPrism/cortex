@@ -1,6 +1,6 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { loadConfig, saveConfig } from '../../../../../src/config/config.ts';
-import type { ProviderKind, AutoModelPoolEntry } from '../../../../../src/config/config.ts';
+import type { AutoModelPoolEntry, ProviderKind } from '../../../../../src/config/config.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -12,7 +12,9 @@ export const routes: RouteHandler[] = [
       const { getSignalWeights } = await import('../../quartermaster/mod.ts');
       const sessionId = url.searchParams.get('session') ?? undefined;
       const [summary, weights, accuracyTrend] = await Promise.all([
-        getQmSummary(sessionId), getSignalWeights(), getQmAccuracyTrend(sessionId),
+        getQmSummary(sessionId),
+        getSignalWeights(),
+        getQmAccuracyTrend(sessionId),
       ]);
       return json({ summary, weights, accuracyTrend });
     },
@@ -75,12 +77,19 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const url = new URL(req.url);
       const { getQmSummary, getQmAccuracyTrend } = await import('../../quartermaster/monitor.ts');
-      const { getSignalWeights, getToolStats, getDecisions, getPatterns } = await import('../../quartermaster/mod.ts');
+      const { getSignalWeights, getToolStats, getDecisions, getPatterns } = await import(
+        '../../quartermaster/mod.ts'
+      );
       const sessionId = url.searchParams.get('session') ?? undefined;
-      const [summary, weights, toolStats, recentDecisions, accuracyTrend, patterns] = await Promise.all([
-        getQmSummary(sessionId), getSignalWeights(), getToolStats(),
-        getDecisions(sessionId, 20), getQmAccuracyTrend(sessionId), getPatterns(30),
-      ]);
+      const [summary, weights, toolStats, recentDecisions, accuracyTrend, patterns] = await Promise
+        .all([
+          getQmSummary(sessionId),
+          getSignalWeights(),
+          getToolStats(),
+          getDecisions(sessionId, 20),
+          getQmAccuracyTrend(sessionId),
+          getPatterns(30),
+        ]);
       return json({ summary, weights, toolStats, recentDecisions, accuracyTrend, patterns });
     },
   },
@@ -108,10 +117,30 @@ export const routes: RouteHandler[] = [
       const body = await req.json() as Record<string, unknown>;
       const config = await loadConfig();
       const VALID_PROVIDERS: ProviderKind[] = [
-        'anthropic', 'openai', 'ollama', 'google', 'mistral', 'groq', 'deepseek',
-        'openrouter', 'xai', 'together', 'bedrock', 'cohere', 'kilo', 'cerebras',
-        'fireworks', 'perplexity', 'nvidia', 'moonshot', 'novita', 'lmstudio',
-        'litellm', 'huggingface', 'alibaba', 'venice',
+        'anthropic',
+        'openai',
+        'ollama',
+        'google',
+        'mistral',
+        'groq',
+        'deepseek',
+        'openrouter',
+        'xai',
+        'together',
+        'bedrock',
+        'cohere',
+        'kilo',
+        'cerebras',
+        'fireworks',
+        'perplexity',
+        'nvidia',
+        'moonshot',
+        'novita',
+        'lmstudio',
+        'litellm',
+        'huggingface',
+        'alibaba',
+        'venice',
       ];
       let autoModelPool: AutoModelPoolEntry[] | undefined;
       if (Array.isArray(body.autoModelPool)) {
@@ -125,22 +154,42 @@ export const routes: RouteHandler[] = [
           const key = `${provider}:${model}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          autoModelPool.push({ provider, model, enabled: entry.enabled !== undefined ? Boolean(entry.enabled) : true });
+          autoModelPool.push({
+            provider,
+            model,
+            enabled: entry.enabled !== undefined ? Boolean(entry.enabled) : true,
+          });
         }
       } else if (body.autoModelPool !== undefined) {
         autoModelPool = config.modelSelection?.autoModelPool ?? [];
       }
       config.modelSelection = {
-        enabled: body.enabled !== undefined ? Boolean(body.enabled) : (config.modelSelection?.enabled ?? false),
-        mode: (body.mode as 'conservative' | 'balanced' | 'aggressive') ?? config.modelSelection?.mode ?? 'balanced',
-        observeThreshold: Number(body.observeThreshold ?? config.modelSelection?.observeThreshold ?? 50),
-        enforceConfidence: Number(body.enforceConfidence ?? config.modelSelection?.enforceConfidence ?? 0.85),
-        suggestConfidence: Number(body.suggestConfidence ?? config.modelSelection?.suggestConfidence ?? 0.65),
-        costBudget: body.costBudget !== undefined ? Number(body.costBudget) : config.modelSelection?.costBudget,
-        allowedProviders: (body.allowedProviders as ProviderKind[] | undefined) ?? config.modelSelection?.allowedProviders,
-        quartermasterProvider: (body.quartermasterProvider as ProviderKind | undefined) ?? config.modelSelection?.quartermasterProvider,
-        quartermasterModel: (body.quartermasterModel as string | undefined) ?? config.modelSelection?.quartermasterModel,
-        autoModelPool: autoModelPool !== undefined ? autoModelPool : config.modelSelection?.autoModelPool ?? [],
+        enabled: body.enabled !== undefined
+          ? Boolean(body.enabled)
+          : (config.modelSelection?.enabled ?? false),
+        mode: (body.mode as 'conservative' | 'balanced' | 'aggressive') ??
+          config.modelSelection?.mode ?? 'balanced',
+        observeThreshold: Number(
+          body.observeThreshold ?? config.modelSelection?.observeThreshold ?? 50,
+        ),
+        enforceConfidence: Number(
+          body.enforceConfidence ?? config.modelSelection?.enforceConfidence ?? 0.85,
+        ),
+        suggestConfidence: Number(
+          body.suggestConfidence ?? config.modelSelection?.suggestConfidence ?? 0.65,
+        ),
+        costBudget: body.costBudget !== undefined
+          ? Number(body.costBudget)
+          : config.modelSelection?.costBudget,
+        allowedProviders: (body.allowedProviders as ProviderKind[] | undefined) ??
+          config.modelSelection?.allowedProviders,
+        quartermasterProvider: (body.quartermasterProvider as ProviderKind | undefined) ??
+          config.modelSelection?.quartermasterProvider,
+        quartermasterModel: (body.quartermasterModel as string | undefined) ??
+          config.modelSelection?.quartermasterModel,
+        autoModelPool: autoModelPool !== undefined
+          ? autoModelPool
+          : config.modelSelection?.autoModelPool ?? [],
       };
       await saveConfig(config);
       return json({ success: true, modelSelection: config.modelSelection });
@@ -151,11 +200,18 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/mqm\/summary$/,
     handler: async (req) => {
       const url = new URL(req.url);
-      const { getMqmSummary, getMqmAccuracyTrend } = await import('../../model-quartermaster/monitor.ts');
-      const { getModelSignalWeights, getAllModelStats } = await import('../../model-quartermaster/store.ts');
+      const { getMqmSummary, getMqmAccuracyTrend } = await import(
+        '../../model-quartermaster/monitor.ts'
+      );
+      const { getModelSignalWeights, getAllModelStats } = await import(
+        '../../model-quartermaster/store.ts'
+      );
       const sessionId = url.searchParams.get('session') ?? undefined;
       const [summary, stats, accuracyTrend, weights] = await Promise.all([
-        getMqmSummary(sessionId), getAllModelStats(), getMqmAccuracyTrend(24), getModelSignalWeights(),
+        getMqmSummary(sessionId),
+        getAllModelStats(),
+        getMqmAccuracyTrend(24),
+        getModelSignalWeights(),
       ]);
       return json({ summary, stats, accuracyTrend, weights });
     },

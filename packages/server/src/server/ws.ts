@@ -1,7 +1,12 @@
 import { logger } from '../../../../src/utils/logger.ts';
 import { agentTurn } from '../../../../src/agent/loop.ts';
 import { buildSystemPrompt, type loadSoulContext } from '../../../../src/agent/soul.ts';
-import { closeSession, createSession, getSession, resumeSession } from '../../../../src/db/sessions.ts';
+import {
+  closeSession,
+  createSession,
+  getSession,
+  resumeSession,
+} from '../../../../src/db/sessions.ts';
 import { logEvent } from '../../../../src/db/lens.ts';
 import { initSessionDb } from '../../../../src/db/migrate.ts';
 import {
@@ -122,7 +127,9 @@ async function isWsAuthenticated(req: Request): Promise<boolean> {
  */
 export async function requestWebUIApproval(
   ws: WebSocket,
-  req: Parameters<typeof import('../../../../src/security/supervisor.ts')['requestSupervisorDecision']>[0],
+  req: Parameters<
+    typeof import('../../../../src/security/supervisor.ts')['requestSupervisorDecision']
+  >[0],
   reasoning: string,
 ): Promise<boolean> {
   const requestId = crypto.randomUUID();
@@ -423,7 +430,9 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       ]);
 
       // Create a tool progress forwarder that sends sub-agent events to the client
-      const subAgentProgressHandler = (event: import('../../../../src/tools/types.ts').ToolProgressEvent) => {
+      const subAgentProgressHandler = (
+        event: import('../../../../src/tools/types.ts').ToolProgressEvent,
+      ) => {
         try {
           send(ws, event);
         } catch {
@@ -1046,9 +1055,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       try {
         const { isWindows: platformIsWindows } = await import('../../../../src/utils/platform.ts');
         const shellCmd = platformIsWindows() ? 'powershell.exe' : 'bash';
-        const shellArgs = platformIsWindows()
-          ? ['-NoProfile', '-NoLogo']
-          : ['--norc'];
+        const shellArgs = platformIsWindows() ? ['-NoProfile', '-NoLogo'] : ['--norc'];
         const cwd = (msg as { cwd?: string }).cwd || Deno.cwd();
         const proc = new Deno.Command(shellCmd, {
           args: shellArgs,
@@ -1059,7 +1066,8 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           env: {
             TERM: 'xterm-256color',
             HOME: Deno.env.get('HOME') || '',
-            PATH: Deno.env.get('PATH') || '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            PATH: Deno.env.get('PATH') ||
+              '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
             PWD: cwd,
             SHELL: shellCmd,
             LANG: Deno.env.get('LANG') || 'en_US.UTF-8',

@@ -1,4 +1,4 @@
-import { type RouteHandler, ensureCorsOrigin, _corsOrigin } from './_helpers.ts';
+import { _corsOrigin, ensureCorsOrigin, type RouteHandler } from './_helpers.ts';
 import { mergeSecurityHeaders } from '../security-headers.ts';
 
 export const routes: RouteHandler[] = [

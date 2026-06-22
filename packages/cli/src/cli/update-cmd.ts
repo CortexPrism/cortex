@@ -1,7 +1,13 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
 import { bold, cyan, dim, green, red, yellow } from '@std/fmt/colors';
-import { applyUpdate, checkForUpdates, cleanup, getUpdateStatus, rollback } from '../../../../src/update/mod.ts';
+import {
+  applyUpdate,
+  checkForUpdates,
+  cleanup,
+  getUpdateStatus,
+  rollback,
+} from '../../../../src/update/mod.ts';
 import { i18n } from '../../../../src/i18n/service.ts';
 
 export const updateCommand = cortexCommand('update')

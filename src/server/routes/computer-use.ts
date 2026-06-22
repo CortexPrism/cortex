@@ -1,4 +1,9 @@
-import { type RouteHandler, json, listComputerScreenshots, listComputerActions } from './_helpers.ts';
+import {
+  json,
+  listComputerActions,
+  listComputerScreenshots,
+  type RouteHandler,
+} from './_helpers.ts';
 import { loadConfig } from '../../config/config.ts';
 
 export const routes: RouteHandler[] = [

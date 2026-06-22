@@ -252,7 +252,11 @@ async function handleTuiSlash(
       break;
     }
     case 'theme': {
-      const themes: Record<string, import('../../../../src/tui/style.ts').Theme> = { dark, light, contrast };
+      const themes: Record<string, import('../../../../src/tui/style.ts').Theme> = {
+        dark,
+        light,
+        contrast,
+      };
       const theme = themes[arg || 'dark'];
       if (theme) {
         renderer.setTheme(theme);

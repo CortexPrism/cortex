@@ -1,4 +1,8 @@
-import type { IToolDefinition, IToolCallResult, IMcpServerConfig } from '../../core/contracts/mod.ts';
+import type {
+  IMcpServerConfig,
+  IToolCallResult,
+  IToolDefinition,
+} from '../../core/contracts/mod.ts';
 
 export interface IMcpConnection {
   name: string;

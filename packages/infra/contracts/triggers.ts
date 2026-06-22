@@ -1,7 +1,7 @@
 export interface ITriggerConfig {
   name: string;
   event: string;
-  action: "webhook" | "shell" | "agent";
+  action: 'webhook' | 'shell' | 'agent';
   config: Record<string, unknown>;
   enabled: boolean;
 }

@@ -164,7 +164,9 @@ mcpCommand
       .arguments('<name:string>')
       .description('Disconnect from a connected MCP agent')
       .action(async (_opts: Record<string, unknown>, _ctx: Ctx, name: string) => {
-        const { disconnectHttp, disconnectStdio, getConnection } = await import('../../../../src/mcp/client.ts');
+        const { disconnectHttp, disconnectStdio, getConnection } = await import(
+          '../../../../src/mcp/client.ts'
+        );
         const conn = getConnection(name);
         if (!conn) {
           console.error(red(i18n.t('cli.mcp.noConnectionNamed', { name })));
@@ -283,7 +285,9 @@ mcpCommand
         cortexCommand('health')
           .description('Run health checks on all managed MCP servers')
           .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
-            const { listServers, updateServer } = await import('../../../../src/mcp-gateway/mod.ts');
+            const { listServers, updateServer } = await import(
+              '../../../../src/mcp-gateway/mod.ts'
+            );
             const { healthCheck } = await import('../../../../src/mcp-gateway/gateway.ts');
             const servers = listServers();
             if (servers.length === 0) {

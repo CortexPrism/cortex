@@ -1,7 +1,12 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
 import { Input } from '@cliffy/prompt';
-import { createProject, deleteProject, listProjects, type loadProject } from '../../../../src/projects/manager.ts';
+import {
+  createProject,
+  deleteProject,
+  listProjects,
+  type loadProject,
+} from '../../../../src/projects/manager.ts';
 import { green, type yellow } from '@std/fmt/colors';
 import { i18n } from '../../../../src/i18n/service.ts';
 

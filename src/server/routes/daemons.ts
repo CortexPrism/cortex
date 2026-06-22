@@ -1,5 +1,5 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
-import { pingProcess, EXECUTOR_SOCK, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../../ipc/transport.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
+import { EXECUTOR_SOCK, pingProcess, SCHEDULER_SOCK, VALIDATOR_SOCK } from '../../ipc/transport.ts';
 import { PATHS } from '../../config/paths.ts';
 import { join } from '@std/path';
 

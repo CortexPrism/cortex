@@ -1,8 +1,11 @@
-import { type RouteHandler, json, notFound, err } from './_helpers.ts';
+import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import type { SandboxRuntime } from '../../sandbox/executor.ts';
 import { loadConfig } from '../../config/config.ts';
 
-const validateSandboxPath = async (inputPath: string, fieldName: string): Promise<string | null> => {
+const validateSandboxPath = async (
+  inputPath: string,
+  fieldName: string,
+): Promise<string | null> => {
   if (!inputPath || inputPath.includes('..')) {
     return `Invalid ${fieldName}: path traversal not allowed`;
   }
@@ -31,11 +34,36 @@ export const routes: RouteHandler[] = [
       const gvisorOk = await isGVisorAvailable();
       return json({
         backends: [
-          { kind: 'docker', label: 'Docker', available: dockerOk, description: 'Local Docker container' },
-          { kind: 'subprocess', label: 'Subprocess', available: true, description: 'Native subprocess' },
-          { kind: 'gvisor', label: 'gVisor', available: gvisorOk, description: 'gVisor sandbox (requires installation)' },
-          { kind: 'e2b', label: 'E2B', available: !!Deno.env.get('E2B_API_KEY'), description: 'E2B cloud sandbox' },
-          { kind: 'daytona', label: 'Daytona', available: !!Deno.env.get('DAYTONA_API_KEY'), description: 'Daytona dev environments' },
+          {
+            kind: 'docker',
+            label: 'Docker',
+            available: dockerOk,
+            description: 'Local Docker container',
+          },
+          {
+            kind: 'subprocess',
+            label: 'Subprocess',
+            available: true,
+            description: 'Native subprocess',
+          },
+          {
+            kind: 'gvisor',
+            label: 'gVisor',
+            available: gvisorOk,
+            description: 'gVisor sandbox (requires installation)',
+          },
+          {
+            kind: 'e2b',
+            label: 'E2B',
+            available: !!Deno.env.get('E2B_API_KEY'),
+            description: 'E2B cloud sandbox',
+          },
+          {
+            kind: 'daytona',
+            label: 'Daytona',
+            available: !!Deno.env.get('DAYTONA_API_KEY'),
+            description: 'Daytona dev environments',
+          },
         ],
         default: dockerOk ? 'docker' : 'subprocess',
       });
@@ -54,8 +82,11 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/sandbox\/debug$/,
     handler: async (req) => {
       const body = await req.json() as { enabled?: boolean };
-      const { setSandboxDebug, toggleSandboxDebug, isSandboxDebug } = await import('../../sandbox/logger.ts');
-      if (body.enabled !== undefined) { setSandboxDebug(body.enabled); } else { toggleSandboxDebug(); }
+      const { setSandboxDebug, toggleSandboxDebug, isSandboxDebug } = await import(
+        '../../sandbox/logger.ts'
+      );
+      if (body.enabled !== undefined) setSandboxDebug(body.enabled);
+      else toggleSandboxDebug();
       return json({ enabled: isSandboxDebug() });
     },
   },
@@ -63,13 +94,32 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/sandbox\/snapshots$/,
     handler: async (req) => {
-      const body = await req.json() as { name?: string; sessionId: string; agentId: string; workspacePath: string; runtime?: string; env?: Record<string, string>; tags?: string[]; };
+      const body = await req.json() as {
+        name?: string;
+        sessionId: string;
+        agentId: string;
+        workspacePath: string;
+        runtime?: string;
+        env?: Record<string, string>;
+        tags?: string[];
+      };
       if (!body.sessionId) return err('sessionId required', 400);
       if (!body.workspacePath) return err('workspacePath required', 400);
       const pathErr = await validateSandboxPath(body.workspacePath, 'workspacePath');
       if (pathErr) return err(pathErr, 400);
       const { captureEnvironmentSnapshot } = await import('../../sandbox/replication.ts');
-      return json(await captureEnvironmentSnapshot({ name: body.name, sessionId: body.sessionId, agentId: body.agentId ?? '', workspacePath: body.workspacePath, runtime: body.runtime as SandboxRuntime, env: body.env, tags: body.tags }), 201);
+      return json(
+        await captureEnvironmentSnapshot({
+          name: body.name,
+          sessionId: body.sessionId,
+          agentId: body.agentId ?? '',
+          workspacePath: body.workspacePath,
+          runtime: body.runtime as SandboxRuntime,
+          env: body.env,
+          tags: body.tags,
+        }),
+        201,
+      );
     },
   },
   {
@@ -90,7 +140,9 @@ export const routes: RouteHandler[] = [
       const m = path.match(/^\/api\/sandbox\/snapshots\/([^/]+)$/);
       if (!m) return notFound();
       if (path.includes('/compare') || path.includes('/replicate')) return notFound();
-      const { getEnvironmentSnapshot, maskSensitiveEnv } = await import('../../sandbox/replication.ts');
+      const { getEnvironmentSnapshot, maskSensitiveEnv } = await import(
+        '../../sandbox/replication.ts'
+      );
       const snap = await getEnvironmentSnapshot(m[1]);
       if (!snap) return notFound('Snapshot not found');
       snap.env = maskSensitiveEnv(snap.env);
@@ -147,7 +199,14 @@ export const routes: RouteHandler[] = [
       const pathErrD = await validateSandboxPath(body.workspacePath, 'workspacePath');
       if (pathErrD) return err(pathErrD, 400);
       const { generateDevEnvManifest } = await import('../../sandbox/dev-env-code.ts');
-      return json(await generateDevEnvManifest({ workspacePath: body.workspacePath, name: body.name, runtime: body.runtime as SandboxRuntime }), 201);
+      return json(
+        await generateDevEnvManifest({
+          workspacePath: body.workspacePath,
+          name: body.name,
+          runtime: body.runtime as SandboxRuntime,
+        }),
+        201,
+      );
     },
   },
   {
@@ -174,7 +233,9 @@ export const routes: RouteHandler[] = [
       const pathErrP = await validateSandboxPath(body.workspacePath, 'workspacePath');
       if (pathErrP) return err(pathErrP, 400);
       if (!body.manifest) return err('manifest required', 400);
-      const { saveDevEnvManifest, validateDevEnvManifest } = await import('../../sandbox/dev-env-code.ts');
+      const { saveDevEnvManifest, validateDevEnvManifest } = await import(
+        '../../sandbox/dev-env-code.ts'
+      );
       const validation = validateDevEnvManifest(body.manifest);
       if (!validation.valid) return err(`Invalid manifest: ${validation.errors.join(', ')}`, 400);
       return json(await saveDevEnvManifest(body.workspacePath, body.manifest as any));
@@ -192,12 +253,33 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/sandbox\/bug-repro$/,
     handler: async (req) => {
-      const body = await req.json() as { issueTitle: string; issueDescription?: string; language: string; code: string; testCode?: string; runtime?: string; sessionId?: string; tags?: string[]; };
+      const body = await req.json() as {
+        issueTitle: string;
+        issueDescription?: string;
+        language: string;
+        code: string;
+        testCode?: string;
+        runtime?: string;
+        sessionId?: string;
+        tags?: string[];
+      };
       if (!body.issueTitle) return err('issueTitle required', 400);
       if (!body.language) return err('language required', 400);
       if (!body.code) return err('code required', 400);
       const { createBugRepro } = await import('../../sandbox/bug-repro.ts');
-      return json(await createBugRepro({ issueTitle: body.issueTitle, issueDescription: body.issueDescription ?? '', language: body.language, code: body.code, testCode: body.testCode, runtime: body.runtime as SandboxRuntime, sessionId: body.sessionId, tags: body.tags }), 201);
+      return json(
+        await createBugRepro({
+          issueTitle: body.issueTitle,
+          issueDescription: body.issueDescription ?? '',
+          language: body.language,
+          code: body.code,
+          testCode: body.testCode,
+          runtime: body.runtime as SandboxRuntime,
+          sessionId: body.sessionId,
+          tags: body.tags,
+        }),
+        201,
+      );
     },
   },
   {
@@ -252,11 +334,21 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/sandbox\/config$/,
     handler: async () => {
-      const { getAvailableRuntime, isDockerAvailable, isGVisorAvailable } = await import('../../sandbox/executor.ts');
+      const { getAvailableRuntime, isDockerAvailable, isGVisorAvailable } = await import(
+        '../../sandbox/executor.ts'
+      );
       const runtime = await getAvailableRuntime();
       const dockerOk = await isDockerAvailable();
       const gvisorOk = await isGVisorAvailable();
-      return json({ runtime, dockerAvailable: dockerOk, gvisorAvailable: gvisorOk, timeoutMs: 30_000, memoryLimitMb: 256, cpuLimit: 0.5, supportedLanguages: ['python', 'javascript', 'typescript', 'bash', 'ruby', 'go', 'rust'] });
+      return json({
+        runtime,
+        dockerAvailable: dockerOk,
+        gvisorAvailable: gvisorOk,
+        timeoutMs: 30_000,
+        memoryLimitMb: 256,
+        cpuLimit: 0.5,
+        supportedLanguages: ['python', 'javascript', 'typescript', 'bash', 'ruby', 'go', 'rust'],
+      });
     },
   },
 ];

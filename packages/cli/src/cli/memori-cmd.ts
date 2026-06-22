@@ -21,7 +21,9 @@ export const memoriCommand = cortexCommand('memori')
       .arguments('[sessionId:string]')
       .action(async (_opts: Record<string, unknown>, _ctx: Ctx, sessionId?: string) => {
         const { getCoreDb } = await import('../../../../src/db/client.ts');
-        const { initCheckpointStore, listCheckpoints } = await import('../../../../src/memori/mod.ts');
+        const { initCheckpointStore, listCheckpoints } = await import(
+          '../../../../src/memori/mod.ts'
+        );
 
         const db = await getCoreDb();
         await initCheckpointStore(db);
@@ -58,7 +60,9 @@ export const memoriCommand = cortexCommand('memori')
         }
 
         const { getCoreDb } = await import('../../../../src/db/client.ts');
-        const { initCheckpointStore, pruneOldCheckpoints } = await import('../../../../src/memori/mod.ts');
+        const { initCheckpointStore, pruneOldCheckpoints } = await import(
+          '../../../../src/memori/mod.ts'
+        );
 
         const db = await getCoreDb();
         await initCheckpointStore(db);

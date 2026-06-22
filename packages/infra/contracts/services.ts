@@ -12,7 +12,7 @@ export interface IServiceDef {
   maxRestarts: number;
   healthCheckInterval: number;
   env?: string;
-  status: "stopped" | "running" | "failed";
+  status: 'stopped' | 'running' | 'failed';
   pid: number | null;
   lastStartedAt: string | null;
   lastHealthCheck: string | null;
@@ -25,7 +25,7 @@ export interface IServiceRuntime {
   pid: number;
   startedAt: number;
   alive: boolean;
-  health: "healthy" | "unhealthy" | "unknown";
+  health: 'healthy' | 'unhealthy' | 'unknown';
 }
 
 export interface IServiceManager {

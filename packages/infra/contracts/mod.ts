@@ -5,7 +5,7 @@ export type {
   IScheduler,
   JobKind,
   JobStatus,
-} from "./scheduler.ts";
+} from './scheduler.ts';
 
 export type {
   IIntentMessage,
@@ -13,17 +13,8 @@ export type {
   IIpcMessage,
   IIPCTransport,
   IpcMessageType,
-} from "./ipc.ts";
+} from './ipc.ts';
 
-export type {
-  IServiceDef,
-  IServiceManager,
-  IServiceRuntime,
-} from "./services.ts";
+export type { IServiceDef, IServiceManager, IServiceRuntime } from './services.ts';
 
-export type {
-  ITrigger,
-  ITriggerConfig,
-  ITriggerEvent,
-  ITriggerManager,
-} from "./triggers.ts";
+export type { ITrigger, ITriggerConfig, ITriggerEvent, ITriggerManager } from './triggers.ts';

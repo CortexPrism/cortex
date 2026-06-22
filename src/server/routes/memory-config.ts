@@ -1,9 +1,13 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 import { getMemoryDb } from '../../db/client.ts';
 import { getMemoryHealth } from '../../memory/heuristics.ts';
 import { listReflections } from '../../agent/reflect.ts';
 import { loadConfig, saveConfig } from '../../config/config.ts';
-import type { EmbeddingConfig, MemoryConfig, MemoryVectorStoreConfig } from '../../config/config.ts';
+import type {
+  EmbeddingConfig,
+  MemoryConfig,
+  MemoryVectorStoreConfig,
+} from '../../config/config.ts';
 
 export const routes: RouteHandler[] = [
   {

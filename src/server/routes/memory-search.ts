@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 import { loadConfig } from '../../config/config.ts';
 import { buildEmbedder } from '../../memory/embeddings.ts';
 import { retrieve } from '../../memory/store.ts';

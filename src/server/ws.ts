@@ -1046,9 +1046,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
       try {
         const { isWindows: platformIsWindows } = await import('../utils/platform.ts');
         const shellCmd = platformIsWindows() ? 'powershell.exe' : 'bash';
-        const shellArgs = platformIsWindows()
-          ? ['-NoProfile', '-NoLogo']
-          : ['--norc'];
+        const shellArgs = platformIsWindows() ? ['-NoProfile', '-NoLogo'] : ['--norc'];
         const cwd = (msg as { cwd?: string }).cwd || Deno.cwd();
         const proc = new Deno.Command(shellCmd, {
           args: shellArgs,
@@ -1059,7 +1057,8 @@ export async function handleWebSocket(req: Request): Promise<Response> {
           env: {
             TERM: 'xterm-256color',
             HOME: Deno.env.get('HOME') || '',
-            PATH: Deno.env.get('PATH') || '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            PATH: Deno.env.get('PATH') ||
+              '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
             PWD: cwd,
             SHELL: shellCmd,
             LANG: Deno.env.get('LANG') || 'en_US.UTF-8',

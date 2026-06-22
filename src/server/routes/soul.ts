@@ -1,4 +1,4 @@
-import { type RouteHandler, json } from './_helpers.ts';
+import { json, type RouteHandler } from './_helpers.ts';
 import { PATHS } from '../../config/paths.ts';
 import { exists } from '@std/fs';
 import { generatePersonalitySoul } from '../../agent/soul.ts';

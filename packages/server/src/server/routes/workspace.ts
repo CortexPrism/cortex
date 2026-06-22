@@ -1,4 +1,4 @@
-import { type RouteHandler, json, err } from './_helpers.ts';
+import { err, json, type RouteHandler } from './_helpers.ts';
 import { dirname } from '@std/path';
 
 export const routes: RouteHandler[] = [
@@ -37,7 +37,10 @@ export const routes: RouteHandler[] = [
       const { getAgentWorkspaceDir } = await import('../../workspace/paths.ts');
       const dir = getAgentWorkspaceDir(m[1]);
       let ex = false;
-      try { await Deno.stat(dir); ex = true; } catch { /* doesn't exist */ }
+      try {
+        await Deno.stat(dir);
+        ex = true;
+      } catch { /* doesn't exist */ }
       return json({ agentId: m[1], workspaceDir: dir, exists: ex });
     },
   },
@@ -47,7 +50,9 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/workspace\/files(\/.*)?$/);
       if (!m) return err('Not found', 404);
-      const { getGlobalWorkspaceDir, resolveWorkspacePath } = await import('../../workspace/paths.ts');
+      const { getGlobalWorkspaceDir, resolveWorkspacePath } = await import(
+        '../../workspace/paths.ts'
+      );
       const relPath = workspaceRelPath(m, 1);
       const targetPath = relPath
         ? resolveWorkspacePath('global', relPath, 'global')
@@ -133,7 +138,9 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/workspace\/agents\/([^/]+)\/files(\/.*)?$/);
       if (!m) return err('Not found', 404);
-      const { ensureAgentWorkspace, resolveWorkspacePath } = await import('../../workspace/paths.ts');
+      const { ensureAgentWorkspace, resolveWorkspacePath } = await import(
+        '../../workspace/paths.ts'
+      );
       const agentId = m[1];
       await ensureAgentWorkspace(agentId);
       const relPath = workspaceRelPath(m);
@@ -151,7 +158,9 @@ export const routes: RouteHandler[] = [
     handler: async (_req, path) => {
       const m = path.match(/^\/api\/workspace\/agents\/([^/]+)\/files(\/.*)?$/);
       if (!m) return err('Not found', 404);
-      const { ensureAgentWorkspace, resolveWorkspacePath } = await import('../../workspace/paths.ts');
+      const { ensureAgentWorkspace, resolveWorkspacePath } = await import(
+        '../../workspace/paths.ts'
+      );
       const agentId = m[1];
       await ensureAgentWorkspace(agentId);
       const relPath = workspaceRelPath(m);

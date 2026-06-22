@@ -1,7 +1,11 @@
 import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
 import { Confirm, Input, Select } from '@cliffy/prompt';
-import { listTriggers, registerTrigger, unregisterTrigger } from '../../../../src/triggers/manager.ts';
+import {
+  listTriggers,
+  registerTrigger,
+  unregisterTrigger,
+} from '../../../../src/triggers/manager.ts';
 import { installGitHooks, uninstallGitHooks } from '../../../../src/triggers/git-hooks.ts';
 import type { TriggerConfig } from '../../../../src/triggers/types.ts';
 import { i18n } from '../../../../src/i18n/service.ts';

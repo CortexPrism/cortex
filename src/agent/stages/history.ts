@@ -100,7 +100,12 @@ export async function loadHistory(ctx: TurnContext): Promise<void> {
   const recencyWindow = options.historyRecencyWindow ?? 20;
   const semanticK = options.historySemanticK ?? 5;
   _log.debug(`Loading history`, { turnId, recencyWindow, semanticK });
-  const history = await loadHybridHistory(options.sessionDb, effectiveInput, recencyWindow, semanticK);
+  const history = await loadHybridHistory(
+    options.sessionDb,
+    effectiveInput,
+    recencyWindow,
+    semanticK,
+  );
   const messages: Message[] = [...history];
   _log.debug(`History loaded`, {
     turnId,

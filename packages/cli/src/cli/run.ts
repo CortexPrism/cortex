@@ -2,7 +2,11 @@ import { cortexCommand } from './command-builder.ts';
 import type { Ctx } from './command-builder.ts';
 import { bold, type cyan, dim, type green, red, type yellow } from '@std/fmt/colors';
 import { buildProvider } from '../../../../src/llm/router.ts';
-import { formatSandboxResult, isDockerAvailable, runInSandbox } from '../../../../src/sandbox/executor.ts';
+import {
+  formatSandboxResult,
+  isDockerAvailable,
+  runInSandbox,
+} from '../../../../src/sandbox/executor.ts';
 import { autofix } from '../../../../src/sandbox/autofix.ts';
 import { i18n } from '../../../../src/i18n/service.ts';
 
