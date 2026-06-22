@@ -1,71 +1,79 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, CustomMenuItem};
+use std::process::Child;
+use std::sync::Mutex;
+use tauri::{Emitter, Manager};
+
+mod commands;
+mod tray;
+
+use commands::{
+    get_clipboard, get_server_status, get_system_info, open_external, set_clipboard, start_server,
+    stop_server,
+};
+
+pub struct ServerProcess {
+    pub child: Option<Child>,
+    pub port: u16,
+}
+
+pub struct AppState {
+    pub server: Mutex<ServerProcess>,
+}
+
+impl AppState {
+    pub fn new(port: u16) -> Self {
+        Self {
+            server: Mutex::new(ServerProcess {
+                child: None,
+                port,
+            }),
+        }
+    }
+}
+
+const DEFAULT_PORT: u16 = 18181;
 
 fn main() {
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(CustomMenuItem::new("open", "Open Cortex"))
-        .add_item(CustomMenuItem::new("quick_ask", "Quick Ask"))
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new("status", "Agent: idle"))
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new("quit", "Quit"));
-
-    let tray = SystemTray::new()
-        .with_menu(tray_menu)
-        .with_tooltip("Cortex — Agentic Harness");
-
     tauri::Builder::default()
-        .system_tray(tray)
-        .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
-                "open" => {
-                    if let Some(window) = app.get_window("main") {
-                        window.show().ok();
-                        window.set_focus().ok();
-                    }
-                }
-                "quick_ask" => {
-                    let _ = app.emit_all("quick-ask", "open");
-                }
-                "quit" => {
-                    std::process::exit(0);
-                }
-                _ => {}
-            },
-            SystemTrayEvent::LeftClick { .. } => {
-                if let Some(window) = app.get_window("main") {
-                    if window.is_visible().unwrap_or(false) {
-                        window.hide().ok();
-                    } else {
-                        window.show().ok();
-                        window.set_focus().ok();
-                    }
-                }
-            }
-            _ => {}
-        })
-        .on_window_event(|event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
-                event.window().hide().ok();
-                api.prevent_close();
-            }
-        })
         .setup(|app| {
-            let window = app.get_window("main").unwrap();
+            let window = app.get_webview_window("main").unwrap();
 
             #[cfg(target_os = "macos")]
             {
                 use tauri::ActivationPolicy;
-                app.set_activation_policy(ActivationPolicy::Accessory);
+                let _ = app.set_activation_policy(ActivationPolicy::Accessory);
             }
 
-            let _ = window.eval(
-                "document.title = 'Cortex Dashboard';"
-            );
+            let _ = window.eval("document.title = 'Cortex Desktop';");
+
+            let _tray = tray::build_tray(app);
+
+            let app_handle = app.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let state = app_handle.state::<AppState>();
+                let _ = start_server(state).await;
+                let _ = app_handle.emit("server-status-changed", ());
+            });
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                window.hide().ok();
+                api.prevent_close();
+            }
+        })
+        .manage(AppState::new(DEFAULT_PORT))
+        .invoke_handler(tauri::generate_handler![
+            get_system_info,
+            get_server_status,
+            start_server,
+            stop_server,
+            get_clipboard,
+            set_clipboard,
+            open_external,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Cortex Desktop");
 }
