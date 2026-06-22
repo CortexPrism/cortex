@@ -995,7 +995,8 @@ submission standards.
 
 CortexPrism is a single-process AI agent operating system built on Deno. All state is persisted in
 SQLite (WAL mode) via `@libsql/client`. The codebase was modularized in v0.48.6 into 6 coarse
-packages following a dependency graph `core ← gate ← ai ← server ← cli` and `core ← ai ← infra ← cli`.
+packages following a dependency graph `core ← gate ← ai ← server ← cli` and
+`core ← ai ← infra ← cli`.
 
 ```
 CLI / Web UI / REST API
@@ -1026,16 +1027,17 @@ CLI / Web UI / REST API
    cortex.db · memory.db · lens.db · vault.db
 ```
 
-| Package         | Responsibility                                          |
-| --------------- | ------------------------------------------------------- |
-| `@cortex/core`  | Config, database, i18n, logging, paths, plugin system   |
-| `@cortex/gate`  | Security (policy, vault, supervisor), sandbox, VFS      |
-| `@cortex/ai`    | Agent loop, tools, memory, LLM providers, pipeline      |
-| `@cortex/server`| HTTP server, WebSocket hub, channels, A2A, MCP, voice   |
-| `@cortex/infra` | Process supervisor, services, scheduler, IPC, triggers  |
-| `@cortex/cli`   | CLI commands, TUI                                       |
+| Package          | Responsibility                                         |
+| ---------------- | ------------------------------------------------------ |
+| `@cortex/core`   | Config, database, i18n, logging, paths, plugin system  |
+| `@cortex/gate`   | Security (policy, vault, supervisor), sandbox, VFS     |
+| `@cortex/ai`     | Agent loop, tools, memory, LLM providers, pipeline     |
+| `@cortex/server` | HTTP server, WebSocket hub, channels, A2A, MCP, voice  |
+| `@cortex/infra`  | Process supervisor, services, scheduler, IPC, triggers |
+| `@cortex/cli`    | CLI commands, TUI                                      |
 
-Each package defines contract interfaces in `packages/<name>/contracts/` for cross-package boundaries.
+Each package defines contract interfaces in `packages/<name>/contracts/` for cross-package
+boundaries.
 
 ---
 
