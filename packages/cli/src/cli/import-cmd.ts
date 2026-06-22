@@ -372,14 +372,22 @@ const configCmd = cortexCommand('config')
     if (imported.providers) {
       const provs = imported.providers as Record<string, unknown>;
       totalProviders = Object.keys(provs).length;
-      console.log(`    ${cyan('Providers:')}     ${totalProviders} (${Object.keys(provs).map((k) => dim(k)).join(', ')})`);
+      console.log(
+        `    ${cyan('Providers:')}     ${totalProviders} (${
+          Object.keys(provs).map((k) => dim(k)).join(', ')
+        })`,
+      );
     }
 
     let totalAgents = 0;
     if (imported.agents) {
       const agts = imported.agents as Record<string, unknown>;
       totalAgents = Object.keys(agts).length;
-      console.log(`    ${cyan('Agents:')}        ${totalAgents} (${Object.keys(agts).map((k) => dim(k)).join(', ')})`);
+      console.log(
+        `    ${cyan('Agents:')}        ${totalAgents} (${
+          Object.keys(agts).map((k) => dim(k)).join(', ')
+        })`,
+      );
     }
 
     if (imported.defaultProvider) {
@@ -389,7 +397,13 @@ const configCmd = cortexCommand('config')
     const settings: string[] = [];
     for (const key of summaryKeys) {
       if (key === 'providers' || key === 'agents' || key === 'defaultProvider') continue;
-      settings.push(`${key} (${typeof imported[key] === 'object' ? Object.keys(imported[key] as Record<string, unknown>).length + ' entries' : JSON.stringify(imported[key])})`);
+      settings.push(
+        `${key} (${
+          typeof imported[key] === 'object'
+            ? Object.keys(imported[key] as Record<string, unknown>).length + ' entries'
+            : JSON.stringify(imported[key])
+        })`,
+      );
     }
     for (const s of settings) {
       console.log(`    ${cyan('Setting:')}       ${dim(s)}`);
@@ -422,7 +436,8 @@ const configCmd = cortexCommand('config')
     }
 
     if (importedAny.defaultProvider) {
-      merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+      merged.defaultProvider = importedAny
+        .defaultProvider as unknown as typeof merged.defaultProvider;
     }
 
     if (importedAny.defaultAgent) {
@@ -445,17 +460,27 @@ const configCmd = cortexCommand('config')
     }
 
     if (importedAny.voice) {
-      merged.voice = { ...(merged.voice ?? {}), ...(importedAny.voice as Record<string, unknown>) } as typeof merged.voice;
+      merged.voice = {
+        ...(merged.voice ?? {}),
+        ...(importedAny.voice as Record<string, unknown>),
+      } as typeof merged.voice;
     }
 
     if (importedAny.server) {
       const base = merged.server ?? {};
-      merged.server = { ...base, ...(importedAny.server as Record<string, unknown>) } as typeof merged.server;
+      merged.server = {
+        ...base,
+        ...(importedAny.server as Record<string, unknown>),
+      } as typeof merged.server;
     }
 
     try {
       await saveConfig(merged);
-      console.log(green(`\n  ✓  Imported ${totalProviders} providers, ${totalAgents} agents, and ${settings.length} settings.`));
+      console.log(
+        green(
+          `\n  ✓  Imported ${totalProviders} providers, ${totalAgents} agents, and ${settings.length} settings.`,
+        ),
+      );
       console.log(dim('     Config saved to ~/.cortex/config.json'));
     } catch (e) {
       console.log(red(`\n  ✗  Failed to save config: ${(e as Error).message}`));

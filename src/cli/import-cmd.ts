@@ -5,7 +5,12 @@ import { exists } from '@std/fs';
 import { join } from '@std/path';
 import { resolveHomeDir } from '../utils/platform.ts';
 import { importOpenClaw } from './openclaw-migrate.ts';
-import { detectHermesDir, importHermes, importHermesStateDb, importHermesMemoryFiles } from './import/hermes.ts';
+import {
+  detectHermesDir,
+  importHermes,
+  importHermesMemoryFiles,
+  importHermesStateDb,
+} from './import/hermes.ts';
 import { detectZeroClawDir, importZeroClaw } from './import/zeroclaw.ts';
 import { importJSONLTranscripts } from './import/jsonl.ts';
 import { importOpenClawSessions } from './import/jsonl.ts';
@@ -52,7 +57,9 @@ function printSummary(
 }
 
 const openclawCmd = cortexCommand('openclaw')
-  .description('Import everything from an OpenClaw installation — config, sessions, memory, workspaces')
+  .description(
+    'Import everything from an OpenClaw installation — config, sessions, memory, workspaces',
+  )
   .arguments('[path:string]')
   .option('--dry-run', 'Preview what would be imported without writing')
   .option('--sessions-only', 'Import only session transcripts')
@@ -123,7 +130,8 @@ const openclawCmd = cortexCommand('openclaw')
           }
 
           if (imported.providers) {
-            totalProviders.count = Object.keys(imported.providers as Record<string, unknown>).length;
+            totalProviders.count =
+              Object.keys(imported.providers as Record<string, unknown>).length;
             console.log(`  Providers: ${totalProviders.count}`);
           }
           if (imported.agents) {
@@ -137,10 +145,12 @@ const openclawCmd = cortexCommand('openclaw')
             console.log(`  Model selection pool: enabled`);
           }
           if (imported.plugins) {
-            console.log(`  Plugins: ${Object.keys(imported.plugins as Record<string, unknown>).length}`);
+            console.log(
+              `  Plugins: ${Object.keys(imported.plugins as Record<string, unknown>).length}`,
+            );
           }
           settings = Object.keys(imported).filter((k) =>
-            k !== 'providers' && k !== 'agents' && k !== 'defaultProvider',
+            k !== 'providers' && k !== 'agents' && k !== 'defaultProvider'
           ).length;
 
           if (!dryRun) {
@@ -163,7 +173,8 @@ const openclawCmd = cortexCommand('openclaw')
               }
             }
             if (importedAny.defaultProvider) {
-              merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+              merged.defaultProvider = importedAny
+                .defaultProvider as unknown as typeof merged.defaultProvider;
             }
             if (importedAny.defaultAgent) {
               merged.defaultAgent = importedAny.defaultAgent as string;
@@ -182,11 +193,17 @@ const openclawCmd = cortexCommand('openclaw')
               }
             }
             if (importedAny.voice) {
-              merged.voice = { ...(merged.voice ?? {}), ...(importedAny.voice as Record<string, unknown>) } as typeof merged.voice;
+              merged.voice = {
+                ...(merged.voice ?? {}),
+                ...(importedAny.voice as Record<string, unknown>),
+              } as typeof merged.voice;
             }
             if (importedAny.server) {
               const base = merged.server ?? {};
-              merged.server = { ...base, ...(importedAny.server as Record<string, unknown>) } as typeof merged.server;
+              merged.server = {
+                ...base,
+                ...(importedAny.server as Record<string, unknown>),
+              } as typeof merged.server;
             }
 
             try {
@@ -221,7 +238,11 @@ const openclawCmd = cortexCommand('openclaw')
         try {
           await importOpenClaw(openClawDir, { dryRun });
           totalMemories += 1;
-          console.log(dryRun ? dim('  [dry-run] Memory files would be imported') : green('  ✓ Memory files imported'));
+          console.log(
+            dryRun
+              ? dim('  [dry-run] Memory files would be imported')
+              : green('  ✓ Memory files imported'),
+          );
         } catch (e) {
           console.log(red(`  ✗ Memory import error: ${(e as Error).message}`));
           totalErrors++;
@@ -230,7 +251,9 @@ const openclawCmd = cortexCommand('openclaw')
     }
 
     console.log(bold(`\n  Import summary:`));
-    if (totalProviders.count > 0) console.log(`    ${cyan('Providers:')}     ${totalProviders.count}`);
+    if (totalProviders.count > 0) {
+      console.log(`    ${cyan('Providers:')}     ${totalProviders.count}`);
+    }
     if (totalAgents.count > 0) console.log(`    ${cyan('Agents:')}        ${totalAgents.count}`);
     if (totalSessions > 0) console.log(`    ${cyan('Sessions:')}      ${totalSessions}`);
     if (totalMessages > 0) console.log(`    ${cyan('Messages:')}      ${totalMessages}`);
@@ -276,7 +299,11 @@ const hermesCmd = cortexCommand('hermes')
     const isJsonlFile = source.endsWith('.jsonl') || source.endsWith('.json');
     const isDirectory = (await Deno.stat(source).catch(() => null))?.isDirectory ?? false;
 
-    const hermesDir = isDbFile ? join(source, '..') : isDirectory ? source : join(source, '..', '..');
+    const hermesDir = isDbFile
+      ? join(source, '..')
+      : isDirectory
+      ? source
+      : join(source, '..', '..');
     const configPath = join(hermesDir, 'config.yaml');
     const hasConfig = await exists(configPath).catch(() => false);
 
@@ -293,7 +320,10 @@ const hermesCmd = cortexCommand('hermes')
         const raw = await Deno.readTextFile(configPath);
         const yamlConfig = parseHermesYaml(raw);
         const existing = (ctx.config ?? {}) as unknown as Record<string, unknown>;
-        const { config: imported, warnings } = hermesConfigMapper(yamlConfig as unknown as Record<string, unknown>, existing);
+        const { config: imported, warnings } = hermesConfigMapper(
+          yamlConfig as unknown as Record<string, unknown>,
+          existing,
+        );
 
         for (const w of warnings) {
           console.log(yellow(`  ⚠ ${w}`));
@@ -314,7 +344,9 @@ const hermesCmd = cortexCommand('hermes')
           console.log(`  Sandbox config: imported`);
         }
         if (imported.mcpServers) {
-          console.log(`  MCP servers: ${Object.keys(imported.mcpServers as Record<string, unknown>).length}`);
+          console.log(
+            `  MCP servers: ${Object.keys(imported.mcpServers as Record<string, unknown>).length}`,
+          );
         }
 
         if (!dryRun && Object.keys(imported).length > 0) {
@@ -337,16 +369,23 @@ const hermesCmd = cortexCommand('hermes')
             }
           }
           if (importedAny.defaultProvider) {
-            merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+            merged.defaultProvider = importedAny
+              .defaultProvider as unknown as typeof merged.defaultProvider;
           }
           if (importedAny.defaultAgent) {
             merged.defaultAgent = importedAny.defaultAgent as string;
           }
           if (importedAny.agentRuntime) {
-            merged.agentRuntime = { ...merged.agentRuntime, ...(importedAny.agentRuntime as Record<string, unknown>) };
+            merged.agentRuntime = {
+              ...merged.agentRuntime,
+              ...(importedAny.agentRuntime as Record<string, unknown>),
+            };
           }
           if (importedAny.sandbox) {
-            merged.sandbox = { ...merged.sandbox, ...(importedAny.sandbox as Record<string, unknown>) };
+            merged.sandbox = {
+              ...merged.sandbox,
+              ...(importedAny.sandbox as Record<string, unknown>),
+            };
           }
 
           try {
@@ -521,14 +560,22 @@ const configCmd = cortexCommand('config')
     if (imported.providers) {
       const provs = imported.providers as Record<string, unknown>;
       totalProviders = Object.keys(provs).length;
-      console.log(`    ${cyan('Providers:')}     ${totalProviders} (${Object.keys(provs).map((k) => dim(k)).join(', ')})`);
+      console.log(
+        `    ${cyan('Providers:')}     ${totalProviders} (${
+          Object.keys(provs).map((k) => dim(k)).join(', ')
+        })`,
+      );
     }
 
     let totalAgents = 0;
     if (imported.agents) {
       const agts = imported.agents as Record<string, unknown>;
       totalAgents = Object.keys(agts).length;
-      console.log(`    ${cyan('Agents:')}        ${totalAgents} (${Object.keys(agts).map((k) => dim(k)).join(', ')})`);
+      console.log(
+        `    ${cyan('Agents:')}        ${totalAgents} (${
+          Object.keys(agts).map((k) => dim(k)).join(', ')
+        })`,
+      );
     }
 
     if (imported.defaultProvider) {
@@ -538,7 +585,13 @@ const configCmd = cortexCommand('config')
     const settings: string[] = [];
     for (const key of summaryKeys) {
       if (key === 'providers' || key === 'agents' || key === 'defaultProvider') continue;
-      settings.push(`${key} (${typeof imported[key] === 'object' ? Object.keys(imported[key] as Record<string, unknown>).length + ' entries' : JSON.stringify(imported[key])})`);
+      settings.push(
+        `${key} (${
+          typeof imported[key] === 'object'
+            ? Object.keys(imported[key] as Record<string, unknown>).length + ' entries'
+            : JSON.stringify(imported[key])
+        })`,
+      );
     }
     for (const s of settings) {
       console.log(`    ${cyan('Setting:')}       ${dim(s)}`);
@@ -571,7 +624,8 @@ const configCmd = cortexCommand('config')
     }
 
     if (importedAny.defaultProvider) {
-      merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+      merged.defaultProvider = importedAny
+        .defaultProvider as unknown as typeof merged.defaultProvider;
     }
 
     if (importedAny.defaultAgent) {
@@ -594,17 +648,27 @@ const configCmd = cortexCommand('config')
     }
 
     if (importedAny.voice) {
-      merged.voice = { ...(merged.voice ?? {}), ...(importedAny.voice as Record<string, unknown>) } as typeof merged.voice;
+      merged.voice = {
+        ...(merged.voice ?? {}),
+        ...(importedAny.voice as Record<string, unknown>),
+      } as typeof merged.voice;
     }
 
     if (importedAny.server) {
       const base = merged.server ?? {};
-      merged.server = { ...base, ...(importedAny.server as Record<string, unknown>) } as typeof merged.server;
+      merged.server = {
+        ...base,
+        ...(importedAny.server as Record<string, unknown>),
+      } as typeof merged.server;
     }
 
     try {
       await saveConfig(merged);
-      console.log(green(`\n  ✓  Imported ${totalProviders} providers, ${totalAgents} agents, and ${settings.length} settings.`));
+      console.log(
+        green(
+          `\n  ✓  Imported ${totalProviders} providers, ${totalAgents} agents, and ${settings.length} settings.`,
+        ),
+      );
       console.log(dim('     Config saved to ~/.cortex/config.json'));
     } catch (e) {
       console.log(red(`\n  ✗  Failed to save config: ${(e as Error).message}`));

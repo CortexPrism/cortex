@@ -331,7 +331,9 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/prompts$/,
     handler: async (req) => {
       const url = new URL(req.url);
-      const { listPromptTemplates, listPromptRuns, getPromptStats } = await import('../../prompt-lab.ts');
+      const { listPromptTemplates, listPromptRuns, getPromptStats } = await import(
+        '../../prompt-lab.ts'
+      );
       const templateId = url.searchParams.get('templateId');
       const tag = url.searchParams.get('tag') || undefined;
       return json({
@@ -346,7 +348,9 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/prompts\/([^/]+)$/,
     handler: async (req) => {
       const id = new URL(req.url).pathname.split('/').pop()!;
-      const { getPromptTemplate, listPromptRuns, listABTests } = await import('../../prompt-lab.ts');
+      const { getPromptTemplate, listPromptRuns, listABTests } = await import(
+        '../../prompt-lab.ts'
+      );
       const tpl = getPromptTemplate(id);
       if (!tpl) return notFound('Template not found');
       return json({
@@ -424,7 +428,12 @@ export const routes: RouteHandler[] = [
         body.input,
         body.output,
         body.score,
-        { abTestId: body.abTestId, variant: body.variant, latencyMs: body.latencyMs, tokensUsed: body.tokensUsed },
+        {
+          abTestId: body.abTestId,
+          variant: body.variant,
+          latencyMs: body.latencyMs,
+          tokensUsed: body.tokensUsed,
+        },
       );
       return json(run, 201);
     },

@@ -69,7 +69,11 @@ export const routes: RouteHandler[] = [
       const name = url.searchParams.get('name');
       if (!name) return err('Missing query param: name', 400);
       let decoded: string;
-      try { decoded = decodeURIComponent(name); } catch { return err('Invalid name encoding', 400); }
+      try {
+        decoded = decodeURIComponent(name);
+      } catch {
+        return err('Invalid name encoding', 400);
+      }
       const type = url.searchParams.get('type') ?? undefined;
       const detail = await getEntityDetail(decoded, type);
       if (!detail) return err('Entity not found', 404);

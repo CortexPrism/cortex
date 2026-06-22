@@ -404,10 +404,15 @@ export interface EntityDetail {
   totalOutbound: number;
 }
 
-export async function getEntityDetail(entityName: string, entityType?: string): Promise<EntityDetail | null> {
+export async function getEntityDetail(
+  entityName: string,
+  entityType?: string,
+): Promise<EntityDetail | null> {
   const db = await getMemoryDb();
 
-  const entity = await db.get<GraphEntity & { aliases: string; importance: number; sensitivity: string }>(
+  const entity = await db.get<
+    GraphEntity & { aliases: string; importance: number; sensitivity: string }
+  >(
     entityType
       ? `SELECT * FROM graph_entities WHERE name = ? AND type = ? LIMIT 1`
       : `SELECT * FROM graph_entities WHERE name = ? LIMIT 1`,
@@ -481,9 +486,16 @@ export async function getEntityDetail(entityName: string, entityType?: string): 
   ].filter((r) => r.entity)
     .sort((a, b) => b.strength - a.strength);
 
-  const aliases = entity.aliases ? (() => {
-    try { const parsed = JSON.parse(entity.aliases); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
-  })() : [];
+  const aliases = entity.aliases
+    ? (() => {
+      try {
+        const parsed = JSON.parse(entity.aliases);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })()
+    : [];
 
   return {
     entity: {
