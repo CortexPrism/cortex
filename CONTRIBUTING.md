@@ -79,13 +79,18 @@ deno task test    # Run all tests
   must never block the agent response
 - **Error handling** — catch errors at call-site boundaries; surface actionable messages to the user
 - **No hardcoded secrets** — use `CORTEX_VAULT_KEY` env var; never commit credentials or API keys
-- **No hardcoded paths** — always use `PATHS` from `src/config/paths.ts`
+- **No hardcoded paths** — always use `PATHS` from `packages/core/src/config/paths.ts`
 
 ### File organization
 
+- Code is organized into 6 packages under `packages/` following the dependency graph
+  `core ← gate ← ai ← server ← cli` and `core ← ai ← infra ← cli`
 - One concern per file; keep files under ~300 lines where practical
-- Sub-commands live in `src/cli/`; tool implementations in `src/tools/builtin/`
+- CLI commands in `packages/cli/src/cli/`; tool implementations in `packages/ai/src/tools/builtin/`
+- Contract interfaces in `packages/<name>/contracts/` are pure type definitions with zero runtime deps
 - Use named exports; avoid default exports except for Deno task entry points
+- The `src/` directory holds the composition root (`src/main.ts`) and the active server entry
+  (`src/server/server.ts`) that wires the modular components together
 
 ### Subprocess spawning
 
@@ -95,22 +100,22 @@ Use `Deno.Command` — never `Deno.run` (deprecated).
 
 ## Adding a New Tool
 
-1. Create `src/tools/builtin/your_tool.ts` implementing the `Tool` interface from
-   `src/tools/types.ts`
-2. Register it in `src/tools/registry.ts`
+1. Create `packages/ai/src/tools/builtin/your_tool.ts` implementing the `Tool` interface from
+   `packages/ai/src/tools/types.ts`
+2. Register it in `packages/ai/src/tools/registry.ts`
 3. Wire it into the WebSocket handler in `src/server/ws.ts` if it should be available in the Web UI
 4. Add a policy rule in the default seeded policies if the tool executes shell commands or makes
    network requests
 5. Add tests in `tests/your_tool_test.ts`
 
-Refer to an existing simple tool (e.g. `src/tools/builtin/web_fetch.ts`) as a template.
+Refer to an existing simple tool (e.g. `packages/ai/src/tools/builtin/web_fetch.ts`) as a template.
 
 ---
 
 ## Adding a New CLI Command
 
-1. Create `src/cli/your-cmd.ts` exporting a `Command` from `@cliffy/command`
-2. Register it in `src/main.ts`
+1. Create `packages/cli/src/cli/your-cmd.ts` exporting a `Command` from `@cliffy/command`
+2. Register it in `packages/cli/src/cli/registry.ts` or `src/main.ts`
 3. Document it in `README.md` under the CLI Reference section
 4. Add a `CHANGELOG.md` entry under the current `[Unreleased]` block
 
@@ -127,9 +132,9 @@ Refer to an existing simple tool (e.g. `src/tools/builtin/web_fetch.ts`) as a te
 
 ## Adding a New LLM Provider
 
-1. Create `src/llm/your-provider.ts` implementing the `LLMProvider` interface from
-   `src/llm/types.ts`
-2. Register the provider in `src/llm/factory.ts`
+1. Create `packages/ai/src/llm/your-provider.ts` implementing the `LLMProvider` interface from
+   `packages/ai/src/llm/types.ts`
+2. Register the provider in `packages/ai/src/llm/factory.ts`
 3. Add any provider-specific config schema in `src/config/`
 4. Add the provider to the `cortex setup` wizard in `src/cli/setup.ts`
 5. Document the provider in `README.md` and `CHANGELOG.md`
