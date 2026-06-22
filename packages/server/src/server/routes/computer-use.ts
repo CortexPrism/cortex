@@ -1,12 +1,25 @@
 import {
+  getComputerScreenshot,
   json,
   listComputerActions,
   listComputerScreenshots,
+  notFound,
   type RouteHandler,
 } from './_helpers.ts';
 import { loadConfig } from '../../../../../src/config/config.ts';
 
 export const routes: RouteHandler[] = [
+  {
+    method: 'GET',
+    pattern: /^\/api\/computer\/screenshots\/(.+)$/,
+    handler: async (_req, path) => {
+      const m = path.match(/^\/api\/computer\/screenshots\/(.+)$/);
+      if (!m) return notFound();
+      const screenshot = await getComputerScreenshot(decodeURIComponent(m[1]));
+      if (!screenshot) return notFound('Screenshot not found');
+      return json(screenshot);
+    },
+  },
   {
     method: 'GET',
     pattern: /^\/api\/computer\/screenshots$/,
@@ -33,11 +46,15 @@ export const routes: RouteHandler[] = [
       const cu = config.computerUse;
       return json({
         available,
+        enabled: cu?.enabled ?? false,
         resolution: `${cu?.displayWidth ?? 1024}x${cu?.displayHeight ?? 768}`,
         dpi: 96,
         displayWidth: cu?.displayWidth ?? 1024,
         displayHeight: cu?.displayHeight ?? 768,
         runtime: cu?.runtime ?? 'native',
+        screenshotFormat: cu?.screenshotFormat ?? 'png',
+        screenshotQuality: cu?.screenshotQuality ?? 85,
+        actionTimeoutMs: cu?.actionTimeoutMs ?? 5000,
       });
     },
   },

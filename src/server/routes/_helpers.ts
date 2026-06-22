@@ -73,13 +73,12 @@ async function getComputerScreenshotDir(): Promise<string> {
 export async function listComputerScreenshots(): Promise<
   Array<{
     name: string;
-    data: string;
     timestamp: string;
-    path: string;
+    size: number;
   }>
 > {
   const dir = await getComputerScreenshotDir();
-  const shots: Array<{ name: string; data: string; timestamp: string; path: string }> = [];
+  const shots: Array<{ name: string; timestamp: string; size: number }> = [];
 
   if (!await exists(dir)) return shots;
 
@@ -90,13 +89,11 @@ export async function listComputerScreenshots(): Promise<
     const path = join(dir, entry.name);
     try {
       const stat = await Deno.stat(path);
-      const data = await Deno.readFile(path);
       shots.push({
         name: basename(path),
-        data: encodeBase64(data),
         timestamp: stat.mtime?.toISOString() ?? stat.birthtime?.toISOString() ??
           new Date().toISOString(),
-        path,
+        size: stat.size,
       });
     } catch {
       // Ignore unreadable screenshots
@@ -104,6 +101,25 @@ export async function listComputerScreenshots(): Promise<
   }
 
   return shots.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 24);
+}
+
+export async function getComputerScreenshot(name: string): Promise<{
+  name: string;
+  data: string;
+  timestamp: string;
+} | null> {
+  const dir = await getComputerScreenshotDir();
+  const path = join(dir, name);
+
+  if (!await exists(path)) return null;
+
+  const stat = await Deno.stat(path);
+  const data = await Deno.readFile(path);
+  return {
+    name: basename(path),
+    data: encodeBase64(data),
+    timestamp: stat.mtime?.toISOString() ?? new Date().toISOString(),
+  };
 }
 
 export async function listComputerActions(): Promise<
