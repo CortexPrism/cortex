@@ -18,6 +18,8 @@ import type { ProviderKind } from '../config/config.ts';
 export const ENFORCE_CONFIDENCE = 0.85; // High confidence required to enforce
 export const SUGGEST_CONFIDENCE = 0.65; // Medium confidence to suggest
 
+const TOTAL_SIGNALS = 6;
+
 /**
  * Fuse signal scores into model predictions
  */
@@ -91,7 +93,11 @@ export function fuseModelSignals(
 
     // Normalize by the sum of weights that actually fired so that having
     // fewer active signals doesn't automatically push confidence below thresholds.
-    const total = activeWeightSum > 0 ? weightedSum / activeWeightSum : 0;
+    const signalCount = contributions.length;
+    const coverage = signalCount / TOTAL_SIGNALS;
+    const coveragePenalty = 0.7 + 0.3 * coverage;
+    const rawTotal = activeWeightSum > 0 ? weightedSum / activeWeightSum : 0;
+    const total = rawTotal * coveragePenalty;
 
     modelScores.set(modelKey, {
       provider,

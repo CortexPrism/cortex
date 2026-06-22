@@ -4,8 +4,8 @@
  * Storage layer for model selection decisions, observations, and learning state.
  */
 
-import { getCoreDb } from '../../../../src/db/client.ts';
-import type { InValue } from '../../../../src/db/client.ts';
+import { getCoreDb } from '../db/client.ts';
+import type { InValue } from '../db/client.ts';
 import type {
   ModelDecision,
   ModelObservation,
@@ -14,7 +14,7 @@ import type {
   ModelStats,
   MqmSessionState,
 } from './types.ts';
-import type { ProviderKind } from '../../../../src/config/config.ts';
+import type { ProviderKind } from '../config/config.ts';
 
 /**
  * Generate unique ID for MQM decisions
@@ -39,12 +39,12 @@ export async function getModelSignalWeights(): Promise<ModelSignalWeights> {
   }
 
   return {
-    historical: weights['historical'] ?? 0.25,
+    historical: weights['historical'] ?? 0.22,
     episodic: weights['episodic'] ?? 0.20,
     cost: weights['cost'] ?? 0.15,
-    quality: weights['quality'] ?? 0.25,
-    trajectory: weights['trajectory'] ?? 0.10,
-    reflection: weights['reflection'] ?? 0.05,
+    quality: weights['quality'] ?? 0.23,
+    trajectory: weights['trajectory'] ?? 0.12,
+    reflection: weights['reflection'] ?? 0.08,
   };
 }
 
@@ -72,12 +72,12 @@ export async function resetSignalWeights(): Promise<void> {
   const db = await getCoreDb();
   const now = new Date().toISOString();
   const defaults: Array<[string, number]> = [
-    ['historical', 0.25],
+    ['historical', 0.22],
     ['episodic', 0.20],
     ['cost', 0.15],
-    ['quality', 0.25],
-    ['trajectory', 0.10],
-    ['reflection', 0.05],
+    ['quality', 0.23],
+    ['trajectory', 0.12],
+    ['reflection', 0.08],
   ];
 
   for (const [signal, weight] of defaults) {
@@ -577,10 +577,8 @@ export async function upsertSessionState(
 async function incrementSessionObservations(sessionId: string): Promise<void> {
   const state = await getSessionState(sessionId);
   const newCount = (state?.observationCount ?? 0) + 1;
-
   await upsertSessionState(sessionId, {
     observationCount: newCount,
-    mode: newCount >= 50 ? 'active' : 'observe',
   });
 }
 

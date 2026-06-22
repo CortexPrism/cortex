@@ -1,6 +1,8 @@
 import type { QmSignalWeight, SignalScores, ToolPrediction } from './types.ts';
 import { AUTOMATE_CONFIDENCE, AUTOMATE_SAFE_TOOLS, SUGGEST_CONFIDENCE } from './types.ts';
 
+const TOTAL_SIGNALS = 5;
+
 export function fuseSignals(
   signalScores: SignalScores,
   weights: QmSignalWeight[],
@@ -10,7 +12,7 @@ export function fuseSignals(
 
   const toolScores = new Map<
     string,
-    { total: number; contributions: { name: string; contributed: number }[] }
+    { total: number; contributions: { name: string; contributed: number }[]; signalCount: number }
   >();
 
   const signalEntries: Array<{ name: string; scores: { tool: string; score: number }[] }> = [
@@ -30,7 +32,9 @@ export function fuseSignals(
 
   for (const tool of allTools) {
     const contributions: { name: string; contributed: number }[] = [];
-    let total = 0;
+    let rawTotal = 0;
+    let activeWeightSum = 0;
+    let signalCount = 0;
 
     for (const { name, scores } of signalEntries) {
       const match = scores.find((s) => s.tool === tool);
@@ -39,12 +43,19 @@ export function fuseSignals(
         if (w) {
           const contributed = w.weight * match.score;
           contributions.push({ name, contributed });
-          total += contributed;
+          rawTotal += contributed;
+          activeWeightSum += w.weight;
+          signalCount++;
         }
       }
     }
 
-    toolScores.set(tool, { total, contributions });
+    const normalized = activeWeightSum > 0 ? rawTotal / activeWeightSum : 0;
+    const coverage = signalCount / TOTAL_SIGNALS;
+    const coveragePenalty = 0.7 + 0.3 * coverage;
+    const total = normalized * coveragePenalty;
+
+    toolScores.set(tool, { total, contributions, signalCount });
   }
 
   const predictions: ToolPrediction[] = [];

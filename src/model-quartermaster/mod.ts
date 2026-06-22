@@ -20,7 +20,9 @@ import { applyModelFeedback } from './learn.ts';
 import {
   getModelSignalWeights,
   getSessionState,
+  getRecentDecisions,
   logModelObservation,
+  updateDecisionCorrectness,
   upsertSessionState,
 } from './store.ts';
 import {
@@ -34,6 +36,11 @@ import { type ArbiterConfig, ModelArbiter } from './arbiter.ts';
  * Observation threshold to switch from observe to active mode
  */
 const OBSERVE_THRESHOLD = 50;
+
+/**
+ * Correctness threshold for accuracy metrics (was_correct >= 0.7 counts as correct)
+ */
+const CORRECTNESS_THRESHOLD = 0.7;
 
 /**
  * Module initialization flag
@@ -98,14 +105,27 @@ function updateTrajectory(
 export async function observeModel(obs: ModelObservation): Promise<void> {
   await ensureModelQuartermaster();
 
-  // Update trajectory
   updateTrajectory(obs.sessionId, obs.turnId, obs.provider, obs.model);
 
-  // Log observation to database
   await logModelObservation(obs);
 
-  // Emit event
   emitMqmObservationEvent(obs);
+
+  // Update the most recent decision's correctness
+  const decisions = await getRecentDecisions(obs.sessionId, 1);
+  const lastDecision = decisions[0];
+  if (lastDecision && lastDecision.predictedProvider) {
+    const isCorrect = obs.result.qualityScore >= CORRECTNESS_THRESHOLD;
+    const wasCorrect = isCorrect ? 1.0 : obs.result.qualityScore;
+    await updateDecisionCorrectness(lastDecision.id, wasCorrect, obs.result.costUsd);
+
+    if (isCorrect) {
+      const state = await getSessionState(obs.sessionId);
+      await upsertSessionState(obs.sessionId, {
+        correctCount: (state?.correctCount ?? 0) + 1,
+      });
+    }
+  }
 
   // Check if we should transition to active mode
   const state = await getSessionState(obs.sessionId);
@@ -184,13 +204,6 @@ export async function learnFromReflection(
   const correctCount = state?.correctCount ?? 0;
 
   await applyModelFeedback(feedback, correctCount);
-
-  // Update correct count if this was a good choice
-  if (feedback.wasGoodChoice) {
-    await upsertSessionState(feedback.sessionId, {
-      correctCount: correctCount + 1,
-    });
-  }
 }
 
 /**

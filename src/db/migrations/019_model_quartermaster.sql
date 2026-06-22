@@ -69,12 +69,12 @@ CREATE TABLE IF NOT EXISTS mqm_patterns (
 -- Initialize default weights
 INSERT OR IGNORE INTO mqm_signal_weights (signal_name, weight, confidence_floor, updated_at)
 VALUES 
-  ('historical', 0.25, 0.0, datetime('now')),
+  ('historical', 0.22, 0.0, datetime('now')),
   ('episodic', 0.20, 0.0, datetime('now')),
   ('cost', 0.15, 0.0, datetime('now')),
-  ('quality', 0.25, 0.0, datetime('now')),
-  ('trajectory', 0.10, 0.0, datetime('now')),
-  ('reflection', 0.05, 0.0, datetime('now'));
+  ('quality', 0.23, 0.0, datetime('now')),
+  ('trajectory', 0.12, 0.0, datetime('now')),
+  ('reflection', 0.08, 0.0, datetime('now'));
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_mqm_decisions_session ON mqm_decisions(session_id);

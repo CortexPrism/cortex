@@ -4,10 +4,10 @@
  * Event emission and summary statistics for MQM.
  */
 
-import { getCoreDb } from '../../../../src/db/client.ts';
-import { logEvent } from '../../../../src/db/lens.ts';
+import { getCoreDb } from '../db/client.ts';
+import { logEvent } from '../db/lens.ts';
 import type { AccuracyPoint, ModelDecision, ModelObservation, MqmSummary } from './types.ts';
-import type { ProviderKind } from '../../../../src/config/config.ts';
+import type { ProviderKind } from '../config/config.ts';
 
 /**
  * Emit prediction event to lens
@@ -269,12 +269,12 @@ export async function getMqmSummary(sessionId?: string): Promise<MqmSummary> {
     avgQuality,
     topModels,
     signalWeights: {
-      historical: signalWeights['historical'] ?? 0.25,
+      historical: signalWeights['historical'] ?? 0.22,
       episodic: signalWeights['episodic'] ?? 0.20,
       cost: signalWeights['cost'] ?? 0.15,
-      quality: signalWeights['quality'] ?? 0.25,
-      trajectory: signalWeights['trajectory'] ?? 0.10,
-      reflection: signalWeights['reflection'] ?? 0.05,
+      quality: signalWeights['quality'] ?? 0.23,
+      trajectory: signalWeights['trajectory'] ?? 0.12,
+      reflection: signalWeights['reflection'] ?? 0.08,
     },
   };
 }
