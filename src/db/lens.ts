@@ -41,6 +41,7 @@ export type EventType =
   | 'node_directive'
   | 'node_directive_dispatched'
   | 'node_result_routed'
+  | 'node_directive_cancelled'
   | 'node_stream_chunk'
   | 'error'
   | 'warning'

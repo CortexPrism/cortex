@@ -21,7 +21,20 @@ export function registerPending(directiveId: string, sessionId: string, nodeId: 
 }
 
 export function cancelPending(directiveId: string): void {
+  const entry = directiveSessionMap.get(directiveId);
+  if (!entry) return;
+
   directiveSessionMap.delete(directiveId);
+
+  logEvent({
+    event_type: 'node_directive_cancelled',
+    session_id: entry.sessionId,
+    actor: entry.nodeId,
+    action: 'directive_cancelled',
+    summary: `Directive ${directiveId} cancelled`,
+    started_at: new Date().toISOString(),
+    payload: { directiveId, nodeId: entry.nodeId },
+  }).catch(() => {});
 }
 
 export function getSessionForDirective(directiveId: string): string | undefined {

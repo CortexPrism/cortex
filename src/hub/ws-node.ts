@@ -588,7 +588,7 @@ export async function cancelDirective(agentId: string, directiveId: string): Pro
 
 export async function pushConfigUpdate(
   agentId: string,
-  update: { policies?: Record<string, unknown>; toolsAllowList?: string[] },
+  update: { policies?: Record<string, unknown>; toolsAllowList?: string[]; blockedTools?: string[] },
 ): Promise<boolean> {
   const conn = nodeConnections.get(agentId);
   if (!conn || conn.ws.readyState !== WebSocket.OPEN) return false;

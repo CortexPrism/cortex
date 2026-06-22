@@ -13,8 +13,7 @@ export const MODALS_IN_MAIN = `
         <input id="remote-deploy-node" class="inp" placeholder="node-us-east-1" style="font-size:12px;"></div>
         <div><label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Tier</label>
         <select id="remote-deploy-tier" class="inp" style="font-size:12px;">
-          <option value="operator">Operator</option>
-          <option value="observer">Observer</option>
+          <option value="unprivileged">Unprivileged</option>
           <option value="sudo">Sudo</option>
           <option value="root">Root</option>
         </select></div>

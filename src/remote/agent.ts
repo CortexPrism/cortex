@@ -19,8 +19,6 @@ export interface NodeAgentOptions {
   heartbeatMs: number;
   directiveTimeoutMs: number;
   lastProcessedDirectiveId?: string;
-  tlsCert?: string;
-  tlsKey?: string;
 }
 
 import { getVersion } from '../config/version.ts';
@@ -88,46 +86,6 @@ async function collectMetrics(): Promise<NodeMetrics> {
   };
 }
 
-function localPolicyCheck(
-  tier: NodeTier,
-  toolName: string,
-  args: Record<string, unknown>,
-): { allowed: boolean; reason: string } {
-  if (!isToolAllowedByTier(tier, toolName)) {
-    return { allowed: false, reason: `Tool "${toolName}" blocked by tier "${tier}"` };
-  }
-
-  if (toolName === 'shell' || toolName === 'code_exec') {
-    const command = String(args.command ?? args.code ?? '');
-    if (command) {
-      const cmdCheck = isCommandAllowedByTier(tier, command);
-      if (!cmdCheck.allowed) return cmdCheck;
-    }
-  }
-
-  const FILE_TOOLS = new Set([
-    'file_read',
-    'file_write',
-    'file_edit',
-    'file_patch',
-    'file_delete',
-    'file_rename',
-    'file_list',
-    'file_tree',
-    'file_info',
-    'file_search',
-  ]);
-  if (FILE_TOOLS.has(toolName)) {
-    const pathArg = args.path ?? args.source ?? args.pattern ?? '';
-    if (typeof pathArg === 'string' && pathArg) {
-      const pathCheck = isPathAllowedByTier(tier, pathArg);
-      if (!pathCheck.allowed) return pathCheck;
-    }
-  }
-
-  return { allowed: true, reason: 'Passed local policy check' };
-}
-
 export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
   const {
     endpoint,
@@ -139,10 +97,60 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
     reconnectMs,
     heartbeatMs,
     directiveTimeoutMs,
-    tlsCert,
-    tlsKey,
   } = opts;
   let lastProcessedDirectiveId = opts.lastProcessedDirectiveId;
+
+  let currentToken = token;
+  let configOverrides: { toolsAllowList?: string[]; blockedTools?: string[] } = {};
+
+  function localPolicyCheck(
+    tier: NodeTier,
+    toolName: string,
+    args: Record<string, unknown>,
+  ): { allowed: boolean; reason: string } {
+    if (configOverrides.blockedTools?.includes(toolName)) {
+      return { allowed: false, reason: `Tool "${toolName}" blocked by Hub config override` };
+    }
+    if (configOverrides.toolsAllowList && configOverrides.toolsAllowList.length > 0) {
+      if (!configOverrides.toolsAllowList.includes(toolName)) {
+        return { allowed: false, reason: `Tool "${toolName}" not in Hub config allow-list` };
+      }
+    }
+
+    if (!isToolAllowedByTier(tier, toolName)) {
+      return { allowed: false, reason: `Tool "${toolName}" blocked by tier "${tier}"` };
+    }
+
+    if (toolName === 'shell' || toolName === 'code_exec') {
+      const command = String(args.command ?? args.code ?? '');
+      if (command) {
+        const cmdCheck = isCommandAllowedByTier(tier, command);
+        if (!cmdCheck.allowed) return cmdCheck;
+      }
+    }
+
+    const FILE_TOOLS = new Set([
+      'file_read',
+      'file_write',
+      'file_edit',
+      'file_patch',
+      'file_delete',
+      'file_rename',
+      'file_list',
+      'file_tree',
+      'file_info',
+      'file_search',
+    ]);
+    if (FILE_TOOLS.has(toolName)) {
+      const pathArg = args.path ?? args.source ?? args.pattern ?? '';
+      if (typeof pathArg === 'string' && pathArg) {
+        const pathCheck = isPathAllowedByTier(tier, pathArg);
+        if (!pathCheck.allowed) return pathCheck;
+      }
+    }
+
+    return { allowed: true, reason: 'Passed local policy check' };
+  }
 
   const activeDirectives = new Map<string, AbortController>();
 
@@ -167,7 +175,7 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
       type: 'register',
       agentId,
       name,
-      token,
+      token: currentToken,
       capabilities: [],
       version: await getVersion(),
       tier,
@@ -381,17 +389,27 @@ export async function runNodeAgent(opts: NodeAgentOptions): Promise<void> {
               break;
             }
 
-            case 'config_update':
+            case 'config_update': {
               console.error(`[node-agent] Config update received from Hub`);
               if (msg.toolsAllowList) {
+                configOverrides.toolsAllowList = msg.toolsAllowList;
                 console.error(
                   `[node-agent] Tools allow-list updated: ${msg.toolsAllowList.join(', ')}`,
                 );
               }
+              if (msg.blockedTools) {
+                configOverrides.blockedTools = msg.blockedTools;
+                console.error(
+                  `[node-agent] Blocked tools updated: ${msg.blockedTools.join(', ')}`,
+                );
+              }
               break;
+            }
 
             case 'rekey': {
-              console.error(`[node-agent] Token rotation received`);
+              console.error(`[node-agent] Token rotation received, reconnecting with new token`);
+              currentToken = msg.newToken;
+              ws?.close();
               break;
             }
 

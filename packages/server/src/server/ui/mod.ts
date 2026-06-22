@@ -46,7 +46,6 @@ import { PAGE_MCP } from './pages/mcp.ts';
 import { PAGE_CHROME_BRIDGE } from './pages/chrome-bridge.ts';
 import { PAGE_VAULT } from './pages/vault.ts';
 import { PAGE_COMPUTER } from './pages/computer.ts';
-import { PAGE_REMOTE } from './pages/remote.ts';
 import { PAGE_DAEMONS } from './pages/daemons.ts';
 import { PAGE_TOOLS } from './pages/tools.ts';
 import { PAGE_METACOGNITION } from './pages/metacognition.ts';
@@ -70,7 +69,6 @@ import { JS_15_NODES } from './js/15_nodes.ts';
 import { JS_16_AGENT_PANEL } from './js/16_agent_panel.ts';
 import { JS_17_BOOT_SKILL } from './js/17_boot_skill.ts';
 import { JS_18_QUARTERMASTER } from './js/18_quartermaster.ts';
-import { JS_19_DEVTOOLS } from './js/19_devtools.ts';
 import { JS_20_EXTENSIONS } from './js/20_extensions.ts';
 import { JS_21_OBSERVABILITY } from './js/21_observability.ts';
 import { JS_22_MCP_MEMORI } from './js/22_mcp_memori.ts';
@@ -154,7 +152,6 @@ const ALL_PAGES = PAGE_CHAT +
   PAGE_CHROME_BRIDGE +
   PAGE_VAULT +
   PAGE_COMPUTER +
-  PAGE_REMOTE +
   PAGE_DAEMONS +
   PAGE_TOOLS +
   PAGE_METACOGNITION;
@@ -178,7 +175,6 @@ const ALL_JS = JS_00_INIT +
   JS_16_AGENT_PANEL +
   JS_17_BOOT_SKILL +
   JS_18_QUARTERMASTER +
-  JS_19_DEVTOOLS +
   JS_20_EXTENSIONS +
   JS_21_OBSERVABILITY +
   JS_22_MCP_MEMORI +
