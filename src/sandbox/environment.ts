@@ -1,7 +1,7 @@
-import { join } from '@std/path';
+import type { join } from '@std/path';
 import { detectDependencies } from './dependency-detect.ts';
 import { isDockerAvailable, isGVisorAvailable } from './executor.ts';
-import { type SandboxResult, type SandboxRuntime } from './executor.ts';
+import type { SandboxResult, SandboxRuntime } from './executor.ts';
 import type { DevEnvManifest } from './snapshot-types.ts';
 import {
   debugLog,
@@ -11,6 +11,10 @@ import {
   validateSandboxPath,
   warnLog,
 } from './logger.ts';
+import {
+  buildContainerSecurityArgs,
+  buildWorkspaceMountArg,
+} from './security-args.ts';
 
 const CONTAINER_PREFIX = 'cortex-env-';
 const SLEEP_COMMAND = 'while true; do sleep 3600; done';
@@ -93,6 +97,7 @@ export interface SandboxEnvironmentOptions {
   networkMode?: 'none' | 'restricted' | 'full';
   timeoutMs?: number;
   env?: Record<string, string>;
+  mountMode?: 'ro' | 'rw';
 }
 
 export interface SandboxEnvironmentSetupResult {
@@ -107,6 +112,7 @@ export class SandboxEnvironment {
   readonly runtime: SandboxRuntime;
   readonly options: Required<Omit<SandboxEnvironmentOptions, 'manifest'>> & {
     manifest?: DevEnvManifest;
+    mountMode: 'ro' | 'rw';
   };
 
   private _status: 'initializing' | 'ready' | 'error' = 'initializing';
@@ -134,6 +140,7 @@ export class SandboxEnvironment {
       timeoutMs: opts.timeoutMs ?? 30_000,
       env: opts.env ?? {},
       manifest: opts.manifest,
+      mountMode: opts.mountMode ?? 'rw',
     };
   }
 
@@ -194,6 +201,7 @@ export class SandboxEnvironment {
       cpuLimit,
       networkMode,
       env: envVars,
+      mountMode,
     } = this.options;
 
     debugLog(provisionLog, `starting container: ${this._containerName}`, {
@@ -202,6 +210,23 @@ export class SandboxEnvironment {
       cpuLimit,
       networkMode,
       runtime: this.runtime,
+      mountMode,
+    });
+
+    const securityArgs = buildContainerSecurityArgs({
+      memoryLimitMb,
+      cpuLimit,
+      pidsLimit: 64,
+      readOnlyRoot: true,
+      tmpfsSize: '256M',
+      dropAllCapabilities: true,
+      noNewPrivileges: true,
+    });
+
+    const mountArgs = buildWorkspaceMountArg({
+      hostPath: this.workspacePath,
+      containerPath: '/workspace',
+      mode: mountMode,
     });
 
     const dockerArgs: string[] = [
@@ -211,12 +236,8 @@ export class SandboxEnvironment {
       this._containerName,
       '--network',
       networkMode === 'full' ? 'bridge' : 'none',
-      `--memory=${memoryLimitMb}m`,
-      `--cpus=${cpuLimit}`,
-      '--pids-limit=64',
-      '--security-opt=no-new-privileges',
-      '-v',
-      `${this.workspacePath}:/workspace:rw`,
+      ...securityArgs,
+      ...mountArgs,
       '-w',
       '/workspace',
     ];

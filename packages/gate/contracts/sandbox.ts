@@ -8,6 +8,7 @@ export interface ISandboxOptions {
   runtime?: SandboxRuntime;
   workingDir?: string;
   env?: Record<string, string>;
+  mountMode?: 'ro' | 'rw';
 }
 
 export interface ISandboxResult {

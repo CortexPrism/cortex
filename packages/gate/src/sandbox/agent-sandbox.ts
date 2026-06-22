@@ -1,4 +1,5 @@
 import { debugLog, execLog } from './logger.ts';
+import { buildContainerSecurityArgs, buildWorkspaceMountArg } from './security-args.ts';
 
 export { isDockerAvailable, isGVisorAvailable } from './executor.ts';
 
@@ -10,6 +11,7 @@ export interface AgentSandboxOptions {
   cpuLimit?: number;
   timeoutMs: number;
   env?: Record<string, string>;
+  mountMode?: 'ro' | 'rw';
 }
 
 export function buildSandboxCommand(opts: AgentSandboxOptions): string[] {
@@ -18,21 +20,33 @@ export function buildSandboxCommand(opts: AgentSandboxOptions): string[] {
     networkMode: opts.networkMode,
     memoryLimitMb: opts.memoryLimitMb,
     cpuLimit: opts.cpuLimit,
+    mountMode: opts.mountMode,
   });
+
+  const securityArgs = buildContainerSecurityArgs({
+    memoryLimitMb: opts.memoryLimitMb ?? 512,
+    cpuLimit: opts.cpuLimit ?? 1.0,
+    pidsLimit: 128,
+    readOnlyRoot: true,
+    tmpfsSize: '256M',
+    dropAllCapabilities: true,
+    noNewPrivileges: true,
+  });
+
+  const mountArgs = buildWorkspaceMountArg({
+    hostPath: opts.workspaceMount,
+    containerPath: '/workspace',
+    mode: opts.mountMode ?? 'rw',
+  });
+
   const args: string[] = [
     'docker',
     'run',
     '--rm',
     '--network',
     opts.networkMode === 'none' ? 'none' : 'bridge',
-    `--memory=${opts.memoryLimitMb ?? 512}m`,
-    `--cpus=${opts.cpuLimit ?? 1.0}`,
-    '--pids-limit=128',
-    '--security-opt=no-new-privileges',
-    '--read-only',
-    '--tmpfs=/tmp:rw,noexec,nosuid,size=256M',
-    '-v',
-    `${opts.workspaceMount}:/workspace:rw`,
+    ...securityArgs,
+    ...mountArgs,
     '-w',
     '/workspace',
   ];
@@ -58,6 +72,22 @@ export function buildSandboxCommand(opts: AgentSandboxOptions): string[] {
 }
 
 export function buildGVisorCommand(opts: AgentSandboxOptions): string[] {
+  const securityArgs = buildContainerSecurityArgs({
+    memoryLimitMb: opts.memoryLimitMb ?? 512,
+    cpuLimit: opts.cpuLimit ?? 1.0,
+    pidsLimit: 128,
+    readOnlyRoot: true,
+    tmpfsSize: '256M',
+    dropAllCapabilities: true,
+    noNewPrivileges: true,
+  });
+
+  const mountArgs = buildWorkspaceMountArg({
+    hostPath: opts.workspaceMount,
+    containerPath: '/workspace',
+    mode: opts.mountMode ?? 'rw',
+  });
+
   const args: string[] = [
     'docker',
     'run',
@@ -65,11 +95,8 @@ export function buildGVisorCommand(opts: AgentSandboxOptions): string[] {
     '--runtime=runsc',
     '--network',
     opts.networkMode === 'none' ? 'none' : 'bridge',
-    `--memory=${opts.memoryLimitMb ?? 512}m`,
-    `--cpus=${opts.cpuLimit ?? 1.0}`,
-    '--pids-limit=128',
-    '-v',
-    `${opts.workspaceMount}:/workspace:rw`,
+    ...securityArgs,
+    ...mountArgs,
     '-w',
     '/workspace',
   ];
