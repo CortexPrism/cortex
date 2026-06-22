@@ -326,6 +326,24 @@ export interface ICodeGraphConfig {
   ignoreFiles?: string[];
 }
 
+export interface IA2ARemoteAgentConfig {
+  endpoint: string;
+  agentCardUrl?: string;
+  capabilities?: string[];
+  authToken?: string;
+  timeout?: number;
+}
+
+export interface IA2AConfig {
+  enabled?: boolean;
+  server?: {
+    port?: number;
+    bindAddress?: string;
+    allowedOrigins?: string[];
+  };
+  remoteAgents?: Record<string, IA2ARemoteAgentConfig>;
+}
+
 export interface ICortexConfig {
   version: number;
   defaultProvider: ProviderKind;
@@ -358,7 +376,7 @@ export interface ICortexConfig {
   scheduler?: ISchedulerConfig;
   uiCdn?: IUICdnConfig;
   codeGraph?: ICodeGraphConfig;
-  a2a?: Record<string, unknown>;
+  a2a?: IA2AConfig;
   server?: IServerConfig;
   supervisor?: ISupervisorConfig;
   compliance?: IComplianceConfig;

@@ -2,6 +2,7 @@ import type { Tool, ToolCapability, ToolDefinition } from './types.ts';
 import { createMcpToolWrapper, inferCapabilitiesFromMcpTool } from './mcp-adapter.ts';
 import { getConnection } from '../mcp/client.ts';
 import { i18n } from '../i18n/service.ts';
+import { loadConfig } from '../config/config.ts';
 
 // Builtin tool imports (consolidated from all entry points)
 import { fileReadTool } from './builtin/file_read.ts';
@@ -313,6 +314,26 @@ export async function registerAllBuiltins(
   // Register all tools
   for (const tool of Object.values(allTools)) {
     registry.register(tool);
+  }
+
+  // Register A2A remote agents as tools
+  try {
+    const config = await loadConfig();
+    const remoteAgents = config.a2a?.remoteAgents;
+    if (remoteAgents) {
+      const { createA2AToolWrapper } = await import('../a2a/tool-wrapper.ts');
+      for (const [agentName, agentCfg] of Object.entries(remoteAgents)) {
+        if (!agentCfg.endpoint) continue;
+        try {
+          const wrapper = createA2AToolWrapper(agentName, agentCfg);
+          registry.register(wrapper);
+        } catch {
+          // Agent card fetch will happen lazily at execution time
+        }
+      }
+    }
+  } catch {
+    // A2A config unavailable — no remote agents to register
   }
 
   return allTools;
