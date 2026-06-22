@@ -15,6 +15,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **A2A config contract type was `Record<string, unknown>`** — the `a2a` field in `ICortexConfig` (contracts) used a bare generic object type instead of a typed interface. Added `IA2ARemoteAgentConfig` and `IA2AConfig` interfaces with proper fields (`enabled`, `server`, `remoteAgents`). (`packages/core/contracts/config.ts`)
 
+- **`renderThinkingForRestore` regex escapes broken + TS type annotation in browser JS** — 5 regex patterns in the thinking-tag restoration function used single backslashes (`\s`, `\S`, `\/`) inside the template literal export, which TypeScript consumed as escape sequences. `\/` became `/` in the output, terminating the regex literal early and exposing `(?:think)` as raw JS code, causing `SyntaxError: Unexpected token '?'`. Additionally, `const thinkBlocks: string[] = []` had a TypeScript type annotation (`: string[]`) that is invalid in the browser's JS engine, causing `SyntaxError: Missing initializer in const declaration`. Fixed by double-escaping all regex backslashes and removing the type annotation. Added `new Function(js)` syntax validation to prevent future regressions. (`src/server/ui/js/04_chat_ui.ts`)
+
 - **Node agent TLS fields were dead code** — `NodeAgentOptions` declared `tlsCert` and `tlsKey` fields that were never consumed by `createWebSocket()`. Removed both fields from the interface and destructuring. (`src/remote/agent.ts`)
 
 - **Node `rekey` handler was a no-op** — the Hub-to-Node `rekey` message handler only logged the event. Now stores the rotated token in mutable state and closes the WebSocket to trigger an automatic reconnect using the new credential. (`src/remote/agent.ts`)

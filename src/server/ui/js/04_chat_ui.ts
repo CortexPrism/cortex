@@ -273,19 +273,19 @@ function updateReasoningTime() {
 }
 
 function renderThinkingForRestore(content, parentMsgEl) {
-  const thinkRe = /<(?:think|thinking)>([\s\S]*?)<\/(?:think|thinking)>/gi;
+  const thinkRe = /<(?:think|thinking)>([\\s\\S]*?)<\\/(?:think|thinking)>/gi;
   let match;
   let cleanedContent = content;
-  const thinkBlocks: string[] = [];
+  const thinkBlocks = [];
   while ((match = thinkRe.exec(content)) !== null) {
     if (match[1].trim()) thinkBlocks.push(match[1].trim());
   }
-  cleanedContent = cleanedContent.replace(/<(?:think|thinking)>[\s\S]*?<\/(?:think|thinking)>/gi, '');
+  cleanedContent = cleanedContent.replace(/<(?:think|thinking)>[\\s\\S]*?<\\/(?:think|thinking)>/gi, '');
 
-  const openTagRe = /^[\s\S]*?<(?:think|thinking)>/i;
+  const openTagRe = /^[\\s\\S]*?<(?:think|thinking)>/i;
   const openMatch = cleanedContent.match(openTagRe);
-  if (openMatch && !/<(?:think|thinking)>[\s\S]*?<\/(?:think|thinking)>/i.test(content)) {
-    cleanedContent = cleanedContent.replace(/^\s*<(?:think|thinking)>\s*/i, '');
+  if (openMatch && !/<(?:think|thinking)>[\\s\\S]*?<\\/(?:think|thinking)>/i.test(content)) {
+    cleanedContent = cleanedContent.replace(/^\\s*<(?:think|thinking)>\\s*/i, '');
     cleanedContent = cleanedContent || content.replace(/<(?:think|thinking)>/gi, '').replace(/<[^>]+>/g, '').trim();
   }
 

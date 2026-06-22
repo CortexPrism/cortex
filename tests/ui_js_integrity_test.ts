@@ -69,3 +69,16 @@ Deno.test('UI JS output has no literal control chars in strings', async () => {
   const broken = js.match(/\n'[);,\]\s]/g);
   assertEquals(broken, null, 'Found literal newlines before closing quotes');
 });
+
+Deno.test('UI JS output is syntactically valid JavaScript', async () => {
+  const { serveUi } = await import('../src/server/ui/mod.ts');
+  const html = await serveUi('en').text();
+  const { js } = getScriptJs(html);
+
+  try {
+    new Function(js);
+  } catch (e: unknown) {
+    const msg = e instanceof SyntaxError ? e.message : String(e);
+    throw new Error(`Generated UI JS syntax error: ${msg}`);
+  }
+});
