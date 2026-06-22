@@ -1,6 +1,6 @@
 {
   "name": "@cortex/infra",
-  "version": "0.48.6",
+  "version": "0.50.0",
   "exports": {
     ".": "./mod.ts",
     "./contracts": "./contracts/mod.ts",
