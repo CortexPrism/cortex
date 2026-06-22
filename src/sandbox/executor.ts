@@ -1,5 +1,6 @@
 import { buildSandboxCommand as buildSecureSandbox } from './agent-sandbox.ts';
-import { debugLog, errorLog, execLog, infoLog, sandboxLog, warnLog } from './logger.ts';
+import { debugLog, errorLog, execLog, infoLog, type sandboxLog, warnLog } from './logger.ts';
+import { buildContainerSecurityArgs, buildWorkspaceMountArg } from './security-args.ts';
 
 const TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
@@ -14,6 +15,7 @@ export interface SandboxOptions {
   runtime?: SandboxRuntime;
   workingDir?: string;
   env?: Record<string, string>;
+  mountMode?: 'ro' | 'rw';
 }
 
 export interface SandboxResult {
@@ -206,6 +208,7 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
       cpuLimit: 0.5,
       timeoutMs: timeout,
       env: opts.env,
+      mountMode: opts.mountMode,
     });
     return await runDockerCommand(secureArgs, timeout, opts.stdin, start);
   }
@@ -225,15 +228,32 @@ async function runInDocker(opts: SandboxOptions): Promise<SandboxResult> {
     entrypoint = ['sh', '-c', opts.code];
   }
 
+  const securityArgs = buildContainerSecurityArgs({
+    memoryLimitMb: 256,
+    cpuLimit: 0.5,
+    pidsLimit: 64,
+    readOnlyRoot: true,
+    tmpfsSize: '256M',
+    dropAllCapabilities: true,
+    noNewPrivileges: true,
+  });
+
+  const mountArgs: string[] = [];
+  if (opts.workingDir) {
+    mountArgs.push(...buildWorkspaceMountArg({
+      hostPath: opts.workingDir,
+      containerPath: '/workspace',
+      mode: opts.mountMode ?? 'ro',
+    }));
+  }
+
   const args = [
     'run',
     '--rm',
     ...(opts.runtime === 'gvisor' ? ['--runtime=runsc'] : []),
     '--network=none',
-    '--memory=256m',
-    '--cpus=0.5',
-    '--pids-limit=64',
-    '--security-opt=no-new-privileges',
+    ...securityArgs,
+    ...mountArgs,
     ...envArgs,
     image,
     ...entrypoint,

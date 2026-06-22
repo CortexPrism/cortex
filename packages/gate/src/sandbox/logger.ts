@@ -109,19 +109,36 @@ export function validateSandboxPath(inputPath: string, fieldName: string): PathV
   }
 
   const normalized = normalize(resolve(inputPath));
-  const within = roots.some((r) => normalized === r || normalized.startsWith(r + '/'));
+
+  let realPath: string;
+  try {
+    realPath = Deno.realPathSync(normalized);
+  } catch {
+    realPath = normalized;
+  }
+
+  const forbiddenPrefixes = ['/proc', '/sys', '/dev', '/run'];
+  for (const prefix of forbiddenPrefixes) {
+    if (realPath === prefix || realPath.startsWith(prefix + '/')) {
+      const err = `Invalid ${fieldName}: path within forbidden system directory (${prefix})`;
+      warnLog(sandboxLog, err, { inputPath, realPath });
+      return { valid: false, error: err, normalized: realPath, roots };
+    }
+  }
+
+  const within = roots.some((r) => realPath === r || realPath.startsWith(r + '/'));
 
   if (!within) {
     const err = `Invalid ${fieldName}: path must be within workspaces or data directory`;
-    warnLog(sandboxLog, err, { inputPath, normalized, roots });
-    return { valid: false, error: err, normalized, roots };
+    warnLog(sandboxLog, err, { inputPath, realPath, roots });
+    return { valid: false, error: err, normalized: realPath, roots };
   }
 
   debugLog(sandboxLog, `${fieldName} valid`, {
     inputPath,
-    normalized,
-    matchedRoot: roots.find((r) => normalized === r || normalized.startsWith(r + '/')),
+    normalized: realPath,
+    matchedRoot: roots.find((r) => realPath === r || realPath.startsWith(r + '/')),
   });
 
-  return { valid: true, normalized, roots };
+  return { valid: true, normalized: realPath, roots };
 }

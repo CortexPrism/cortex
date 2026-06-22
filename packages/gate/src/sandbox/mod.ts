@@ -17,6 +17,14 @@ export {
 } from './agent-sandbox.ts';
 
 export {
+  type ContainerSecurityConfig,
+  type WorkspaceMountConfig,
+  buildContainerSecurityArgs,
+  buildWorkspaceMountArg,
+  mergeContainerSecurityArgs,
+} from './security-args.ts';
+
+export {
   generateDevEnvManifest,
   listDevEnvManifests,
   loadDevEnvManifest,
