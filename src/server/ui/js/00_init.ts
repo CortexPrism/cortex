@@ -13,7 +13,39 @@ let reasoningEl = null;
 let reasoningStartTime = 0;
 let userScrolledUp = false;
 let sessionNamed = false;
-const subAgentContainers = {}; // sub-agent ID -> DOM element
-const subAgentChunks = {}; // sub-agent ID -> accumulated text
+const subAgentContainers = {};
+const subAgentChunks = {};
+
+// ── Theme and experience level init ─────────
+(function() {
+  var theme = 'dark';
+  try {
+    var stored = localStorage.getItem('cortex_theme');
+    if (stored === 'light' || stored === 'dark') theme = stored;
+    else if (window.matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+  } catch(e) {}
+  document.documentElement.setAttribute('data-theme', theme);
+
+  var expLevel = 'beginner';
+  try {
+    var storedExp = localStorage.getItem('cortex_experience_level');
+    if (storedExp === 'beginner' || storedExp === 'intermediate' || storedExp === 'advanced') expLevel = storedExp;
+  } catch(e) {}
+
+  // Pre-set mode toggle active button early so it matches before setExperienceLevel runs
+  var modeBtns = document.querySelectorAll('.mode-toggle-btn');
+  modeBtns.forEach(function(b) {
+    var isActive = b.getAttribute('data-level') === expLevel;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-checked', String(isActive));
+  });
+
+  // Initialize tooltips after DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { initTooltips(); });
+  } else {
+    initTooltips();
+  }
+})();
 
 `;

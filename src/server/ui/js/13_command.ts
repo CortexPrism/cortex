@@ -1,30 +1,47 @@
 export const JS_13_COMMAND = `
 // ── Command palette ──────────────────────────
 const CMD_PAGES = [
-  { id:'dashboard', label:'Dashboard', icon:'📊', desc:'System overview, daemon status, and widgets' },
-  { id:'chat', label:'Chat', icon:'💬', desc:'Start a chat session' },
-  { id:'editor', label:'Editor', icon:'✏', desc:'Web file editor (CodeMirror)' },
-  { id:'memory', label:'Memory', icon:'📚', desc:'Browse episodic, semantic, and graph memory' },
-  { id:'skills', label:'Skills', icon:'⚡', desc:'Procedural memory — learned skill patterns' },
-  { id:'lens', label:'Activity', icon:'🔭', desc:'Filterable audit log with cost tracking and auto-refresh' },
-  { id:'agents', label:'Agents', icon:'👥', desc:'Manage agent identities and selection' },
-  { id:'services', label:'Services', icon:'⚙', desc:'Micro-service lifecycle management' },
-  { id:'sessions', label:'Sessions', icon:'📁', desc:'Browse, search, export sessions' },
-  { id:'settings', label:'Settings', icon:'⚙', desc:'Configure providers, API keys, router' },
-  { id:'soul', label:'Soul', icon:'❤', desc:'Agent identity (SOUL.md, USER.md, MEMORY.md)' },
-  { id:'policies', label:'Policies', icon:'🛡', desc:'Security policy rules' },
-  { id:'extensions', label:'Extensions', icon:'🧩', desc:'Installed plugins and marketplace discovery' },
-  { id:'analytics', label:'Analytics', icon:'📈', desc:'Token usage, cost, session statistics' },
-  { id:'vault', label:'Vault', icon:'🔐', desc:'Encrypted credential and secret storage' },
-  { id:'mcp', label:'MCP Servers', icon:'🔌', desc:'Connect to and manage MCP protocol servers' },
-  { id:'chrome-bridge', label:'Chrome Bridge', icon:'🌐', desc:'Browser automation via Chrome DevTools Protocol' },
-  { id:'remote', label:'Remote & Computer', icon:'🌐🖥', desc:'Remote agent deployment and AI-driven computer use' },
-  { id:'nodes', label:'Nodes', icon:'🖧', desc:'Remote Cortex node registry and management' },
-  { id:'daemons', label:'Daemons', icon:'⚡', desc:'Validator, executor, and scheduler process status' },
-  { id:'oshealth', label:'OS Health', icon:'🖥️', desc:'System health dashboard — daemons, DB, jobs, memory' },
-  { id:'workflow', label:'Workflows', icon:'🔁', desc:'Registered workflow pipelines' },
-  { id:'eval', label:'Eval', icon:'📐', desc:'Agent evaluation suites and benchmark runs' },
-  { id:'jobs', label:'Jobs', icon:'⏱', desc:'Scheduled cron, interval, and one-shot jobs' },
+  { id:'dashboard', label:'Dashboard', icon:'\ud83d\udcca', desc:'System overview, daemon status, and widgets', level:'beginner' },
+  { id:'chat', label:'Chat', icon:'\ud83d\udcac', desc:'Start a chat session', level:'beginner' },
+  { id:'editor', label:'Editor', icon:'\u270f', desc:'Web file editor (CodeMirror)', level:'beginner' },
+  { id:'memory', label:'Memory', icon:'\ud83d\udcda', desc:'Browse episodic, semantic, and graph memory', level:'beginner' },
+  { id:'skills', label:'Skills', icon:'\u26a1', desc:'Procedural memory \u2014 learned skill patterns', level:'beginner' },
+  { id:'lens', label:'Activity', icon:'\ud83d\udd2d', desc:'Filterable audit log with cost tracking and auto-refresh', level:'intermediate' },
+  { id:'agents', label:'Agents', icon:'\ud83d\udc65', desc:'Manage agent identities and selection', level:'beginner' },
+  { id:'services', label:'Services', icon:'\ud83d\udd27', desc:'Micro-service lifecycle management', level:'beginner' },
+  { id:'sessions', label:'Sessions', icon:'\ud83d\udcc1', desc:'Browse, search, export sessions', level:'beginner' },
+  { id:'settings', label:'Settings', icon:'\u2699', desc:'Configure providers, API keys, router', level:'beginner' },
+  { id:'soul', label:'Soul', icon:'\u2764', desc:'Agent identity (SOUL.md, USER.md, MEMORY.md)', level:'intermediate' },
+  { id:'policies', label:'Policies', icon:'\ud83d\udee1', desc:'Security policy rules', level:'beginner' },
+  { id:'extensions', label:'Extensions', icon:'\ud83e\udde9', desc:'Installed plugins and marketplace discovery', level:'beginner' },
+  { id:'analytics', label:'Analytics', icon:'\ud83d\udcc8', desc:'Token usage, cost, session statistics', level:'intermediate' },
+  { id:'vault', label:'Vault', icon:'\ud83d\udd10', desc:'Encrypted credential and secret storage', level:'intermediate' },
+  { id:'mcp', label:'MCP Servers', icon:'\ud83d\udd0c', desc:'Connect to and manage MCP protocol servers', level:'intermediate' },
+  { id:'chrome-bridge', label:'Chrome Bridge', icon:'\ud83c\udf10', desc:'Browser automation via Chrome DevTools Protocol', level:'advanced' },
+  { id:'remote', label:'Remote & Computer', icon:'\ud83c\udf10', desc:'Remote agent deployment and AI-driven computer use', level:'intermediate' },
+  { id:'nodes', label:'Nodes', icon:'\ud83d\udda7', desc:'Remote Cortex node registry and management', level:'intermediate' },
+  { id:'daemons', label:'Daemons', icon:'\u2699', desc:'Validator, executor, and scheduler process status', level:'intermediate' },
+  { id:'oshealth', label:'OS Health', icon:'\ud83d\udda5', desc:'System health dashboard \u2014 daemons, DB, jobs, memory', level:'advanced' },
+  { id:'workflow', label:'Workflows', icon:'\ud83d\udd01', desc:'Registered workflow pipelines', level:'intermediate' },
+  { id:'eval', label:'Eval', icon:'\ud83d\udcd0', desc:'Agent evaluation suites and benchmark runs', level:'intermediate' },
+  { id:'jobs', label:'Jobs', icon:'\u23f0', desc:'Scheduled cron, interval, and one-shot jobs', level:'intermediate' },
+  { id:'coderunner', label:'Code Runner', icon:'\u25b6', desc:'Run code in a sandboxed environment', level:'beginner' },
+  { id:'projects', label:'Projects', icon:'\ud83d\udcc2', desc:'Manage project workspaces', level:'intermediate' },
+  { id:'vcs', label:'Version Control', icon:'\u2935', desc:'Git repository management', level:'intermediate' },
+  { id:'sandbox', label:'Sandbox', icon:'\ud83d\udce6', desc:'Sandboxed execution environment', level:'intermediate' },
+  { id:'codegraph', label:'Codegraph', icon:'\ud83d\udd78', desc:'Code dependency graph visualization', level:'advanced' },
+  { id:'alcove', label:'Alcove', icon:'\ud83d\udcda', desc:'Code archive and reference library', level:'advanced' },
+  { id:'metacognition', label:'Metacognition', icon:'\ud83e\udde9', desc:'Agent self-assessment insights', level:'advanced' },
+  { id:'promptlab', label:'Prompt Lab', icon:'\ud83e\uddea', desc:'Prompt engineering and A/B testing', level:'advanced' },
+  { id:'pkm', label:'PKM', icon:'\ud83d\udcd6', desc:'Personal knowledge management', level:'advanced' },
+  { id:'memori', label:'Memori', icon:'\u23f1', desc:'Advanced memory analytics', level:'advanced' },
+  { id:'automation', label:'Automation', icon:'\ud83d\udd01', desc:'Triggers, hooks, and event-driven actions', level:'intermediate' },
+  { id:'channels', label:'Channels', icon:'\ud83d\udce1', desc:'Communication channel adapters', level:'intermediate' },
+  { id:'computer', label:'Computer', icon:'\ud83d\udda5', desc:'AI-driven computer interaction', level:'intermediate' },
+  { id:'quartermaster', label:'Quartermaster', icon:'\ud83e\udde0', desc:'Intelligent model selection', level:'advanced' },
+  { id:'mcp-gateway', label:'MCP Gateway', icon:'\ud83c\udf10', desc:'MCP protocol gateway', level:'advanced' },
+  { id:'tools', label:'Tools', icon:'\ud83d\udd27', desc:'Tool configuration and management', level:'intermediate' },
+  { id:'pluginpanels', label:'Plugin Panels', icon:'\ud83e\udde9', desc:'Dynamic plugin panel pages', level:'advanced' },
 ];
 
 let cmdPaletteCache = { agents: [], sessions: [] };
@@ -32,9 +49,19 @@ let cmdPaletteCache = { agents: [], sessions: [] };
 async function filterCmdPalette(query) {
   const el = document.getElementById('cmd-results');
   const q = query.toLowerCase().trim();
+  var expLevel = getExperienceLevel ? getExperienceLevel() : 'beginner';
 
-  // Static pages
-  const pages = q ? CMD_PAGES.filter(p => p.label.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)) : CMD_PAGES;
+  // Static pages — filter by experience level when no query; show all when searching
+  var pages;
+  if (q) {
+    pages = CMD_PAGES.filter(function(p) {
+      return p.label.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q);
+    });
+  } else {
+    pages = CMD_PAGES.filter(function(p) {
+      return isPageVisible(p.id, expLevel);
+    });
+  }
   let html = pages.map((p, i) =>
     '<button class="cmd-item' + (i === 0 ? ' active' : '') + '" onclick="navigateCmd(\\'' + p.id + '\\')" onmouseenter="highlightCmd(this)">' +
     '<span class="cmd-icon">' + p.icon + '</span>' +
@@ -128,23 +155,27 @@ function toggleSidebarSection(event) {
 
 // ── Sidebar search ──────────────────────────
 function filterNav(query) {
-  const items = document.querySelectorAll('.nav-item');
-  const sections = document.querySelectorAll('.nav-section');
-  const q = query.toLowerCase().trim();
-  items.forEach(item => {
-    const text = item.textContent.toLowerCase();
-    item.classList.toggle('nav-hidden', q && !text.includes(q));
+  var items = document.querySelectorAll('.sub-nav-item, .nav-item');
+  var sections = document.querySelectorAll('.nav-section, .sub-nav-group');
+  var q = query.toLowerCase().trim();
+  items.forEach(function(item) {
+    var text = item.textContent.toLowerCase();
+    if (q && !text.includes(q)) {
+      item.style.display = 'none';
+    } else {
+      item.style.display = '';
+    }
   });
-  sections.forEach(sec => {
-    let next = sec.nextElementSibling;
-    let hasVisible = false;
-    while (next && !next.classList.contains('nav-section')) {
-      if (next.classList.contains('nav-item') && !next.classList.contains('nav-hidden')) {
+  sections.forEach(function(sec) {
+    var next = sec.nextElementSibling;
+    var hasVisible = false;
+    while (next && !next.classList.contains('nav-section') && !next.classList.contains('sub-nav-group')) {
+      if ((next.classList.contains('nav-item') || next.classList.contains('sub-nav-item')) && next.style.display !== 'none') {
         hasVisible = true; break;
       }
       next = next.nextElementSibling;
     }
-    sec.classList.toggle('nav-hidden', q && !hasVisible && !sec.textContent.toLowerCase().includes(q));
+    sec.style.display = (q && !hasVisible && !sec.textContent.toLowerCase().includes(q)) ? 'none' : '';
   });
 }
 

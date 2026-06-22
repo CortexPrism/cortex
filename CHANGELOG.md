@@ -41,6 +41,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Enhanced `cortex import hermes` command** — rebuilt from a JSONL-only importer into a comprehensive migration entry point. Supports `--config-only` (config.yaml), `--sessions-only` (auto-detects state.db vs JSONL exports), `--memory-only` (SOUL.md, MEMORY.md, USER.md, skills/), and `--dry-run`. Auto-discovers Hermes' config.yaml, state.db, and memory files from the detected directory. (`src/cli/import-cmd.ts`)
 
+- **UI overhaul — horizontal top navigation** — replaced the 33-item flat sidebar with a horizontal top bar (5 categories: Chat, Development, Knowledge, Infrastructure, System) containing logo, 5 nav tabs, command palette trigger, experience level toggle, theme toggle, and WebSocket badge. Clicking a category tab shows its contextual sub-nav in the sidebar. (`src/server/ui/shell.ts`, `src/server/ui/css.ts`)
+
+- **UI overhaul — contextual sidebar sub-nav** — sidebar is now dynamically populated by `renderSubNav()` based on the active top nav category. Category-to-page mapping defines 40 pages across 5 categories, each with icon, label, tooltip, and experience level. Sidebar search (`filterNav()`) now searches within the visible category. (`src/server/ui/js/05_nav_pre.ts`, `src/server/ui/js/07_nav_post.ts`, `src/server/ui/js/13_command.ts`)
+
+- **UI overhaul — experience levels with 3-button segmented control** — `[B] [I] [A]` mode toggle in header filters visible navigation by experience level. Beginner sees 10 core pages, Intermediate sees 29, Advanced sees all 40. Persisted in `localStorage` as `cortex_experience_level`. Navigating to a hidden page via URL hash shows a level gate overlay with upgrade button. Command palette also filters by experience level. (`src/server/ui/shell.ts`, `src/server/ui/js/00_init.ts`, `src/server/ui/js/01_helpers.ts`, `src/server/ui/js/05_nav_pre.ts`, `src/server/ui/js/07_nav_post.ts`, `src/server/ui/js/13_command.ts`, `src/server/ui/css.ts`)
+
+- **UI overhaul — JS tooltip system** — replaced the CSS-only `[data-tip]::after` pseudo-element hack with a proper JavaScript tooltip implementation. Uses event delegation on `[data-tooltip]` attributes, creates a single reusable `#global-tooltip` element with `role="tooltip"` and `aria-describedby`, supports both mouse (250ms delay, instant hide) and keyboard (focusin/focusout), smart positioning (flip above/below, clamp horizontal), and Escape to dismiss. Deployed on all nav items, mode toggle buttons, and theme toggle. (`src/server/ui/js/01_helpers.ts`, `src/server/ui/css.ts`)
+
+- **UI overhaul — dark/light theme toggle** — adds CSS custom property system with dark theme as default (`:root`) and full light theme overrides (`[data-theme="light"]`). Toggle button in header switches between modes, respects `prefers-color-scheme` media query on first load, persists choice in `localStorage` as `cortex_theme`. (`src/server/ui/shell.ts`, `src/server/ui/css.ts`, `src/server/ui/js/00_init.ts`, `src/server/ui/js/01_helpers.ts`)
+
 ### Security
 
 - **Comprehensive security policy audit and hardening** — reviewed all 6 layers of built-in security policies (DB rules, validator, guardrails, DLP, capability tiers, auxiliary modules). Identified and resolved 18 issues across critical, high, medium, and low priority tiers.
@@ -96,6 +106,10 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ### Changed
 
 - **Misfiled routes reorganized** — `session-links.ts` contained 6 unrelated route groups (security approvals bulk, settings compressor, codegraph pilot-config, agentlint check, agent preferences, sessions links). Routes moved to their semantically correct files: `security.ts`, `config-routes.ts`, `codegraph.ts`, `agents.ts`, `memory-config.ts`. (`src/server/routes/session-links.ts`, `src/server/routes/security.ts`, `src/server/routes/config-routes.ts`, `src/server/routes/codegraph.ts`, `src/server/routes/agents.ts`, `src/server/routes/memory-config.ts`)
+
+- **UI overhaul — CSS rewrite with brand palette** — complete CSS rewrite (599→1000+ lines) with CortexPrism brand colors (cyan `#06b6d4`, indigo `#6366f1`), spacing scale (`--space-1` through `--space-8`), updated typography (Inter 14px/1.6, JetBrains Mono 13px), and 80+ new component classes for header, top nav, sidebar, mode toggle, tooltips, and level gating. All existing component styles (chat, cards, buttons, CodeMirror, agent panel, dashboard, graph) preserved with refreshed values. (`src/server/ui/css.ts`)
+
+- **UI overhaul — shell restructure** — replaced sidebar-centric flex layout with header+body column layout: `<header>` (48px, containing logo, top nav, controls) above `<div class="app-body">` (sidebar + main flex). Removed all 33 hardcoded nav items from `SIDEBAR_HTML`. Sidebar now houses `#sidebar-subnav` container populated dynamically by JS. (`src/server/ui/shell.ts`)
 
 ### Removed
 
@@ -198,6 +212,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ### Added
 
 - **`cortex mcp a2a remote` CLI command** — new subcommand that lists all configured remote A2A agents with endpoint, auth status, timeout, and tool name. Shows a config example when no agents are configured. The main `cortex mcp a2a` help text now includes a full `config.json` example for adding remote agents. (`src/cli/a2a-cmd.ts`, `packages/cli/src/cli/a2a-cmd.ts`)
+
+- **Sessions page — tree view with token metrics** — the sessions list is now a hierarchical tree showing parent sessions with indented child sub-agent sessions. Added an enriched endpoint (`GET /api/sessions/enriched`) that joins lens_events token data per session, plus `GET /api/sessions/:id/stats` for single-session stats. Each row displays: status dot, sub-agent connector, name, truncated ID, agent/channel/sub-agent type badges, child count chip, `← parent` link on children, turn count, total tokens, cost, tool calls, and average LLM duration. Parent cards get an accent left border; children get an amber left border. The detail view now fetches and displays token metrics alongside parent/child navigation. Archival opacity transitions smoothly on hover. **Fixed template-literal escaping** — the file lives inside a TypeScript template literal export; inline `onclick` handlers using JS string concatenation (`\'')` patterns) were broken by the dual-layer escaping (TS template → browser JS). Replaced concatenation with browser-side template literals for the main card HTML and DOM-based `addEventListener` for child links, and switched special characters to Unicode escapes (`\u2514`, `\u2190`, etc.) to avoid encoding ambiguity. (`src/db/sessions.ts`, `src/server/routes/sessions.ts`, `src/server/ui/js/10_sessions.ts`, `src/server/ui/pages/sessions.ts`, `src/server/ui/css.ts`)
 
 ## [0.49.1] - 2026-06-22
 
