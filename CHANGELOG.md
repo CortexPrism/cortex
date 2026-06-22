@@ -5,6 +5,20 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.49.1] - 2026-06-22
+
+### Changed
+
+- **Runtime timeouts, limits, and CDN endpoints made configurable** — 30+ previously hardcoded values are now configurable via `config.json` with sensible defaults preserved:
+  - **Agent loop** — `agentRuntime.maxToolRounds` (12), `agentRuntime.subAgentTimeoutMs` (120000), `agentRuntime.streamTimeoutMs` (180000). `setup.ts` and `llm-stream.ts` read from config, falling back to module-level defaults.
+  - **Sandbox** — `sandbox.timeoutMs` (30000), `sandbox.maxOutputBytes` (65536), `sandbox.scrollAmount` (3), optional `sandbox.dockerImages` overrides.
+  - **Approval workflow** — `approvals.autoApproveRiskBelow` (low), `approvals.defaultTimeoutMs` (300000), `approvals.maxTimeoutMs` (3600000). Added `initApprovalWorkflowFromCortexConfig()`.
+  - **Job scheduler** — `scheduler.runningJobTimeoutMs` (600000). `recoverStaleJobs()` resolves timeout from config.
+  - **Chrome Bridge** — `chromeBridge.healthCheckMs` (30000), `chromeBridge.maxRetries` (5), `chromeBridge.initialBackoffMs` (100), `chromeBridge.maxBackoffMs` (1600). Wired through `startChromeBridge()`.
+  - **UI CDN endpoints** — `uiCdn.cdnBase` (`cdn.jsdelivr.net`), `uiCdn.googleFontsBase` (`fonts.googleapis.com`), `uiCdn.d3Base` (`d3js.org`). `serveUi()` accepts `UICdnOptions` from config.
+  - **Code graph** — `codeGraph.maxGrammarSize` (5242880), `codeGraph.ignoreDirs`, `codeGraph.ignoreFiles`.
+  - All new config sections use deep merging so partial overrides don't wipe defaults. (`packages/core/contracts/config.ts`, `packages/core/src/config/config.ts`, `packages/ai/src/agent/stages/setup.ts`, `packages/ai/src/agent/stages/llm-stream.ts`, `packages/ai/src/tools/builtin/chrome_bridge_manager.ts`, `packages/infra/src/scheduler/scheduler.ts`, `packages/gate/src/security/approval-workflow.ts`, `packages/server/src/server/ui/mod.ts`, `packages/server/src/server/server.ts`)
+
 ## [0.49.0] - 2026-06-22
 
 ### Added

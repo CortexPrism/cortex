@@ -248,6 +248,10 @@ export interface IChromeBridgeConfig {
   autoRegisterTools?: boolean;
   toolPrefix?: string;
   env?: Record<string, string>;
+  healthCheckMs?: number;
+  maxRetries?: number;
+  initialBackoffMs?: number;
+  maxBackoffMs?: number;
 }
 
 export interface IComputerUseConfig {
@@ -287,6 +291,41 @@ export interface IComplianceConfig {
   alertWebhook?: string;
 }
 
+export interface IAgentRuntimeConfig {
+  maxToolRounds?: number;
+  subAgentTimeoutMs?: number;
+  streamTimeoutMs?: number;
+}
+
+export interface ISandboxRuntimeConfig {
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  scrollAmount?: number;
+  dockerImages?: Record<string, string>;
+}
+
+export interface IApprovalsConfig {
+  autoApproveRiskBelow?: 'low' | 'medium' | 'high';
+  defaultTimeoutMs?: number;
+  maxTimeoutMs?: number;
+}
+
+export interface ISchedulerConfig {
+  runningJobTimeoutMs?: number;
+}
+
+export interface IUICdnConfig {
+  cdnBase?: string;
+  googleFontsBase?: string;
+  d3Base?: string;
+}
+
+export interface ICodeGraphConfig {
+  maxGrammarSize?: number;
+  ignoreDirs?: string[];
+  ignoreFiles?: string[];
+}
+
 export interface ICortexConfig {
   version: number;
   defaultProvider: ProviderKind;
@@ -313,6 +352,12 @@ export interface ICortexConfig {
   memory?: IMemoryConfig;
   computerUse?: IComputerUseConfig;
   chromeBridge?: IChromeBridgeConfig;
+  agentRuntime?: IAgentRuntimeConfig;
+  sandbox?: ISandboxRuntimeConfig;
+  approvals?: IApprovalsConfig;
+  scheduler?: ISchedulerConfig;
+  uiCdn?: IUICdnConfig;
+  codeGraph?: ICodeGraphConfig;
   a2a?: Record<string, unknown>;
   server?: IServerConfig;
   supervisor?: ISupervisorConfig;
