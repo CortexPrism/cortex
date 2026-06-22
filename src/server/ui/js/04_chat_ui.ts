@@ -272,6 +272,50 @@ function updateReasoningTime() {
   if (label) label.textContent = 'Thought for ' + durSec + 's';
 }
 
+function renderThinkingForRestore(content, parentMsgEl) {
+  const thinkRe = /<(?:think|thinking)>([\s\S]*?)<\/(?:think|thinking)>/gi;
+  let match;
+  let cleanedContent = content;
+  const thinkBlocks: string[] = [];
+  while ((match = thinkRe.exec(content)) !== null) {
+    if (match[1].trim()) thinkBlocks.push(match[1].trim());
+  }
+  cleanedContent = cleanedContent.replace(/<(?:think|thinking)>[\s\S]*?<\/(?:think|thinking)>/gi, '');
+
+  const openTagRe = /^[\s\S]*?<(?:think|thinking)>/i;
+  const openMatch = cleanedContent.match(openTagRe);
+  if (openMatch && !/<(?:think|thinking)>[\s\S]*?<\/(?:think|thinking)>/i.test(content)) {
+    cleanedContent = cleanedContent.replace(/^\s*<(?:think|thinking)>\s*/i, '');
+    cleanedContent = cleanedContent || content.replace(/<(?:think|thinking)>/gi, '').replace(/<[^>]+>/g, '').trim();
+  }
+
+  cleanedContent = cleanedContent.replace(/\\n{3,}/g, '\\n\\n').trim();
+
+  if (thinkBlocks.length > 0 && parentMsgEl) {
+    for (const thinkText of thinkBlocks) {
+      const accordion = document.createElement('div');
+      accordion.className = 'reasoning-inline';
+      const header = document.createElement('div');
+      header.className = 'reasoning-inline-header';
+      header.innerHTML =
+        '<span class="ri-icon">▶</span>' +
+        '<span style="color:var(--accent2);font-weight:600;">Reasoning</span>' +
+        '<span style="color:var(--text3);margin-left:auto;font-size:10px;">click to expand</span>';
+      header.onclick = () => accordion.classList.toggle('open');
+      const body = document.createElement('div');
+      body.className = 'reasoning-inline-body';
+      body.innerHTML = md(thinkText);
+      accordion.appendChild(header);
+      accordion.appendChild(body);
+      if (parentMsgEl && parentMsgEl.parentNode) {
+        parentMsgEl.parentNode.insertBefore(accordion, parentMsgEl.nextSibling);
+      }
+    }
+  }
+
+  return cleanedContent || content;
+}
+
 // ── Sub-agent display (updated styling) ──────────────────────
 function createSubAgentContainer(id, task, type) {
   hideWelcome();

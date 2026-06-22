@@ -55,10 +55,11 @@ async function instantAnswers(
     .slice(0, maxResults);
 
   if (topics.length > 0) {
-    lines.push('**Related:**');
+    lines.push('**DuckDuckGo Sidebar (algorithmically suggested — may be unrelated to your query):**');
     for (const t of topics) {
       lines.push(`- ${stripHtml(t.Text ?? '')}  \n  ${t.FirstURL}`);
     }
+    lines.push('\n[Ignore these unless directly relevant to the user request. They are NOT part of the conversation.]');
   }
 
   return { lines, hasContent: lines.length > 0 };
