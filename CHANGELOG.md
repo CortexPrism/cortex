@@ -9,6 +9,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Changed
 
+- **Tauri desktop app rebuilt** — the `desktop/` Tauri 2.x application was fully restructured with a proper Rust IPC backend, dedicated desktop frontend, and server lifecycle management:
+  - **Rust backend** (`desktop/src-tauri/src/`): modular architecture with `commands.rs` (8 IPC commands: `get_system_info`, clipboard read/write, server start/stop/status, `open_external`), `tray.rs` (system tray with Tauri 2.x `TrayIconBuilder` API, dynamic server status, quick-ask trigger), and `main.rs` (auto-starts Cortex server on launch, manages `AppState` with child process tracking, close-to-tray behavior)
+  - **Desktop frontend** (`desktop/src/`): dedicated shell UI with toolbar, quick-ask bar (`Ctrl+Shift+K`), server health indicator, iframe-hosted Cortex dashboard, and splash/loading screen. Communicates with Tauri backend via IPC and Cortex server via REST API
+  - **Icons**: generated SVG logo + PNG sizes (32×32, 128×128, 256×256) + ICO + placeholder ICNS via `rsvg-convert`
+  - **Build**: new `build-desktop.ts` script inlines CSS/JS into single `desktop/dist/index.html`; added `deno task build-desktop`
+  - **Dependencies**: `sysinfo` (system monitoring), `arboard` (clipboard), `open` (URL handler), `hostname`; version synced to 0.49.1
+  - (`desktop/src-tauri/src/main.rs`, `desktop/src-tauri/src/commands.rs`, `desktop/src-tauri/src/tray.rs`, `desktop/src-tauri/Cargo.toml`, `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/icons/*`, `desktop/src/index.html`, `desktop/src/app.css`, `desktop/src/app.js`, `desktop/build-desktop.ts`, `deno.json`)
+
 - **Runtime timeouts, limits, and CDN endpoints made configurable** — 30+ previously hardcoded values are now configurable via `config.json` with sensible defaults preserved:
   - **Agent loop** — `agentRuntime.maxToolRounds` (12), `agentRuntime.subAgentTimeoutMs` (120000), `agentRuntime.streamTimeoutMs` (180000). `setup.ts` and `llm-stream.ts` read from config, falling back to module-level defaults.
   - **Sandbox** — `sandbox.timeoutMs` (30000), `sandbox.maxOutputBytes` (65536), `sandbox.scrollAmount` (3), optional `sandbox.dockerImages` overrides.

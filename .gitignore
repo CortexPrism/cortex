@@ -17,6 +17,7 @@ dist/
 build/
 out/
 *.js.map
+desktop/src-tauri/target/
 
 # ── Editor / IDE ──────────────────────────────────────────────
 .vscode/settings.json
