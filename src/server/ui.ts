@@ -3839,7 +3839,7 @@ function connect() {
   ws.onopen = () => {
     setBadge('connected');
     if (terminalInstance && !terminalConnected) {
-      terminalInstance.write('\x1b[32mReconnected.\x1b[0m\r\n');
+      terminalInstance.write('\x1b[32mReconnected.\x1b[0m\\r\\n');
       sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
       terminalConnected = true;
       terminalInputBuffer = '';
@@ -3849,7 +3849,7 @@ function connect() {
   ws.onclose = () => {
     setBadge('disconnected');
     if (terminalInstance) {
-      terminalInstance.write('\r\n\x1b[33mConnection lost. Reconnecting...\x1b[0m\r\n');
+      terminalInstance.write('\\r\\n[33mConnection lost. Reconnecting...[0m\\r\\n');
       terminalConnected = false;
       terminalInputBuffer = '';
     }
@@ -4034,7 +4034,7 @@ function connect() {
         break;
       case 'terminal_closed':
         if (terminalInstance) {
-          terminalInstance.write('\r\n\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\x1b[0m\r\n');
+          terminalInstance.write('\\r\\n\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\x1b[0m\\r\\n');
           terminalConnected = false;
           terminalInputBuffer = '';
         }
@@ -10816,7 +10816,7 @@ function editorSwitchPanelTab(tab) {
   if (tab === 'terminal') {
     if (!terminalInstance) initTerminal();
     else if (!terminalConnected) {
-      terminalInstance.write('Reconnecting to terminal...\r\n');
+      terminalInstance.write('Reconnecting to terminal...\\r\\n');
       if (ws && ws.readyState === WebSocket.OPEN) {
         sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
         terminalConnected = true;
@@ -10905,7 +10905,7 @@ function initTerminal() {
   terminalInstance.onData(function(data) {
     if (!terminalConnected) return;
     if (data === '\r') {
-      terminalInstance.write('\r\n');
+      terminalInstance.write('\\r\\n');
       if (terminalInputBuffer.length > 0) {
         sendWs({ type: 'terminal_input', data: terminalInputBuffer + '\n' });
       }
@@ -10916,7 +10916,7 @@ function initTerminal() {
         terminalInstance.write('\b \b');
       }
     } else if (data === '\x03') {
-      terminalInstance.write('^C\r\n');
+      terminalInstance.write('^C\\r\\n');
       sendWs({ type: 'terminal_input', data: '\x03' });
       terminalInputBuffer = '';
     } else if (data === '\x04') {
@@ -10937,13 +10937,13 @@ function initTerminal() {
     }).observe(container);
   }
 
-  terminalInstance.write('Connecting to terminal...\r\n');
+  terminalInstance.write('Connecting to terminal...\\r\\n');
   if (ws && ws.readyState === WebSocket.OPEN) {
     sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
     terminalConnected = true;
     terminalInstance.write('$ ');
   } else {
-    terminalInstance.write('WebSocket not connected. Terminal will reconnect when available.\r\n');
+    terminalInstance.write('WebSocket not connected. Terminal will reconnect when available.\\r\\n');
   }
 }
 
@@ -10956,16 +10956,16 @@ function sendWs(msg) {
 function handleTerminalOutput(data) {
   if (!terminalInstance) return;
   if (data.endsWith('\n')) {
-    terminalInstance.write(data.slice(0, -1).replace(/\n/g, '\r\n') + '\r\n$ ');
+    terminalInstance.write(data.slice(0, -1).replace(/\n/g, '\\r\\n') + '\\r\\n$ ');
   } else {
-    terminalInstance.write(data.replace(/\n/g, '\r\n'));
+    terminalInstance.write(data.replace(/\n/g, '\\r\\n'));
   }
 }
 
 function closeTerminal() {
   if (!terminalInstance) return;
   sendWs({ type: 'terminal_close' });
-  terminalInstance.write('\r\n\x1b[33mTerminal closed.\x1b[0m\r\n');
+  terminalInstance.write('\\r\\n\x1b[33mTerminal closed.\x1b[0m\\r\\n');
   terminalConnected = false;
   terminalInputBuffer = '';
 }

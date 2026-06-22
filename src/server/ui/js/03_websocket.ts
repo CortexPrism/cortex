@@ -5,7 +5,7 @@ function connect() {
   ws.onopen = () => {
     setBadge('connected');
     if (terminalInstance && !terminalConnected) {
-      terminalInstance.write('\x1b[32mReconnected.\x1b[0m\r\n');
+      terminalInstance.write('\x1b[32mReconnected.\x1b[0m\\r\\n');
       sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
       terminalConnected = true;
       terminalInputBuffer = '';
@@ -15,7 +15,7 @@ function connect() {
   ws.onclose = () => {
     setBadge('disconnected');
     if (terminalInstance) {
-      terminalInstance.write('\r\n\x1b[33mConnection lost. Reconnecting...\x1b[0m\r\n');
+      terminalInstance.write('\\r\\n\x1b[33mConnection lost. Reconnecting...\x1b[0m\\r\\n');
       terminalConnected = false;
       terminalInputBuffer = '';
     }
@@ -200,7 +200,7 @@ function connect() {
         break;
       case 'terminal_closed':
         if (terminalInstance) {
-          terminalInstance.write('\r\n\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\x1b[0m\r\n');
+          terminalInstance.write('\\r\\n\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\x1b[0m\\r\\n');
           terminalConnected = false;
           terminalInputBuffer = '';
         }
