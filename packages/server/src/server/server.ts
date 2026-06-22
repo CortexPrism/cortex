@@ -1,8 +1,8 @@
 import { logger } from '../../../../src/utils/logger.ts';
-import { handleApi } from './router.ts';
+import { handleApi } from './new-router.ts';
 import { handleWebSocket } from './ws.ts';
 import { handleNodeWebSocket } from '../hub/ws-node.ts';
-import { serveUi } from './ui.ts';
+import { serveUi } from './ui/mod.ts';
 import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
 import { runMigrations } from '../../../../src/db/migrate.ts';
 import { ensureDaemons, schedulePluginUpdateChecks } from '../../../../src/cli/daemon.ts';
