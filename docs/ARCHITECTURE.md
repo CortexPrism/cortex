@@ -1,8 +1,29 @@
 # CortexPrism Architecture
 
-This document describes the implemented architecture of CortexPrism as of v0.48.5.
+This document describes the implemented architecture of CortexPrism as of v0.48.6.
 
 ---
+
+## Package Structure
+
+CortexPrism was modularized in v0.48.6 into 6 coarse packages with a defined dependency graph:
+
+```
+@cortex/core ← @cortex/gate ← @cortex/ai ← @cortex/server ← @cortex/cli
+                                    ↖               ↗
+                              @cortex/infra
+```
+
+| Package | Directory | Contents |
+|---------|-----------|----------|
+| `@cortex/core` | `packages/core/` | config, db, i18n, utils, plugins |
+| `@cortex/gate` | `packages/gate/` | security (policy, vault, supervisor), sandbox, vfs |
+| `@cortex/ai` | `packages/ai/` | agent, tools, memory, llm, pipeline, skills |
+| `@cortex/server` | `packages/server/` | server, hub, channels, a2a, mcp, voice, workspace |
+| `@cortex/infra` | `packages/infra/` | processes, services, scheduler, ipc, triggers, workflow |
+| `@cortex/cli` | `packages/cli/` | cli, tui |
+
+Contracts are defined in `packages/<name>/contracts/` and are pure TypeScript interfaces with zero runtime dependencies.
 
 ## Overview
 
@@ -22,7 +43,8 @@ CortexPrism is a single-process AI agent operating system written in TypeScript/
 │   └──────────────┬──────────────────────────────┘              │
 │                  │                                              │
 │   ┌──────────────▼────────────────────────────┐                │
-│   │              agent/loop.ts                  │               │
+│   │              agent/loop.ts                  │              │
+│   │  (rebuilt as orchestrator → stages/ post/ helpers/)   │              │
 │   │  userMessage → [memory inject] → LLM call   │               │
 │   │  → [tool parse] → [validator] → [execute]   │               │
 │   │  → [re-prompt loop] → response              │               │
@@ -43,9 +65,24 @@ CortexPrism is a single-process AI agent operating system written in TypeScript/
 
 ---
 
-## Agent Loop (`src/agent/loop.ts`)
+## Agent Loop (`src/agent/loop.ts` → stages)
 
-The core of CortexPrism. `agentTurn()` handles one complete user→agent exchange:
+The core of CortexPrism. `agentTurn()` orchestrates one complete user→agent exchange through
+11 pipeline stages extracted into `src/agent/stages/`:
+- `setup.ts` — turn init, config loading, builtin hook registration
+- `history.ts` — `loadHybridHistory()`, document context detection
+- `assessment.ts` — `assessTask()`, meta-assessment, plan log, goal drift
+- `prompt-builder.ts` — memory enrichment, skills, preferences, context bridge, i18n
+- `model-selector.ts` — MQM model override
+- `llm-stream.ts` — LLM call + streaming + tool parse (while loop)
+- `tool-executor.ts` — tool execution with hooks and parallel dispatch
+
+Post-turn modules in `src/agent/post/`:
+- `response.ts` — pre-output hooks, persistence
+- `background.ts` — fire-and-forget (episodic write, reflection, MQM learn)
+- `cleanup.ts` — post-output hooks, session state cleanup
+
+The `agentTurn()` orchestrator calls stages sequentially via a shared `TurnContext`.
 
 ```
 agentTurn(opts)

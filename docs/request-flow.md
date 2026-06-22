@@ -10,7 +10,7 @@ Visual maps of the full lifecycle of a user request through the agent system.
 flowchart TD
     USER([User Message]) --> PREASSESS
 
-    subgraph PIPELINE ["Pipeline Hooks (src/pipeline/)"]
+    subgraph PIPELINE ["Pipeline Hooks (src/agent/pipeline/ → stages/ + post/)"]
         PREASSESS["pre-assess hook\n— can mutate input or abort"]
         POSTASSESS["post-assess hook\n— can abort after metacog"]
         PREREASON["pre-reason hook\n— runs each LLM round"]

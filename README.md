@@ -994,31 +994,48 @@ submission standards.
 ## Architecture
 
 CortexPrism is a single-process AI agent operating system built on Deno. All state is persisted in
-SQLite (WAL mode) via `@libsql/client`.
+SQLite (WAL mode) via `@libsql/client`. The codebase was modularized in v0.48.6 into 6 coarse
+packages following a dependency graph `core ← gate ← ai ← server ← cli` and `core ← ai ← infra ← cli`.
 
 ```
 CLI / Web UI / REST API
         │
-   agent/loop.ts          ← core agent turn: memory inject → LLM → tool parse → execute
+   @cortex/ai/agent/loop.ts  ← core agent turn: memory inject → LLM → tool parse → execute
         │
-   ┌────┼──────────────────────────────────────┐
-   │ memory/   tools/   security/   llm/       │
-   │ server/   sandbox/ scheduler/ voice/      │
-   └────────────────────────────────────────────┘
+   ┌────┼───────────────────────────────────────────┐
+   │    │                                           │
+   │    ▼                                           │
+   │  @cortex/ai        @cortex/gate               │
+   │  agent/ tools/     security/ sandbox/ vfs/     │
+   │  memory/ llm/                                  │
+   │  pipeline/ skills/                             │
+   │                                                │
+   │  @cortex/server     @cortex/infra              │
+   │  server/ hub/       processes/ services/        │
+   │  channels/ a2a/    scheduler/ ipc/             │
+   │  mcp/ voice/       triggers/ workflow/          │
+   │  workspace/        observability/              │
+   │                                                │
+   │  @cortex/core      @cortex/cli                  │
+   │  config/ db/        cli/ tui/                   │
+   │  utils/ i18n/                                   │
+   │  plugins/                                       │
+   └────────────────────────────────────────────────┘
         │
    SQLite databases (WAL mode)
    cortex.db · memory.db · lens.db · vault.db
 ```
 
-| Database     | Purpose                                   |
-| ------------ | ----------------------------------------- |
-| `cortex.db`  | Sessions, jobs, policies, services, nodes |
-| `memory.db`  | Episodic, semantic, and reflection memory |
-| `lens.db`    | Activity audit log                        |
-| `vault.db`   | Encrypted credential vault                |
-| `plugins.db` | Plugin registry                           |
+| Package         | Responsibility                                          |
+| --------------- | ------------------------------------------------------- |
+| `@cortex/core`  | Config, database, i18n, logging, paths, plugin system   |
+| `@cortex/gate`  | Security (policy, vault, supervisor), sandbox, VFS      |
+| `@cortex/ai`    | Agent loop, tools, memory, LLM providers, pipeline      |
+| `@cortex/server`| HTTP server, WebSocket hub, channels, A2A, MCP, voice   |
+| `@cortex/infra` | Process supervisor, services, scheduler, IPC, triggers  |
+| `@cortex/cli`   | CLI commands, TUI                                       |
 
-For the full architecture reference, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Each package defines contract interfaces in `packages/<name>/contracts/` for cross-package boundaries.
 
 ---
 
