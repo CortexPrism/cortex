@@ -1,4 +1,4 @@
-import { serveUi } from '../src/server/ui.ts';
+import { serveUi } from '../src/server/ui/mod.ts';
 
 const distDir = new URL('./dist/', import.meta.url);
 try {
