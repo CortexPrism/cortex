@@ -36,13 +36,16 @@ export const PAGE_MEMORY = `
         <span id="graph-breadcrumb"></span>
         <span style="margin-left:auto;font-size:10px;" id="graph-stats"></span>
       </div>
-      <div class="graph-container" id="graph-viz">
-        <div class="graph-controls">
-          <button class="graph-btn" onclick="graphZoomIn()" title="Zoom in">+</button>
-          <button class="graph-btn" onclick="graphZoomOut()" title="Zoom out">−</button>
-          <button class="graph-btn" onclick="graphFit()" title="Fit to view">⊡</button>
+      <div style="flex:1;display:flex;overflow:hidden;">
+        <div class="graph-container" id="graph-viz" style="flex:1;">
+          <div class="graph-controls">
+            <button class="graph-btn" onclick="graphZoomIn()" title="Zoom in">+</button>
+            <button class="graph-btn" onclick="graphZoomOut()" title="Zoom out">−</button>
+            <button class="graph-btn" onclick="graphFit()" title="Fit to view">⊡</button>
+          </div>
+          <div id="graph-tooltip" class="graph-tooltip" style="display:none;"></div>
         </div>
-        <div id="graph-tooltip" class="graph-tooltip" style="display:none;"></div>
+        <div id="graph-detail" style="display:none;width:340px;min-width:340px;overflow-y:auto;border-left:1px solid var(--border);background:var(--bg2);padding:16px;"></div>
       </div>
       <div class="graph-legend" id="graph-legend"></div>
     </div>

@@ -65,6 +65,9 @@ export const skillReadTool: Tool = {
           };
         }
 
+        const { touchSkill } = await import('../../memory/skills.ts');
+        touchSkill(name).catch(() => {});
+
         return {
           toolName: 'skill_read',
           success: true,

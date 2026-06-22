@@ -25,7 +25,27 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Prompt Lab UI integrity tests** — three new tests in the UI JS integrity suite: validates all 26 prompt lab functions exist in the generated output, all 18 DOM element IDs are present in the page HTML, and `split(/\\n/)` (the correct template-literal-safe regex pattern for newline splitting) exists in the output. Catches the exact class of escaping bugs where `/\n/` inside a template literal produces a literal newline breaking the regex. (`tests/ui_js_integrity_test.ts`)
 
+- **OpenClaw config import (`cortex import config`)** — new subcommand that converts an OpenClaw `openclaw.json` configuration to Cortex `config.json` settings. Maps providers (apiKey, baseUrl, model), agents (id, description, tools from skills), default provider/model, auto model selection pool from provider model lists, plugin configs (firecrawl, litellm, etc.), web search provider, voice/talk config, server settings, and MCP server entries. Supports `--dry-run` for preview. (`src/cli/import/config/types.ts`, `src/cli/import/config/openclaw.ts`, `src/cli/import-cmd.ts`)
+
+- **Unified `cortex import openclaw` command** — rebuilt from a memory-only export importer into a comprehensive migration entry point. Imports config (providers, agents, model pool), session transcripts (from `agents/<id>/sessions/*.jsonl` and `transcripts/*/*/transcript.jsonl`), session metadata (`sessions.json`), and memory files (MEMORY.md, memory/*.md, SOUL.md, USER.md) in a single command. Supports `--config-only`, `--sessions-only`, `--memory-only`, and `--dry-run` flags. (`src/cli/import-cmd.ts`)
+
+- **Enhanced JSONL transcript parser** — the transcript importer now extracts `tool_calls` and `tool_result` from event metadata, populating the `session_messages.tool_calls` and `session_messages.tool_result` columns. Handles `custom_message` events (extension-injected messages visible to model context) and stores `model_change` events as episodic memories. Adds `importOpenClawSessions()` function that recursively discovers transcripts across both agent session directories and historical transcript directories. (`src/cli/import/jsonl.ts`)
+
+- **Config mapper framework** — extensible `ConfigMapper` type and `PROVIDER_NAME_MAP` (25 providers) enabling new source-system adapters to be plugged in. Each mapper receives the source config and existing Cortex config, returning a partial config object and warnings array. (`src/cli/import/config/types.ts`, `src/cli/import/config/openclaw.ts`)
+
+- **Hermes config import** — new config mapper reads Hermes `config.yaml` (via `@std/yaml`) and maps to Cortex config: `model.default` → default provider/model, `model.provider` / `model.base_url` → provider config, `agent.personalities` → Cortex agents, `agent.max_turns` → agent runtime, `terminal.docker_image` → sandbox, `memory.*` → memory config, `mcp_servers` → MCP server entries. (`src/cli/import/config/hermes.ts`, `deno.json`)
+
+- **Hermes state.db direct reader** — new `importHermesStateDb()` reads Hermes' SQLite `state.db` directly (no export step required). Queries sessions (24+ columns: source, user_id, model, parent_session_id, started_at, end_reason, token counts, costs) and messages (18+ columns: role, content, tool_calls, token_count, finish_reason, timestamp). Creates Cortex sessions with `hermes_<id>` naming and writes fully populated `session_messages`. (`src/cli/import/hermes.ts`)
+
+- **Hermes memory file import** — new `importHermesMemoryFiles()` imports `SOUL.md` (copies to Cortex config dir as agent identity), `MEMORY.md` (parsed into episodic memories by `##` heading sections), `USER.md` (copied as user profile), and the `skills/` directory (recursively copied). (`src/cli/import/hermes.ts`)
+
+- **Enhanced `cortex import hermes` command** — rebuilt from a JSONL-only importer into a comprehensive migration entry point. Supports `--config-only` (config.yaml), `--sessions-only` (auto-detects state.db vs JSONL exports), `--memory-only` (SOUL.md, MEMORY.md, USER.md, skills/), and `--dry-run`. Auto-discovers Hermes' config.yaml, state.db, and memory files from the detected directory. (`src/cli/import-cmd.ts`)
+
 ### Fixed
+
+- **`cortex import` command was not registered** — the `import` command entry existed in `packages/cli/src/cli/registry.ts` but was missing from `src/cli/registry.ts`, the actual registry consumed by `src/main.ts`. Added the entry so `cortex import` is now accessible. (`src/cli/registry.ts`)
+
+- **Import subcommand detection functions were swapped** — `cortex import openclaw` called `detectZeroClawDir()` and `cortex import zeroclaw` called `detectOpenClawDir()`. Fixed in both `src/` and `packages/` trees. (`src/cli/import-cmd.ts`, `packages/cli/src/cli/import-cmd.ts`)
 
 - **Daemon restart was a no-op** — `POST /api/daemons/*/restart` returned `{ok: true}` without actually restarting anything. Daemon processes now write PID files on spawn (`src/processes/supervisor-process.ts`), and the restart handler reads the PID, sends SIGTERM, and waits up to 15s for the supervisor to auto-restart the process. (`src/server/routes/daemons.ts`, `src/processes/supervisor-process.ts`)
 

@@ -1,8 +1,10 @@
 import { exists } from '@std/fs';
+import { join } from '@std/path';
 import { closeSession, createSession } from '../../db/sessions.ts';
 import { getSessionDb } from '../../db/client.ts';
 import { writeEpisodic } from '../../memory/store.ts';
-import { dim, green, red, yellow } from '@std/fmt/colors';
+import { dim, green, red, yellow, cyan } from '@std/fmt/colors';
+import { createClient } from 'npm:@libsql/client';
 import type { ImportOptions, ImportResult } from './types.ts';
 
 interface HermesMessage {
@@ -257,4 +259,272 @@ export async function detectHermesDir(): Promise<string | null> {
     if (await exists(c)) return c;
   }
   return null;
+}
+
+interface HermesDbSession {
+  id: string;
+  source?: string;
+  user_id?: string;
+  model?: string;
+  model_config?: string;
+  system_prompt?: string;
+  parent_session_id?: string;
+  started_at?: number;
+  ended_at?: number;
+  end_reason?: string;
+  title?: string;
+  message_count?: number;
+  tool_call_count?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  cwd?: string;
+}
+
+interface HermesDbMessage {
+  id?: number;
+  session_id: string;
+  role: string;
+  content?: string;
+  tool_calls?: string;
+  tool_call_id?: string;
+  tool_name?: string;
+  timestamp?: number;
+  token_count?: number;
+  finish_reason?: string;
+}
+
+export async function importHermesStateDb(
+  dbPath: string,
+  opts?: ImportOptions,
+): Promise<ImportResult> {
+  const result: ImportResult = { sessions: 0, messages: 0, memories: 0, policies: 0, errors: 0 };
+
+  if (!await exists(dbPath)) {
+    throw new Error(`Database not found: ${dbPath}`);
+  }
+
+  const db = createClient({ url: `file:${dbPath}` });
+
+  let sessions: HermesDbSession[];
+  try {
+    const r = await db.execute('SELECT * FROM sessions WHERE archived = 0 ORDER BY started_at DESC');
+    sessions = r.rows.map((row) => ({
+      id: row['id'] as string,
+      source: row['source'] as string | undefined,
+      user_id: row['user_id'] as string | undefined,
+      model: row['model'] as string | undefined,
+      model_config: row['model_config'] as string | undefined,
+      system_prompt: row['system_prompt'] as string | undefined,
+      parent_session_id: row['parent_session_id'] as string | undefined,
+      started_at: row['started_at'] as number | undefined,
+      ended_at: row['ended_at'] as number | undefined,
+      end_reason: row['end_reason'] as string | undefined,
+      title: row['title'] as string | undefined,
+      message_count: row['message_count'] as number | undefined,
+      tool_call_count: row['tool_call_count'] as number | undefined,
+      input_tokens: row['input_tokens'] as number | undefined,
+      output_tokens: row['output_tokens'] as number | undefined,
+      cwd: row['cwd'] as string | undefined,
+    }));
+  } catch {
+    result.errors++;
+    return result;
+  }
+
+  if (sessions.length === 0) {
+    console.log(yellow('  No sessions found in Hermes state.db.'));
+    return result;
+  }
+
+  console.log(`  Found ${sessions.length} sessions in state.db`);
+
+  if (opts?.dryRun) {
+    result.sessions = sessions.length;
+    for (const s of sessions) {
+      const msgCount = s.message_count ?? 0;
+      result.messages += msgCount;
+    }
+    return result;
+  }
+
+  for (const session of sessions) {
+    try {
+      const cortexId = `hermes_${session.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      await createSession(
+        cortexId,
+        'hermes',
+        session.title ?? undefined,
+        undefined,
+        undefined,
+      );
+      const cortexDb = await getSessionDb(cortexId);
+      result.sessions++;
+
+      let messages: HermesDbMessage[];
+      try {
+        const msgRows = await db.execute({
+          sql: 'SELECT * FROM messages WHERE session_id = ? AND active = 1 ORDER BY id',
+          args: [session.id],
+        });
+        messages = msgRows.rows.map((row) => ({
+          session_id: session.id,
+          role: row['role'] as string,
+          content: row['content'] as string | undefined,
+          tool_calls: row['tool_calls'] as string | undefined,
+          tool_call_id: row['tool_call_id'] as string | undefined,
+          tool_name: row['tool_name'] as string | undefined,
+          timestamp: row['timestamp'] as number | undefined,
+          token_count: row['token_count'] as number | undefined,
+          finish_reason: row['finish_reason'] as string | undefined,
+        }));
+      } catch {
+        messages = [];
+      }
+
+      for (const msg of messages) {
+        try {
+          await cortexDb.run(
+            `INSERT INTO session_messages (role, content, tool_calls, token_count, created_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [
+              msg.role,
+              msg.content ?? '',
+              msg.tool_calls ?? null,
+              msg.token_count ?? null,
+              msg.timestamp
+                ? new Date(msg.timestamp * 1000).toISOString()
+                : new Date().toISOString(),
+            ],
+          );
+          result.messages++;
+        } catch {
+          result.errors++;
+        }
+      }
+
+      if (session.system_prompt) {
+        await writeEpisodic({
+          summary: `[Hermes System Prompt] ${session.system_prompt}`,
+          sessionId: cortexId,
+          topics: ['hermes', 'system_prompt'],
+          importance: 0.7,
+        });
+        result.memories++;
+      }
+
+      if (session.model) {
+        await writeEpisodic({
+          summary: `Hermes session ${session.id}: model=${session.model} source=${session.source ?? 'unknown'}${session.end_reason ? ` end_reason=${session.end_reason}` : ''}`,
+          sessionId: cortexId,
+          topics: ['hermes', 'import', session.source ?? 'unknown'].filter(Boolean),
+          importance: 0.5,
+        });
+        result.memories++;
+      }
+
+      await closeSession(cortexId);
+    } catch {
+      result.errors++;
+    }
+  }
+
+  return result;
+}
+
+export async function importHermesMemoryFiles(
+  hermesDir: string,
+  opts?: ImportOptions,
+): Promise<ImportResult> {
+  const result: ImportResult = { sessions: 0, messages: 0, memories: 0, policies: 0, errors: 0 };
+
+  const memoryFiles = [
+    { name: 'SOUL.md', topics: ['hermes', 'soul'], importance: 0.8 },
+    { name: 'MEMORY.md', topics: ['hermes', 'memory'], importance: 0.6 },
+    { name: 'USER.md', topics: ['hermes', 'user'], importance: 0.7 },
+  ];
+
+  const homeDir = hermesDir.endsWith('state.db')
+    ? join(hermesDir, '..')
+    : hermesDir.endsWith('.jsonl')
+    ? join(hermesDir, '..', '..')
+    : hermesDir;
+
+  for (const { name, topics, importance } of memoryFiles) {
+    const filePath = join(homeDir, name);
+    if (!await exists(filePath)) continue;
+
+    try {
+      if (opts?.dryRun) {
+        console.log(dim(`  [dry-run] Would import ${name}`));
+        result.memories++;
+        continue;
+      }
+
+      const content = await Deno.readTextFile(filePath);
+
+      const configDir = Deno.env.get('CORTEX_CONFIG_DIR') ??
+        join(Deno.env.get('HOME') ?? '', '.cortex');
+      await Deno.mkdir(configDir, { recursive: true });
+
+      if (name === 'SOUL.md' || name === 'USER.md') {
+        const dest = join(configDir, name);
+        await Deno.writeTextFile(dest, content);
+      }
+
+      const sections = content.split(/\n##\s+/);
+      for (const section of sections) {
+        const trimmed = section.trim();
+        if (!trimmed) continue;
+        const newlineIdx = trimmed.indexOf('\n');
+        const title = newlineIdx > 0 ? trimmed.substring(0, newlineIdx).trim() : name;
+        const body = newlineIdx > 0 ? trimmed.substring(newlineIdx + 1).trim() : trimmed;
+        if (!body) continue;
+
+        await writeEpisodic({
+          summary: `[Hermes ${name}] ${title}: ${body.slice(0, 2000)}`,
+          sessionId: 'hermes_memory_import',
+          topics,
+          importance,
+        });
+        result.memories++;
+      }
+    } catch (e) {
+      console.log(yellow(`  Warning: could not import ${name}: ${(e as Error).message}`));
+      result.errors++;
+    }
+  }
+
+  const skillsDir = join(homeDir, 'skills');
+  if (await exists(skillsDir)) {
+    if (opts?.dryRun) {
+      console.log(dim('  [dry-run] Would import skills directory'));
+    } else {
+      const configDir = Deno.env.get('CORTEX_CONFIG_DIR') ??
+        join(Deno.env.get('HOME') ?? '', '.cortex');
+      const destSkillsDir = join(configDir, 'skills');
+      try {
+        await Deno.mkdir(destSkillsDir, { recursive: true });
+        for await (const entry of Deno.readDir(skillsDir)) {
+          if (!entry.isDirectory) continue;
+          const srcDir = join(skillsDir, entry.name);
+          const destDir = join(destSkillsDir, entry.name);
+          try {
+            await Deno.mkdir(destDir, { recursive: true });
+            for await (const file of Deno.readDir(srcDir)) {
+              if (file.isFile) {
+                await Deno.copyFile(join(srcDir, file.name), join(destDir, file.name));
+              }
+            }
+          } catch {
+            result.errors++;
+          }
+        }
+        result.memories += 1;
+      } catch (e) {
+        console.log(yellow(`  Warning: could not copy skills: ${(e as Error).message}`));
+      }
+    }
+  }
+
+  return result;
 }

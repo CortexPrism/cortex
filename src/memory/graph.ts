@@ -389,6 +389,114 @@ export async function findDuplicateEntities(): Promise<DuplicateGroup[]> {
   return groups;
 }
 
+export interface EntityDetail {
+  entity: GraphEntity & { aliases?: string[]; importance?: number; sensitivity?: string };
+  relations: Array<{
+    relation: RelationType;
+    direction: 'outbound' | 'inbound';
+    strength: number;
+    entity: GraphEntity;
+    relationId: string;
+    created_at: string;
+  }>;
+  relationCounts: Record<string, number>;
+  totalInbound: number;
+  totalOutbound: number;
+}
+
+export async function getEntityDetail(entityName: string, entityType?: string): Promise<EntityDetail | null> {
+  const db = await getMemoryDb();
+
+  const entity = await db.get<GraphEntity & { aliases: string; importance: number; sensitivity: string }>(
+    entityType
+      ? `SELECT * FROM graph_entities WHERE name = ? AND type = ? LIMIT 1`
+      : `SELECT * FROM graph_entities WHERE name = ? LIMIT 1`,
+    entityType ? [entityName, entityType] : [entityName],
+  );
+  if (!entity) return null;
+
+  const outbound = await db.all<{
+    id: string;
+    target_id: string;
+    relation: string;
+    strength: number;
+    created_at: string;
+  }>(
+    `SELECT id, target_id, relation, strength, created_at
+     FROM graph_relations WHERE source_id = ? ORDER BY strength DESC LIMIT 200`,
+    [entity.id],
+  );
+
+  const inbound = await db.all<{
+    id: string;
+    source_id: string;
+    relation: string;
+    strength: number;
+    created_at: string;
+  }>(
+    `SELECT id, source_id, relation, strength, created_at
+     FROM graph_relations WHERE target_id = ? ORDER BY strength DESC LIMIT 200`,
+    [entity.id],
+  );
+
+  const peerIds = new Set<string>();
+  for (const e of outbound) peerIds.add(e.target_id);
+  for (const e of inbound) peerIds.add(e.source_id);
+
+  const peerMap = new Map<string, GraphEntity>();
+  if (peerIds.size > 0) {
+    const ids = [...peerIds].slice(0, 900);
+    const peers = await db.all<GraphEntity>(
+      `SELECT * FROM graph_entities WHERE id IN (${ids.map(() => '?').join(',')})`,
+      ids,
+    );
+    for (const p of peers) peerMap.set(p.id, p);
+  }
+
+  const relationCounts: Record<string, number> = {};
+
+  const relations: EntityDetail['relations'] = [
+    ...outbound.map((e) => {
+      relationCounts[e.relation] = (relationCounts[e.relation] ?? 0) + 1;
+      return {
+        relation: e.relation as RelationType,
+        direction: 'outbound' as const,
+        strength: e.strength,
+        entity: peerMap.get(e.target_id)!,
+        relationId: e.id,
+        created_at: e.created_at,
+      };
+    }),
+    ...inbound.map((e) => {
+      relationCounts[e.relation] = (relationCounts[e.relation] ?? 0) + 1;
+      return {
+        relation: e.relation as RelationType,
+        direction: 'inbound' as const,
+        strength: e.strength,
+        entity: peerMap.get(e.source_id)!,
+        relationId: e.id,
+        created_at: e.created_at,
+      };
+    }),
+  ].filter((r) => r.entity)
+    .sort((a, b) => b.strength - a.strength);
+
+  const aliases = entity.aliases ? (() => {
+    try { const parsed = JSON.parse(entity.aliases); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+  })() : [];
+
+  return {
+    entity: {
+      ...entity,
+      aliases,
+    },
+    relations,
+    relationCounts,
+    totalInbound: relations.filter((r) => r.direction === 'inbound').length,
+    totalOutbound: relations.filter((r) => r.direction === 'outbound').length,
+  };
+}
+
 export async function mergeEntities(sourceId: string, targetId: string): Promise<number> {
   const db = await getMemoryDb();
 

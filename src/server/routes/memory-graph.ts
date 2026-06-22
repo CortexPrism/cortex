@@ -1,6 +1,7 @@
 import { err, json, type RouteHandler } from './_helpers.ts';
 import {
   findDuplicateEntities,
+  getEntityDetail,
   getGraphData,
   mergeEntities,
   searchEntities,
@@ -58,6 +59,21 @@ export const routes: RouteHandler[] = [
       if (!body.sourceId || !body.targetId) return err('sourceId and targetId required', 400);
       await mergeEntities(body.sourceId, body.targetId);
       return json({ ok: true });
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/memory\/graph\/entity$/,
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const name = url.searchParams.get('name');
+      if (!name) return err('Missing query param: name', 400);
+      let decoded: string;
+      try { decoded = decodeURIComponent(name); } catch { return err('Invalid name encoding', 400); }
+      const type = url.searchParams.get('type') ?? undefined;
+      const detail = await getEntityDetail(decoded, type);
+      if (!detail) return err('Entity not found', 404);
+      return json(detail);
     },
   },
 ];

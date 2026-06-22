@@ -286,8 +286,8 @@ export async function touchSkill(name: string): Promise<void> {
   const db = await getMemoryDb();
   const now = new Date().toISOString();
   await db.run(
-    `UPDATE procedural_memory SET last_used_at = ? WHERE name = ?`,
-    [now, name],
+    `UPDATE procedural_memory SET last_used_at = ?, invocation_count = invocation_count + 1, updated_at = ? WHERE name = ?`,
+    [now, now, name],
   );
 }
 

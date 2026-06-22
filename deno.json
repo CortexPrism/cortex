@@ -40,6 +40,7 @@
     "@std/path": "jsr:@std/path@^1.0.8",
     "@std/fs": "jsr:@std/fs@^1.0.6",
     "@std/fmt": "jsr:@std/fmt@^1.0.3",
+    "@std/yaml": "jsr:@std/yaml@^1.0.0",
     "@std/datetime": "jsr:@std/datetime@^0.225.2",
     "@cliffy/command": "jsr:@cliffy/command@^1.2.1",
     "@cliffy/prompt": "jsr:@cliffy/prompt@^1.2.1",

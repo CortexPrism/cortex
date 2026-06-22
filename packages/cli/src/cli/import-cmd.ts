@@ -12,6 +12,9 @@ import { detectHermesDir, importHermes } from './import/hermes.ts';
 import { detectZeroClawDir, importZeroClaw } from './import/zeroclaw.ts';
 import { importJSONLTranscripts } from './import/jsonl.ts';
 import { i18n } from '../../../../src/i18n/service.ts';
+import { openclawConfigMapper } from '../../../../src/cli/import/config/openclaw.ts';
+import type { OpenClawConfig } from '../../../../src/cli/import/config/types.ts';
+import { loadConfig, saveConfig } from '../../../../src/config/config.ts';
 
 interface OpenClawMemory {
   id?: string;
@@ -146,10 +149,10 @@ const openclawCmd = cortexCommand('openclaw')
   .action(async (opts: Record<string, unknown>, _ctx: Ctx, sourcePath?: string) => {
     let source = sourcePath;
     if (!source) {
-      const detected = await detectZeroClawDir();
+      const detected = await detectOpenClawDir();
       if (!detected) {
-        console.log(red(i18n.t('cli.import.noZeroClawFound')));
-        console.log(dim(i18n.t('cli.import.passZeroClawPathHint')));
+        console.log(red(i18n.t('cli.import.noOpenclawFound')));
+        console.log(dim(i18n.t('cli.import.passPathHint')));
         return;
       }
       source = detected;
@@ -266,10 +269,10 @@ const zeroclawCmd = cortexCommand('zeroclaw')
   .action(async (opts: Record<string, unknown>, _ctx: Ctx, sourcePath?: string) => {
     let source = sourcePath;
     if (!source) {
-      const detected = await detectOpenClawDir();
+      const detected = await detectZeroClawDir();
       if (!detected) {
-        console.log(red(i18n.t('cli.import.noOpenclawFound')));
-        console.log(dim(i18n.t('cli.import.passPathHint')));
+        console.log(red(i18n.t('cli.import.noZeroClawFound')));
+        console.log(dim(i18n.t('cli.import.passZeroClawPathHint')));
         return;
       }
       source = detected;
@@ -306,9 +309,164 @@ const transcriptsCmd = cortexCommand('transcripts')
     console.log('');
   });
 
+const configCmd = cortexCommand('config')
+  .description('Import configuration settings from another system')
+  .arguments('<path:string>')
+  .option('-f, --from <source:string>', 'Source system to import from (openclaw)', {
+    default: 'openclaw',
+  })
+  .option('--dry-run', 'Preview what would be imported without writing')
+  .needs('config')
+  .action(async (opts: Record<string, unknown>, ctx: Ctx, sourcePath: string) => {
+    const from = (opts.from as string) ?? 'openclaw';
+    const dryRun = !!opts.dryRun;
+
+    console.log(bold(`\n  Config Import from ${cyan(from)}`));
+    console.log(dim('  ' + '─'.repeat(50)));
+    console.log(`  Source: ${dim(sourcePath)}`);
+
+    let raw: string;
+    try {
+      raw = await Deno.readTextFile(sourcePath);
+    } catch (e) {
+      console.log(red(`✗  Cannot read source file: ${(e as Error).message}`));
+      console.log('');
+      return;
+    }
+
+    let sourceConfig: OpenClawConfig;
+    try {
+      sourceConfig = JSON.parse(raw) as OpenClawConfig;
+    } catch {
+      console.log(red('✗  Invalid JSON in source file'));
+      console.log('');
+      return;
+    }
+
+    if (from !== 'openclaw') {
+      console.log(red(`✗  Unsupported source system: "${from}". Currently supported: openclaw`));
+      console.log('');
+      return;
+    }
+
+    const existing = (ctx.config ?? {}) as unknown as Record<string, unknown>;
+    const { config: imported, warnings } = openclawConfigMapper(sourceConfig, existing);
+
+    if (warnings.length > 0) {
+      console.log(yellow(`  Warnings:`));
+      for (const w of warnings) {
+        console.log(yellow(`    ⚠ ${w}`));
+      }
+    }
+
+    if (Object.keys(imported).length === 0) {
+      console.log(yellow('  No config settings to import.'));
+      console.log('');
+      return;
+    }
+
+    const summaryKeys = Object.keys(imported);
+    console.log(bold(`\n  Settings to import:`));
+
+    let totalProviders = 0;
+    if (imported.providers) {
+      const provs = imported.providers as Record<string, unknown>;
+      totalProviders = Object.keys(provs).length;
+      console.log(`    ${cyan('Providers:')}     ${totalProviders} (${Object.keys(provs).map((k) => dim(k)).join(', ')})`);
+    }
+
+    let totalAgents = 0;
+    if (imported.agents) {
+      const agts = imported.agents as Record<string, unknown>;
+      totalAgents = Object.keys(agts).length;
+      console.log(`    ${cyan('Agents:')}        ${totalAgents} (${Object.keys(agts).map((k) => dim(k)).join(', ')})`);
+    }
+
+    if (imported.defaultProvider) {
+      console.log(`    ${cyan('Default provider:')} ${dim(String(imported.defaultProvider))}`);
+    }
+
+    const settings: string[] = [];
+    for (const key of summaryKeys) {
+      if (key === 'providers' || key === 'agents' || key === 'defaultProvider') continue;
+      settings.push(`${key} (${typeof imported[key] === 'object' ? Object.keys(imported[key] as Record<string, unknown>).length + ' entries' : JSON.stringify(imported[key])})`);
+    }
+    for (const s of settings) {
+      console.log(`    ${cyan('Setting:')}       ${dim(s)}`);
+    }
+
+    if (dryRun) {
+      console.log(dim('\n  (dry-run) No changes written.'));
+      console.log('');
+      return;
+    }
+
+    const currentConfig = await loadConfig();
+    const merged = { ...currentConfig };
+    const importedAny = imported as Record<string, unknown>;
+
+    if (importedAny.providers) {
+      const srcProvs = importedAny.providers as Record<string, unknown>;
+      merged.providers = { ...merged.providers };
+      for (const [kind, cfg] of Object.entries(srcProvs)) {
+        (merged.providers as Record<string, unknown>)[kind] = cfg;
+      }
+    }
+
+    if (importedAny.agents) {
+      const srcAgents = importedAny.agents as Record<string, unknown>;
+      merged.agents = { ...merged.agents };
+      for (const [id, cfg] of Object.entries(srcAgents)) {
+        (merged.agents as Record<string, unknown>)[id] = cfg;
+      }
+    }
+
+    if (importedAny.defaultProvider) {
+      merged.defaultProvider = importedAny.defaultProvider as unknown as typeof merged.defaultProvider;
+    }
+
+    if (importedAny.defaultAgent) {
+      merged.defaultAgent = importedAny.defaultAgent as string;
+    }
+
+    if (importedAny.modelSelection) {
+      merged.modelSelection = {
+        ...merged.modelSelection,
+        ...(importedAny.modelSelection as Partial<typeof merged.modelSelection>),
+      } as typeof merged.modelSelection;
+    }
+
+    if (importedAny.plugins) {
+      const srcPlugins = importedAny.plugins as Record<string, Record<string, unknown>>;
+      merged.plugins = { ...(merged.plugins ?? {}) };
+      for (const [name, cfg] of Object.entries(srcPlugins)) {
+        (merged.plugins as Record<string, Record<string, unknown>>)[name] = cfg;
+      }
+    }
+
+    if (importedAny.voice) {
+      merged.voice = { ...(merged.voice ?? {}), ...(importedAny.voice as Record<string, unknown>) } as typeof merged.voice;
+    }
+
+    if (importedAny.server) {
+      const base = merged.server ?? {};
+      merged.server = { ...base, ...(importedAny.server as Record<string, unknown>) } as typeof merged.server;
+    }
+
+    try {
+      await saveConfig(merged);
+      console.log(green(`\n  ✓  Imported ${totalProviders} providers, ${totalAgents} agents, and ${settings.length} settings.`));
+      console.log(dim('     Config saved to ~/.cortex/config.json'));
+    } catch (e) {
+      console.log(red(`\n  ✗  Failed to save config: ${(e as Error).message}`));
+    }
+    console.log('');
+  });
+
 export const importCommand = cortexCommand('import')
   .description('Import data from OpenClaw, Hermes, ZeroClaw, or a Cortex export file')
   .command('openclaw', openclawCmd)
   .command('hermes', hermesCmd)
   .command('zeroclaw', zeroclawCmd)
-  .command('transcripts', transcriptsCmd);
+  .command('transcripts', transcriptsCmd)
+  .command('config', configCmd);

@@ -199,4 +199,9 @@ export const registry: CommandEntry[] = [
     path: ['memori'],
     load: () => import('./memori-cmd.ts').then((m) => m.memoriCommand._cmd),
   },
+  {
+    path: ['import'],
+    load: () => import('./import-cmd.ts').then((m) => m.importCommand._cmd),
+    needs: ['config', 'migrations'],
+  },
 ];
