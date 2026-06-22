@@ -58,7 +58,5 @@ docs/marketing/
 .kilo/
 .devin/
 
-AGENTS.md
-
 .playwright-mcp/
 cortex.code-workspace
