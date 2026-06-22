@@ -101,25 +101,24 @@ function openDashboardPage(hash) {
 
 function sendQuickAsk(text) {
   if (!text || !text.trim()) return;
-  var payload = JSON.stringify({ prompt: text.trim() });
 
-  fetch('http://localhost:' + state.serverPort + '/api/agent/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-  })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.ok || data.messageId || data.agentId) {
-        toast('Message sent to Cortex');
-        openDashboardPage('#agents');
-      } else {
-        toast('Failed: ' + (data.error || 'unknown'), 'error');
-      }
-    })
-    .catch(function(e) {
-      toast('Connection error: ' + e.message, 'error');
-    });
+  if (!state.serverRunning) {
+    toast('Server is offline. Start the Cortex server first.', 'error');
+    return;
+  }
+
+  openDashboardPage('#agents');
+  toast('Prompt ready in clipboard. Paste in the chat panel. (Copied: ' + text.slice(0, 60) + (text.length > 60 ? '…' : '') + ')');
+
+  if (window.__TAURI__ && window.__TAURI__.invoke) {
+    tauriCommand('set_clipboard', { text: text.trim() }).catch(function() {});
+  } else {
+    try {
+      navigator.clipboard.writeText(text.trim()).catch(function() {});
+    } catch(e) {
+      // clipboard API may not be available outside Tauri
+    }
+  }
 }
 
 // ── Event Handlers ──

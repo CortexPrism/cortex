@@ -26,9 +26,6 @@
       "iconPath": "icons/icon.png",
       "tooltip": "Cortex — AI Agent Operating System",
       "iconAsTemplate": true
-    },
-    "security": {
-      "csp": null
     }
   },
   "bundle": {
