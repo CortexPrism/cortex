@@ -169,5 +169,9 @@ Deno.test('Generated JS is free of template-literal escaping gotchas', async () 
   // Verify split(/\\n/) exists — the correct pattern for splitting textarea values on newlines
   // In template literals, \\\\n produces \\n which the JS parser sees as regex /\\n/
   const correctSplit = js.includes('split(/\\n/)');
-  assertEquals(correctSplit, true, 'Missing split(/\\\\n/) — the prompt lab generator needs this for textarea line splitting');
+  assertEquals(
+    correctSplit,
+    true,
+    'Missing split(/\\\\n/) — the prompt lab generator needs this for textarea line splitting',
+  );
 });

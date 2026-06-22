@@ -1,5 +1,5 @@
 import type { ProviderKind } from '../../../../packages/core/contracts/config.ts';
-import type { OpenClawConfig, OpenClawAgentDef, ConfigMapper } from './types.ts';
+import type { ConfigMapper, OpenClawAgentDef, OpenClawConfig } from './types.ts';
 import { PROVIDER_NAME_MAP } from './types.ts';
 
 function extractApiKey(
@@ -39,9 +39,7 @@ function buildAgentConfig(agent: OpenClawAgentDef, defaultProvider?: string) {
   const agentProvider = agent.model
     ? extractProviderName(agent.model) ?? defaultProvider
     : defaultProvider;
-  const agentModel = agent.model
-    ? extractModelName(agent.model)
-    : undefined;
+  const agentModel = agent.model ? extractModelName(agent.model) : undefined;
 
   return {
     id: agent.id,
@@ -135,7 +133,7 @@ export const openclawConfigMapper: ConfigMapper = (source, _existing) => {
     for (const agent of source.agents.list) {
       agents[agent.id] = buildAgentConfig(
         agent,
-        (result.defaultProvider as string | undefined),
+        result.defaultProvider as string | undefined,
       );
     }
     if (Object.keys(agents).length > 0) {
@@ -159,7 +157,9 @@ export const openclawConfigMapper: ConfigMapper = (source, _existing) => {
     }
 
     if (source.tools?.web?.search?.provider === 'firecrawl') {
-      const firecrawlCfg = source.plugins?.entries?.firecrawl?.config as Record<string, unknown> | undefined;
+      const firecrawlCfg = source.plugins?.entries?.firecrawl?.config as
+        | Record<string, unknown>
+        | undefined;
       if (firecrawlCfg?.webSearch) {
         plugins['firecrawl'] = { ...(plugins['firecrawl'] ?? {}), ...firecrawlCfg };
       }

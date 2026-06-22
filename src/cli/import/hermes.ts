@@ -3,7 +3,7 @@ import { join } from '@std/path';
 import { closeSession, createSession } from '../../db/sessions.ts';
 import { getSessionDb } from '../../db/client.ts';
 import { writeEpisodic } from '../../memory/store.ts';
-import { dim, green, red, yellow, cyan } from '@std/fmt/colors';
+import { cyan, dim, green, red, yellow } from '@std/fmt/colors';
 import { createClient } from 'npm:@libsql/client';
 import type { ImportOptions, ImportResult } from './types.ts';
 
@@ -307,7 +307,9 @@ export async function importHermesStateDb(
 
   let sessions: HermesDbSession[];
   try {
-    const r = await db.execute('SELECT * FROM sessions WHERE archived = 0 ORDER BY started_at DESC');
+    const r = await db.execute(
+      'SELECT * FROM sessions WHERE archived = 0 ORDER BY started_at DESC',
+    );
     sessions = r.rows.map((row) => ({
       id: row['id'] as string,
       source: row['source'] as string | undefined,
@@ -414,7 +416,9 @@ export async function importHermesStateDb(
 
       if (session.model) {
         await writeEpisodic({
-          summary: `Hermes session ${session.id}: model=${session.model} source=${session.source ?? 'unknown'}${session.end_reason ? ` end_reason=${session.end_reason}` : ''}`,
+          summary: `Hermes session ${session.id}: model=${session.model} source=${
+            session.source ?? 'unknown'
+          }${session.end_reason ? ` end_reason=${session.end_reason}` : ''}`,
           sessionId: cortexId,
           topics: ['hermes', 'import', session.source ?? 'unknown'].filter(Boolean),
           importance: 0.5,

@@ -227,13 +227,25 @@ export function getABTestStats(abTestId: string): ABTestStats | null {
   const aAvgScore = aScores.length ? aScores.reduce((s, v) => s + v, 0) / aScores.length : 0;
   const bAvgScore = bScores.length ? bScores.reduce((s, v) => s + v, 0) / bScores.length : 0;
 
-  const aLatencies = testRuns.filter((r) => r.variant === 'A' && r.latencyMs !== undefined).map((r) => r.latencyMs!);
-  const bLatencies = testRuns.filter((r) => r.variant === 'B' && r.latencyMs !== undefined).map((r) => r.latencyMs!);
-  const aAvgLatency = aLatencies.length ? aLatencies.reduce((s, v) => s + v, 0) / aLatencies.length : 0;
-  const bAvgLatency = bLatencies.length ? bLatencies.reduce((s, v) => s + v, 0) / bLatencies.length : 0;
+  const aLatencies = testRuns.filter((r) => r.variant === 'A' && r.latencyMs !== undefined).map((
+    r,
+  ) => r.latencyMs!);
+  const bLatencies = testRuns.filter((r) => r.variant === 'B' && r.latencyMs !== undefined).map((
+    r,
+  ) => r.latencyMs!);
+  const aAvgLatency = aLatencies.length
+    ? aLatencies.reduce((s, v) => s + v, 0) / aLatencies.length
+    : 0;
+  const bAvgLatency = bLatencies.length
+    ? bLatencies.reduce((s, v) => s + v, 0) / bLatencies.length
+    : 0;
 
-  const aTokens = testRuns.filter((r) => r.variant === 'A' && r.tokensUsed !== undefined).map((r) => r.tokensUsed!);
-  const bTokens = testRuns.filter((r) => r.variant === 'B' && r.tokensUsed !== undefined).map((r) => r.tokensUsed!);
+  const aTokens = testRuns.filter((r) => r.variant === 'A' && r.tokensUsed !== undefined).map((r) =>
+    r.tokensUsed!
+  );
+  const bTokens = testRuns.filter((r) => r.variant === 'B' && r.tokensUsed !== undefined).map((r) =>
+    r.tokensUsed!
+  );
   const aAvgTokens = aTokens.length ? aTokens.reduce((s, v) => s + v, 0) / aTokens.length : 0;
   const bAvgTokens = bTokens.length ? bTokens.reduce((s, v) => s + v, 0) / bTokens.length : 0;
 
@@ -254,8 +266,18 @@ export function getABTestStats(abTestId: string): ABTestStats | null {
 
   return {
     abTestId,
-    variantA: { runs: aRuns.length, avgScore: aAvgScore, avgLatency: aAvgLatency, avgTokens: aAvgTokens },
-    variantB: { runs: bRuns.length, avgScore: bAvgScore, avgLatency: bAvgLatency, avgTokens: bAvgTokens },
+    variantA: {
+      runs: aRuns.length,
+      avgScore: aAvgScore,
+      avgLatency: aAvgLatency,
+      avgTokens: aAvgTokens,
+    },
+    variantB: {
+      runs: bRuns.length,
+      avgScore: bAvgScore,
+      avgLatency: bAvgLatency,
+      avgTokens: bAvgTokens,
+    },
     winner,
     confidence,
   };
@@ -280,10 +302,11 @@ export function generatePromptVariations(
     },
     {
       name: 'clarity',
-      apply: (c: string) => c
-        .replace(/please|kindly|if you would/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim(),
+      apply: (c: string) =>
+        c
+          .replace(/please|kindly|if you would/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim(),
       rationale: 'Removed polite filler words for direct, authoritative tone',
       strength: 'More concise and directive',
     },

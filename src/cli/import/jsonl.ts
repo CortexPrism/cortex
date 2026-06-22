@@ -177,9 +177,10 @@ async function importTranscriptFile(
       return t === 'message' || t === 'custom_message';
     }).length;
     result.memories = records.filter(
-      (r) => (r as Partial<ZeroClawTranscriptEvent>).type === 'branch_summary' ||
-               (r as Partial<ZeroClawTranscriptEvent>).type === 'compaction' ||
-               (r as Partial<ZeroClawTranscriptEvent>).type === 'model_change',
+      (r) =>
+        (r as Partial<ZeroClawTranscriptEvent>).type === 'branch_summary' ||
+        (r as Partial<ZeroClawTranscriptEvent>).type === 'compaction' ||
+        (r as Partial<ZeroClawTranscriptEvent>).type === 'model_change',
     ).length;
     return result;
   }
