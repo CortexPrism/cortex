@@ -87,7 +87,8 @@ deno task test    # Run all tests
   `core ← gate ← ai ← server ← cli` and `core ← ai ← infra ← cli`
 - One concern per file; keep files under ~300 lines where practical
 - CLI commands in `packages/cli/src/cli/`; tool implementations in `packages/ai/src/tools/builtin/`
-- Contract interfaces in `packages/<name>/contracts/` are pure type definitions with zero runtime deps
+- Contract interfaces in `packages/<name>/contracts/` are pure type definitions with zero runtime
+  deps
 - Use named exports; avoid default exports except for Deno task entry points
 - The `src/` directory holds the composition root (`src/main.ts`) and the active server entry
   (`src/server/server.ts`) that wires the modular components together
