@@ -4,7 +4,9 @@ import {
   closeSession,
   getChildSessions,
   getSession,
+  getSessionTokenStats,
   getSessionTree,
+  listEnrichedSessions,
   listSessions,
   resumeSession,
   updateSessionName,
@@ -32,6 +34,39 @@ export const routes: RouteHandler[] = [
       const limit = Number(url.searchParams.get('limit') ?? 30);
       const tree = await getSessionTree(limit);
       return json(tree);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/sessions\/enriched$/,
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const limit = Number(url.searchParams.get('limit') ?? 50);
+      const agentId = url.searchParams.get('agentId') ?? undefined;
+      const tree = await listEnrichedSessions(limit, agentId);
+      return json(tree);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/sessions\/([^/]+)\/stats$/,
+    handler: async (_req, path) => {
+      const m = path.match(/^\/api\/sessions\/([^/]+)\/stats$/);
+      if (!m) return notFound();
+      const stats = await getSessionTokenStats([m[1]]);
+      const s = stats.get(m[1]);
+      return json(
+        s ? { ...s, session_id: undefined, sessionId: m[1] } : {
+          tokens_in: 0,
+          tokens_out: 0,
+          total_tokens: 0,
+          cost_usd: 0,
+          llm_calls: 0,
+          tool_calls: 0,
+          errors: 0,
+          avg_duration_ms: 0,
+        },
+      );
     },
   },
   {

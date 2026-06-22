@@ -40,15 +40,18 @@ async function loadDaemonStatus() {
 }
 
 // ── Sessions deep-dive ───────────────────────────────────────
-let allSessions = [];
+let allSessionsTree = [];
+function fmtNum(n) { if (n >= 1_000_000) return (n/1_000_000).toFixed(1)+'M'; if (n >= 1_000) return (n/1_000).toFixed(1)+'K'; return String(n||0); }
+function fmtCost(n) { if (n<=0) return ''; return '$'+n.toFixed(n<0.01?4:n<1?3:2); }
+function fmtMs(n) { if (!n) return ''; if (n>=60000) return (n/60000).toFixed(1)+'min'; if (n>=1000) return (n/1000).toFixed(1)+'s'; return n+'ms'; }
 
 async function loadSessionsList() {
   const el = document.getElementById('sessions-table');
   showSkeleton(el, 6, 'card');
   const agentFilter = document.getElementById('sess-agent-filter')?.value ?? '';
-  const url = BASE + '/api/sessions?limit=50' + (agentFilter ? '&agentId=' + encodeURIComponent(agentFilter) : '');
-  allSessions = await fetch(url).then(r => r.json()).catch(() => []);
-  renderSessionsList(allSessions);
+  const url = BASE + '/api/sessions/enriched?limit=50' + (agentFilter ? '&agentId=' + encodeURIComponent(agentFilter) : '');
+  allSessionsTree = await fetch(url).then(r => r.json()).catch(() => []);
+  renderSessionsTree(allSessionsTree);
 }
 
 async function loadSessionAgentFilter() {
@@ -85,39 +88,38 @@ function channelTextColor(ch) {
   return 'var(--text3)';
 }
 
-function renderSessionsList(sessions) {
+function renderSessionsTree(tree) {
   const el = document.getElementById('sessions-table');
   if (!el) return;
-  if (!sessions.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="color:var(--text3);font-size:13px;">No sessions found.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Start a chat session to see it here.</p></div>'; return; }
-  el.innerHTML = sessions.map(s => {
-    const ch = channelLabel(s.channel);
-    const chBg = channelColor(s.channel);
-    const chTc = channelTextColor(s.channel);
-    const hasParent = !!s.parent_session_id;
-    const isArchived = s.status === 'archived';
-    return \`
-    <div class="card-sm" style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:6px;\${isArchived ? 'opacity:0.55;' : ''}" onclick="openSession('\${s.id}')">
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          \${s.name ? '<span style="font-size:13px;font-weight:500;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.name) + '</span>' : ''}
-          <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-20)}</span>
-          \${s.agent_id && s.agent_id !== 'assistant' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
-          \${ch ? '<span class="badge" style="background:' + chBg + ';color:' + chTc + ';font-size:10px;">' + esc(ch) + '</span>' : ''}
-          \${hasParent ? '<span class="badge" style="background:rgba(245,158,11,0.08);color:#fbbf24;font-size:10px;">⤷ child</span>' : ''}
-          <span class="badge" style="background:\${s.status==='active'?'rgba(34,197,94,0.1)':s.status==='archived'?'rgba(107,114,128,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status==='active'?'#4ade80':s.status==='archived'?'#9ca3af':'var(--text3)'};">\${s.status}</span>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">\${s.turn_count} turns · \${new Date(s.started_at).toLocaleString()}</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(99,102,241,0.1);color:var(--accent2);" onclick="event.stopPropagation();continueSession('\${s.id}')">▶ Continue</button>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();exportSession('\${s.id}')">⬇ Export</button>
-        <span id="sess-archive-btn-\${s.id}"></span>
-        <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">✕</button>
-      </div>
-    </div>
-  \`}).join('');
+  if (!tree.length) { el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);margin-bottom:12px;opacity:0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="color:var(--text3);font-size:13px;">No sessions found.</p><p style="color:var(--text3);font-size:11px;margin-top:4px;">Start a chat session to see it here.</p></div>'; return; }
+
+  let html = '';
+  // Summary header
+  const totalToks = tree.reduce((s,p) => s+(p.total_tokens||0), 0);
+  const totalCost = tree.reduce((s,p) => s+(p.cost_usd||0), 0);
+  const totalChildren = tree.reduce((s,p) => s+(p.child_count||0), 0);
+
+  // Column headers
+  html += '<div style="display:flex;padding:6px 12px 8px;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border);margin-bottom:4px;">' +
+    '<span style="flex:1;min-width:0;">Session</span>' +
+    '<span style="width:70px;text-align:right;">Turns</span>' +
+    '<span style="width:90px;text-align:right;">Tokens</span>' +
+    '<span style="width:80px;text-align:right;">Cost</span>' +
+    '<span style="width:60px;text-align:right;">Tools</span>' +
+    '<span style="width:120px;text-align:right;"></span>' +
+    '</div>';
+
+  for (const p of tree) {
+    html += renderSessionRow(p, true);
+    for (const c of (p.children || [])) {
+      html += renderSessionRow(c, false);
+    }
+  }
+  el.innerHTML = html;
   // Attach archive/restore buttons via DOM
-  for (const s of sessions) {
+  const allSessions = [];
+  for (const p of tree) { allSessions.push(p); for (const c of (p.children||[])) allSessions.push(c); }
+  for (const s of allSessions) {
     const btn = document.getElementById('sess-archive-btn-' + s.id);
     if (!btn) continue;
     if (s.status !== 'archived') {
@@ -138,11 +140,89 @@ function renderSessionsList(sessions) {
   }
 }
 
+function renderSessionRow(s, isParent) {
+  const ch = channelLabel(s.channel);
+  const chBg = channelColor(s.channel);
+  const chTc = channelTextColor(s.channel);
+  const isArchived = s.status === 'archived';
+  const indent = isParent ? '' : 'padding-left:34px;';
+  const isSubAgent = s.channel?.startsWith('subagent');
+  const subType = isSubAgent ? (s.channel.replace('subagent:', '') || 'sub') : null;
+
+  const statusColors = { active: '#4ade80', closed: '#9ca3af', archived: '#6b7280' };
+  const sc = statusColors[s.status] || 'var(--text3)';
+  const statusDot = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+sc+';flex-shrink:0;margin-right:6px;' + (s.status=='active'?'animation:pulse 1.5s infinite;':'') + '"></span>';
+
+  let tokenHtml = '';
+  if (s.total_tokens > 0) {
+    tokenHtml = '<span title="In: '+fmtNum(s.tokens_in)+' \u00b7 Out: '+fmtNum(s.tokens_out)+' \u00b7 '+s.llm_calls+' calls" style="font-size:11px;color:var(--text2);">'+fmtNum(s.total_tokens)+'</span>';
+  } else {
+    tokenHtml = '<span style="font-size:10px;color:var(--text3);">\u2014</span>';
+  }
+
+  let costHtml = '';
+  if (s.cost_usd > 0) {
+    costHtml = '<span title="'+s.llm_calls+' LLM calls" style="font-size:11px;color:var(--accent2);">'+fmtCost(s.cost_usd)+'</span>';
+  } else {
+    costHtml = '<span style="font-size:10px;color:var(--text3);">\u2014</span>';
+  }
+
+  let toolHtml = '';
+  if (s.tool_calls > 0) {
+    toolHtml = '<span style="font-size:11px;color:var(--text2);">'+fmtNum(s.tool_calls)+'</span>';
+  } else {
+    toolHtml = '<span style="font-size:10px;color:var(--text3);">\u2014</span>';
+  }
+
+  let childChip = '';
+  if (isParent && s.child_count > 0) {
+    childChip = '<span class="badge" style="background:rgba(245,158,11,0.1);color:#fbbf24;font-size:10px;">'+s.child_count+' sub-agent'+(s.child_count!==1?'s':'')+'</span>';
+  }
+
+  const parentBadge = isSubAgent && s.parent_session_id
+    ? \`<span class="badge" style="background:rgba(245,158,11,0.06);color:#d97706;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();openSession('\${s.parent_session_id}')" title="Click to open parent session">\u2190 parent</span>\`
+    : '';
+
+  return \`<div class="card-sm\${isParent?' sess-parent-card':''}\${isSubAgent?' sess-child-card':''}\${isArchived?' sess-archived':''}" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:4px;\${indent}" onclick="openSession('\${s.id}')">
+    <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      \${statusDot}
+      \${isSubAgent ? '<span style="flex-shrink:0;font-size:10px;color:#9ca3af;">\u2514</span>' : ''}
+      \${s.name ? '<span style="font-size:13px;font-weight:500;color:var(--text2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.name) + '</span>' : ''}
+      <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">\${s.id.slice(-16)}</span>
+      \${s.agent_id && s.agent_id !== 'assistant' ? '<span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);font-size:10px;">' + esc(s.agent_id) + '</span>' : ''}
+      \${ch ? '<span class="badge" style="background:' + chBg + ';color:' + chTc + ';font-size:10px;">' + esc(ch) + '</span>' : ''}
+      \${childChip}
+      \${parentBadge}
+      <span class="badge" style="font-size:10px;background:\${s.status=='active'?'rgba(34,197,94,0.1)':s.status=='archived'?'rgba(107,114,128,0.1)':'rgba(255,255,255,0.05)'};color:\${s.status=='active'?'#4ade80':s.status=='archived'?'#9ca3af':'var(--text3)'};">\${s.status}</span>
+      \${subType ? '<span class="badge" style="background:rgba(245,158,11,0.08);color:#f59e0b;font-size:10px;">\u2699 ' + esc(subType) + '</span>' : ''}
+    </div>
+    <span style="width:70px;text-align:right;font-size:11px;color:var(--text2);">\${s.turn_count}</span>
+    <span style="width:90px;text-align:right;">\${tokenHtml}</span>
+    <span style="width:80px;text-align:right;">\${costHtml}</span>
+    <span style="width:60px;text-align:right;">\${toolHtml}</span>
+    <div style="width:140px;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+      \${s.avg_duration_ms>0?'<span style="font-size:10px;color:var(--text3);" title="Avg LLM call duration">'+fmtMs(s.avg_duration_ms)+'</span>':''}
+      <button class="btn" style="padding:3px 8px;font-size:10px;background:rgba(99,102,241,0.1);color:var(--accent2);" onclick="event.stopPropagation();continueSession('\${s.id}')">\u25b6</button>
+      <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="event.stopPropagation();exportSession('\${s.id}')">\u2b07</button>
+      <span id="sess-archive-btn-\${s.id}"></span>
+      <button class="btn" style="padding:3px 8px;font-size:10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">\u2715</button>
+    </div>
+  </div>\`;
+}
+
 async function searchSessions() {
   const q = document.getElementById('sess-search').value.trim();
-  if (!q) { renderSessionsList(allSessions); return; }
+  if (!q) { renderSessionsTree(allSessionsTree); return; }
   const results = await fetch(\`\${BASE}/api/sessions/search?q=\${encodeURIComponent(q)}\`).then(r => r.json()).catch(() => []);
   renderSessionsList(results);
+}
+
+function renderSessionsList(sessions) {
+  // Flat list renderer for search results (backward compat)
+  const el = document.getElementById('sessions-table');
+  if (!el) return;
+  if (!sessions.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);">No matching sessions</div>'; return; }
+  el.innerHTML = sessions.map(s => renderSessionRow(s, true)).join('');
 }
 
 async function openSession(id) {
@@ -150,11 +230,12 @@ async function openSession(id) {
   document.getElementById('sessions-list-view').style.display = 'none';
   document.getElementById('sessions-detail-view').style.display = 'flex';
 
-  const [session, msgs, events, children] = await Promise.all([
+  const [session, msgs, events, children, stats] = await Promise.all([
     fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}\`).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/messages\`).then(r => r.ok ? r.json() : []).catch(() => []),
     fetch(\`\${BASE}/api/sessions/\${id}/events\`).then(r => r.json()).catch(() => []),
     fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/children\`).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch(\`\${BASE}/api/sessions/\${encodeURIComponent(id)}/stats\`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
   ]);
   const el = document.getElementById('session-detail-log');
   const title = document.getElementById('session-detail-title');
@@ -162,20 +243,52 @@ async function openSession(id) {
   const ctn = document.getElementById('session-detail-children');
   title.textContent = id;
 
+  // Build breadcrumb
+  const breadcrumbId = document.getElementById('session-breadcrumb-id');
+  breadcrumbId.textContent = id.slice(-20);
+
+  // Show token stats
+  const isSubAgent = session?.channel?.startsWith('subagent');
+  const subType = isSubAgent ? session.channel.replace('subagent:', '') : null;
+  let statsHtml = '';
+  if (stats.total_tokens > 0) {
+    statsHtml = \`<span style="color:var(--text2);" title="LLM token usage">\${fmtNum(stats.total_tokens)} tokens</span>\` +
+      (stats.cost_usd > 0 ? \` · <span style="color:var(--accent2);">\${fmtCost(stats.cost_usd)}</span>\` : '') +
+      \` · <span style="color:var(--text3);">\${stats.llm_calls || 0} calls</span>\` +
+      \` · <span style="color:var(--text3);">\${stats.tool_calls || 0} tools</span>\`;
+  }
+
   // Show parent link if this session has a parent
   if (session && session.parent_session_id) {
-    meta.innerHTML = \`<span style="color:var(--text3);">← parent:</span> <a href="#" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;" onclick="event.preventDefault();openSession('\${session.parent_session_id}')">\${session.parent_session_id.slice(-20)}</a>\`;
+    meta.innerHTML = \`<span style="color:var(--text3);">← parent:</span> <a href="#" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;" onclick="event.preventDefault();openSession('\${session.parent_session_id}')">\${session.parent_session_id.slice(-20)}</a>\` +
+      (statsHtml ? \`<span style="margin-left:12px;border-left:1px solid var(--border);padding-left:12px;font-size:11px;">\${statsHtml}</span>\` : '');
   } else {
-    meta.innerHTML = '';
+    meta.innerHTML = statsHtml ? \`<span style="font-size:11px;">\${statsHtml}</span>\` : '';
+  }
+
+  // Show sub-agent type badge
+  if (subType) {
+    meta.innerHTML += \` <span class="badge" style="background:rgba(245,158,11,0.08);color:#f59e0b;font-size:10px;">⚙ \${esc(subType)}</span>\`;
   }
 
   // Show child sessions if any
   if (children.length > 0) {
-    const ch = channelLabel(session?.channel);
-    ctn.innerHTML = '<span style="color:var(--text3);">sub-agents:</span> ' + children.map(c => \`
-      <a href="#" style="color:#fbbf24;font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:none;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.08);" onclick="event.preventDefault();openSession('\${c.id}')">
-        \${c.channel?.startsWith('subagent:') ? c.channel.replace('subagent:','') : 'sub'}
-      </a>\`).join(' ');
+    ctn.innerHTML = '';
+    const label = document.createElement('span');
+    label.style.cssText = 'color:var(--text3);';
+    label.textContent = 'sub-agents (' + children.length + '): ';
+    ctn.appendChild(label);
+    for (const c of children) {
+      const a = document.createElement('a');
+      a.href = '#';
+      const cch = c.channel?.startsWith('subagent:') ? c.channel.replace('subagent:','') : 'sub';
+      const csc = c.status=='active'?'#4ade80':c.status=='closed'?'#9ca3af':'#6b7280';
+      a.style.cssText = 'color:#fbbf24;font-family:\\'JetBrains Mono\\',monospace;font-size:11px;text-decoration:none;padding:2px 6px;border-radius:4px;background:rgba(245,158,11,0.08);white-space:nowrap;';
+      a.innerHTML = '<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:'+csc+';margin-right:4px;vertical-align:middle;"></span>' +
+        esc(cch)+(c.turn_count?' \u00b7 '+c.turn_count+'t':'');
+      a.addEventListener('click', function(e) { e.preventDefault(); openSession(c.id); });
+      ctn.appendChild(a);
+    }
   } else if (session && !session.channel?.startsWith('subagent')) {
     ctn.innerHTML = '<span style="color:var(--text3);font-size:10px;">(no sub-agents)</span>';
   } else {
