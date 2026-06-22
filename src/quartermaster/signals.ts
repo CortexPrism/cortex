@@ -9,22 +9,41 @@ export async function computeTrajectorySignal(
 ): Promise<{ tool: string; score: number }[]> {
   if (recentToolCalls.length === 0) return [];
   const results: { tool: string; score: number }[] = [];
-  const last3 = recentToolCalls.slice(-3);
 
-  const patterns = await findPatterns(last3, 5);
+  const last3 = recentToolCalls.slice(-3);
+  const patterns = await findPatterns(last3, 20, true);
+
   for (const p of patterns) {
-    const nextTool = p.toolSequence[p.toolSequence.length - 1];
+    const seq = p.toolSequence;
+    if (seq.length <= last3.length) continue;
+
+    const prefix = seq.slice(0, last3.length);
+    if (!prefix.every((t, i) => t === last3[i])) continue;
+
+    const nextTool = seq[last3.length];
     const score = p.avgConfidence * 0.6 + (p.successCount / Math.max(1, p.hitCount)) * 0.4;
-    results.push({ tool: nextTool, score });
+
+    const existing = results.find((r) => r.tool === nextTool);
+    if (existing) {
+      existing.score = Math.max(existing.score, score);
+    } else {
+      results.push({ tool: nextTool, score });
+    }
   }
 
   if (results.length === 0 && recentToolCalls.length >= 2) {
     const tail = recentToolCalls.slice(-2);
-    const tailPatterns = await findPatterns(tail, 3);
+    const tailPatterns = await findPatterns(tail, 10, true);
     for (const p of tailPatterns) {
-      const nextTool = p.toolSequence[p.toolSequence.length - 1];
-      const score = 0.5;
-      results.push({ tool: nextTool, score });
+      const seq = p.toolSequence;
+      if (seq.length <= tail.length) continue;
+      const prefix = seq.slice(0, tail.length);
+      if (!prefix.every((t, i) => t === tail[i])) continue;
+      const nextTool = seq[tail.length];
+      const existing = results.find((r) => r.tool === nextTool);
+      if (!existing) {
+        results.push({ tool: nextTool, score: 0.5 });
+      }
     }
   }
 
@@ -34,6 +53,7 @@ export async function computeTrajectorySignal(
 export async function computeEpisodicSignal(
   userMessage: string,
   recentToolCalls: string[],
+  candidateTools: string[],
 ): Promise<{ tool: string; score: number }[]> {
   const query = recentToolCalls.length > 0
     ? `${userMessage.slice(0, 200)} ${recentToolCalls.join(' ')}`
@@ -47,18 +67,18 @@ export async function computeEpisodicSignal(
   }
 
   const results: { tool: string; score: number }[] = [];
-  const toolPattern = /(?:tool|call|used|ran|executed)\s+(\w+)/gi;
-  let match: RegExpExecArray | null;
+
   for (const hit of hits) {
-    const text = hit.text + (hit.entities?.join(' ') ?? '');
-    const re = new RegExp(toolPattern);
-    while ((match = re.exec(text)) !== null) {
-      const toolName = match[1].toLowerCase();
-      const existing = results.find((r) => r.tool === toolName);
-      if (existing) {
-        existing.score = Math.max(existing.score, hit.score * 0.5);
-      } else {
-        results.push({ tool: toolName, score: hit.score * 0.5 });
+    const text = (hit.text + (hit.entities?.join(' ') ?? '')).toLowerCase();
+
+    for (const toolName of candidateTools) {
+      if (text.includes(toolName.toLowerCase())) {
+        const existing = results.find((r) => r.tool === toolName);
+        if (existing) {
+          existing.score = Math.max(existing.score, hit.score * 0.5);
+        } else {
+          results.push({ tool: toolName, score: Math.min(hit.score * 0.5, 1.0) });
+        }
       }
     }
   }
@@ -144,7 +164,7 @@ export async function gatherSignalScores(
 ): Promise<SignalScores> {
   const [trajectory, episodic, toolStats, taskContext] = await Promise.all([
     computeTrajectorySignal(recentToolCalls),
-    computeEpisodicSignal(userMessage, recentToolCalls),
+    computeEpisodicSignal(userMessage, recentToolCalls, candidateTools),
     computeToolStatsSignal(candidateTools),
     Promise.resolve(computeTaskContextSignal(assessment)),
   ]);

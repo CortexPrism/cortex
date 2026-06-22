@@ -95,39 +95,33 @@ async function applyRewardBasedUpdates(
   learningRate: number,
   weights: ModelSignalWeights,
 ): Promise<void> {
-  if (wasGoodChoice) {
-    // Reinforce signals that contributed to good choice
-    // Increase historical and quality weights slightly
-    const signalsToReinforce = ['historical', 'quality', 'reflection'];
+  const signalNames = Object.keys(weights) as Array<keyof typeof weights>;
 
-    for (const signal of signalsToReinforce) {
-      const current = weights[signal as keyof typeof weights];
+  if (wasGoodChoice) {
+    for (const signal of signalNames) {
+      const current = weights[signal];
+      const delta = learningRate * reward * current;
       const newWeight = clamp(
-        current + learningRate * (reward - current),
+        current + delta,
         WEIGHT_BOUNDS.min,
         WEIGHT_BOUNDS.max,
       );
-
       await updateSignalWeight(signal, newWeight);
     }
   } else {
-    // Bad choice - reduce confidence in signals that led to it
-    // Decrease weights slightly for all signals
-    const penalty = -learningRate * 0.5;
-
-    for (const signal of Object.keys(weights)) {
-      const current = weights[signal as keyof typeof weights];
+    const penalty = learningRate * 0.5;
+    for (const signal of signalNames) {
+      const current = weights[signal];
+      const delta = penalty * current;
       const newWeight = clamp(
-        current + penalty,
+        current - delta,
         WEIGHT_BOUNDS.min,
         WEIGHT_BOUNDS.max,
       );
-
       await updateSignalWeight(signal, newWeight);
     }
   }
 
-  // Normalize weights to ensure they sum to ~1.0
   await normalizeWeights();
 }
 

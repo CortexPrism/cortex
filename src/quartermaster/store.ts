@@ -274,9 +274,13 @@ export async function getToolStat(toolName: string): Promise<QmToolStat | undefi
 export async function findPatterns(
   sequence: string[],
   limit = 5,
+  prefix = false,
 ): Promise<QmPattern[]> {
   const db = await getCoreDb();
   const seqJson = JSON.stringify(sequence);
+  const where = prefix
+    ? `WHERE tool_sequence LIKE ? || '%'`
+    : 'WHERE tool_sequence = ?';
   const rows = await db.all<{
     id: string;
     tool_sequence: string;
@@ -290,7 +294,7 @@ export async function findPatterns(
     `SELECT id, tool_sequence, context_fingerprint, hit_count, success_count,
             avg_confidence, last_used, created_at
      FROM qm_patterns
-     WHERE tool_sequence = ?
+     ${where}
      ORDER BY hit_count DESC, avg_confidence DESC
      LIMIT ?`,
     [seqJson, limit],
@@ -316,8 +320,8 @@ export async function upsertPattern(
   const db = await getCoreDb();
   const seqJson = JSON.stringify(sequence);
 
-  const existing = await db.get<{ id: string; hit_count: number; success_count: number }>(
-    `SELECT id, hit_count, success_count FROM qm_patterns
+  const existing = await db.get<{ id: string; hit_count: number; success_count: number; avg_confidence: number }>(
+    `SELECT id, hit_count, success_count, avg_confidence FROM qm_patterns
      WHERE tool_sequence = ? AND context_fingerprint = ?`,
     [seqJson, JSON.stringify(fingerprint)],
   );
@@ -343,7 +347,7 @@ export async function upsertPattern(
   } else {
     const newHitCount = existing.hit_count + 1;
     const newSuccessCount = existing.success_count + (wasCorrect ? 1 : 0);
-    const newAvgConf = (confidence + existing.success_count) / (existing.hit_count + 1);
+    const newAvgConf = (existing.avg_confidence * existing.hit_count + confidence) / newHitCount;
     const now = new Date().toISOString();
     await db.run(
       `UPDATE qm_patterns
@@ -512,4 +516,12 @@ export async function resetAll(): Promise<void> {
   await db.run(`DELETE FROM qm_tool_stats`);
   await db.run(`DELETE FROM qm_session_state`);
   await resetWeights();
+}
+
+export async function incrementSessionObservations(sessionId: string): Promise<number> {
+  const db = await getCoreDb();
+  const existing = await getSessionState(sessionId);
+  const newCount = (existing?.observationCount ?? 0) + 1;
+  await upsertSessionState(sessionId, { observationCount: newCount });
+  return newCount;
 }

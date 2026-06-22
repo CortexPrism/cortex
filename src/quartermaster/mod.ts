@@ -9,6 +9,7 @@ import {
   ensureTables,
   getSessionState,
   getSignalWeights,
+  incrementSessionObservations,
   logDecision,
   upsertSessionState,
   upsertToolStat,
@@ -68,13 +69,7 @@ export async function observe(observation: ToolObservation): Promise<void> {
 
   const state = await getSessionState(observation.sessionId);
   const oldMode = state?.mode ?? 'observe';
-  const observationCount = (state?.observationCount ?? 0) + 1;
-  const newMode = observationCount >= OBSERVE_THRESHOLD ? 'active' : 'observe';
-
-  await upsertSessionState(observation.sessionId, {
-    observationCount,
-    mode: newMode,
-  });
+  const newCount = await incrementSessionObservations(observation.sessionId);
 
   await upsertToolStat(
     observation.toolCall.toolName,
@@ -90,12 +85,16 @@ export async function observe(observation: ToolObservation): Promise<void> {
     observation.sessionId,
   );
 
-  if (oldMode !== newMode && newMode === 'active') {
-    emitQmModeChangedEvent(observation.sessionId, oldMode, newMode);
+  if (oldMode === 'observe' && newCount >= OBSERVE_THRESHOLD) {
+    await upsertSessionState(observation.sessionId, { mode: 'active' });
+    emitQmModeChangedEvent(observation.sessionId, oldMode, 'active');
   }
 }
 
-export async function predict(context: PredictionContext): Promise<ToolPrediction | undefined> {
+export async function predict(
+  context: PredictionContext,
+  reflectionConfidence = 0.5,
+): Promise<ToolPrediction | undefined> {
   await ensureQuartermaster();
 
   const state = await getSessionState(context.sessionId);
@@ -114,7 +113,7 @@ export async function predict(context: PredictionContext): Promise<ToolPredictio
     context.assessment,
     recentToolCalls,
     candidateTools,
-    0.5,
+    reflectionConfidence,
   );
 
   const predictions = fuseSignals(signalScores, weights, candidateTools);
@@ -190,6 +189,21 @@ function collectCandidateTools(
     'memory_search',
     'git_status',
     'git_diff',
+    'git_commit',
+    'git_stash',
+    'web_search',
+    'web_fetch',
+    'web_scrape',
+    'brave_search',
+    'brave_web_search',
+    'brave_local_search',
+    'computer',
+    'sandbox_exec',
+    'task',
+    'a2a',
+    'mcp',
+    'semantic_search',
+    'codebase_search',
   ];
   for (const t of defaultTools) {
     candidates.add(t);

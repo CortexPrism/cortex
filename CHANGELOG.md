@@ -47,6 +47,56 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **Template literal newline escaping in UI JS export** — a `'\n\n'` in the `renderThinkingForRestore` function was processed as actual newline characters by the TypeScript template literal export, breaking string literals in the concatenated browser-side JS. Fixed to `'\\n\\n'`. (`src/server/ui/js/04_chat_ui.ts`)
 
+- **Model Quartermaster (MQM) prediction & accuracy system overhaul** — 8 fixes to the 6-signal model selection intelligence:
+
+  - **Reflection signal squeezed out by normalization** — `learn.ts` only reinforced 3 of 6 signals (`historical`, `quality`, `reflection`) on good choices, causing the ignored signals (`cost`, `episodic`, `trajectory`) to shrink toward zero after each normalization pass. Now all 6 signals receive proportional reinforcement/punishment, preserving the full signal portfolio over time.
+
+  - **Accuracy threshold inconsistency** — accuracy trend query used `was_correct >= 0.7` while session state accuracy used raw `correctCount` (updated by a separate reflection path). Added `CORRECTNESS_THRESHOLD = 0.7` constant; `observeModel()` now updates both `was_correct` on decisions and `correctCount` in session state from a single source.
+
+  - **Race condition in observe→active mode transition** — both `incrementSessionObservations()` (store) and `observeModel()` (mod.ts) independently set `mode = 'active'` at the 50-observation threshold, risking duplicate mode-change events. Removed mode-setting from `incrementSessionObservations()`; only `observeModel()` handles the transition.
+
+  - **Normalization inflation for single-signal models** — `fusion.ts` computed `confidence = weightedSum / activeWeightSum`, so a model matching only the `reflection` signal (weight 0.05, score 0.9) got confidence `0.9 * 0.05 / 0.05 = 0.9` — same as a model matching all 6 signals. Added coverage penalty: `confidence *= 0.7 + 0.3 * (signalCount / 6)`. A model with 1/6 signals now gets 0.733× multiplier.
+
+  - **Heuristic model tier detection missed modern models** — `estimateModelCost()` and `estimateModelQuality()` used a 3-tier list (`opus|gpt-4|o1`, `sonnet|gpt-3.5`, `haiku|flash|mini`) dating to early 2025. Expanded to 6 tiers covering `gpt-4o`, `gpt-4.1`, `gemini-2.x`, `nova-*`, `llama-3.x`, `mistral`, `phi`, `o3`, `o4-mini` with per-tier cost and quality baselines.
+
+  - **No recency decay on model statistics** — `mqm_model_stats` accumulated forever with equal weight. Added 2%/day decay (floor 40%) on `historical`, `quality`, and `cost` signal scores based on `last_used` timestamp.
+
+  - **Episodic signal relied on fragile regex extraction** — the episodic signal used `(?:model|using|with)\s+([\w-]+)` regex to extract model names from memory hit text, failing when memory entries didn't match this exact pattern. Replaced with direct substring search: scans each memory hit for candidate model name and provider strings.
+
+  - **Cost signal compared per-call, not per-task** — raw `avg_cost_usd` was compared across models without normalizing for task size, penalizing models used for complex tasks. Cost is now divided by `taskComplexity` to produce a cost-per-complexity-unit metric for fair cross-model comparison.
+
+  (`src/model-quartermaster/signals.ts`, `src/model-quartermaster/fusion.ts`, `src/model-quartermaster/learn.ts`, `src/model-quartermaster/mod.ts`, `src/model-quartermaster/store.ts`, `src/model-quartermaster/monitor.ts`, `src/db/migrations/019_model_quartermaster.sql`, plus shadow copies under `packages/infra/src/model-quartermaster/` and `packages/core/src/db/migrations/`)
+
+- **Default MQM signal weights rebalanced** — `historical` 0.25→0.22, `quality` 0.25→0.23, `trajectory` 0.10→0.12, `reflection` 0.05→0.08. Gives trajectory and reflection more initial influence while still prioritizing historical performance and quality.
+
+- **Quartermaster (QM) tool orchestration system overhaul** — 10 fixes to the 5-signal tool prediction intelligence:
+
+  - **Race condition in observe()** — `observe()` read `observationCount` from session state, computed `+1` in JS, then upserted. Two concurrent observations could both read the same value, miss an increment, and both trigger mode transitions. Replaced with `incrementSessionObservations()`; mode transition checked separately against `newCount >= OBSERVE_THRESHOLD`.
+
+  - **`learn()` corrupted `predictionCount`** — `learn()` overwrote `predictionCount` with `sessionState.predictionCount + decisions.length`, but `predict()` had already incremented it for each call. Removed the overwrite; `learn()` now only writes `correctCount`.
+
+  - **`learn()` set mode at wrong threshold** — `learn()` wrote `mode = predictionCount >= 50 ? 'active' : 'observe'`, but QM's real observe→active threshold is 10. Mode is now set exclusively by `observe()`.
+
+  - **Trajectory signal dead — exact-match on full-turn sequences** — `findPatterns(last3)` searched for `JSON.stringify(last3)` but stored patterns contained `JSON.stringify(allToolsInTurn)`. A full-turn sequence like `["read","edit","write","shell"]` never matched a prefix search for `["edit","write","shell"]`. Added `prefix` mode to `findPatterns()` using SQL `LIKE ? || '%'`; `computeTrajectorySignal()` extracts `nextTool = seq[prefix.length]`; `learn.ts` stores `prefix_3_tools + actualTool` instead of the full turn.
+
+  - **Fusion never reached suggest threshold** — unlike MQM, QM just summed `weight * score` without dividing by activeWeightSum. A tool matching only `taskContext` (weight 0.15, score 0.8) got `0.12` — 5× below the 0.6 suggest threshold. Added `rawTotal / activeWeightSum` normalization plus `coveragePenalty = 0.7 + 0.3 * (signalCount / 5)`.
+
+  - **Reflection confidence hardcoded to 0.5** — `predict()` always passed `0.5` to `gatherSignalScores()` regardless of actual reflection quality. Now accepts `reflectionConfidence` parameter (default 0.5) so callers can pass real reflection confidence.
+
+  - **`avg_confidence` incremental average formula broken** — `upsertPattern()` computed `(confidence + success_count) / (hit_count + 1)`, mixing a 0-1 score with an integer count. Added `avg_confidence` to the SELECT; formula corrected to `(avg_confidence * hit_count + confidence) / newHitCount`.
+
+  - **Only 3/5 signals penalized on bad predictions** — `updateWeightsFromDecision()` only penalized `trajectory`, `episodic`, and `taskContext` on wrong predictions, leaving `toolStats` and `reflection` immune to penalty. Now all 5 signals receive proportional penalties using `confidenceFloor` enforcement.
+
+  - **`confidenceFloor` stored but never enforced** — `qm_signal_weights.confidence_floor` existed in schema and migration but `updateWeightsFromDecision()` ignored it. Now enforces `Math.max(floor, newWeight)` on every update.
+
+  - **Hardcoded candidate tool list missed 50+ tools** — `collectCandidateTools()` listed only 10 tools. Modern tools (`web_search`, `web_fetch`, `brave_search`, `computer`, `sandbox_exec`, `task`, `a2a`, `mcp`, `semantic_search`, `codebase_search`, `git_commit`, `git_stash`, `web_scrape`) were excluded from prediction. Expanded to 24 tools.
+
+  (`src/quartermaster/signals.ts`, `src/quartermaster/fusion.ts`, `src/quartermaster/learn.ts`, `src/quartermaster/mod.ts`, `src/quartermaster/store.ts`, plus shadow copies under `packages/infra/src/quartermaster/`)
+
+- **Episodic signal regex fragility fixed in QM** — the QM episodic signal used `(?:tool|call|used|ran|executed)\s+(\w+)` regex identical to the MQM issue. Replaced with direct `text.includes(toolName)` search across candidate tools.
+
+  (`src/quartermaster/signals.ts`, `packages/infra/src/quartermaster/signals.ts`)
+
 ### Added
 
 - **`cortex mcp a2a remote` CLI command** — new subcommand that lists all configured remote A2A agents with endpoint, auth status, timeout, and tool name. Shows a config example when no agents are configured. The main `cortex mcp a2a` help text now includes a full `config.json` example for adding remote agents. (`src/cli/a2a-cmd.ts`, `packages/cli/src/cli/a2a-cmd.ts`)
