@@ -2,6 +2,21 @@ export const JS_02_CHAT_SETUP = `
 // ── New chat ────────────────────────────────────
 function newChat() {
   chatLog.innerHTML = '';
+  // Re-insert welcome screen
+  const welcome = document.createElement('div');
+  welcome.id = 'chat-welcome';
+  welcome.className = 'chat-welcome';
+  welcome.innerHTML =
+    '<div class="chat-welcome-icon">&#9670;</div>' +
+    '<div class="chat-welcome-title">CortexPrism</div>' +
+    '<div class="chat-welcome-sub">Your AI agent operating system. Ask anything, run code, browse the web, or orchestrate multi-agent tasks.</div>' +
+    '<div class="chat-welcome-hints" id="chat-welcome-hints">' +
+      '<span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Summarize a research paper</span>' +
+      '<span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Write a Python script</span>' +
+      '<span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Explain how the agent loop works</span>' +
+      '<span class="chat-welcome-hint" onclick="quickPrompt(this.textContent)">Search the web for recent AI news</span>' +
+    '</div>';
+  chatLog.appendChild(welcome);
   sessionId = null;
   sessionNamed = false;
   agentBubble = null;
@@ -60,11 +75,6 @@ async function loadModelSelector() {
     const providerKind = config.defaultProvider || 'anthropic';
     const sel = document.getElementById('chat-model-select');
     const current = sel.value || config.providers[providerKind]?.model || '';
-
-    const ml = document.getElementById('model-label');
-    if (ml && (!ml.textContent || ml.textContent === 'loading…')) {
-      ml.textContent = (config.providers[providerKind]?.model || providerKind) + ' · ' + providerKind;
-    }
 
     let models = [];
     try {
@@ -178,22 +188,19 @@ async function restoreSession() {
         return;
       }
       const msgs = await res.json();
-      let lastRole = '';
       for (const m of msgs) {
         if (m.role === 'user') {
           appendBubble('user', m.content);
-          lastRole = 'user';
         } else if (m.role === 'assistant') {
-          const isToolCall = /^\s*\{[^}]*"tool"\s*:\s*"/.test(m.content);
+          const isToolCall = /^\\s*\\{[^}]*"tool"\\s*:\\s*"/.test(m.content);
           if (isToolCall) {
-            const label = (m.content.match(/"tool"\s*:\s*"([^"]+)"/) || [])[1] || 'tool';
-            appendBubble('tool', '\u2699 ' + label);
+            const label = (m.content.match(/"tool"\\s*:\\s*"([^"]+)"/) || [])[1] || 'tool';
+            appendBubble('tool', '⚙ ' + label);
           } else {
             const b = appendBubble('agent', m.content);
             b.innerHTML = md(m.content);
             if (m.token_count) appendMeta(0, m.token_count, 0, 0);
           }
-          lastRole = 'assistant';
         }
       }
       syncLastChatRequestFromMessages(msgs);
@@ -204,144 +211,14 @@ async function restoreSession() {
    } catch {}
 }
 
-// ── Reasoning Panel ──────────────────────────────────────────
-function renderReasoningPanel(panel) {
-  if (!panel) return;
-  let content = currentReasoningData || '';
-  // Extract content from <thinking> or <think> XML tags if present
-  const tagMatch = content.match(/<(?:thinking|think)>([\\s\\S]*?)<[/](?:thinking|think)>/i);
-  if (tagMatch) content = tagMatch[1].trim();
-  // Fall back to stripping any remaining tags
-  if (!content) content = currentReasoningData.replace(/<[^>]+>/g, '').trim();
-  panel.innerHTML = content
-    ? '<div style="opacity:0.7;font-size:10px;color:var(--accent2);margin-bottom:6px;letter-spacing:0.05em;">REASONING</div>' + md(content)
-    : '<span style="color:var(--text3);font-size:12px;">(No reasoning data yet)</span>';
-}
-
+// ── Backwards-compat reasoning panel (kept for legacy) ──────
 function toggleReasoningPanel() {
-  reasoningPanelOpen = !reasoningPanelOpen;
-  const chatArea = document.getElementById('chat-area');
-  if (!chatArea) return;
-  
-  let panel = document.getElementById('reasoning-panel');
-  if (reasoningPanelOpen) {
-    if (!panel) {
-      panel = document.createElement('div');
-      panel.id = 'reasoning-panel';
-       panel.style.cssText = "border-top:1px solid var(--border);padding:12px 24px;background:var(--bg3);max-width:900px;margin:0 auto;max-height:300px;overflow-y:auto;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:pre-wrap;word-break:break-word;";
-      chatArea.appendChild(panel);
-    }
-    renderReasoningPanel(panel);
-    panel.style.display = 'block';
-    const btn = document.getElementById('reasoning-toggle');
-    if (btn) btn.style.background = 'rgba(6,182,212,0.2)';
-  } else {
-    if (panel) panel.style.display = 'none';
-    const btn = document.getElementById('reasoning-toggle');
-    if (btn) btn.style.background = '';
+  if (reasoningEl) {
+    reasoningEl.classList.toggle('open');
+    return;
+  }
+  if (currentReasoningData && agentBubble) {
+    showReasoningAccordion(currentReasoningData, agentBubble);
   }
 }
-
-// ── Sub-Agent Display ──────────────────────────────────────────
-function createSubAgentContainer(id, task, type) {
-  const existing = document.getElementById('sa-' + id);
-  if (existing) return existing;
-
-  const outer = document.createElement('div');
-  outer.id = 'sa-' + id;
-  outer.style.cssText = 'margin:8px 0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg2);';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none;background:var(--bg3);border-bottom:1px solid var(--border);';
-  header.innerHTML = '<span style="flex-shrink:0;width:16px;height:16px;border:2px solid var(--accent2);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;"></span>' +
-    '<span style="font-size:12px;font-weight:600;color:var(--accent2);text-transform:uppercase;letter-spacing:0.04em;">' + esc(type || 'general') + '</span>' +
-    '<span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(task.slice(0, 80)) + '</span>' +
-    '<span style="font-size:10px;color:var(--text3);">▶</span>';
-  header.onclick = () => {
-    const body = document.getElementById('sa-body-' + id);
-    const expanded = body.style.display !== 'none';
-    body.style.display = expanded ? 'none' : 'block';
-    header.lastChild.textContent = expanded ? '▶' : '▼';
-  };
-
-  const body = document.createElement('div');
-  body.id = 'sa-body-' + id;
-  body.style.cssText = 'padding:10px 14px;max-height:400px;overflow-y:auto;font-size:13px;line-height:1.5;color:var(--text2);white-space:pre-wrap;word-break:break-word;display:none;';
-
-  outer.appendChild(header);
-  outer.appendChild(body);
-
-  subAgentContainers[id] = outer;
-  subAgentChunks[id] = '';
-
-  // Insert right before the chat input or at end of chat log
-  const chatLog = document.getElementById('chat-log');
-  chatLog.appendChild(outer);
-
-  // Scroll to show the sub-agent
-  requestAnimationFrame(() => scrollChat());
-
-  return { outer, body, header };
-}
-
-function updateSubAgentContent(id, delta) {
-  const container = subAgentContainers[id];
-  if (!container) return;
-
-  const body = document.getElementById('sa-body-' + id);
-  if (!body) return;
-
-  subAgentChunks[id] += delta;
-  body.textContent = subAgentChunks[id];
-  body.scrollTop = body.scrollHeight;
-}
-
-function finalizeSubAgent(id, result, success, error) {
-  const container = subAgentContainers[id];
-  if (!container) return;
-
-  const header = container.querySelector('div');
-  if (!header) return;
-
-  const spinner = header.querySelector('span:first-child');
-  if (spinner) {
-    if (success) {
-      spinner.style.cssText = 'flex-shrink:0;width:16px;height:16px;border-radius:50%;display:inline-block;background:#22c55e;border:2px solid #22c55e;animation:none;';
-    } else {
-      spinner.style.cssText = 'flex-shrink:0;width:16px;height:16px;border-radius:50%;display:inline-block;background:#ef4444;border:2px solid #ef4444;animation:none;';
-      spinner.title = error || 'Sub-agent failed';
-    }
-  }
-
-  const body = document.getElementById('sa-body-' + id);
-  if (body) {
-    const finalContent = subAgentChunks[id] || result || '';
-    body.textContent = finalContent;
-  }
-
-  // Auto-expand on completion
-  header.click();
-  header.click();
-
-  // Add completion badge
-  const badge = document.createElement('span');
-  badge.style.cssText = 'font-size:9px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px;';
-  if (success) {
-    badge.style.background = 'rgba(34,197,94,0.2)';
-    badge.style.color = '#22c55e';
-    badge.textContent = 'DONE';
-  } else {
-    badge.style.background = 'rgba(239,68,68,0.2)';
-    badge.style.color = '#ef4444';
-    badge.textContent = 'FAILED';
-  }
-  header.appendChild(badge);
-
-  // Clean up tracking after a delay
-  setTimeout(() => {
-    delete subAgentContainers[id];
-    delete subAgentChunks[id];
-  }, 5000);
-}
-
 `;

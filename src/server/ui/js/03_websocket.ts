@@ -5,7 +5,7 @@ function connect() {
   ws.onopen = () => {
     setBadge('connected');
     if (terminalInstance && !terminalConnected) {
-      terminalInstance.write('\x1b[32mReconnected.\x1b[0m\\r\\n');
+      terminalInstance.write('\\x1b[32mReconnected.\\x1b[0m\\r\\n');
       sendWs({ type: 'terminal_open', cwd: editorCurrentPath || undefined });
       terminalConnected = true;
       terminalInputBuffer = '';
@@ -15,7 +15,7 @@ function connect() {
   ws.onclose = () => {
     setBadge('disconnected');
     if (terminalInstance) {
-      terminalInstance.write('\\r\\n\x1b[33mConnection lost. Reconnecting...\x1b[0m\\r\\n');
+      terminalInstance.write('\\r\\n\\x1b[33mConnection lost. Reconnecting...\\x1b[0m\\r\\n');
       terminalConnected = false;
       terminalInputBuffer = '';
     }
@@ -51,163 +51,173 @@ function connect() {
          agentRaw = '';
          currentReasoningData = '';
          reasoningPanelOpen = false;
+         reasoningStartTime = Date.now();
+         if (reasoningEl) { reasoningEl.remove(); reasoningEl = null; }
          const reasoningBtn = document.getElementById('reasoning-toggle');
-         if (reasoningBtn) {
-           reasoningBtn.style.display = 'none';
-           reasoningBtn.style.background = '';
-         }
-         const reasoningPanel = document.getElementById('reasoning-panel');
-         if (reasoningPanel) {
-           reasoningPanel.style.display = 'none';
-           reasoningPanel.remove();
-         }
-          document.getElementById('retry-btn').style.display = 'none';
+         if (reasoningBtn) reasoningBtn.style.display = 'none';
+         document.getElementById('retry-btn').style.display = 'none';
          agentBubble = appendBubble('agent', '');
+         // Add streaming cursor
+         agentBubble.innerHTML += '<span class="streaming-cursor"></span>';
          document.getElementById('thinking-bar').style.display = 'flex';
          document.getElementById('stop-btn').style.display = '';
          document.getElementById('send-btn').style.display = 'none';
          document.getElementById('chat-input').disabled = true;
+         // Reset scroll
+         userScrolledUp = false;
          break;
-      case 'chunk':
-         agentRaw += msg.delta;
-         // If the accumulated text contains a <think> block, extract it into the
-         // reasoning panel and show only the post-thinking response in the bubble.
-         {
-           const thinkMatch = agentRaw.match(/^([\\s\\S]*?)<(?:think|thinking)>([\\s\\S]*?)<[/](?:think|thinking)>([\\s\\S]*)$/i);
-           if (thinkMatch) {
-             const thinkContent = thinkMatch[2].trim();
-             const afterThink = (thinkMatch[1] + thinkMatch[3]).trim();
-             if (thinkContent && thinkContent !== currentReasoningData) {
-               currentReasoningData = thinkContent;
-               const rBtn = document.getElementById('reasoning-toggle');
-               if (rBtn) rBtn.style.display = 'inline-block';
-               if (reasoningPanelOpen) renderReasoningPanel(document.getElementById('reasoning-panel'));
-             }
-             if (agentBubble) {
-                agentBubble.innerHTML = afterThink ? md(afterThink) : '<span style="opacity:0.4;font-size:12px;">Thinking…</span>';
-               requestAnimationFrame(() => scrollChat());
-             }
-           } else if (agentBubble) {
-             // No complete <think> block yet — render as-is but strip any partial opening tag
-             const display = agentRaw.replace(/^\\s*<(?:think|thinking)>\\s*/i, '');
-              agentBubble.innerHTML = md(display || agentRaw);
-             requestAnimationFrame(() => scrollChat());
+       case 'chunk':
+          agentRaw += msg.delta;
+          // Extract thinking blocks for reasoning accordion
+          {
+            const thinkMatch = agentRaw.match(/^([\\s\\S]*?)<(?:think|thinking)>([\\s\\S]*?)<\\/(?:think|thinking)>([\\s\\S]*)$/i);
+            if (thinkMatch) {
+              const thinkContent = thinkMatch[2].trim();
+              const afterThink = (thinkMatch[1] + thinkMatch[3]).trim();
+              if (thinkContent && thinkContent !== currentReasoningData) {
+                currentReasoningData = thinkContent;
+                if (!reasoningEl) showReasoningAccordion(currentReasoningData, agentBubble);
+                else updateReasoningTime();
+              }
+              if (agentBubble) {
+                 agentBubble.innerHTML = (afterThink ? md(afterThink) : '<span style="opacity:0.4;font-size:12px;">Thinking…</span>') + '<span class="streaming-cursor"></span>';
+                scrollChat();
+              }
+            } else if (agentBubble) {
+              const display = agentRaw.replace(/^\\s*<(?:think|thinking)>\\s*/i, '');
+              agentBubble.innerHTML = md(display || agentRaw) + '<span class="streaming-cursor"></span>';
+              scrollChat();
+            }
+          }
+          break;
+        case 'reasoning':
+          currentReasoningData = msg.content;
+          reasoningStartTime = reasoningStartTime || Date.now();
+          if (!reasoningEl && agentBubble) showReasoningAccordion(msg.content, agentBubble);
+          if (reasoningEl) updateReasoningTime();
+          break;
+        case 'tool_start':
+          // Server sends: { type: 'tool_start', id, name, input }
+          if (typeof createToolCard === 'function') createToolCard(msg.id, msg.name, msg.input);
+          break;
+        case 'tool_end':
+          // Server sends: { type: 'tool_end', id, status, output }
+          if (typeof updateToolCard === 'function') updateToolCard(msg.id, msg.status || 'Done', msg.output);
+          break;
+        case 'sub_agent_start':
+           createSubAgentContainer(msg.id, msg.task, msg.subAgentType);
+           break;
+        case 'sub_agent_chunk':
+           updateSubAgentContent(msg.id, msg.delta);
+           break;
+        case 'sub_agent_end':
+           finalizeSubAgent(msg.id, msg.result, msg.success, msg.error);
+           break;
+         case 'done':
+           // Finalize reasoning
+           if (reasoningEl) {
+             updateReasoningTime();
+             // Auto-collapse after 2 seconds
+             setTimeout(() => { if (reasoningEl) reasoningEl.classList.remove('open'); }, 2000);
+           }
+           if (agentBubble && msg.finalContent) {
+             agentBubble.innerHTML = md(msg.finalContent);
+           }
+           document.getElementById('thinking-bar').style.display = 'none';
+           document.getElementById('stop-btn').style.display = 'none';
+           document.getElementById('send-btn').style.display = '';
+           document.getElementById('retry-btn').style.display = lastChatRequest ? '' : 'none';
+           document.getElementById('chat-input').disabled = false;
+           agentBubble = null;
+           appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
+           // Add model badge below the last message
+           if (msg.resolvedModel) {
+             const modelDiv = document.createElement('div');
+             modelDiv.style.cssText = 'font-size:10px;color:var(--text3);padding:0 2px;align-self:flex-start;';
+             modelDiv.textContent = (msg.resolvedProvider ? msg.resolvedProvider + ' · ' : '') + msg.resolvedModel +
+               (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
+             chatLog.appendChild(modelDiv);
+           }
+          saveSession();
+          if (currentPage === 'lens') loadLens();
+          loadAgentPanel();
+           // Check auto-fallback
+           if (msg.autoFallback && msg.autoFallbackReason) {
+             const reasonLabels = {
+               empty_pool: 'No models in Auto pool — using default model',
+               invalid_pool: 'No valid models in Auto pool — using default model',
+               selection_failed: 'Auto selection failed — using default model',
+               agent_override: 'Agent override active — Auto bypassed',
+               mqm_deferred: 'MQM deferred — using heuristic selection',
+               heuristic_fallback: 'Using heuristic selection from pool',
+             };
+             const label = reasonLabels[msg.autoFallbackReason] || 'Auto fallback — using default model';
+             toast(label, 'warning', 5000);
+           }
+           break;
+         case 'stopped':
+           if (agentBubble) {
+             const current = agentBubble.innerHTML.replace(/<span class="streaming-cursor"><\\/span>/g, '');
+             agentBubble.innerHTML = (current && !current.includes('Thinking…'))
+               ? current + '<br><br><em style="color:var(--text3);">⏹ Stopped</em>'
+               : '<em style="color:var(--text3);">⏹ Stopped</em>';
+           }
+           if (reasoningEl) {
+             updateReasoningTime();
+             reasoningEl.classList.remove('open');
+           }
+           document.getElementById('thinking-bar').style.display = 'none';
+           document.getElementById('stop-btn').style.display = 'none';
+           document.getElementById('send-btn').style.display = '';
+           document.getElementById('retry-btn').style.display = lastChatRequest ? '' : 'none';
+           document.getElementById('chat-input').disabled = false;
+           agentBubble = null;
+           saveSession();
+           break;
+         case 'approval_request':
+          showApprovalModal(msg.request, msg.reasoning, msg.requestId);
+          break;
+         case 'error':
+          document.getElementById('thinking-bar').style.display = 'none';
+          document.getElementById('stop-btn').style.display = 'none';
+          document.getElementById('send-btn').style.display = '';
+          document.getElementById('chat-input').disabled = false;
+          if (reasoningEl) { reasoningEl.remove(); reasoningEl = null; }
+          agentBubble = null;
+          appendBubble('error', msg.error);
+          loadAgentPanel();
+          break;
+       case 'audio':
+         playAudio(msg.data, msg.format || 'mp3');
+         break;
+       case 'transcribed':
+         appendBubble('user', msg.text);
+         // Server already processes the transcribed text as a chat; just show the bubble
+         break;
+       case 'voice_state':
+         updateVoiceIndicator(msg.speaking);
+         break;
+       case 'file_change':
+         if (currentPage === 'editor') {
+           editorRefreshTree();
+           if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split(/[\\\\/]/).pop()) {
+             editorOpenFile(editorCurrentFile);
            }
          }
          break;
-       case 'reasoning':
-         // Show reasoning toggle button when we have reasoning data
-         const reasoningBtnToggle = document.getElementById('reasoning-toggle');
-         if (reasoningBtnToggle) reasoningBtnToggle.style.display = 'inline-block';
-         // Store reasoning for later display
-         currentReasoningData = msg.content;
-         // Live-update the panel if it is already open
-         if (reasoningPanelOpen) {
-           renderReasoningPanel(document.getElementById('reasoning-panel'));
+       case 'terminal_output':
+         handleTerminalOutput(msg.data);
+         break;
+       case 'terminal_closed':
+         if (terminalInstance) {
+           terminalInstance.write('\\r\\n\\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\\x1b[0m\\r\\n');
+           terminalConnected = false;
+           terminalInputBuffer = '';
          }
          break;
-       case 'sub_agent_start':
-          createSubAgentContainer(msg.id, msg.task, msg.subAgentType);
-          break;
-       case 'sub_agent_chunk':
-          updateSubAgentContent(msg.id, msg.delta);
-          break;
-       case 'sub_agent_end':
-          finalizeSubAgent(msg.id, msg.result, msg.success, msg.error);
-          break;
-        case 'done':
-          if (agentBubble && msg.finalContent) {
-            agentBubble.innerHTML = md(msg.finalContent);
-          }
-          document.getElementById('thinking-bar').style.display = 'none';
-          document.getElementById('stop-btn').style.display = 'none';
-          document.getElementById('send-btn').style.display = '';
-          document.getElementById('retry-btn').style.display = lastChatRequest ? '' : 'none';
-          document.getElementById('chat-input').disabled = false;
-          agentBubble = null;
-          appendMeta(msg.tokensIn, msg.tokensOut, msg.costUsd, msg.durationMs);
-         saveSession();
-         if (currentPage === 'lens') loadLens();
-         loadAgentPanel();
-          const ml = document.getElementById('model-label');
-          if (ml) {
-            if (msg.resolvedProvider && msg.resolvedModel) {
-              ml.textContent = msg.resolvedModel + ' · ' + msg.resolvedProvider +
-                (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
-            } else if (msg.model) {
-              ml.textContent = msg.model + (msg.reasoningEffort ? ' · reasoning: ' + msg.reasoningEffort : '');
-            }
-          }
-          if (msg.autoFallback && msg.autoFallbackReason) {
-            const reasonLabels = {
-              empty_pool: 'No models in Auto pool — using default model',
-              invalid_pool: 'No valid models in Auto pool — using default model',
-              selection_failed: 'Auto selection failed — using default model',
-              agent_override: 'Agent override active — Auto bypassed',
-              mqm_deferred: 'MQM deferred — using heuristic selection',
-              heuristic_fallback: 'Using heuristic selection from pool',
-            };
-            const label = reasonLabels[msg.autoFallbackReason] || 'Auto fallback — using default model';
-            toast(label, 'warning', 5000);
-          }
-          break;
-        case 'stopped':
-          if (agentBubble) {
-            const current = agentBubble.innerHTML;
-            agentBubble.innerHTML = (current && current !== 'Thinking…')
-              ? current + '<br><br><em>⏹ Stopped</em>'
-              : '<em>⏹ Stopped</em>';
-          }
-          document.getElementById('thinking-bar').style.display = 'none';
-          document.getElementById('stop-btn').style.display = 'none';
-          document.getElementById('send-btn').style.display = '';
-          document.getElementById('retry-btn').style.display = lastChatRequest ? '' : 'none';
-          document.getElementById('chat-input').disabled = false;
-          agentBubble = null;
-          saveSession();
-          break;
-        case 'approval_request':
-         showApprovalModal(msg.request, msg.reasoning, msg.requestId);
+       case 'context_usage':
+         updateContextBar(msg.usedTokens, msg.maxContext, msg.percentage, msg.breakdown);
          break;
-        case 'error':
-         document.getElementById('thinking-bar').style.display = 'none';
-         document.getElementById('stop-btn').style.display = 'none';
-         document.getElementById('send-btn').style.display = '';
-         document.getElementById('chat-input').disabled = false;
-         appendBubble('error', msg.error);
-         loadAgentPanel();
-         break;
-      case 'audio':
-        playAudio(msg.data, msg.format || 'mp3');
-        break;
-      case 'transcribed':
-        appendBubble('user', msg.text);
-        // Server already processes the transcribed text as a chat; just show the bubble
-        break;
-      case 'voice_state':
-        updateVoiceIndicator(msg.speaking);
-        break;
-      case 'file_change':
-        if (currentPage === 'editor') {
-          editorRefreshTree();
-          if (editorCurrentFile && msg.filePath && editorCurrentFile === msg.filePath.split(/[\\\\/]/).pop()) {
-            editorOpenFile(editorCurrentFile);
-          }
-        }
-        break;
-      case 'terminal_output':
-        handleTerminalOutput(msg.data);
-        break;
-      case 'terminal_closed':
-        if (terminalInstance) {
-          terminalInstance.write('\\r\\n\x1b[33mTerminal session ended (exit ' + (msg.exitCode || 'unknown') + ').\x1b[0m\\r\\n');
-          terminalConnected = false;
-          terminalInputBuffer = '';
-        }
-        break;
-      case 'context_usage':
-        updateContextBar(msg.usedTokens, msg.maxContext, msg.percentage, msg.breakdown);
-        break;
     }
   };
 }
