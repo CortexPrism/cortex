@@ -1,0 +1,317 @@
+import { logger } from '../../../../src/utils/logger.ts';
+import { handleApi } from './router.ts';
+import { handleWebSocket } from './ws.ts';
+import { handleNodeWebSocket } from '../hub/ws-node.ts';
+import { serveUi } from './ui.ts';
+import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
+import { runMigrations } from '../../../../src/db/migrate.ts';
+import { ensureDaemons, schedulePluginUpdateChecks } from '../../../../src/cli/daemon.ts';
+import { loadConfig } from '../../../../src/config/config.ts';
+import { configureLogger } from '../../../../src/utils/logger.ts';
+import { PATHS } from '../../../../src/config/paths.ts';
+import { hasPassword, type parseCookies, requireAuth } from './auth.ts';
+import { startAutoServices, stopAllServices } from '../../../../src/services/manager.ts';
+import { setWebhookJobCreator } from '../../../../src/triggers/webhook.ts';
+import { setWatcherJobCreator, startWatchers } from '../../../../src/triggers/watcher.ts';
+import { createTriggerJobCreator } from '../../../../src/triggers/job-creator.ts';
+import { setGitHookServerPort } from '../../../../src/triggers/git-hooks.ts';
+import { SECURITY_HEADERS } from './security-headers.ts';
+import { i18n } from '../../../../src/i18n/service.ts';
+import { extractLocale } from '../../../../src/i18n/middleware.ts';
+import { kernel } from '../../../../src/kernel/mod.ts';
+
+const _log = logger('server');
+
+export interface ServeOptions {
+  port: number;
+  host: string;
+}
+
+export async function startServer(opts: ServeOptions): Promise<void> {
+  await runMigrations();
+
+  // Initialise the logger from persisted config
+  const _serverConfig = await loadConfig();
+
+  // Initialize i18n
+  const localesDir = PATHS.localesDir;
+  await i18n.init(_serverConfig.locale, localesDir);
+  const _loggingCfg = _serverConfig.logging ?? { level: 'error', fileEnabled: true };
+  configureLogger({
+    level: _loggingCfg.level as import('../../../../src/utils/logger.ts').LogLevel,
+    fileEnabled: _loggingCfg.fileEnabled,
+    filePath: _loggingCfg.filePath ?? PATHS.logFile,
+    fileMaxBytes: _loggingCfg.fileMaxBytes,
+    fileMaxFiles: _loggingCfg.fileMaxFiles,
+  });
+
+  // Emit startup marker — always lands in file (warn >= FILE_MIN_LEVEL)
+  _log.warn(`Cortex server starting`, {
+    host: opts.host,
+    port: opts.port,
+    level: _loggingCfg.level ?? 'error',
+    logFile: _loggingCfg.filePath ?? PATHS.logFile,
+  });
+
+  // Register main server as root process (pid 0 parent) in the OS kernel.
+  kernel.registerProcess({
+    pid: Deno.pid,
+    parentPid: 0,
+    agentId: 'server',
+    sessionId: 'kernel',
+    role: 'admin',
+  });
+
+  // Wire up OTLP if configured
+  if (_loggingCfg.otlp?.endpoint || _loggingCfg.grafana?.otlpEndpoint) {
+    const { configureOtel } = await import('../../../../src/observability/otel.ts');
+    const ep = _loggingCfg.grafana?.otlpEndpoint ?? _loggingCfg.otlp!.endpoint;
+    const hdrs: Record<string, string> = { ...(_loggingCfg.otlp?.headers ?? {}) };
+    if (_loggingCfg.grafana?.authToken) {
+      hdrs['Authorization'] = `Bearer ${_loggingCfg.grafana.authToken}`;
+    }
+    configureOtel({ endpoint: ep, headers: hdrs });
+  }
+
+  // Wire up Langfuse if configured
+  if (_loggingCfg.langfuse?.publicKey) {
+    const { configureLangfuse } = await import('../../../../src/observability/langfuse.ts');
+    configureLangfuse(_loggingCfg.langfuse);
+  }
+
+  // Register built-in skills and load filesystem skills
+  try {
+    const { registerBuiltinSkills: registerSkills } = await import('../../../../src/memory/skills.ts');
+    const { buildEmbedder } = await import('../../../../src/memory/embeddings.ts');
+    const config = await loadConfig();
+    const embedder = buildEmbedder(config);
+    const loaded = await registerSkills(undefined, embedder);
+    _log.info(`Skills: registered/loaded ${loaded} skill(s)`);
+  } catch (e) {
+    _log.error(`Skills: Failed to register builtin skills`, { error: (e as Error).message });
+  }
+
+  // Load plugins after migrations to ensure database is ready
+  try {
+    const { pluginManager } = await import('../../../../src/plugins/manager.ts');
+    await pluginManager.loadAll();
+  } catch (e) {
+    _log.error(`Failed to load plugins`, { error: (e as Error).message });
+  }
+
+  // Initialize A2A executor — wires the agent loop into the A2A JSON-RPC server
+  try {
+    const a2aConfig = _serverConfig.a2a;
+    if (a2aConfig?.enabled !== false) {
+      const { registerA2AExecutor } = await import('../a2a/mod.ts');
+      const { createA2AExecutor } = await import('../a2a/executor.ts');
+      registerA2AExecutor(createA2AExecutor());
+      _log.info('A2A executor registered');
+    } else {
+      _log.info('A2A executor disabled via config');
+    }
+  } catch (e) {
+    _log.warn(`Failed to register A2A executor`, { error: (e as Error).message });
+  }
+
+  // Register built-in tools into global registry for API listing
+  try {
+    const { globalRegistry, registerAllBuiltins } = await import('../../../../src/tools/registry.ts');
+    await registerAllBuiltins(globalRegistry, true);
+    _log.info('Built-in tools registered');
+  } catch (e) {
+    _log.warn(`Failed to register built-in tools`, { error: (e as Error).message });
+  }
+
+  // Initialize Skill Bus for cross-plugin event orchestration
+  try {
+    const { initSkillBus } = await import('../../../../src/agent/skill-bus.ts');
+    initSkillBus();
+    _log.info('Skill Bus initialized');
+  } catch (e) {
+    _log.warn(`Failed to initialize Skill Bus`, { error: (e as Error).message });
+  }
+
+  // Wire trigger job creators and start file watchers
+  try {
+    const jobCreator = createTriggerJobCreator();
+    setWebhookJobCreator(jobCreator);
+    setWatcherJobCreator(jobCreator);
+    setGitHookServerPort(opts.port);
+    await startWatchers();
+    _log.info('Trigger job creators wired and watchers started');
+  } catch (e) {
+    _log.warn(`Failed to initialize trigger job creators`, { error: (e as Error).message });
+  }
+
+  // Start dependency guardian periodic check (every 6 hours)
+  setInterval(() => {
+    import('../../../../src/plugins/dependency-guardian.ts').then(({ checkAllProjects }) => {
+      checkAllProjects().catch(() => {});
+    }).catch(() => {});
+  }, 6 * 60 * 60 * 1000);
+
+  ensureDaemons().catch(() => {});
+  startAutoServices().catch(() => {});
+  schedulePluginUpdateChecks();
+
+  // Auto-start chrome-bridge if configured (non-blocking)
+  const _chromeCfg = _serverConfig.chromeBridge;
+  if (_chromeCfg?.enabled && _chromeCfg?.autoStart) {
+    (async () => {
+      const { startChromeBridge, registerChromeBridgeTools } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      try {
+        await startChromeBridge(_chromeCfg);
+        if (_chromeCfg.autoRegisterTools !== false) {
+          const { globalRegistry } = await import('../../../../src/tools/registry.ts');
+          const count = await registerChromeBridgeTools(globalRegistry, _chromeCfg);
+          _log.info(`Registered ${count} chrome-bridge tools`);
+        }
+      } catch (err) {
+        _log.warn(`Failed to start chrome-bridge: ${(err as Error).message}`);
+      }
+    })().catch(() => {});
+  }
+
+  const { port, host } = opts;
+
+  _log.info(`Cortex server starting on http://${host}:${port}`, { host, port });
+  _log.info(`WebSocket: ws://${host}:${port}/ws`);
+  _log.info(`Node WS:   ws://${host}:${port}/ws/node`);
+
+  const serverConfig = _serverConfig.server ??
+    { corsOrigin: 'same-origin', maxBodyBytes: 10_485_760 };
+  const maxBodyBytes = serverConfig.maxBodyBytes;
+  const corsOrigin = serverConfig.corsOrigin;
+
+  const serveOpts: Record<string, unknown> = {
+    port,
+    hostname: host,
+  };
+
+  if (serverConfig.https?.enabled && serverConfig.https.certFile && serverConfig.https.keyFile) {
+    serveOpts.certFile = serverConfig.https.certFile;
+    serveOpts.keyFile = serverConfig.https.keyFile;
+    _log.info(`HTTPS enabled`);
+  }
+
+  const httpServer = Deno.serve(
+    serveOpts as Deno.ServeOptions,
+    async (req: Request): Promise<Response> => {
+      const url = new URL(req.url);
+
+      if (url.pathname === '/ws') {
+        const upgrade = req.headers.get('upgrade') ?? '';
+        if (upgrade.toLowerCase() !== 'websocket') {
+          return new Response('Expected WebSocket upgrade', { status: 426 });
+        }
+        return await handleWebSocket(req);
+      }
+
+      if (url.pathname === '/ws/node') {
+        const upgrade = req.headers.get('upgrade') ?? '';
+        if (upgrade.toLowerCase() !== 'websocket') {
+          return new Response('Expected WebSocket upgrade', { status: 426 });
+        }
+        return handleNodeWebSocket(req);
+      }
+
+      if (url.pathname.startsWith('/api/')) {
+        const contentLength = Number(req.headers.get('content-length') ?? 0);
+        if (contentLength > maxBodyBytes) {
+          return new Response(JSON.stringify({ error: 'Request body too large' }), {
+            status: 413,
+            headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+          });
+        }
+        const res = await handleApi(req);
+        return res ?? new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Login page (no auth required)
+      if (url.pathname === '/login') {
+        return serveLoginPage();
+      }
+
+      // Onboarding page (no auth required)
+      if (url.pathname === '/onboarding') {
+        return serveOnboardingPage();
+      }
+
+      // All other UI routes require auth (if password is set)
+      const config = await loadConfig();
+      const webAuth = config.webAuth || {};
+      if (webAuth.requireAuth !== false) {
+        const pwExists = await hasPassword();
+        if (pwExists) {
+          const auth = await requireAuth(req);
+          if (!auth.authenticated) {
+            return new Response(null, {
+              status: 302,
+              headers: { Location: '/login', ...SECURITY_HEADERS },
+            });
+          }
+        }
+      }
+
+      const locale = await extractLocale(req);
+      const ui = serveUi(locale);
+      const headers = new Headers(ui.headers);
+      for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+        if (!headers.has(key)) headers.set(key, value);
+      }
+      return new Response(ui.body, { status: ui.status, headers });
+    },
+  );
+
+  _log.info(`Cortex server listening on http://${host}:${port}`);
+
+  const pidFile = `${PATHS.dataDir}/server.pid`;
+  try {
+    await Deno.writeTextFile(pidFile, String(Deno.pid));
+  } catch {
+    // Non-fatal if PID file can't be written
+  }
+
+  const shutdown = async () => {
+    _log.info('Server shutting down...');
+    try {
+      await Deno.remove(pidFile).catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      await stopAllServices();
+    } catch (e) {
+      _log.error(`Error stopping services during shutdown`, { error: (e as Error).message });
+    }
+    try {
+      const { stopChromeBridge } = await import(
+        '../tools/builtin/chrome_bridge_manager.ts'
+      );
+      await stopChromeBridge().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      httpServer.shutdown();
+    } catch { /* ignore */ }
+  };
+
+  const shutdownController = new AbortController();
+  Deno.addSignalListener('SIGTERM', () => shutdownController.abort());
+  Deno.addSignalListener('SIGINT', () => shutdownController.abort());
+
+  shutdownController.signal.addEventListener('abort', () => {
+    shutdown().catch((e) => _log.error(`Shutdown failed`, { error: (e as Error).message }));
+  }, { once: true });
+
+  httpServer.finished.then(async () => {
+    try {
+      await shutdown();
+    } catch { /* ignore */ }
+  }).catch((err) => {
+    _log.error(`Server error`, { error: (err as Error).message });
+  });
+}

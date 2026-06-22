@@ -1,0 +1,14 @@
+{
+  "name": "@cortex/core",
+  "version": "0.48.6",
+  "exports": {
+    ".": "./mod.ts",
+    "./contracts": "./contracts/mod.ts",
+    "./contracts/config": "./contracts/config.ts",
+    "./contracts/database": "./contracts/database.ts",
+    "./contracts/logging": "./contracts/logging.ts",
+    "./contracts/i18n": "./contracts/i18n.ts",
+    "./contracts/paths": "./contracts/paths.ts",
+    "./contracts/plugins": "./contracts/plugins.ts"
+  }
+}

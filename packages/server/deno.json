@@ -1,0 +1,13 @@
+{
+  "name": "@cortex/server",
+  "version": "0.48.6",
+  "exports": {
+    ".": "./mod.ts",
+    "./contracts": "./contracts/mod.ts",
+    "./contracts/channels": "./contracts/channels.ts",
+    "./contracts/mcp": "./contracts/mcp.ts",
+    "./contracts/middleware": "./contracts/middleware.ts",
+    "./contracts/router": "./contracts/router.ts",
+    "./contracts/websocket": "./contracts/websocket.ts"
+  }
+}

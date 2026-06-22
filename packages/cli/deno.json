@@ -1,0 +1,11 @@
+{
+  "name": "@cortex/cli",
+  "version": "0.48.6",
+  "exports": {
+    ".": "./mod.ts",
+    "./contracts": "./contracts/mod.ts",
+    "./contracts/commands": "./contracts/commands.ts",
+    "./contracts/registry": "./contracts/registry.ts",
+    "./contracts/tui": "./contracts/tui.ts"
+  }
+}

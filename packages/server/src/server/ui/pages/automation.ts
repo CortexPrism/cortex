@@ -1,0 +1,120 @@
+export const PAGE_AUTOMATION = `
+  <div id="page-automation" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h1 style="font-size:15px;font-weight:600;">Automation</h1>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Pipeline hooks, webhook/file/git triggers — in-memory, session lifetime</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="hooks-count-badge" style="font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:10px;color:var(--text2);">— hooks</span>
+        <button class="btn btn-ghost" id="auto-add-trigger-btn" onclick="openTriggerForm()">+ Add Trigger</button>
+        <button class="btn btn-ghost" onclick="autoRefresh()">↻ Refresh</button>
+      </div>
+    </div>
+    <!-- Tab bar -->
+    <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
+      <button class="mem-tab active" onclick="autoShowTab('hooks')" id="auto-tab-hooks">Hooks</button>
+      <button class="mem-tab" onclick="autoShowTab('triggers')" id="auto-tab-triggers">Triggers</button>
+    </div>
+    <!-- Tab: Hooks -->
+    <div id="auto-pane-hooks" style="flex:1;overflow-y:auto;padding:16px 24px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">
+            <th style="text-align:left;padding:6px 10px;">Name</th>
+            <th style="text-align:left;padding:6px 10px;">Stages</th>
+            <th style="text-align:left;padding:6px 10px;">Priority</th>
+            <th style="text-align:left;padding:6px 10px;">Async</th>
+            <th style="text-align:left;padding:6px 10px;">Source</th>
+            <th style="text-align:left;padding:6px 10px;">Plugin</th>
+            <th style="text-align:left;padding:6px 10px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="hooks-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px;">Loading hooks…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Tab: Triggers -->
+    <div id="auto-pane-triggers" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div style="padding:8px 24px;background:rgba(251,191,36,0.08);border-bottom:1px solid rgba(251,191,36,0.25);display:flex;align-items:center;gap:8px;font-size:12px;color:#fbbf24;flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Triggers are stored in memory only — they will be lost on server restart.
+      </div>
+      <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div class="stat"><div class="stat-num" id="triggers-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-num" style="color:#22c55e;" id="triggers-enabled">—</div><div class="stat-label">Enabled</div></div>
+        <div class="stat"><div class="stat-num" style="color:#818cf8;" id="triggers-webhooks">—</div><div class="stat-label">Webhooks</div></div>
+        <div class="stat"><div class="stat-num" style="color:#38bdf8;" id="triggers-watchers">—</div><div class="stat-label">Watchers</div></div>
+      </div>
+      <div id="trigger-form-panel" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Add Trigger</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:720px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Name *</label>
+            <input id="trig-name" class="inp" placeholder="my-trigger" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Source *</label>
+            <select id="trig-source" class="inp" onchange="triggerFormSourceChanged()">
+              <option value="webhook">Webhook</option>
+              <option value="watcher">File Watcher</option>
+              <option value="git_hook">Git Hook</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Agent ID</label>
+            <input id="trig-agent" class="inp" placeholder="assistant" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;color:var(--text3);">Prompt Template</label>
+            <input id="trig-prompt" class="inp" placeholder="Process event: {{event}}" />
+          </div>
+          <div id="trig-webhook-fields" style="display:contents;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Provider</label>
+              <select id="trig-webhook-provider" class="inp">
+                <option value="generic">Generic</option>
+                <option value="github">GitHub</option>
+                <option value="gitlab">GitLab</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Secret Env Var</label>
+              <input id="trig-webhook-secret-env" class="inp" placeholder="WEBHOOK_SECRET" />
+            </div>
+          </div>
+          <div id="trig-watcher-fields" style="display:none;grid-column:1/-1;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:11px;color:var(--text3);">Paths (comma-separated)</label>
+                <input id="trig-watcher-paths" class="inp" placeholder="/home/user/project,/tmp/watch" />
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="font-size:11px;color:var(--text3);">Debounce (ms)</label>
+                <input id="trig-watcher-debounce" class="inp" type="number" value="500" />
+              </div>
+            </div>
+          </div>
+          <div id="trig-githook-fields" style="display:none;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text3);">Repo Path</label>
+              <input id="trig-githook-repo" class="inp" placeholder="/path/to/repo" />
+            </div>
+          </div>
+          <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="trig-enabled" checked style="width:14px;height:14px;" />
+            <label for="trig-enabled" style="font-size:12px;">Enable immediately</label>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn btn-primary" onclick="saveTrigger()">Add Trigger</button>
+          <button class="btn btn-ghost" onclick="closeTriggerForm()">Cancel</button>
+        </div>
+        <div id="trigger-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
+      </div>
+      <div id="triggers-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+`;

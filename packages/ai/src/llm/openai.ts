@@ -1,0 +1,173 @@
+import OpenAI from 'npm:openai';
+import type {
+  CompletionChunk,
+  CompletionOptions,
+  CompletionResult,
+  ContentBlock,
+  LLMProvider,
+  PricingMap,
+} from './types.ts';
+
+const COST_PER_1M: Record<string, { in: number; out: number }> = {
+  'gpt-4o': { in: 2.5, out: 10.0 },
+  'gpt-4o-mini': { in: 0.15, out: 0.6 },
+  'o1': { in: 15.0, out: 60.0 },
+  'o1-mini': { in: 1.1, out: 4.4 },
+  'o3-mini': { in: 1.1, out: 4.4 },
+};
+
+function toOpenAIContent(
+  content: string | ContentBlock[],
+): string | OpenAI.Chat.ChatCompletionContentPart[] {
+  if (typeof content === 'string') return content;
+  return content.map((block): OpenAI.Chat.ChatCompletionContentPart => {
+    if (block.type === 'text') return { type: 'text', text: block.text };
+    if (block.type === 'image') {
+      return {
+        type: 'image_url',
+        image_url: {
+          url: `data:${block.source.mediaType};base64,${block.source.data}`,
+        },
+      };
+    }
+    return { type: 'text', text: '' };
+  });
+}
+
+export class OpenAIProvider implements LLMProvider {
+  readonly name = 'openai';
+  readonly defaultModel = 'gpt-4o';
+
+  private client: OpenAI;
+  private pricing: PricingMap;
+
+  constructor(apiKey: string, baseUrl?: string, pricingOverrides?: PricingMap) {
+    this.client = new OpenAI({ apiKey, baseURL: baseUrl });
+    this.pricing = { ...COST_PER_1M, ...pricingOverrides };
+  }
+
+  async complete(options: CompletionOptions): Promise<CompletionResult> {
+    const messages = options.messages.map((m) => ({
+      role: m.role,
+      content: toOpenAIContent(m.content),
+    })) as OpenAI.Chat.ChatCompletionMessageParam[];
+
+    if (options.systemPrompt) {
+      messages.unshift({ role: 'system', content: options.systemPrompt });
+    }
+
+    const isReasoningModel = options.model.startsWith('o1') || options.model.startsWith('o3');
+    const params = {
+      model: options.model,
+      messages,
+      ...(isReasoningModel ? { max_completion_tokens: options.maxTokens } : {
+        max_tokens: options.maxTokens,
+        temperature: options.temperature,
+        top_p: options.topP,
+      }),
+      stream: false,
+    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
+
+    if (options.reasoningEffort) {
+      (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
+    }
+
+    const response = await this.client.chat.completions.create(
+      params,
+      { signal: options.signal },
+    );
+
+    const content = response.choices[0]?.message?.content ?? '';
+    const tokensIn = response.usage?.prompt_tokens ?? 0;
+    const tokensOut = response.usage?.completion_tokens ?? 0;
+    const rates = this.pricing[options.model] ?? { in: 2.5, out: 10.0 };
+    const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
+
+    return { content, model: options.model, tokensIn, tokensOut, costUsd };
+  }
+
+  async *stream(options: CompletionOptions): AsyncIterable<CompletionChunk> {
+    const messages = options.messages.map((m) => ({
+      role: m.role,
+      content: toOpenAIContent(m.content),
+    })) as OpenAI.Chat.ChatCompletionMessageParam[];
+
+    if (options.systemPrompt) {
+      messages.unshift({ role: 'system', content: options.systemPrompt });
+    }
+
+    const isReasoningModel = options.model.startsWith('o1') || options.model.startsWith('o3');
+    const params = {
+      model: options.model,
+      messages,
+      stream: true,
+      stream_options: { include_usage: true },
+      ...(isReasoningModel ? { max_completion_tokens: options.maxTokens } : {
+        max_tokens: options.maxTokens,
+        temperature: options.temperature,
+        top_p: options.topP,
+      }),
+    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming;
+
+    if (options.reasoningEffort) {
+      (params as unknown as Record<string, unknown>).reasoning_effort = options.reasoningEffort;
+    }
+
+    const stream = await this.client.chat.completions.create(
+      params,
+      { signal: options.signal },
+    );
+
+    let tokensIn = 0;
+    let tokensOut = 0;
+    const activeToolCalls = new Map<number, { name: string; emitted: boolean }>();
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta;
+
+      if (delta?.content) {
+        yield { delta: delta.content, done: false };
+      }
+
+      for (const tc of delta?.tool_calls ?? []) {
+        const idx = tc.index ?? 0;
+        let entry = activeToolCalls.get(idx);
+        if (!entry) {
+          entry = { name: tc.function?.name ?? '', emitted: false };
+          activeToolCalls.set(idx, entry);
+        }
+        if (tc.function?.name && !entry.name) {
+          entry.name = tc.function.name;
+        }
+        if (entry && !entry.emitted && entry.name) {
+          yield {
+            delta: '',
+            done: false,
+            event: 'tool_use_start',
+            blockIndex: idx,
+            blockName: entry.name,
+          };
+          entry.emitted = true;
+        }
+        if (tc.function?.arguments) {
+          yield {
+            delta: tc.function.arguments,
+            done: false,
+            event: 'input_json_delta',
+            blockIndex: idx,
+            blockIsToolInput: true,
+          };
+        }
+      }
+
+      if (chunk.usage) {
+        tokensIn = chunk.usage.prompt_tokens ?? 0;
+        tokensOut = chunk.usage.completion_tokens ?? 0;
+      }
+    }
+
+    const rates = this.pricing[options.model] ?? { in: 2.5, out: 10.0 };
+    const costUsd = (tokensIn * rates.in + tokensOut * rates.out) / 1_000_000;
+    yield { delta: '', done: true, tokensIn, tokensOut, costUsd };
+  }
+}

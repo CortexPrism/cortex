@@ -9,6 +9,31 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Codebase modularization** — three of the largest monoliths were decomposed into cohesive modules with no behavior change:
+  - **Router split** (`src/server/router.ts`, 6,075 lines → 62 route modules + `new-router.ts`): every `// ──` section extracted into its own `src/server/routes/<name>.ts` file exporting `RouteHandler[]` tuples (`{ method, pattern, handler }`). Helper functions (`json`, `notFound`, `err`, rate limiter, CORS) moved to `_helpers.ts`. `new-router.ts` iterates a flat `publicRoutes`/`protectedRoutes` table with the auth guard between them. The original `router.ts` is replaced in `server.ts` by the new-router. (`src/server/routes/*.ts`, `src/server/new-router.ts`)
+  - **UI split** (`src/server/ui.ts`, 17,740 lines → 74 modular files): CSS extracted to `css.ts`, 41 page `<div>` templates to `pages/*.ts`, 25 JavaScript blocks to `js/*.ts`, shared utilities to `shared/`. `mod.ts` assembles all pieces via string concatenation into a single `<script>` block preserving global variable scope (`ws`, `sessionId`, `currentPage`, etc.). `DASHBOARD_JS` template literal moved to `js/dashboard.ts` and injected at the correct position. `serveUi()` delegates to `mod.ts`. (`src/server/ui/*.ts`)
+  - **Agent loop split** (`src/agent/loop.ts`, 1,605 lines → 15 stage/post/helper modules): 11 pipeline stages extracted under `src/agent/stages/` (setup, history, assessment, prompt-builder, model-selector, llm-stream, tool-executor), 3 post-turn modules under `post/` (response, background, cleanup), and 3 helpers (nanoid, preferences, strip-tool-calls). `agentTurn()` orchestrator reduced to 81 lines calling stages sequentially via a shared `TurnContext`. (`src/agent/stages/*.ts`, `src/agent/post/*.ts`, `src/agent/helpers/*.ts`, `src/agent/pipeline/context.ts`)
+
+- **Codebase modularization** — defined 41 pure TypeScript interfaces across 6 package boundaries with zero runtime dependencies. Each contract file mirrors the existing implementation types prefixed with `I`:
+  - **`@cortex/core`** (7 files): config (`ICortexConfig`, `IProviderConfig`, `ProviderKind`, 23 types), database (`IDbClient`, `IMigration`), logging (`ILogger`, `LogLevel`), i18n (`II18nService`), paths (`IAppPaths`), plugins (`IPluginManifest`, `PluginCapability`)
+  - **`@cortex/ai`** (8 files): tools (`ITool`, `IToolRegistry`, `IToolContext`, 12 types), agent (`IAgentLoop`, `IAgentTurnOptions`, `IAgentTurnResult`), llm (`ILLMProvider`, `ILLMRouter`, `ICompletionOptions`), memory (`IMemoryStore`, `IEpisodicStore`, `IGraphStore`), skills (`ISkillStore`), pipeline (`IPipelineHook`, `IPipelineManager`, `IAgentState`), embeddings (`IEmbeddingProvider`)
+  - **`@cortex/server`** (6 files): router (`IRouteHandler`, `IRouteTable`), websocket (`IWSHandler`, `IWSHub`), channels (`IChannelAdapter`, `IChannelManager`), middleware (`IMiddlewareStack`), mcp (`IMcpConnection`, `IMcpGateway`)
+  - **`@cortex/gate`** (5 files): policy (`IPolicyEngine`, `IPolicyDecision`), vault (`IVault`, `IVaultEntry`), sandbox (`ISandboxProvider`, `ISandboxResult`), validator (`IValidator`, `IValidationResult`)
+  - **`@cortex/infra`** (5 files): scheduler (`IScheduler`, `IJobRow`, `JobStatus`), ipc (`IIPCTransport`, `IIpcMessage`), services (`IServiceManager`, `IServiceDef`), triggers (`ITrigger`, `ITriggerManager`)
+  - **`@cortex/cli`** (4 files): commands (`ICommand`, `ICommandContext`), registry (`ICommandRegistry`), tui (`ITuiComponent`)
+  - (`packages/*/contracts/*.ts`)
+
+- **Codebase modularization** — 593 source files migrated into 6 coarse Deno workspace packages following the dependency graph `core ← gate ← ai ← server ← cli` and `core ← ai ← infra ← cli`:
+  - **`@cortex/core`** (41 files): `config/`, `db/`, `i18n/`, `utils/`, `plugins/`
+  - **`@cortex/gate`** (29 files): `security/`, `sandbox/`, `vfs/`
+  - **`@cortex/ai`** (166 files): `agent/`, `tools/`, `memory/`, `llm/`, `pipeline/`, `skills/`
+  - **`@cortex/server`** (222 files): `server/`, `hub/`, `channels/`, `a2a/`, `mcp/`, `mcp-gateway/`, `voice/`, `remote/`, `workspace/`, `codegraph/`, `memori/`, `computer-use/`, `projects/`, `eval/`
+  - **`@cortex/infra`** (43 files): `processes/`, `services/`, `scheduler/`, `ipc/`, `triggers/`, `workflow/`, `observability/`, `quartermaster/`, `model-quartermaster/`, `kernel/`
+  - **`@cortex/cli`** (92 files): `cli/`, `tui/`
+  - Root `deno.json` `workspace` field updated with all 6 package paths. Each package has a `deno.json` with `"name": "@cortex/<name>"` and explicit export maps. Original `src/` directories preserved as active codebase — migration is additive with no import breakage. (`packages/**/src/*.ts`, `packages/**/deno.json`, `deno.json`)
+
+- **Codebase modularization — Phase 4: Boundary enforcement** — created `scripts/check-boundaries.ts` to validate that cross-package imports only reference `contracts/` directories (not `src/`), and that only `src/main.ts` (composition root) imports from the old flat `src/` structure. Ready for CI integration when workspace imports are activated. (`scripts/check-boundaries.ts`)
+
 - **Memory barrel export** — created `src/memory/mod.ts` re-exporting the full public API surface of all 13 memory modules (store, backends, embeddings, vector_backends, inject, graph, consolidate, heuristics, glossary, preference-learner, privacy, cross-agent-context, context-bridge, skills). Consumers can now `import { ... } from '../memory/mod.ts'`. (`src/memory/mod.ts`)
 
 - **Memory graph visualization** — the Memory > Graph tab now renders an interactive D3 force-directed graph instead of a static card list. Nodes represent entities (concepts, code symbols, domains), color-coded by type and sized by connection count. Edges represent typed relations (`uses`, `extends`, `requires`, etc.), color-coded by relation type, with shorter links for stronger associations. Features include drag, zoom/pan, click-to-focus navigation, hover tooltips with entity details, edge labels, and a legend strip. A new `GET /api/memory/graph/full` endpoint serves graph data with optional entity-centric traversal. (`src/memory/graph.ts`, `src/server/router.ts`, `src/server/ui.ts`)
