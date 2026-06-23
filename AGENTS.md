@@ -8,7 +8,7 @@ ecosystem, sandboxed code execution, multi-agent orchestration, a full-featured 
 enterprise-grade security.
 
 - **License**: Apache 2.0
-- **Version**: 0.50.0 (see `deno.json`)
+- **Version**: 0.51.0 (see `deno.json`)
 - **Repository**: `CortexPrism/cortex` on GitHub
 - **CI**: `.github/workflows/ci.yml` (runs on push to `main`)
 

@@ -19,7 +19,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.50.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.51.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1515847007372181584?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wYxbmQeWY3)
 
