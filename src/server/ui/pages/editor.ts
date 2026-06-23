@@ -88,18 +88,18 @@ export const PAGE_EDITOR = `
         <!-- Status bar -->
         <div id="editor-statusbar" style="display:none;padding:4px 16px;background:var(--bg2);border-top:1px solid var(--border);font-size:11px;color:var(--text3);justify-content:space-between;align-items:center;flex-shrink:0;min-height:26px;">
           <div style="display:flex;gap:12px;align-items:center;">
-            <span id="editor-file-info" style="color:var(--text2);"></span>
+            <span id="editor-file-info" style="color:var(--text2);" data-tooltip="Current file path"></span>
             <span id="editor-modified-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--accent-amber);flex-shrink:0;"></span>
             <span id="editor-git-status" style="font-size:10px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
           </div>
           <div style="display:flex;gap:6px;align-items:center;">
-            <span id="editor-lang-mode" style="color:var(--accent2);"></span>
+            <span id="editor-lang-mode" style="color:var(--accent2);" data-tooltip="Current language mode"></span>
             <span>|</span>
             <span id="editor-line-col">Ln 1, Col 1</span>
             <span>|</span>
             <span id="editor-encoding">UTF-8</span>
             <span>|</span>
-            <span id="editor-indent-info">Spaces: 2</span>
+            <span id="editor-indent-info" data-tooltip="Current indentation settings">Spaces: 2</span>
             <span>|</span>
             <button class="btn btn-ghost" onclick="editorUndo()" style="padding:1px 6px;font-size:11px;" data-tip="Undo (Ctrl+Z)">↩</button>
             <button class="btn btn-ghost" onclick="editorRedo()" style="padding:1px 6px;font-size:11px;" data-tip="Redo (Ctrl+Shift+Z)">↪</button>

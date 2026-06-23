@@ -16,7 +16,7 @@ export const PAGE_TUNNEL = `
     <div id="tunnel-status-bar" style="padding:8px 24px;display:flex;align-items:center;gap:10px;font-size:12px;border-bottom:1px solid var(--border);background:var(--bg2);display:none;">
       <span id="tunnel-status-dot" style="font-size:16px;">&#9679;</span>
       <span id="tunnel-status-text" style="font-weight:500;"></span>
-      <span id="tunnel-url-chip" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 10px;border-radius:6px;background:rgba(99,102,241,0.12);color:var(--accent);display:none;cursor:pointer;" onclick="tunnelCopyUrl()" title="Click to copy"></span>
+      <span id="tunnel-url-chip" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 10px;border-radius:6px;background:rgba(99,102,241,0.12);color:var(--accent);display:none;cursor:pointer;" onclick="tunnelCopyUrl()" data-tooltip="Click to copy URL"></span>
     </div>
 
     <div style="flex:1;overflow-y:auto;padding:16px 24px;">
@@ -25,7 +25,7 @@ export const PAGE_TUNNEL = `
       <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Tunnel Provider</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-          <div id="tunnel-card-tailscale" onclick="tunnelSelectProvider('tailscale')"
+          <div id="tunnel-card-tailscale" onclick="tunnelSelectProvider('tailscale')" data-tooltip="Select provider"
                style="padding:16px;border-radius:10px;border:2px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.06);cursor:pointer;transition:all 0.15s;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
               <div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;">&#128279;</div>
@@ -36,7 +36,7 @@ export const PAGE_TUNNEL = `
             </div>
             <p style="font-size:11px;color:var(--text3);line-height:1.5;">Use Tailscale Funnel to expose Cortex on the public internet, or Serve for tailnet-only access. Requires the <code style="color:var(--accent);">tailscale</code> CLI to be installed and authenticated.</p>
           </div>
-          <div id="tunnel-card-cloudflare" onclick="tunnelSelectProvider('cloudflare')"
+          <div id="tunnel-card-cloudflare" onclick="tunnelSelectProvider('cloudflare')" data-tooltip="Select provider"
                style="padding:16px;border-radius:10px;border:2px solid transparent;background:var(--bg2);cursor:pointer;transition:all 0.15s;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
               <div style="width:32px;height:32px;border-radius:8px;background:rgba(245,130,32,0.12);display:flex;align-items:center;justify-content:center;font-size:18px;">&#9729;</div>

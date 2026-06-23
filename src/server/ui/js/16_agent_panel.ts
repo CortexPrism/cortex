@@ -231,7 +231,7 @@ async function loadAgentPanel() {
 
         const header = document.createElement('div');
         header.className = 'agent-section-header';
-        header.innerHTML = '<span class="agent-item-toggle" id="toggle-' + parent.id + '">▶</span>Sub-agents (' + parent.children.length + ')';
+        header.innerHTML = '<span class="agent-item-toggle" id="toggle-' + parent.id + '" data-tooltip="Expand sub-agents">▶</span>Sub-agents (' + parent.children.length + ')';
         header.addEventListener('click', () => {
           const childrenEl = document.getElementById('children-' + parent.id);
           const toggleEl = document.getElementById('toggle-' + parent.id);

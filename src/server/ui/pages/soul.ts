@@ -6,7 +6,7 @@ export const PAGE_SOUL = `
         <p style="font-size:12px;color:var(--text3);margin-top:2px;">Tells the assistant who you are — injected into every session prompt via USER.md</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-ghost" id="soul-raw-toggle" onclick="soulToggleRaw()" style="font-size:11px;">⌨ Raw</button>
+        <button class="btn btn-ghost" id="soul-raw-toggle" onclick="soulToggleRaw()" style="font-size:11px;" data-tooltip="Toggle between form and raw markdown editor">⌨ Raw</button>
         <button class="btn btn-primary" onclick="soulSaveActive()" id="soul-save-btn">Save</button>
       </div>
     </div>
@@ -61,10 +61,10 @@ export const PAGE_SOUL = `
         <div>
           <label style="font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:5px;">COMMUNICATION STYLE</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap;" id="prof-style-btns">
-            <button class="prof-style-btn" data-val="direct and concise" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Direct & Concise</button>
-            <button class="prof-style-btn" data-val="detailed and thorough" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Detailed & Thorough</button>
-            <button class="prof-style-btn" data-val="casual and friendly" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Casual & Friendly</button>
-            <button class="prof-style-btn" data-val="technical and precise" onclick="soulPickStyle(this)" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Technical & Precise</button>
+            <button class="prof-style-btn" data-val="direct and concise" onclick="soulPickStyle(this)" data-tooltip="Direct & Concise" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Direct & Concise</button>
+            <button class="prof-style-btn" data-val="detailed and thorough" onclick="soulPickStyle(this)" data-tooltip="Detailed & Thorough" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Detailed & Thorough</button>
+            <button class="prof-style-btn" data-val="casual and friendly" onclick="soulPickStyle(this)" data-tooltip="Casual & Friendly" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Casual & Friendly</button>
+            <button class="prof-style-btn" data-val="technical and precise" onclick="soulPickStyle(this)" data-tooltip="Technical & Precise" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;">Technical & Precise</button>
           </div>
           <input class="inp" id="prof-style" placeholder="or describe your preferred style…" style="width:100%;margin-top:8px;" />
         </div>

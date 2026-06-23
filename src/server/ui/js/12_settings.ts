@@ -300,7 +300,7 @@ async function loadSettings() {
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                   <span style="font-size:13px;font-weight:500;">\${meta.label}</span>
                   <span class="badge" style="background:rgba(34,197,94,0.1);color:#4ade80;">● configured</span>
-                  \${config.defaultProvider === k ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);">default</span>' : ''}
+                  \${config.defaultProvider === k ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:var(--accent2);" data-tooltip="Active default provider used for all agent queries">default</span>' : ''}
                 </div>
                 <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);flex-wrap:wrap;">
                   <span>Model: <span style="color:var(--text);font-family:'JetBrains Mono',monospace;">\${esc(p.model || '—')}</span></span>
@@ -312,9 +312,9 @@ async function loadSettings() {
                   \${p.searchRecencyFilter ? \`<span>Recency: <span style="color:var(--text);">\${p.searchRecencyFilter}</span></span>\` : ''}
                   \${p.numCtx != null ? \`<span>ctx: <span style="color:var(--text);">\${p.numCtx}</span></span>\` : ''}
                   \${p.keepAlive ? \`<span>keep-alive: <span style="color:var(--text);">\${p.keepAlive}</span></span>\` : ''}
-                  \${p.returnCitations ? \`<span style="color:#4ade80;">citations</span>\` : ''}
-                  \${p.dropParams ? \`<span style="color:var(--text3);">drop-params</span>\` : ''}
-                  \${p.includeVeniceSystemPrompt ? \`<span style="color:var(--text3);">venice-prompt</span>\` : ''}
+                  \${p.returnCitations ? \`<span style="color:#4ade80;" data-tooltip="Return citations enabled — source URLs included in responses">citations</span>\` : ''}
+                  \${p.dropParams ? \`<span style="color:var(--text3);" data-tooltip="Drop unsupported parameters enabled">drop-params</span>\` : ''}
+                  \${p.includeVeniceSystemPrompt ? \`<span style="color:var(--text3);" data-tooltip="Venice system prompt enabled">venice-prompt</span>\` : ''}
                 </div>
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -967,7 +967,7 @@ async function checkPluginUpdatesNow() {
     }
     const available = results.filter(r => r.updateAvailable);
     const rows = results.map(r => {
-      const icon = r.updateAvailable ? '<span style="color:var(--green);">▲</span>' : '<span style="color:var(--text3);">●</span>';
+      const icon = r.updateAvailable ? '<span style="color:var(--green);" data-tooltip="Update available">▲</span>' : '<span style="color:var(--text3);" data-tooltip="Up to date">●</span>';
       const ver = r.updateAvailable
         ? \`\${r.currentVersion} → <strong style="color:var(--green);">\${r.latestVersion}</strong>\`
         : \`<span style="color:var(--text3);">\${r.currentVersion}</span>\`;
@@ -996,9 +996,9 @@ async function updateAllPluginsNow() {
     }
     const rows = data.results.map(r => {
       if (r.error) {
-        return \`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--red);">✗</span> <strong>\${r.name}</strong>: <span style="color:var(--red);">\${r.error}</span></div>\`;
+        return \`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--red);" data-tooltip="Update failed">✗</span> <strong>\${r.name}</strong>: <span style="color:var(--red);">\${r.error}</span></div>\`;
       }
-      return \`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--green);">✓</span> <strong>\${r.name}</strong>: \${r.previousVersion} → <strong style="color:var(--green);">\${r.newVersion}</strong></div>\`;
+      return \`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--green);" data-tooltip="Update successful">✓</span> <strong>\${r.name}</strong>: \${r.previousVersion} → <strong style="color:var(--green);">\${r.newVersion}</strong></div>\`;
     }).join('');
     el.innerHTML = \`<div style="font-size:11px;color:var(--green);margin-bottom:6px;">\${data.updated} plugin(s) updated</div>\` + rows;
     toast(\`Updated \${data.updated} plugin(s)\`, 'success');

@@ -151,7 +151,7 @@ function renderSessionRow(s, isParent) {
 
   const statusColors = { active: '#4ade80', closed: '#9ca3af', archived: '#6b7280' };
   const sc = statusColors[s.status] || 'var(--text3)';
-  const statusDot = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+sc+';flex-shrink:0;margin-right:6px;' + (s.status=='active'?'animation:pulse 1.5s infinite;':'') + '"></span>';
+  const statusDot = '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+sc+';flex-shrink:0;margin-right:6px;' + (s.status=='active'?'animation:pulse 1.5s infinite;':'') + '" data-tooltip="Session status: '+s.status+'"></span>';
 
   let tokenHtml = '';
   if (s.total_tokens > 0) {
@@ -202,10 +202,10 @@ function renderSessionRow(s, isParent) {
     <span style="width:60px;text-align:right;">\${toolHtml}</span>
     <div style="width:140px;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
       \${s.avg_duration_ms>0?'<span style="font-size:10px;color:var(--text3);" title="Avg LLM call duration">'+fmtMs(s.avg_duration_ms)+'</span>':''}
-      <button class="btn" style="padding:3px 8px;font-size:10px;background:rgba(99,102,241,0.1);color:var(--accent2);" onclick="event.stopPropagation();continueSession('\${s.id}')">\u25b6</button>
-      <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" onclick="event.stopPropagation();exportSession('\${s.id}')">\u2b07</button>
+      <button class="btn" style="padding:3px 8px;font-size:10px;background:rgba(99,102,241,0.1);color:var(--accent2);" data-tooltip="Continue session" onclick="event.stopPropagation();continueSession('\${s.id}')">\u25b6</button>
+      <button class="btn btn-ghost" style="padding:3px 8px;font-size:10px;" data-tooltip="Export session" onclick="event.stopPropagation();exportSession('\${s.id}')">\u2b07</button>
       <span id="sess-archive-btn-\${s.id}"></span>
-      <button class="btn" style="padding:3px 8px;font-size:10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="event.stopPropagation();deleteSession('\${s.id}')">\u2715</button>
+      <button class="btn" style="padding:3px 8px;font-size:10px;background:rgba(239,68,68,0.1);color:#f87171;" data-tooltip="Delete session" onclick="event.stopPropagation();deleteSession('\${s.id}')">\u2715</button>
     </div>
   </div>\`;
 }

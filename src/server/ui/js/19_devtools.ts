@@ -424,7 +424,7 @@ async function loadTools() {
         '<div style="display:flex;justify-content:space-between;align-items:start;">' +
         '<div><div style="font-weight:500;font-size:13px;font-family:\\'JetBrains Mono\\',monospace;">' + esc(t.name) + '</div>' +
         '<div style="font-size:11px;color:var(--text2);margin-top:2px;">' + esc(t.description || '').substring(0, 100) + '</div></div>' +
-        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="toggleTool(\\'' + escAttr(t.name) + '\\')">Toggle</button></div>' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="toggleTool(\\'' + escAttr(t.name) + '\\')" data-tooltip="Enable/disable this tool">Toggle</button></div>' +
         '<div style="font-size:10px;color:var(--text3);margin-top:6px;">' +
         params.length + ' params (' + reqCount + ' required) · ' +
         (t.capabilities || []).map(function(c) { return '<span style="background:var(--bg2);padding:1px 6px;border-radius:4px;margin-right:3px;">' + esc(c) + '</span>'; }).join('') +

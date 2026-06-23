@@ -129,6 +129,7 @@ function appendBubble(role, content, messageId) {
     deleteBtn.className = 'delete-msg-btn';
     deleteBtn.textContent = '×';
     deleteBtn.title = 'Delete message';
+    deleteBtn.dataset.tooltip = 'Delete message';
     deleteBtn.onclick = async () => {
       if (confirm('Delete this message?')) {
         await deleteMessage(messageId);
@@ -189,10 +190,10 @@ function createToolCard(id, toolName, input) {
   header.className = 'tool-card-header';
   header.onclick = () => card.classList.toggle('open');
   header.innerHTML =
-    '<span class="tool-card-icon">🔧</span>' +
+    '<span class="tool-card-icon" data-tooltip="Tool result">🔧</span>' +
     '<span class="tool-card-name">' + esc(toolName) + '</span>' +
     '<span class="tool-card-status running">Running</span>' +
-    '<span class="tool-card-chevron">▶</span>';
+    '<span class="tool-card-chevron" data-tooltip="Click to expand">▶</span>';
 
   const body = document.createElement('div');
   body.className = 'tool-card-body';
@@ -238,7 +239,7 @@ function showReasoningAccordion(thinkingText, parentMsgEl) {
   const header = document.createElement('div');
   header.className = 'reasoning-inline-header';
   header.innerHTML =
-    '<span class="ri-icon">▶</span>' +
+    '<span class="ri-icon" data-tooltip="Click to expand">▶</span>' +
     '<span style="color:var(--accent2);font-weight:600;">Thought for ' + durSec + 's</span>' +
     '<span style="color:var(--text3);margin-left:auto;font-size:10px;">click to expand</span>';
   header.onclick = () => accordion.classList.toggle('open');
@@ -298,7 +299,7 @@ function renderThinkingForRestore(content, parentMsgEl) {
       const header = document.createElement('div');
       header.className = 'reasoning-inline-header';
       header.innerHTML =
-        '<span class="ri-icon">▶</span>' +
+        '<span class="ri-icon" data-tooltip="Click to expand">▶</span>' +
         '<span style="color:var(--accent2);font-weight:600;">Reasoning</span>' +
         '<span style="color:var(--text3);margin-left:auto;font-size:10px;">click to expand</span>';
       header.onclick = () => accordion.classList.toggle('open');
@@ -330,11 +331,11 @@ function createSubAgentContainer(id, task, type) {
   header.className = 'tool-card-header';
   header.onclick = () => outer.classList.toggle('open');
   header.innerHTML =
-    '<span class="tool-card-icon">🤖</span>' +
+    '<span class="tool-card-icon" data-tooltip="Sub-agent result">🤖</span>' +
     '<span style="font-weight:600;color:var(--accent);text-transform:uppercase;font-size:11px;letter-spacing:0.04em;">' + esc(type || 'general') + '</span>' +
     '<span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:4px;">' + esc(task.slice(0, 80)) + '</span>' +
     '<span class="tool-card-status running">Running</span>' +
-    '<span class="tool-card-chevron">▶</span>';
+    '<span class="tool-card-chevron" data-tooltip="Click to expand">▶</span>';
 
   const body = document.createElement('div');
   body.className = 'tool-card-body';

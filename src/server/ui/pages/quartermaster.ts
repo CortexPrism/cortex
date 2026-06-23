@@ -131,7 +131,7 @@ export const PAGE_QUARTERMASTER = `
                 <div style="display:flex;gap:6px;">
                   <input type="text" id="qm-cfg-model" class="inp" placeholder="e.g. llama3.2, gpt-4o-mini" list="qm-cfg-model-list" style="flex:1;font-size:12px;" oninput="qmCfgDirty()">
                   <datalist id="qm-cfg-model-list"></datalist>
-                  <button class="btn btn-ghost" onclick="qmFetchModels()" style="font-size:11px;padding:4px 8px;white-space:nowrap;" id="qm-fetch-models-btn" title="Fetch available models">↻</button>
+                  <button class="btn btn-ghost" onclick="qmFetchModels()" style="font-size:11px;padding:4px 8px;white-space:nowrap;" id="qm-fetch-models-btn" title="Fetch available models" data-tooltip="Fetch available models">↻</button>
                 </div>
                 <span id="qm-model-fetch-status" style="font-size:10px;color:var(--text3);margin-top:2px;display:block;"></span>
               </div>
@@ -156,7 +156,7 @@ export const PAGE_QUARTERMASTER = `
           </div>
           <div style="display:flex;align-items:center;gap:10px;padding-top:4px;">
             <button class="btn btn-primary" id="qm-cfg-save" onclick="saveQmConfig()" style="font-size:12px;">Save Settings</button>
-            <span id="qm-cfg-status" style="font-size:11px;color:var(--text3);"></span>
+            <span id="qm-cfg-status" style="font-size:11px;color:var(--text3);" data-tooltip="Configuration has unsaved changes"></span>
           </div>
         </div>
       </div>

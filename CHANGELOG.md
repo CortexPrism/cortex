@@ -30,6 +30,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
   contract, returning `void | Response`. Webhook-capable channels (WhatsApp, Google Chat, Lark,
   Telegram, Teams) implement this to receive and process inbound events from their respective
   platforms. (`src/channels/types.ts`)
+- **Web UI tooltip sweep** — added 88 `data-tooltip` hover tooltips across 16 UI source files
+  covering all major surfaces: chat (message actions, tool/agent card expand chevrons, status
+  icons), editor (tree navigation, tab controls, statusbar badges), dashboard (drag handles,
+  widgets), sessions (continue/export/delete), skills (step reorder/remove), settings (feature
+  flags, update status), agents/services (status dots, action buttons, icon picker), policies
+  (edit/delete), marketplace (star ratings), git status (staged/unstaged/untracked codes), and
+  tunnel (copy URL, provider selection). Uses the existing `#global-tooltip` JS tooltip system
+  with 250ms hover delay. (`src/server/ui/js/*.ts`, `src/server/ui/pages/*.ts`)
 
 ### Fixed
 

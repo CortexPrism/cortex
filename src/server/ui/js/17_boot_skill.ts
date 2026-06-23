@@ -192,9 +192,9 @@ function sdRenderSteps() {
       '</div>' +
     '</div>' +
     '<div style="display:flex;flex-direction:column;gap:2px;">' +
-      (i > 0 ? '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;" onclick="sdMoveStep(' + i + ',-1)">▲</button>' : '<span style="width:20px;"></span>') +
-      (i < sdSteps.length - 1 ? '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;" onclick="sdMoveStep(' + i + ',1)">▼</button>' : '<span style="width:20px;"></span>') +
-      '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;color:#f87171;" onclick="sdRemoveStep(' + i + ')">✕</button>' +
+      (i > 0 ? '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;" onclick="sdMoveStep(' + i + ',-1)" data-tooltip="Move step up">▲</button>' : '<span style="width:20px;"></span>') +
+      (i < sdSteps.length - 1 ? '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;" onclick="sdMoveStep(' + i + ',1)" data-tooltip="Move step down">▼</button>' : '<span style="width:20px;"></span>') +
+      '<button class="btn btn-ghost" style="font-size:10px;padding:1px 4px;color:#f87171;" onclick="sdRemoveStep(' + i + ')" data-tooltip="Remove step">✕</button>' +
     '</div>' +
   '</div>').join('');
 }

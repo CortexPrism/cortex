@@ -5,7 +5,7 @@ export const PAGE_DASHBOARD = `
       <span style="font-size:12px;color:var(--text3);">Customizable widget overview</span>
       <div style="flex:1;"></div>
       <button class="btn btn-ghost" onclick="loadDashboard()" style="font-size:11px;padding:5px 10px;">Refresh</button>
-      <button class="btn" id="dashboard-edit-btn" onclick="toggleEdit()" style="font-size:11px;padding:5px 10px;background:rgba(99,102,241,0.12);color:var(--accent2);">Edit</button>
+      <button class="btn" id="dashboard-edit-btn" onclick="toggleEdit()" style="font-size:11px;padding:5px 10px;background:rgba(99,102,241,0.12);color:var(--accent2);" data-tooltip="Toggle dashboard edit mode">Edit</button>
     </div>
     <div id="dashboard-content" style="flex:1;overflow-y:auto;">
       <div class="widget-empty-state">

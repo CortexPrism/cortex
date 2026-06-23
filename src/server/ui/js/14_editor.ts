@@ -392,7 +392,7 @@ function renderEditorTree() {
   }
   var html = '';
   if (editorCurrentPath) {
-    html += '<button class="editor-tree-item" onclick="editorGoUp()" style="color:var(--accent2);">' +
+    html += '<button class="editor-tree-item" onclick="editorGoUp()" style="color:var(--accent2);" data-tooltip="Navigate to parent directory">' +
       '<span class="editor-tree-chevron">◂</span>' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" style="margin-left:2px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
       '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">..</span></button>';
@@ -446,7 +446,7 @@ function editorUpdateBreadcrumb() {
   if (!editorCurrentPath) { bc.style.display = 'none'; return; }
   bc.style.display = 'flex';
   var parts = editorCurrentPath.split('/');
-  var html = '<span class="editor-breadcrumb-part" onclick="editorCollapseAll()">~/</span>';
+  var html = '<span class="editor-breadcrumb-part" onclick="editorCollapseAll()" data-tooltip="Collapse to workspace root">~/</span>';
   for (var i = 0; i < parts.length; i++) {
     var p = parts.slice(0, i + 1).join('/');
     html += '<span class="editor-breadcrumb-sep">›</span>';
@@ -520,8 +520,8 @@ function renderEditorTabs() {
       'oncontextmenu="event.preventDefault();event.stopPropagation();editorTabContextMenu(event, \\'' + escJs(f) + '\\')" ' +
       'data-tab="' + esc(f) + '">' +
       fileIcon(f) + esc(f) +
-      (editorContentDirty && f === editorCurrentFile ? '<span class="editor-tab-modified"></span>' : '') +
-      (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\\'' + escJs(f) + '\\')">✕</span>' : '') +
+      (editorContentDirty && f === editorCurrentFile ? '<span class="editor-tab-modified" data-tooltip="Unsaved changes"></span>' : '') +
+      (editorOpenFiles.length > 1 ? '<span class="editor-tab-close" onclick="event.stopPropagation();editorCloseTab(\\'' + escJs(f) + '\\')" data-tooltip="Close tab">✕</span>' : '') +
       '</span>';
   }).join('');
 }
@@ -949,7 +949,7 @@ function editorFindInFiles() {
   editorSearchInTree(query).then(function(results) {
     if (!results.length) { list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);">No results for "' + esc(query) + '"</div>'; return; }
     list.innerHTML = results.map(function(r) {
-      return '<div class="editor-tree-item" style="gap:2px;padding:3px 10px;" onclick="editorOpenFile(\\'' + escJs(r.file) + '\\')">' +
+      return '<div class="editor-tree-item" style="gap:2px;padding:3px 10px;" onclick="editorOpenFile(\\'' + escJs(r.file) + '\\')" data-tooltip="Open file">' +
         '<span style="font-size:10px;color:var(--text3);min-width:28px;">' + r.line + '</span>' +
         fileIcon(r.file) +
         '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.file) + '</span>' +

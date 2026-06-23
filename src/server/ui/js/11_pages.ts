@@ -90,7 +90,7 @@ async function loadMemoryStats() {
       { label:'Semantic', val: s.semantic, color:'#818cf8', desc:'Facts & knowledge' },
       { label:'Reflection', val: s.reflection, color:'#34d399', desc:'Meta-patterns' },
       { label:'Procedural', val: s.procedural, color:'#fb923c', desc:'Learned skills' },
-    ].map(s => \`<div class="stat" style="cursor:pointer;" onclick="document.getElementById('mem-query').value='';searchMemory()">
+    ].map(s => \`<div class="stat" style="cursor:pointer;" onclick="document.getElementById('mem-query').value='';searchMemory()" data-tooltip="Click to search this memory type">
       <div class="stat-num" style="color:\${s.color};">\${s.val}</div>
       <div class="stat-label">\${s.label}</div>
       <div style="font-size:9px;color:var(--text3);">\${s.desc}</div>
@@ -121,7 +121,7 @@ async function loadMemoryOverview() {
       { label:'Procedural', val: s && typeof s.procedural !== 'undefined' ? s.procedural : '—', color:'#fb923c', desc:'Learned skills' },
     ];
 
-    var statsHtml = stats.map(function(item) { return '<button class="card-sm" style="text-align:left;cursor:pointer;" onclick="switchMemoryTab(\\'search\\');document.getElementById(\\'mem-query\\').focus();">' +
+    var statsHtml = stats.map(function(item) { return '<button class="card-sm" style="text-align:left;cursor:pointer;" data-tooltip="Click to search ' + item.label + ' memories" onclick="switchMemoryTab(\\'search\\');document.getElementById(\\'mem-query\\').focus();">' +
       '<div class="stat-num" style="color:' + item.color + ';margin-bottom:4px;">' + item.val + '</div>' +
       '<div class="stat-label">' + item.label + '</div>' +
       '<div style="font-size:9px;color:var(--text3);margin-top:4px;">' + item.desc + '</div>' +
@@ -238,7 +238,7 @@ async function searchMemory() {
       </div>
       <p style="font-size:13px;color:var(--text2);line-height:1.5;">\${esc(String(h.text ?? '').slice(0, 300))}</p>
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
-        \${entities.map(e => \`<span class="entity-chip" style="background:rgba(167,139,250,0.12);color:#a78bfa;" onclick="event.stopPropagation();document.getElementById('graph-query').value='\${esc(e)}';switchMemoryTab('graph');searchGraphEntities()">\${esc(e)}</span>\`).join('')}
+        \${entities.map(e => \`<span class="entity-chip" data-tooltip="View in knowledge graph" style="background:rgba(167,139,250,0.12);color:#a78bfa;" onclick="event.stopPropagation();document.getElementById('graph-query').value='\${esc(e)}';switchMemoryTab('graph');searchGraphEntities()">\${esc(e)}</span>\`).join('')}
         \${tags.map(t => \`<span class="entity-chip" style="background:rgba(99,102,241,0.1);color:#818cf8;">\${esc(t)}</span>\`).join('')}
         \${topics.map(t => \`<span class="entity-chip" style="background:rgba(251,191,36,0.1);color:#fbbf24;">\${esc(t)}</span>\`).join('')}
       </div>
@@ -695,7 +695,7 @@ function renderJobCard(job) {
     '<div style="min-width:0;flex:1;">',
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">',
     '<span style="font-size:13px;font-weight:600;color:var(--text);">' + esc(job.name) + '</span>',
-    '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(statusLabel) + '</span>',
+    '<span class="badge" data-tooltip="Job status: ' + esc(statusLabel) + '" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(statusLabel) + '</span>',
     '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text3);">' + esc(job.kind ?? 'once') + '</span>',
     sourceLabel ? '<span class="badge" style="background:rgba(165,180,252,0.08);color:' + sourceColor + ';font-size:10px;">' + esc(sourceLabel) + '</span>' : '',
     '</div>',
@@ -759,7 +759,7 @@ function renderJobRuns(runs) {
     return '<div class="card" style="padding:12px 14px;background:rgba(255,255,255,0.03);border-color:var(--border);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-          '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(run.status) + '</span>' +
+          '<span class="badge" data-tooltip="Run status: ' + esc(run.status) + '" style="background:rgba(255,255,255,0.06);color:' + c + ';">⬤ ' + esc(run.status) + '</span>' +
           '<span style="font-size:11px;color:var(--text3);">' + esc(fmtJobTime(run.started_at)) + '</span>' +
           '<span style="font-size:11px;color:var(--text3);">' + esc(run.duration_ms != null ? String(run.duration_ms) + ' ms' : '—') + '</span>' +
         '</div>' +
@@ -1022,7 +1022,7 @@ function renderHooks(hooks) {
       <td style="padding:8px 10px;">
         \${h.disableable
           ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="disableHook(\${JSON.stringify(h.name)})">Disable</button>\`
-          : '<span style="color:var(--text3);font-size:12px;">🔒 locked</span>'}
+          : '<span style="color:var(--text3);font-size:12px;" data-tooltip="Built-in hook. Cannot be disabled.">🔒 locked</span>'}
       </td>
     </tr>
   \`).join('');
@@ -1075,10 +1075,10 @@ function renderTriggers(triggers) {
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-weight:600;font-size:13px;">\${esc(t.name)}</span>
           <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;">\${esc(t.source)}</span>
-          <span style="font-size:11px;color:\${statusColor};">⬤ \${statusLabel}</span>
+          <span style="font-size:11px;color:\${statusColor};" data-tooltip="Trigger is \${statusLabel}">⬤ \${statusLabel}</span>
         </div>
         \${webhookUrl ? \`<div style="margin-top:5px;font-size:11px;color:var(--text3);">
-          URL: <code style="font-size:10px;cursor:pointer;text-decoration:underline;" onclick="navigator.clipboard.writeText(\${JSON.stringify(webhookUrl)});showToast('URL copied','success')">\${esc(webhookUrl)}</code>
+          URL: <code style="font-size:10px;cursor:pointer;text-decoration:underline;" data-tooltip="Click to copy URL" onclick="navigator.clipboard.writeText(\${JSON.stringify(webhookUrl)});showToast('URL copied','success')">\${esc(webhookUrl)}</code>
         </div>\` : ''}
         <div style="margin-top:5px;font-size:11px;color:var(--text3);">
           Agent: <strong>\${esc(t.action?.agent || 'assistant')}</strong>
@@ -1207,7 +1207,7 @@ function renderChannels(channels) {
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-weight:600;font-size:13px;color:var(--text);">\${esc(c.name || c.id)}</span>
           <span style="font-size:11px;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 7px;border-radius:10px;color:var(--text2);">\${esc(c.protocol)}</span>
-          <span style="font-size:11px;padding:1px 7px;border-radius:10px;color:\${statusColor};">⬤ \${statusLabel}</span>
+          <span style="font-size:11px;padding:1px 7px;border-radius:10px;color:\${statusColor};" data-tooltip="Channel is \${statusLabel}">⬤ \${statusLabel}</span>
         </div>
         <div style="margin-top:4px;font-size:11px;color:var(--text3);">Agent: <strong>\${esc(c.agentId)}</strong></div>
       </div>
@@ -1215,7 +1215,7 @@ function renderChannels(channels) {
         \${c.enabled
           ? \`<button class="btn btn-ghost" style="font-size:11px;color:#f87171;" onclick="stopChannel(\${esc(JSON.stringify(c.id))})">Stop</button>\`
           : \`<button class="btn btn-ghost" style="font-size:11px;color:var(--accent-green);" onclick="startChannel(\${esc(JSON.stringify(c.id))})">Start</button>\`}
-        <button class="btn btn-ghost" style="font-size:11px;color:var(--text3);" onclick="deleteChannel(\${esc(JSON.stringify(c.id))})" title="Remove">✕</button>
+        <button class="btn btn-ghost" style="font-size:11px;color:var(--text3);" onclick="deleteChannel(\${esc(JSON.stringify(c.id))})" data-tooltip="Delete channel" title="Remove">✕</button>
       </div>
     \`;
     el.appendChild(d);
@@ -1614,8 +1614,8 @@ function renderSkillCard(s) {
   const trustBadge = '<span style="font-size:9px;background:rgba(6,182,212,0.1);color:#06b6d4;padding:1px 6px;border-radius:3px;" title="Trust tier ' + trustTier + '/4">' + trustStars + '</span>';
 
   const originBadge = isHuman
-    ? '<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:3px;">✍️ human</span>'
-    : '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 6px;border-radius:3px;">🧠 learned</span>';
+    ? '<span style="font-size:10px;background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:3px;" data-tooltip="Human-authored skill">✍️ human</span>'
+    : '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent2);padding:1px 6px;border-radius:3px;" data-tooltip="AI-learned skill">🧠 learned</span>';
 
   let steps = [];
   try { steps = JSON.parse(s.steps || '[]'); } catch(e) {}
@@ -1702,7 +1702,7 @@ function renderSkillCard(s) {
           (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Quick edit" onclick="enterInlineEdit(\\'' + esc(s.name) + '\\')">✏️</button>' : '') +
           (isHuman ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;" title="Open designer" onclick="openSkillDesigner(\\'' + esc(s.name) + '\\')">⚙️</button>' : '') +
           '<button class="btn btn-ghost" style="font-size:11px;padding:4px 5px;" title="' + (lifecycle === 'deprecated' ? 'Restore skill' : 'Deprecate skill') + '" onclick="event.stopPropagation();promoteOrDeprecateSkill(\\'' + esc(s.name) + '\\', \\'' + lifecycle + '\\')">' + (lifecycle === 'deprecated' ? '🔄' : '⏸') + '</button>' +
-          '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;margin-left:2px;" onclick="deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
+          '<button class="btn btn-ghost" style="font-size:11px;padding:4px 6px;margin-left:2px;" data-tooltip="Delete skill" onclick="deleteSkill(\\'' + esc(s.name) + '\\')">✕</button>' +
         '</div>' +
       '</div>' +
       // Description + content preview
@@ -2406,6 +2406,7 @@ async function loadPolicies() {
         editBtn.className = 'btn btn-ghost';
         editBtn.style.cssText = 'font-size:11px;padding:4px 8px;';
         editBtn.textContent = '\u270E';
+        editBtn.setAttribute('data-tooltip', 'Edit policy pattern');
         editBtn.onclick = () => editPolicyInline(p.id);
         actionsEl.appendChild(editBtn);
       }
@@ -2413,6 +2414,7 @@ async function loadPolicies() {
       delBtn.className = 'btn';
       delBtn.style.cssText = 'font-size:11px;padding:4px 8px;background:rgba(239,68,68,0.1);color:#f87171;';
       delBtn.textContent = '\u2715';
+      delBtn.setAttribute('data-tooltip', 'Delete policy rule');
       delBtn.onclick = () => deletePolicyAction(p.id);
       actionsEl.appendChild(delBtn);
     }
@@ -2586,7 +2588,7 @@ async function loadStatus() {
       <!-- KPI Cards -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
         <!-- Active Sessions -->
-        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;" data-tooltip="Active agent sessions">
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⚡</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ACTIVE SESSIONS</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
@@ -2597,7 +2599,7 @@ async function loadStatus() {
         </div>
         
         <!-- Uptime -->
-        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;" data-tooltip="Server uptime">
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⏱</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">SERVER UPTIME</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
@@ -2607,7 +2609,7 @@ async function loadStatus() {
         </div>
 
         <!-- LLM Status -->
-        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;" data-tooltip="LLM provider status">
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">🧠</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">LLM PROVIDER</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
@@ -2618,7 +2620,7 @@ async function loadStatus() {
         </div>
 
         <!-- Version -->
-        <div class="card" style="padding:16px;position:relative;overflow:hidden;">
+        <div class="card" style="padding:16px;position:relative;overflow:hidden;" data-tooltip="Cortex build version">
           <div style="position:absolute;top:12px;right:12px;font-size:24px;opacity:0.15;">⬡</div>
           <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">CORTEX BUILD</div>
           <div style="display:flex;align-items:baseline;gap:6px;">
@@ -2700,7 +2702,7 @@ async function loadStatus() {
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           \${st.recentSessions && st.recentSessions.length > 0 ? st.recentSessions.slice(0,5).map(s => \`
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color 0.15s;" onclick="openSession('\${s.id}')">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color 0.15s;" data-tooltip="Open session" onclick="openSession('\${s.id}')">
               <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:6px;height:6px;border-radius:50%;background:\${s.status==='active'?'#10b981':'var(--text3)'}"></div>
                 <div>
@@ -2831,7 +2833,7 @@ async function loadAgents() {
       if (a.version) ac.push('<span style="color:var(--text3);font-size:10px;font-family:monospace;">v' + esc(a.version) + '</span>');
       ac.push('<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);font-size:10px;">' + esc(a.id) + '</span>');
       if (a.category) ac.push('<span class="badge" style="background:rgba(99,102,241,0.08);color:var(--accent2);font-size:10px;">' + esc(a.category) + '</span>');
-      if (a.id === currentAgentId) ac.push('<span class="badge" style="background:rgba(34,197,94,0.15);color:#4ade80;font-size:10px;">● active</span>');
+      if (a.id === currentAgentId) ac.push('<span class="badge" style="background:rgba(34,197,94,0.15);color:#4ade80;font-size:10px;" data-tooltip="Currently active agent">● active</span>');
       ac.push('</div>');
       if (a.description) ac.push('<p style="font-size:12px;color:var(--text2);margin-bottom:6px;">' + esc(a.description) + '</p>');
       ac.push('<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">');
@@ -2856,7 +2858,7 @@ async function loadAgents() {
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="editAgent(\\'' + a.id + '\\')">Edit</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="cloneAgentUI(\\'' + a.id + '\\')">Clone</button>');
       ac.push('<button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;" onclick="showPage(\\'sessions\\');var f=document.getElementById(\\'sess-agent-filter\\');if(f){f.value=\\'' + a.id + '\\';loadSessionsList();}">Sessions</button>');
-      if (!a.builtin) ac.push('<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent(\\'' + a.id + '\\')">✕</button>');
+      if (!a.builtin) ac.push('<button class="btn" style="font-size:12px;padding:4px 10px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteAgent(\\'' + a.id + '\\')" data-tooltip="Delete agent">✕</button>');
       ac.push('</div></div></div>');
       return ac.join('');
     }).join('');
@@ -2888,7 +2890,7 @@ async function deleteAgent(id) {
 }
 
 async function loadA2ABridgeSection(parentEl) {
-  parentEl.insertAdjacentHTML('beforeend', '<div id="a2a-bridge-section" style="margin-top:16px;"><div class="card" style="padding:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><h3 style="font-size:13px;font-weight:600;">🔗 A2A Bridge</h3><button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="var s=document.getElementById(\\'a2a-bridge-section\\');if(s)s.remove();loadA2ABridgeSection(document.getElementById(\\'agents-content\\'));">↻</button></div><div id="a2a-bridge-content" style="font-size:12px;color:var(--text2);">Loading…</div></div></div>');
+  parentEl.insertAdjacentHTML('beforeend', '<div id="a2a-bridge-section" style="margin-top:16px;"><div class="card" style="padding:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><h3 style="font-size:13px;font-weight:600;">🔗 A2A Bridge</h3><button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;" onclick="var s=document.getElementById(\\'a2a-bridge-section\\');if(s)s.remove();loadA2ABridgeSection(document.getElementById(\\'agents-content\\'));" data-tooltip="Refresh A2A bridge data">↻</button></div><div id="a2a-bridge-content" style="font-size:12px;color:var(--text2);">Loading…</div></div></div>');
   var bc = document.getElementById('a2a-bridge-content');
   if (!bc) return;
   try {
@@ -3234,6 +3236,7 @@ function toggleIconPicker() {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = AGENT_ICONS[i];
+      btn.setAttribute('data-tooltip', 'Select icon: ' + AGENT_ICONS[i]);
       btn.style.cssText = 'width:36px;height:36px;font-size:18px;border:none;border-radius:6px;cursor:pointer;background:var(--bg3);display:flex;align-items:center;justify-content:center;';
       btn.onmouseover = function() { this.style.background = 'var(--accent)'; };
       btn.onmouseout = function() { this.style.background = 'var(--bg3)'; };
@@ -3382,7 +3385,7 @@ async function loadServices() {
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">',
         '<div style="flex:1;min-width:0;">',
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">',
-        '<span style="color:' + statusColor + ';">' + statusDot + '</span>',
+        '<span style="color:' + statusColor + ';" data-tooltip="' + (isRunning ? 'Running' : 'Stopped') + '">' + statusDot + '</span>',
         '<span style="font-size:14px;font-weight:600;">' + esc(s.name) + '</span>',
         '<span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text2);font-size:10px;">' + esc(s.id) + '</span>',
         '<span class="badge" style="background:rgba(255,255,255,0.06);color:' + statusColor + ';">' + s.status + '</span>',
@@ -3590,7 +3593,7 @@ function openPluginSidebarSlot(pluginName, htmlUrl) {
   modal.innerHTML = \`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:700px;max-width:95vw;height:80vh;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <span style="font-weight:600;font-size:14px;">\${esc(pluginName)}</span>
-      <button class="btn btn-ghost" onclick="document.getElementById('plugin-slot-modal').remove()">✕</button>
+      <button class="btn btn-ghost" data-tooltip="Close panel" onclick="document.getElementById('plugin-slot-modal').remove()">✕</button>
     </div>
     <iframe src="\${esc(htmlUrl)}" sandbox="allow-scripts allow-same-origin" style="flex:1;border:none;background:var(--bg);"></iframe>
   </div>\`;
@@ -3741,7 +3744,7 @@ async function loadMarketplace() {
               <span style="font-size:13px;font-weight:600;">\${esc(p.name)}</span>
               <span class="badge" style="background:rgba(99,102,241,0.1);color:var(--accent2);">\${esc(p.kind)}</span>
               <span class="badge" style="background:rgba(59,130,246,0.1);color:#60a5fa;">v\${esc(p.version)}</span>
-              \${p.rating ? '<span style="font-size:11px;color:#fbbf24;">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
+              \${p.rating ? '<span style="font-size:11px;color:#fbbf24;" data-tooltip="Rating: ' + Math.round(p.rating) + '/5">' + '★'.repeat(Math.round(p.rating)) + '</span>' : ''}
               \${isInstalled ? '<span class="badge" style="background:' + (local?.enabled ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)') + ';color:' + (local?.enabled ? '#4ade80' : 'var(--text3)') + ';">' + (local?.enabled ? 'installed' : 'disabled') + '</span>' : ''}
             </div>
           </div>
@@ -3918,7 +3921,7 @@ async function loadCronJobs() {
       <div style="display:flex;gap:6px;flex-shrink:0;">
         <button class="btn btn-ghost" style="font-size:12px;" onclick="triggerJob('\${j.id}')">▶ Trigger</button>
         <button class="btn btn-ghost" style="font-size:12px;" onclick="cancelJobUI('\${j.id}')">■ Cancel</button>
-        <button class="btn" style="font-size:12px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteJobUI('\${j.id}')">✕</button>
+        <button class="btn" style="font-size:12px;background:rgba(239,68,68,0.1);color:#f87171;" onclick="deleteJobUI('\${j.id}')" data-tooltip="Delete job">✕</button>
       </div>
     </div>
   \`).join('');
@@ -3995,9 +3998,9 @@ async function gitRefresh() {
     if (status.clean) {
       changesEl.innerHTML = '<div style="color:var(--green);padding:20px 0;text-align:center;">Working tree clean</div>';
     } else {
-      for (const f of status.staged) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:var(--green);font-family:monospace;">M</span><span>' + f.slice(2).trim() + '</span></div>';
-      for (const f of status.unstaged) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:#f87171;font-family:monospace;">M</span><span>' + f.slice(2).trim() + '</span></div>';
-      for (const f of status.untracked) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:var(--text3);font-family:monospace;">?</span><span>' + f + '</span></div>';
+      for (const f of status.staged) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:var(--green);font-family:monospace;" data-tooltip="Staged changes">M</span><span>' + f.slice(2).trim() + '</span></div>';
+      for (const f of status.unstaged) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:#f87171;font-family:monospace;" data-tooltip="Unstaged changes">M</span><span>' + f.slice(2).trim() + '</span></div>';
+      for (const f of status.untracked) changesEl.innerHTML += '<div style="padding:3px 0;display:flex;gap:8px;"><span style="color:var(--text3);font-family:monospace;" data-tooltip="Untracked file">?</span><span>' + f + '</span></div>';
     }
 
     const logRes = await fetch(BASE + '/api/workspace/git/log' + params);
@@ -5061,7 +5064,7 @@ async function loadEvalSuites() {
         '<div style="font-weight:500;font-size:13px;">' + esc(s.name) + '</div>' +
         '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + esc(s.description || '') + ' — ' + (s.tasks ? s.tasks.length : s.taskCount || 0) + ' tasks</div>' +
         '<div style="display:flex;gap:6px;margin-top:6px;">' +
-        '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="showEvalRunModal(\\'' + escAttr(s.id || s.name) + '\\')">▶ Run</button>' +
+        '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" data-tooltip="Run evaluation suite" onclick="showEvalRunModal(\\'' + escAttr(s.id || s.name) + '\\')">▶ Run</button>' +
         '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="loadEvalSuiteResults(\\'' + escAttr(s.id || s.name) + '\\')">View Results</button>' +
         '</div></div>';
     }).join('');
@@ -5450,9 +5453,9 @@ async function loadChromeBridgeStatus() {
       '<div style="font-size:10px;color:var(--text3);">' + renderBadge(running ? 'Running' : 'Stopped', running ? 'green' : 'red') + '</div></div>' +
       '<div style="display:flex;gap:4px;">' +
       (running
-        ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="stopChromeBridge()">Stop</button>' +
-          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="restartChromeBridge()">Restart</button>'
-        : '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="startChromeBridge()">Start</button>') +
+        ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="stopChromeBridge()" data-tooltip="Stop Chrome Bridge">Stop</button>' +
+          '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="restartChromeBridge()" data-tooltip="Restart Chrome Bridge">Restart</button>'
+        : '<button class="btn btn-primary" style="font-size:10px;padding:2px 8px;" onclick="startChromeBridge()" data-tooltip="Start Chrome Bridge">Start</button>') +
       '</div></div>' +
       (status.connected ? '<div style="font-size:10px;color:var(--text2);margin-top:4px;">' +
         (status.serverInfo ? 'Server: ' + esc(status.serverInfo.name || '') + ' | ' : '') +
@@ -5521,7 +5524,7 @@ function plCompleteABTest(id) { updateABTestStatus(id, 'completed'); }
 // ── PKM functions ───────────────────────────────────────────────
 var pkmConnections = [];
 function loadPkmPage() { fetch(BASE+'/api/pkm').then(function(r){return r.json()}).then(function(data){pkmConnections=data.connections||[];renderPkmConnections()}).catch(function(){}) }
-function renderPkmConnections() { var el=document.getElementById('pkm-connections');if(!el)return;var icons={obsidian:'O',logseq:'L',notion:'N',roam:'R'};el.innerHTML=pkmConnections.length?pkmConnections.map(function(c){return '<div class="card-sm" style="margin-bottom:6px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">'+(icons[c.kind]||'?')+'</span><div style="flex:1;"><div style="font-weight:500;font-size:12px;">'+esc(c.name)+'</div><div style="font-size:10px;color:var(--text3);">'+esc(c.kind)+' · '+c.fileCount+' files</div></div><span style="font-size:10px;color:'+(c.status==='connected'?'#4ade80':'#f87171')+'">'+esc(c.status)+'</span></div><div style="display:flex;gap:6px;margin-top:6px;"><button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="syncPkmConnection(\\''+c.id+'\\')">Sync</button><button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:#f87171;" onclick="disconnectPkm(\\''+c.id+'\\')">x</button></div></div>'}).join(''):'<div class="empty">No PKM connections</div>' }
+function renderPkmConnections() { var el=document.getElementById('pkm-connections');if(!el)return;var icons={obsidian:'O',logseq:'L',notion:'N',roam:'R'};el.innerHTML=pkmConnections.length?pkmConnections.map(function(c){return '<div class="card-sm" style="margin-bottom:6px;padding:10px 12px;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">'+(icons[c.kind]||'?')+'</span><div style="flex:1;"><div style="font-weight:500;font-size:12px;">'+esc(c.name)+'</div><div style="font-size:10px;color:var(--text3);">'+esc(c.kind)+' · '+c.fileCount+' files</div></div><span style="font-size:10px;color:'+(c.status==='connected'?'#4ade80':'#f87171')+'">'+esc(c.status)+'</span></div><div style="display:flex;gap:6px;margin-top:6px;"><button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick="syncPkmConnection(\\''+c.id+'\\')">Sync</button><button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:#f87171;" data-tooltip="Disconnect PKM" onclick="disconnectPkm(\\''+c.id+'\\')">x</button></div></div>'}).join(''):'<div class="empty">No PKM connections</div>' }
 function showPkmConnectModal() { var k=prompt('PKM kind (obsidian, logseq, notion, roam):');if(!k)return;var p=prompt('Path:');if(!p)return;fetch(BASE+'/api/pkm/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:k,path:p,name:p.split('/').pop()||p})}).then(function(r){return r.json()}).then(function(){loadPkmPage()}) }
 function syncPkmConnection(id) { fetch(BASE+'/api/pkm/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(function(r){return r.json()}).then(function(d){toast('Synced '+(d.fileCount||0)+' files','success');loadPkmPage()}) }
 function disconnectPkm(id) { pkmConnections=pkmConnections.filter(function(c){return c.id!==id});renderPkmConnections();toast('Disconnected','info') }
@@ -5605,6 +5608,7 @@ async function indexAlcove() {
     loadAlcoveBrowse();
   } catch(e) { toast('Index failed', 'error'); }
   btn.textContent = '🔁 Index';
+  btn.setAttribute('data-tooltip', 'Re-index all documents');
   btn.disabled = false;
 }
 

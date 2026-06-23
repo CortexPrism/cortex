@@ -382,7 +382,7 @@ function autoPoolListUI() {
     const enabledIcon = e.enabled !== false ? '●' : '○';
     const color = e.enabled !== false ? '#4ade80' : 'var(--text3)';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg3);border-radius:6px;font-size:12px;">' +
-      '<span style="cursor:pointer;font-size:14px;color:' + color + ';" title="Toggle enabled" onclick="autoPoolToggle(' + i + ')">' + enabledIcon + '</span>' +
+      '<span style="cursor:pointer;font-size:14px;color:' + color + ';" title="Toggle enabled" data-tooltip="Toggle model enabled/disabled" onclick="autoPoolToggle(' + i + ')">' + enabledIcon + '</span>' +
       '<span style="flex:1;color:var(--text);"><b>' + label + '</b> / ' + esc(e.model) + '</span>' +
       '<button class="btn btn-ghost" style="font-size:11px;padding:2px 6px;color:#f87171;" onclick="autoPoolRemove(' + i + ')" title="Remove">✕</button>' +
       '</div>';
