@@ -10,9 +10,8 @@ const CATEGORY_PAGES = {
   ],
   development: [
     { id:'editor', label:'Editor', icon:'\u270f', tooltip:'Web file editor with CodeMirror', level:'beginner' },
-    { id:'coderunner', label:'Code Runner', icon:'\u25b6', tooltip:'Run code in a sandboxed environment', level:'beginner' },
-    { id:'projects', label:'Projects', icon:'\ud83d\udcc2', tooltip:'Manage project workspaces', level:'intermediate' },
-    { id:'sandbox', label:'Sandbox', icon:'\ud83d\udce6', tooltip:'Sandboxed execution environment', level:'intermediate' },
+    { id:'projects', label:'Projects', icon:'\ud83d\udcc2', tooltip:'Manage project workspaces', level:'beginner' },
+    { id:'sandbox', label:'Sandbox', icon:'\ud83d\udce6', tooltip:'Code runner, environment snapshots, and dev env as code', level:'beginner' },
     { id:'vcs', label:'Version Control', icon:'\u2935', tooltip:'Git repository management', level:'intermediate' },
     { id:'codegraph', label:'Codegraph', icon:'\ud83d\udd78', tooltip:'Code dependency graph visualization', level:'advanced' },
     { id:'alcove', label:'Alcove', icon:'\ud83d\udcda', tooltip:'Code archive and reference library', level:'advanced' },
@@ -20,40 +19,33 @@ const CATEGORY_PAGES = {
   knowledge: [
     { id:'memory', label:'Memory', icon:'\ud83e\udde0', tooltip:'Browse episodic, semantic, and graph memory', level:'beginner' },
     { id:'skills', label:'Skills', icon:'\u26a1', tooltip:'Learned procedural skill patterns', level:'beginner' },
-    { id:'lens', label:'Activity', icon:'\ud83d\udd2d', tooltip:'Filterable audit log with cost tracking', level:'intermediate' },
     { id:'soul', label:'Soul', icon:'\u2764', tooltip:'Agent identity and personality', level:'intermediate' },
     { id:'metacognition', label:'Metacognition', icon:'\ud83e\udde9', tooltip:'Agent self-assessment insights', level:'advanced' },
     { id:'promptlab', label:'Prompt Lab', icon:'\ud83e\uddea', tooltip:'Prompt engineering and A/B testing', level:'advanced' },
     { id:'pkm', label:'PKM', icon:'\ud83d\udcd6', tooltip:'Personal knowledge management', level:'advanced' },
-    { id:'memori', label:'Memori', icon:'\u23f1', tooltip:'Advanced memory analytics', level:'advanced' },
+    { id:'memori', label:'Memori', icon:'\u23f1', tooltip:'Memory checkpoints — persistent agent state', level:'advanced' },
   ],
   infrastructure: [
     { id:'agents', label:'Agents', icon:'\ud83d\udc65', tooltip:'Manage agent identities and selection', level:'beginner' },
     { id:'services', label:'Services', icon:'\ud83d\udd27', tooltip:'Micro-service lifecycle management', level:'beginner' },
-    { id:'nodes', label:'Nodes', icon:'\ud83d\udda7', tooltip:'Remote Cortex node registry', level:'intermediate' },
-    { id:'automation', label:'Automation', icon:'\ud83d\udd01', tooltip:'Triggers, hooks, and event-driven actions', level:'intermediate' },
+    { id:'automation', label:'Automation', icon:'\ud83d\udd01', tooltip:'Hooks, triggers, workflows, scheduled jobs, and eval', level:'intermediate' },
     { id:'channels', label:'Channels', icon:'\ud83d\udce1', tooltip:'Communication channel adapters', level:'intermediate' },
-    { id:'jobs', label:'Jobs', icon:'\u23f0', tooltip:'Scheduled cron, interval, and one-shot jobs', level:'intermediate' },
-    { id:'workflow', label:'Workflows', icon:'\ud83d\udd01', tooltip:'Registered workflow pipelines', level:'intermediate' },
-    { id:'eval', label:'Eval', icon:'\ud83d\udcd0', tooltip:'Agent evaluation suites and benchmarks', level:'intermediate' },
-    { id:'daemons', label:'Daemons', icon:'\u2699', tooltip:'Validator, executor, and scheduler status', level:'intermediate' },
+    { id:'nodes', label:'Nodes', icon:'\ud83d\udda7', tooltip:'Remote Cortex node registry', level:'intermediate' },
     { id:'remote', label:'Remote & Computer', icon:'\ud83c\udf10', tooltip:'Remote agent deployment and computer use', level:'intermediate' },
-    { id:'computer', label:'Computer', icon:'\ud83d\udda5', tooltip:'AI-driven computer interaction', level:'intermediate' },
+    { id:'daemons', label:'System Health', icon:'\u2699', tooltip:'Daemon processes, OS metrics, and system health', level:'intermediate' },
     { id:'quartermaster', label:'Quartermaster', icon:'\ud83e\udde0', tooltip:'Intelligent model selection', level:'advanced' },
   ],
   system: [
     { id:'settings', label:'Settings', icon:'\u2699', tooltip:'Configure providers, API keys, router', level:'beginner' },
     { id:'policies', label:'Policies', icon:'\ud83d\udee1', tooltip:'Security policy rules', level:'beginner' },
-    { id:'extensions', label:'Extensions', icon:'\ud83e\udde9', tooltip:'Installed plugins and marketplace', level:'beginner' },
+    { id:'extensions', label:'Extensions', icon:'\ud83e\udde9', tooltip:'Installed plugins, marketplace, and plugin panels', level:'beginner' },
+    { id:'lens', label:'Activity', icon:'\ud83d\udd2d', tooltip:'Filterable audit log with cost tracking', level:'intermediate' },
     { id:'analytics', label:'Analytics', icon:'\ud83d\udcc8', tooltip:'Token usage, cost, session statistics', level:'intermediate' },
     { id:'tools', label:'Tools', icon:'\ud83d\udd27', tooltip:'Tool configuration and management', level:'intermediate' },
-    { id:'mcp', label:'MCP Servers', icon:'\ud83d\udd0c', tooltip:'MCP protocol server connections', level:'intermediate' },
+    { id:'mcp', label:'MCP', icon:'\ud83d\udd0c', tooltip:'MCP connections and gateway management', level:'intermediate' },
     { id:'vault', label:'Vault', icon:'\ud83d\udd10', tooltip:'Encrypted credential storage', level:'intermediate' },
     { id:'tunnel', label:'Tunnels', icon:'\ud83d\udd12', tooltip:'Tailscale Funnel and Cloudflare Zero Trust secure tunnels', level:'intermediate' },
-    { id:'oshealth', label:'OS Health', icon:'\ud83d\udda5', tooltip:'System health dashboard', level:'advanced' },
-    { id:'mcp-gateway', label:'MCP Gateway', icon:'\ud83c\udf10', tooltip:'MCP protocol gateway', level:'advanced' },
     { id:'chrome-bridge', label:'Chrome Bridge', icon:'\ud83c\udf10', tooltip:'Browser automation via CDP', level:'advanced' },
-    { id:'pluginpanels', label:'Plugin Panels', icon:'\ud83e\udde9', tooltip:'Dynamic plugin panel pages', level:'advanced' },
   ],
 };
 
@@ -170,7 +162,7 @@ function renderRecentPages() {
 }
 
 // ── PAGES array (for backwards compat — showPage iterates this) ─
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','tunnel','computer','remote','daemons','extensions','settings','policies','oshealth','analytics','quartermaster','memori','pluginpanels','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','automation','channels','tools','chrome-bridge','mcp','vault','tunnel','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');

@@ -11,9 +11,10 @@ export const PAGE_EXTENSIONS = `
       </div>
     </div>
     <!-- Tab bar -->
-    <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
+    <div style="padding:0 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
       <button class="mem-tab active" onclick="extShowTab('installed')" id="ext-tab-installed">Installed</button>
       <button class="mem-tab" onclick="extShowTab('discover')" id="ext-tab-discover">Discover</button>
+      <button class="mem-tab" onclick="extShowTab('panels')" id="ext-tab-panels">Panels</button>
     </div>
     <!-- Tab: Installed -->
     <div id="ext-pane-installed" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
@@ -38,6 +39,11 @@ export const PAGE_EXTENSIONS = `
         <button id="mp-tab-agents" class="btn" style="flex:1;border-radius:0;padding:10px;font-size:13px;background:transparent;color:var(--text2);border-bottom:2px solid transparent;" onclick="switchMarketplaceTab('agents')">Agents</button>
       </div>
       <div id="mp-content" class="ext-grid" style="flex:1;overflow-y:auto;padding:16px 24px;align-content:start;"></div>
+    </div>
+    <!-- Tab: Panels -->
+    <div id="ext-pane-panels" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div id="plugin-panels-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 24px;"></div>
+      <div id="plugin-panels-content" style="flex:1;overflow:hidden;"></div>
     </div>
     <!-- Install modal -->
     <div id="plugin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;">

@@ -114,34 +114,9 @@ function editSubAgentType(type) {
   document.getElementById('new-agent-modal').style.display = 'flex';
 }
 
-// ── Code Runner Extension: Config Tab ──
-var origCoderunnerInit;
-function patchCoderunnerLoader() {
-  setTimeout(extendCoderunnerPage, 500);
-}
-function extendCoderunnerPage() {
-  if (document.getElementById('cr-tab-config')) return;
-  var header = document.querySelector('#page-coderunner > div:first-of-type');
-  if (!header) { setTimeout(extendCoderunnerPage, 500); return; }
-  var container = document.getElementById('page-coderunner');
-  // Save reference to original content area (second child after header)
-  window._crOriginalContent = container.children[1];
-  var tabBar = document.createElement('div');
-  tabBar.style.cssText = 'padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;background:var(--bg2);';
-  tabBar.innerHTML = '<button class="btn btn-ghost active" onclick="switchCoderunnerTab(this,\\'exec\\')" style="font-size:11px;padding:4px 10px;">Execute</button>' +
-    '<button class="btn btn-ghost" onclick="switchCoderunnerTab(this,\\'config\\')" id="cr-tab-config" style="font-size:11px;padding:4px 10px;">Config</button>';
-  container.insertBefore(tabBar, window._crOriginalContent);
-  var configPanel = document.createElement('div');
-  configPanel.id = 'cr-config-panel';
-  configPanel.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:16px;';
-  container.appendChild(configPanel);
-}
-function switchCoderunnerTab(btn, tab) {
-  var configPanel = document.getElementById('cr-config-panel');
-  // Use the original content container stored during injection
-  if (tab === 'exec') { if (window._crOriginalContent) window._crOriginalContent.style.display = 'flex'; if (configPanel) configPanel.style.display = 'none'; }
-  else { if (window._crOriginalContent) window._crOriginalContent.style.display = 'none'; if (configPanel) configPanel.style.display = 'block'; loadSandboxConfig(); }
-}
+// ── Code Runner Extension (noop — now a tab inside Sandbox page) ──
+function patchCoderunnerLoader() { /* coderunner is now a tab in the Sandbox page */ }
+function extendCoderunnerPage() { /* noop */ }
 async function loadSandboxConfig() {
   var el = document.getElementById('cr-config-panel');
   try {

@@ -75,55 +75,130 @@ function showPage(name) {
   if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
 
   var loaders = {
-    lens: loadLens, memory: loadMemoryOverview, jobs: function() { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },
+    lens: loadLens, memory: loadMemoryOverview,
     skills: function() { loadSkills(); extendSkillsPage(); }, policies: function() { loadPolicies(); extendCPLEditor(); }, analytics: loadAnalytics,
     sessions: function() { loadSessionAgentFilter(); loadSessionsList(); },
     settings: function() { loadSettings(); extendObservability(); extendMetricsPage(); injectSettingsSubNav(); },
     tools: function() { loadTools(); injectToolsSubNav('tools'); },
     'chrome-bridge': function() { loadChromeBridgePage(); injectToolsSubNav('chrome-bridge'); },
-    mcp: function() { loadMCPPage(); injectToolsSubNav('mcp'); },
-    'mcp-gateway': function() { loadMcpGatewayPage(); injectToolsSubNav('mcp-gateway'); },
+    mcp: function() { switchMcpTab('connections'); loadMCPPage(); injectToolsSubNav('mcp'); },
     vault: function() { loadVaultPage(); injectToolsSubNav('vault'); },
     tunnel: function() { loadTunnelPage(); injectToolsSubNav('tunnel'); },
-    extensions: loadPlugins, soul: loadSoulFile, editor: function() { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
-    pluginpanels: function() { loadPluginPanelsTabs(); },
+    extensions: function() { loadPlugins(); },
+    soul: loadSoulFile, editor: function() { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     promptlab: loadPromptLab,
     pkm: loadPkmPage,
-    nodes: function() { loadNodes(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'nodes'); },
+    nodes: loadNodes,
     quartermaster: function() { loadQuartermaster(); extendQuartermaster(); },
     dashboard: loadDashboard,
     projects: loadProjects,
-    automation: function() { loadHooksPage(); extendAutomationPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'automation'); },
+    automation: function() { switchAutoTab('hooks'); loadHooksPage(); extendAutomationPage(); },
     channels: loadChannels,
     vcs: function() { gitRefresh(); extendVCSPage(); },
-    agents: function() { loadAgents(); extendSubAgentProcesses(); }, services: function() { loadServices(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'services'); },
+    agents: function() { loadAgents(); extendSubAgentProcesses(); },
+    services: loadServices,
     codegraph: loadCodegraphPage,
     alcove: loadAlcovePage,
-    workflow: function() { loadWorkflowsPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'workflow'); },
-    eval: function() { loadEvalPage(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'eval'); },
-    computer: function() { loadComputerPage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'computer'); },
-    remote: function() { loadRemotePage(); injectSubNav('remote', 'Remote Agents', [['remote','Remote Agents'],['computer','Computer']], 'remote'); },
-    daemons: function() { loadDaemonPage(); injectSubNav('services', 'Services', [['services','Services'],['nodes','Nodes'],['daemons','Daemons']], 'daemons'); },
-    oshealth: loadOSHealth,
+    remote: function() { switchRemoteTab('agents'); loadRemotePage(); },
+    daemons: function() { switchSysHealthTab('daemons'); loadDaemonPage(); },
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
-    sandbox: loadSandboxPage,
-    coderunner: function() { if (typeof extendCoderunnerPage === 'function') extendCoderunnerPage(); },
+    sandbox: function() { switchSandboxTab('coderunner'); loadSandboxPage(); },
   };
   if (loaders[name]) loaders[name]();
 
   // Highlight nav-settings for settings-group pages
-  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,tunnel:1};
+  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,vault:1,tunnel:1};
   var navSettings = document.getElementById('nav-settings');
   if (navSettings) navSettings.classList.toggle('active', !!settingsGroup[name]);
 
-  // Computer page shares nav item with Remote
-  var navRemote = document.getElementById('nav-remote');
-  if (navRemote && name === 'computer') navRemote.classList.add('active');
-
   // Hide global subnav for non-tabbed pages
-  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,tunnel:1,remote:1,computer:1};
+  var tabbed = {settings:1,tools:1,'chrome-bridge':1,mcp:1,vault:1,tunnel:1};
   if (!tabbed[name]) hideSubNav();
+}
+
+// ── Tab switchers for merged pages ──────────────────────────────────
+function switchRemoteTab(tab) {
+  ['agents','computer'].forEach(function(t) {
+    var pane = document.getElementById('remote-pane-' + t);
+    var btn = document.getElementById('remote-tab-' + t);
+    if (pane) pane.style.display = t === tab ? 'flex' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  var deployBtn = document.getElementById('remote-deploy-btn');
+  var refreshBtn = document.getElementById('remote-refresh-btn');
+  var cbStart = document.getElementById('cb-start-btn');
+  var cbStop = document.getElementById('cb-stop-btn');
+  var cbRestart = document.getElementById('cb-restart-btn');
+  var compRefresh = document.getElementById('computer-refresh-btn');
+  if (deployBtn) deployBtn.style.display = tab === 'agents' ? '' : 'none';
+  if (refreshBtn) refreshBtn.style.display = tab === 'agents' ? '' : 'none';
+  if (cbStart) cbStart.style.display = tab === 'computer' ? '' : 'none';
+  if (cbStop) cbStop.style.display = tab === 'computer' ? '' : 'none';
+  if (cbRestart) cbRestart.style.display = tab === 'computer' ? '' : 'none';
+  if (compRefresh) compRefresh.style.display = tab === 'computer' ? '' : 'none';
+  if (tab === 'agents') loadRemoteAgents();
+  else if (tab === 'computer') { loadComputerPage(); loadChromeBridgePage(); }
+}
+function switchMcpTab(tab) {
+  ['connections','gateway'].forEach(function(t) {
+    var pane = document.getElementById('mcp-pane-' + t);
+    var btn = document.getElementById('mcp-tab-' + t);
+    if (pane) pane.style.display = t === tab ? 'flex' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  var addBtn = document.getElementById('mcp-add-btn');
+  var refreshBtn = document.getElementById('mcp-refresh-btn');
+  var gwRefresh = document.getElementById('mcp-gateway-refresh-btn');
+  if (addBtn) addBtn.style.display = tab === 'connections' ? '' : 'none';
+  if (refreshBtn) refreshBtn.style.display = tab === 'connections' ? '' : 'none';
+  if (gwRefresh) gwRefresh.style.display = tab === 'gateway' ? '' : 'none';
+  if (tab === 'gateway') loadMcpGatewayPage();
+}
+function switchSysHealthTab(tab) {
+  ['daemons','oshealth'].forEach(function(t) {
+    var pane = document.getElementById('syshealth-pane-' + t);
+    var btn = document.getElementById('syshealth-tab-' + t);
+    if (pane) pane.style.display = t === tab ? 'block' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  var daemonRefresh = document.getElementById('daemons-refresh-btn');
+  var oshealthRefresh = document.getElementById('oshealth-refresh-btn');
+  if (daemonRefresh) daemonRefresh.style.display = tab === 'daemons' ? '' : 'none';
+  if (oshealthRefresh) oshealthRefresh.style.display = tab === 'oshealth' ? '' : 'none';
+  if (tab === 'oshealth') loadOSHealth();
+}
+function switchAutoTab(tab) {
+  ['hooks','triggers','workflows','jobs','eval'].forEach(function(t) {
+    var pane = document.getElementById('auto-pane-' + t);
+    var btn = document.getElementById('auto-tab-' + t);
+    if (pane) pane.style.display = t === tab ? 'flex' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  var hooksBadge = document.getElementById('hooks-count-badge');
+  var addTrigger = document.getElementById('auto-add-trigger-btn');
+  var hooksRefresh = document.getElementById('auto-hooks-refresh-btn');
+  var newWf = document.getElementById('auto-new-workflow-btn');
+  var wfRefresh = document.getElementById('auto-workflows-refresh-btn');
+  var newJob = document.getElementById('auto-new-job-btn');
+  var jobsRefresh = document.getElementById('auto-jobs-refresh-btn');
+  var evalRefresh = document.getElementById('auto-eval-refresh-btn');
+  [hooksBadge, addTrigger, hooksRefresh].forEach(function(el) { if (el) el.style.display = (tab === 'hooks' || tab === 'triggers') ? '' : 'none'; });
+  [newWf, wfRefresh].forEach(function(el) { if (el) el.style.display = tab === 'workflows' ? '' : 'none'; });
+  [newJob, jobsRefresh].forEach(function(el) { if (el) el.style.display = tab === 'jobs' ? '' : 'none'; });
+  if (evalRefresh) evalRefresh.style.display = tab === 'eval' ? '' : 'none';
+  if (tab === 'workflows') loadWorkflowsPage();
+  else if (tab === 'jobs') loadJobs();
+  else if (tab === 'eval') loadEvalPage();
+}
+function extShowTab(tab) {
+  ['installed','discover','panels'].forEach(function(t) {
+    var pane = document.getElementById('ext-pane-' + t);
+    var btn = document.getElementById('ext-tab-' + t);
+    if (pane) pane.style.display = t === tab ? 'flex' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'panels') loadPluginPanelsTabs();
 }
 
 `;

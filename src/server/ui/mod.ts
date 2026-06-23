@@ -12,11 +12,9 @@ import { MODALS_IN_MAIN, MODALS_OUTSIDE } from './pages/modals.ts';
 import { PAGE_CHAT } from './pages/chat.ts';
 import { PAGE_EDITOR } from './pages/editor.ts';
 import { PAGE_VCS } from './pages/vcs.ts';
-import { PAGE_CODERUNNER } from './pages/coderunner.ts';
 import { PAGE_LENS } from './pages/lens.ts';
 import { PAGE_MEMORY } from './pages/memory.ts';
 import { PAGE_NODES } from './pages/nodes.ts';
-import { PAGE_JOBS } from './pages/jobs.ts';
 import { PAGE_PROJECTS } from './pages/projects.ts';
 import { PAGE_AUTOMATION } from './pages/automation.ts';
 import { PAGE_CHANNELS } from './pages/channels.ts';
@@ -29,23 +27,17 @@ import { PAGE_SETTINGS } from './pages/settings.ts';
 import { PAGE_AGENTS } from './pages/agents.ts';
 import { PAGE_SERVICES } from './pages/services.ts';
 import { PAGE_EXTENSIONS } from './pages/extensions.ts';
-import { PAGE_PLUGINPANELS } from './pages/pluginpanels.ts';
 import { PAGE_SOUL } from './pages/soul.ts';
 import { PAGE_QUARTERMASTER } from './pages/quartermaster.ts';
 import { PAGE_MEMORI } from './pages/memori.ts';
 import { PAGE_SANDBOX } from './pages/sandbox.ts';
-import { PAGE_MCP_GATEWAY } from './pages/mcp-gateway.ts';
 import { PAGE_PROMPTLAB } from './pages/promptlab.ts';
 import { PAGE_PKM } from './pages/pkm.ts';
 import { PAGE_ALCOVE } from './pages/alcove.ts';
 import { PAGE_CODEGRAPH } from './pages/codegraph.ts';
-import { PAGE_OSHEALTH } from './pages/oshealth.ts';
-import { PAGE_WORKFLOW } from './pages/workflow.ts';
-import { PAGE_EVAL } from './pages/eval.ts';
 import { PAGE_MCP } from './pages/mcp.ts';
 import { PAGE_CHROME_BRIDGE } from './pages/chrome-bridge.ts';
 import { PAGE_VAULT } from './pages/vault.ts';
-import { PAGE_COMPUTER } from './pages/computer.ts';
 import { PAGE_REMOTE } from './pages/remote.ts';
 import { PAGE_DAEMONS } from './pages/daemons.ts';
 import { PAGE_TOOLS } from './pages/tools.ts';
@@ -95,11 +87,9 @@ ${CSS}
 const ALL_PAGES = PAGE_CHAT +
   PAGE_EDITOR +
   PAGE_VCS +
-  PAGE_CODERUNNER +
   PAGE_LENS +
   PAGE_MEMORY +
   PAGE_NODES +
-  PAGE_JOBS +
   PAGE_PROJECTS +
   PAGE_AUTOMATION +
   PAGE_CHANNELS +
@@ -112,23 +102,17 @@ const ALL_PAGES = PAGE_CHAT +
   PAGE_AGENTS +
   PAGE_SERVICES +
   PAGE_EXTENSIONS +
-  PAGE_PLUGINPANELS +
   PAGE_SOUL +
   PAGE_QUARTERMASTER +
   PAGE_MEMORI +
   PAGE_SANDBOX +
-  PAGE_MCP_GATEWAY +
   PAGE_PROMPTLAB +
   PAGE_PKM +
   PAGE_ALCOVE +
   PAGE_CODEGRAPH +
-  PAGE_OSHEALTH +
-  PAGE_WORKFLOW +
-  PAGE_EVAL +
   PAGE_MCP +
   PAGE_CHROME_BRIDGE +
   PAGE_VAULT +
-  PAGE_COMPUTER +
   PAGE_REMOTE +
   PAGE_DAEMONS +
   PAGE_TOOLS +

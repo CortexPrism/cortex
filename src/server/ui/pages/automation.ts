@@ -1,20 +1,28 @@
 export const PAGE_AUTOMATION = `
   <div id="page-automation" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
       <div>
         <h1 style="font-size:15px;font-weight:600;">Automation</h1>
-        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Pipeline hooks, webhook/file/git triggers — in-memory, session lifetime</p>
+        <p style="font-size:12px;color:var(--text3);margin-top:2px;">Hooks, triggers, workflows, scheduled jobs, and agent evaluation</p>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span id="hooks-count-badge" style="font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:10px;color:var(--text2);">— hooks</span>
-        <button class="btn btn-ghost" id="auto-add-trigger-btn" onclick="openTriggerForm()">+ Add Trigger</button>
-        <button class="btn btn-ghost" onclick="autoRefresh()">↻ Refresh</button>
+      <div style="display:flex;gap:8px;align-items:center;" id="auto-header-actions">
+        <span id="hooks-count-badge" style="font-size:11px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:10px;color:var(--text2);display:none;">— hooks</span>
+        <button class="btn btn-ghost" id="auto-add-trigger-btn" onclick="openTriggerForm()" style="display:none;">+ Add Trigger</button>
+        <button class="btn btn-ghost" onclick="autoRefresh()" id="auto-hooks-refresh-btn" style="display:none;">↻ Refresh</button>
+        <button class="btn btn-primary" onclick="showWorkflowCreateModal()" id="auto-new-workflow-btn" style="font-size:12px;padding:5px 14px;display:none;">+ New Workflow</button>
+        <button class="btn btn-ghost" onclick="loadWorkflows()" id="auto-workflows-refresh-btn" style="font-size:12px;display:none;">↻ Refresh</button>
+        <button class="btn btn-ghost" onclick="showCronModal()" id="auto-new-job-btn" style="display:none;">+ New Job</button>
+        <button class="btn btn-ghost" onclick="loadJobs()" id="auto-jobs-refresh-btn" style="display:none;">↻ Refresh</button>
+        <button class="btn btn-ghost" onclick="loadEvalSuites()" id="auto-eval-refresh-btn" style="font-size:12px;display:none;">↻ Refresh</button>
       </div>
     </div>
     <!-- Tab bar -->
-    <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
-      <button class="mem-tab active" onclick="autoShowTab('hooks')" id="auto-tab-hooks">Hooks</button>
-      <button class="mem-tab" onclick="autoShowTab('triggers')" id="auto-tab-triggers">Triggers</button>
+    <div style="padding:0 24px;border-bottom:1px solid var(--border);display:flex;gap:2px;flex-shrink:0;">
+      <button class="mem-tab active" onclick="switchAutoTab('hooks')" id="auto-tab-hooks">Hooks</button>
+      <button class="mem-tab" onclick="switchAutoTab('triggers')" id="auto-tab-triggers">Triggers</button>
+      <button class="mem-tab" onclick="switchAutoTab('workflows')" id="auto-tab-workflows">Workflows</button>
+      <button class="mem-tab" onclick="switchAutoTab('jobs')" id="auto-tab-jobs">Jobs</button>
+      <button class="mem-tab" onclick="switchAutoTab('eval')" id="auto-tab-eval">Eval</button>
     </div>
     <!-- Tab: Hooks -->
     <div id="auto-pane-hooks" style="flex:1;overflow-y:auto;padding:16px 24px;">
@@ -114,6 +122,62 @@ export const PAGE_AUTOMATION = `
         <div id="trigger-form-error" style="color:#f87171;font-size:12px;margin-top:8px;display:none;"></div>
       </div>
       <div id="triggers-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <!-- Tab: Workflows -->
+    <div id="auto-pane-workflows" style="flex:1;display:none;overflow:hidden;flex-direction:column;">
+      <div style="flex:1;display:flex;overflow:hidden;">
+        <div style="width:320px;min-width:280px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Saved Workflows</div>
+          <div style="flex:1;overflow-y:auto;" id="wf-list"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+          <div id="wf-editor" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;">
+            <div style="text-align:center;">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin:0 auto 8px;opacity:0.3;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <p>Select a workflow or create a new one</p>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);" id="wf-bottom-tabs">
+            <button class="btn btn-ghost active" onclick="switchWorkflowTab('history')" id="wf-tab-history" style="font-size:11px;padding:6px 12px;border-radius:0;">Run History</button>
+            <button class="btn btn-ghost" onclick="switchWorkflowTab('tasks')" id="wf-tab-tasks" style="font-size:11px;padding:6px 12px;border-radius:0;">Sub-Agents</button>
+            <button class="btn btn-ghost" onclick="switchWorkflowTab('drift')" id="wf-tab-drift" style="font-size:11px;padding:6px 12px;border-radius:0;">Goal Drift</button>
+            <button class="btn btn-ghost" onclick="switchWorkflowTab('approvals')" id="wf-tab-approvals" style="font-size:11px;padding:6px 12px;border-radius:0;">Approval Queue</button>
+          </div>
+          <div style="height:200px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="wf-bottom-panel"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Jobs -->
+    <div id="auto-pane-jobs" style="flex:1;display:none;flex-direction:column;overflow:hidden;">
+      <div style="padding:12px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <div class="stat"><div class="stat-num" id="jobs-total">—</div><div class="stat-label">Total</div></div>
+        <div class="stat"><div class="stat-num" style="color:#fbbf24;" id="jobs-pending">—</div><div class="stat-label">Pending</div></div>
+        <div class="stat"><div class="stat-num" style="color:#38bdf8;" id="jobs-running">—</div><div class="stat-label">Running</div></div>
+        <div class="stat"><div class="stat-num" style="color:#f87171;" id="jobs-failed">—</div><div class="stat-label">Failed</div></div>
+      </div>
+      <div style="padding:8px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
+        <button class="btn btn-ghost" style="color:#f87171;font-size:12px;" onclick="deleteJobsByStatusUI('failed')" id="btn-delete-failed">✕ Failed</button>
+        <button class="btn btn-ghost" style="color:#f87171;font-size:12px;" onclick="deleteJobsByStatusUI('cancelled')" id="btn-delete-cancelled">✕ Cancelled</button>
+      </div>
+      <div id="jobs-list" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <!-- Tab: Eval -->
+    <div id="auto-pane-eval" style="flex:1;display:none;overflow:hidden;flex-direction:column;">
+      <div style="flex:1;display:flex;overflow:hidden;">
+        <div style="width:320px;min-width:280px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Eval Suites</div>
+          <div style="flex:1;overflow-y:auto;" id="eval-suites-list"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;overflow-y:auto;padding:16px;" id="eval-results"></div>
+          <div style="border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:8px;background:var(--bg2);">
+            <button class="btn btn-ghost active" onclick="switchEvalTab('results')" id="eval-tab-results" style="font-size:11px;padding:4px 10px;">Results</button>
+            <button class="btn btn-ghost" onclick="switchEvalTab('baselines')" id="eval-tab-baselines" style="font-size:11px;padding:4px 10px;">Baselines</button>
+            <button class="btn btn-ghost" onclick="switchEvalTab('regression')" id="eval-tab-regression" style="font-size:11px;padding:4px 10px;">Regression Diff</button>
+          </div>
+          <div style="height:250px;overflow-y:auto;padding:12px;border-top:1px solid var(--border);" id="eval-bottom-panel"></div>
+        </div>
+      </div>
     </div>
   </div>
 

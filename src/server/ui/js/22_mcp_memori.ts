@@ -85,7 +85,7 @@ window.addEventListener('hashchange', () => {
 
 // ── MCP Gateway Page ────────────────────────────────────
 async function loadMcpGatewayPage() {
-  var c = document.getElementById('page-mcp-gateway')?.querySelector('[style*="overflow-y:auto"]');
+  var c = document.getElementById('mcp-gateway-content');
   if (!c) return;
   c.innerHTML = '<div class="widget-loading">Loading MCP Gateway…</div>';
   try {

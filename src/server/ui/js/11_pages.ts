@@ -3567,7 +3567,7 @@ function loadPluginPanelsNav() {
   if (!nav) return;
   nav.innerHTML = pluginPanels.map(p => {
     const id = 'nav-pp-' + p.pluginId + '-' + p.panelId;
-    return \`<button class="nav-item" onclick="showPage('pluginpanels');selectPluginPanel('\${p.pluginId}','\${p.panelId}')" id="\${id}">
+    return \`<button class="nav-item" onclick="showPage('extensions');extShowTab('panels');selectPluginPanel('\${p.pluginId}','\${p.panelId}')" id="\${id}">
       <span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span> \${p.title}
     </button>\`;
   }).join('');
@@ -4089,31 +4089,25 @@ function vcsShowTab(tab) {
   vcsRefresh();
 }
 
-// ── Automation tab-switching ──────────────────────────────────
+// ── Automation tab-switching (all 5 tabs now in switchAutoTab) ──
 let autoActiveTab = 'hooks';
 function autoRefresh() {
-  if (autoActiveTab === 'hooks') { initBuiltinHooks(); loadHooksPage(); } else loadTriggers();
+  if (autoActiveTab === 'hooks' || autoActiveTab === 'triggers') {
+    initBuiltinHooks(); loadHooksPage();
+  } else if (autoActiveTab === 'triggers') { loadTriggers(); }
 }
-function autoShowTab(tab) {
-  autoActiveTab = tab;
-  ['hooks','triggers'].forEach(t => {
-    const btn = document.getElementById('auto-tab-' + t);
-    const pane = document.getElementById('auto-pane-' + t);
-    if (btn) btn.classList.toggle('active', t === tab);
-    if (pane) pane.style.display = t === tab ? (t === 'hooks' ? 'block' : 'flex') : 'none';
-  });
-  document.getElementById('auto-add-trigger-btn').style.display = tab === 'triggers' ? '' : 'none';
-  if (tab === 'triggers') loadTriggers(); else loadHooksPage();
-}
+function autoShowTab(tab) { switchAutoTab(tab); }
 
 // ── Extensions tab-switching ──────────────────────────────────
 let extActiveTab = 'installed';
 function extRefresh() {
-  if (extActiveTab === 'installed') loadPlugins(); else loadMarketplace();
+  if (extActiveTab === 'installed') loadPlugins();
+  else if (extActiveTab === 'discover') loadMarketplace();
+  else if (extActiveTab === 'panels') loadPluginPanelsTabs();
 }
 function extShowTab(tab) {
   extActiveTab = tab;
-  ['installed','discover'].forEach(t => {
+  ['installed','discover','panels'].forEach(t => {
     const btn = document.getElementById('ext-tab-' + t);
     const pane = document.getElementById('ext-pane-' + t);
     if (btn) btn.classList.toggle('active', t === tab);

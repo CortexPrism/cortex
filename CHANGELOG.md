@@ -5,6 +5,20 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Changed
+
+- **Navigation consolidation — 9 pages merged into 5 tabbed hubs** — eliminated duplicate and fragmented pages by merging related UI into unified tabbed interfaces:
+  - **Sandbox** now includes a **Code Runner** tab (previously standalone `coderunner` page), alongside Snapshots, Workspace, Dev Env, and Bug Repro.
+  - **Remote & Computer** merges the former `remote` (Remote Agents) and `computer` (Computer Use) pages into a single page with two tabs.
+  - **MCP** merges `mcp` (Connections) and `mcp-gateway` (Gateway) into one page with two tabs.
+  - **System Health** (formerly Daemons) merges daemon process monitoring and OS health metrics into one page with two tabs.
+  - **Automation** expands to a 5-tab hub: Hooks, Triggers, Workflows, Jobs, and Eval — replacing four separate nav entries.
+  - **Extensions** gains a **Panels** tab, absorbing the standalone Plugin Panels page.
+  - **Activity (Lens)** moved from the Knowledge category to System, where audit/observability tooling belongs.
+  - Removed 9 retired page entries from `PAGES`, `CATEGORY_PAGES`, `mod.ts` imports, and command palette. (`src/server/ui/js/05_nav_pre.ts`, `src/server/ui/js/07_nav_post.ts`, `src/server/ui/js/11_pages.ts`, `src/server/ui/js/13_command.ts`, `src/server/ui/js/20_extensions.ts`, `src/server/ui/js/22_mcp_memori.ts`, `src/server/ui/js/23_sandbox.ts`, `src/server/ui/mod.ts`, `src/server/ui/pages/automation.ts`, `src/server/ui/pages/daemons.ts`, `src/server/ui/pages/extensions.ts`, `src/server/ui/pages/mcp.ts`, `src/server/ui/pages/remote.ts`, `src/server/ui/pages/sandbox.ts`)
+
 ## [0.50.1] - 2026-06-23
 
 ### Added

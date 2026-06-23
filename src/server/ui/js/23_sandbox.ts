@@ -1,15 +1,34 @@
 export const JS_23_SANDBOX = `
 // ── Sandbox Page (#79, #230, #232, #240) ─────────────────────────
 
-var currentSandboxTab = 'snapshots';
+var currentSandboxTab = 'coderunner';
 
 function switchSandboxTab(name) {
   currentSandboxTab = name;
-  ['snapshots','workspace','devenv','bugrepro'].forEach(function(t) {
-    document.getElementById('sandbox-pane-' + t).style.display = t === name ? 'block' : 'none';
+  var allTabs = ['coderunner','snapshots','workspace','devenv','bugrepro'];
+  allTabs.forEach(function(t) {
     var btn = document.getElementById('sandbox-tab-' + t);
     if (btn) btn.classList.toggle('active', t === name);
   });
+  var crPane = document.getElementById('sandbox-pane-coderunner');
+  var content = document.getElementById('sandbox-content');
+  if (name === 'coderunner') {
+    if (crPane) crPane.style.display = 'flex';
+    if (content) content.style.display = 'none';
+  } else {
+    if (crPane) crPane.style.display = 'none';
+    if (content) content.style.display = 'block';
+    ['snapshots','workspace','devenv','bugrepro'].forEach(function(t) {
+      var pane = document.getElementById('sandbox-pane-' + t);
+      if (pane) pane.style.display = t === name ? 'block' : 'none';
+    });
+  }
+  var langSel = document.getElementById('coderunner-lang');
+  var runBtn = document.getElementById('coderunner-run-btn');
+  var clearBtn = document.getElementById('coderunner-clear-btn');
+  if (langSel) langSel.style.display = name === 'coderunner' ? '' : 'none';
+  if (runBtn) runBtn.style.display = name === 'coderunner' ? '' : 'none';
+  if (clearBtn) clearBtn.style.display = name === 'coderunner' ? '' : 'none';
   if (name === 'snapshots') loadSandboxSnapshots();
   else if (name === 'workspace') loadWorkspaceSnapshots();
   else if (name === 'devenv') loadDevEnvPane();
