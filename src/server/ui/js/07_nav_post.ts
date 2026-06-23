@@ -84,6 +84,7 @@ function showPage(name) {
     mcp: function() { loadMCPPage(); injectToolsSubNav('mcp'); },
     'mcp-gateway': function() { loadMcpGatewayPage(); injectToolsSubNav('mcp-gateway'); },
     vault: function() { loadVaultPage(); injectToolsSubNav('vault'); },
+    tunnel: function() { loadTunnelPage(); injectToolsSubNav('tunnel'); },
     extensions: loadPlugins, soul: loadSoulFile, editor: function() { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     pluginpanels: function() { loadPluginPanelsTabs(); },
     promptlab: loadPromptLab,
@@ -112,7 +113,7 @@ function showPage(name) {
   if (loaders[name]) loaders[name]();
 
   // Highlight nav-settings for settings-group pages
-  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1};
+  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,tunnel:1};
   var navSettings = document.getElementById('nav-settings');
   if (navSettings) navSettings.classList.toggle('active', !!settingsGroup[name]);
 
@@ -121,7 +122,7 @@ function showPage(name) {
   if (navRemote && name === 'computer') navRemote.classList.add('active');
 
   // Hide global subnav for non-tabbed pages
-  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,remote:1,computer:1};
+  var tabbed = {services:1,nodes:1,daemons:1,automation:1,workflow:1,eval:1,jobs:1,settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,tunnel:1,remote:1,computer:1};
   if (!tabbed[name]) hideSubNav();
 }
 

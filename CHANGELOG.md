@@ -7,6 +7,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [0.50.1] - 2026-06-23
 
+### Added
+
+- **Secure tunnel UI — Tailscale & Cloudflare Zero Trust** — new dedicated **Tunnels** page (`Settings → Tunnels`) with full lifecycle management: provider selector cards (Tailscale / Cloudflare), per-provider option forms (Funnel vs Serve mode, binary path, named-tunnel credentials), auto-start toggle, live status bar with public URL chip (click-to-copy), diagnostics grid, and real-time output log. Accessible via the System category in the sidebar and via the shortcut card in Settings → Tools & Integrations. (`src/server/ui/pages/tunnel.ts`, `src/server/ui/js/25_tunnel.ts`)
+
+- **Tunnel page wired into navigation** — `tunnel` added to `PAGES` array, `CATEGORY_PAGES.system` (intermediate level), `showPage` loader table, `settingsGroup` highlight map, `tabbed` subnav map, and the Tools sub-navigation bar. (`src/server/ui/js/05_nav_pre.ts`, `src/server/ui/js/07_nav_post.ts`, `src/server/ui/js/08_subnav.ts`, `src/server/ui/mod.ts`)
+
+- **Tunnel step in web onboarding** — new **Step 7/9: Remote Access** inserted between Advanced Features and Telemetry. Users can choose Tailscale Funnel, Cloudflare quick-tunnel, or skip. On continue the config is saved and the tunnel is started immediately; if a public URL is obtained it is shown on the completion screen. `TOTAL_STEPS` updated from 8 to 9. (`src/server/ui-auth.ts`)
+
 ### Fixed
 
 - **CLI setup channel credentials discarded** — channel credentials collected during `cortex setup` (Discord, Slack, Telegram, Teams, Mattermost, Rocket.Chat, WhatsApp, Google Chat, Lark) were stored in a local `Map` but never persisted to vault or database. Now saved to vault (`channel:` entries) and `channels` DB table during setup. (`src/cli/setup.ts`)

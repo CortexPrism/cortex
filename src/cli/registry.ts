@@ -204,4 +204,9 @@ export const registry: CommandEntry[] = [
     load: () => import('./import-cmd.ts').then((m) => m.importCommand._cmd),
     needs: ['config', 'migrations'],
   },
+  {
+    path: ['tunnel'],
+    load: () => import('./tunnel-cmd.ts').then((m) => m.tunnelCommand._cmd),
+    needs: ['config'],
+  },
 ];

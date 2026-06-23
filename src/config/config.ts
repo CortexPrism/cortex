@@ -447,6 +447,8 @@ export interface ServerConfig {
 export interface CortexConfig {
   version: number;
   defaultProvider: ProviderKind;
+  /** Secure tunnel integration (Tailscale / Cloudflare Zero Trust) */
+  tunnel?: TunnelConfig;
   providers: Record<ProviderKind, ProviderConfig | undefined>;
   agent: {
     name: string;
@@ -561,6 +563,39 @@ export interface CodeGraphConfig {
   maxGrammarSize?: number;
   ignoreDirs?: string[];
   ignoreFiles?: string[];
+}
+
+export type TunnelProvider = 'tailscale' | 'cloudflare';
+
+export interface TailscaleConfig {
+  /** Path to the tailscale binary (default: 'tailscale') */
+  bin?: string;
+  /** Funnel port — must match the Cortex server port */
+  port?: number;
+  /** Enable Tailscale Funnel (public internet) vs Serve (tailnet-only) */
+  funnel?: boolean;
+}
+
+export interface CloudflareConfig {
+  /** Path to the cloudflared binary (default: 'cloudflared') */
+  bin?: string;
+  /** Named tunnel ID or name (for pre-configured tunnels). Leave empty for quick-tunnel. */
+  tunnelName?: string;
+  /** Path to credentials JSON file (required for named tunnels) */
+  credentialsFile?: string;
+  /** Hostname to route (for named tunnels, e.g. 'cortex.example.com') */
+  hostname?: string;
+}
+
+export interface TunnelConfig {
+  /** Which tunnel provider to use */
+  provider: TunnelProvider;
+  /** Auto-start the tunnel when the server starts */
+  autoStart?: boolean;
+  /** Local port the tunnel forwards to (defaults to the server port) */
+  localPort?: number;
+  tailscale?: TailscaleConfig;
+  cloudflare?: CloudflareConfig;
 }
 
 const DEFAULT_CONFIG: CortexConfig = {

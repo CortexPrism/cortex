@@ -403,10 +403,47 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Step 7: Telemetry -->
+  <!-- Step 7: Secure Tunnel -->
+  <div id="step-tunnel" style="display: none;">
+    <div class="fade-in">
+      <div class="step-num">Step 7/9</div>
+      <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 8px;">Remote Access (Optional)</h2>
+      <p style="color: #9090a8; font-size: 13px; margin-bottom: 16px;">Enable a secure tunnel so you can reach Cortex remotely without opening firewall ports.</p>
+      <div class="card">
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 13px; font-weight: 500; margin-bottom: 8px; display: block;">Tunnel provider</label>
+          <select class="inp" id="ob-tunnel-provider" onchange="obUpdateTunnelFields()" style="margin-bottom: 8px;">
+            <option value="">Skip — no tunnel</option>
+            <option value="tailscale">Tailscale Funnel — WireGuard VPN</option>
+            <option value="cloudflare">Cloudflare Zero Trust — quick tunnel</option>
+          </select>
+          <p style="color: #55556a; font-size: 12px;">Cortex stays on localhost. The tunnel forwards external traffic securely.</p>
+        </div>
+        <!-- Tailscale fields -->
+        <div id="ob-ts-fields" style="display: none; margin-bottom: 16px;">
+          <label style="font-size: 12px; color: #9090a8; display: block; margin-bottom: 6px;">Mode</label>
+          <select class="inp" id="ob-ts-mode" style="margin-bottom: 8px;">
+            <option value="funnel">Funnel — public internet access</option>
+            <option value="serve">Serve — tailnet-only (private)</option>
+          </select>
+          <p style="color: #55556a; font-size: 12px;">Requires <code style="color: #818cf8;">tailscale</code> CLI installed and authenticated (<code style="color: #818cf8;">tailscale login</code>).</p>
+        </div>
+        <!-- Cloudflare fields -->
+        <div id="ob-cf-fields" style="display: none; margin-bottom: 16px;">
+          <p style="color: #55556a; font-size: 12px; margin-bottom: 8px;">Uses a free quick-tunnel (<code style="color: #818cf8;">*.trycloudflare.com</code>) — no Cloudflare account needed. Requires the <code style="color: #818cf8;">cloudflared</code> binary.</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-ghost" onclick="skipTunnel()" style="flex: 1;">Skip</button>
+          <button class="btn btn-primary" onclick="setupTunnel()" style="flex: 1;">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 8: Telemetry -->
   <div id="step-telemetry" style="display: none;">
     <div class="fade-in">
-      <div class="step-num">Step 7/8</div>
+      <div class="step-num">Step 8/9</div>
       <h2 style="font-size: 18px; font-weight: 600; margin: 8px 0 16px;">Usage Data</h2>
       <div class="card">
         <p style="color: #9090a8; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">Help improve Cortex by sharing anonymous usage data? This includes error reports and feature usage statistics.</p>
@@ -418,13 +455,16 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Step 8: Complete -->
+  <!-- Step 9: Complete -->
   <div id="step-complete" style="display: none;">
     <div class="fade-in" style="text-align: center;">
       <div class="card">
         <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
         <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">You're All Set!</h2>
         <p style="color: #9090a8; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">Your Cortex is configured and ready to go.</p>
+        <div id="ob-tunnel-url-row" style="display:none; margin-bottom: 16px; padding: 10px 14px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; font-size: 12px; color: #9090a8;">
+          Tunnel: <span id="ob-tunnel-url" style="color: #818cf8; font-family: monospace;"></span>
+        </div>
         <button class="btn btn-primary" onclick="finishSetup()" style="width: 100%;">Go to Dashboard</button>
       </div>
     </div>
@@ -436,7 +476,7 @@ const BASE = window.location.origin;
 let currentStep = 0;
 let onboardingData = { password: null, provider: null, personality: null, telemetry: null, channels: [], advanced: {}, profile: null };
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 function updateProgress() {
   const pct = ((currentStep) / TOTAL_STEPS) * 100;
@@ -444,7 +484,7 @@ function updateProgress() {
 }
 
 function showAllNone() {
-  ['welcome','password','provider','ai','personality','channels','advanced','telemetry','complete'].forEach(id => {
+  ['welcome','password','provider','ai','personality','channels','advanced','tunnel','telemetry','complete'].forEach(id => {
     document.getElementById('step-' + id).style.display = 'none';
   });
 }
@@ -452,7 +492,7 @@ function showAllNone() {
 function showStep(n) {
   currentStep = n;
   showAllNone();
-  const names = ['welcome','password','provider','ai','personality','channels','advanced','telemetry','complete'];
+  const names = ['welcome','password','provider','ai','personality','channels','advanced','tunnel','telemetry','complete'];
   document.getElementById('step-' + names[n]).style.display = 'block';
   updateProgress();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -837,6 +877,50 @@ async function setupAdvanced() {
   showStep(7);
 }
 
+// ── Tunnel ──────────────────────────────────────
+function obUpdateTunnelFields() {
+  const p = document.getElementById('ob-tunnel-provider').value;
+  document.getElementById('ob-ts-fields').style.display = p === 'tailscale' ? 'block' : 'none';
+  document.getElementById('ob-cf-fields').style.display = p === 'cloudflare' ? 'block' : 'none';
+}
+
+async function skipTunnel() {
+  showStep(8);
+}
+
+async function setupTunnel() {
+  const provider = document.getElementById('ob-tunnel-provider').value;
+  if (!provider) { showStep(8); return; }
+
+  const cfg = { provider, autoStart: true };
+  if (provider === 'tailscale') {
+    const mode = document.getElementById('ob-ts-mode').value;
+    cfg.tailscale = { funnel: mode !== 'serve' };
+  } else {
+    cfg.cloudflare = {};
+  }
+
+  try {
+    await fetch(BASE + '/api/tunnel/config', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    // Attempt to start immediately; show URL on complete screen if successful
+    const res = await fetch(BASE + '/api/tunnel/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.url) {
+      const row = document.getElementById('ob-tunnel-url-row');
+      const span = document.getElementById('ob-tunnel-url');
+      if (row) row.style.display = 'block';
+      if (span) span.textContent = data.url;
+    }
+  } catch {}
+  showStep(8);
+}
+
 // ── Telemetry ───────────────────────────────────
 async function setTelemetry(enabled) {
   await fetch(BASE + '/api/onboarding/telemetry', {
@@ -844,7 +928,7 @@ async function setTelemetry(enabled) {
     body: JSON.stringify({ enabled }),
   });
   onboardingData.telemetry = enabled;
-  showStep(8);
+  showStep(9);
 }
 
 // ── Complete ────────────────────────────────────

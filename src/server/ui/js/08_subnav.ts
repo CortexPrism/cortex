@@ -55,6 +55,7 @@ function injectToolsSubNav(active) {
     ['mcp-gateway', 'MCP Gateway'],
     ['chrome-bridge', 'Chrome Bridge'],
     ['vault', 'Vault'],
+    ['tunnel', 'Tunnels'],
   ];
   bar.setAttribute('data-group', 'tools');
   bar.setAttribute('data-active', active);

@@ -49,6 +49,7 @@ const CATEGORY_PAGES = {
     { id:'tools', label:'Tools', icon:'\ud83d\udd27', tooltip:'Tool configuration and management', level:'intermediate' },
     { id:'mcp', label:'MCP Servers', icon:'\ud83d\udd0c', tooltip:'MCP protocol server connections', level:'intermediate' },
     { id:'vault', label:'Vault', icon:'\ud83d\udd10', tooltip:'Encrypted credential storage', level:'intermediate' },
+    { id:'tunnel', label:'Tunnels', icon:'\ud83d\udd12', tooltip:'Tailscale Funnel and Cloudflare Zero Trust secure tunnels', level:'intermediate' },
     { id:'oshealth', label:'OS Health', icon:'\ud83d\udda5', tooltip:'System health dashboard', level:'advanced' },
     { id:'mcp-gateway', label:'MCP Gateway', icon:'\ud83c\udf10', tooltip:'MCP protocol gateway', level:'advanced' },
     { id:'chrome-bridge', label:'Chrome Bridge', icon:'\ud83c\udf10', tooltip:'Browser automation via CDP', level:'advanced' },
@@ -169,7 +170,7 @@ function renderRecentPages() {
 }
 
 // ── PAGES array (for backwards compat — showPage iterates this) ─
-const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','computer','remote','daemons','extensions','settings','policies','oshealth','analytics','quartermaster','memori','pluginpanels','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','coderunner','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','jobs','workflow','eval','automation','channels','tools','chrome-bridge','mcp','mcp-gateway','vault','tunnel','computer','remote','daemons','extensions','settings','policies','oshealth','analytics','quartermaster','memori','pluginpanels','promptlab','pkm'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');

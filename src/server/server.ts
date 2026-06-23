@@ -202,6 +202,24 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   startAutoServices().catch(() => {});
   schedulePluginUpdateChecks();
 
+  // Auto-start tunnel if configured and autoStart is enabled
+  const _tunnelCfg = _serverConfig.tunnel;
+  if (_tunnelCfg?.autoStart) {
+    (async () => {
+      try {
+        const { startTunnel } = await import('../tunnel/manager.ts');
+        const state = await startTunnel(_tunnelCfg, opts.port);
+        if (state.url) {
+          _log.warn(`Tunnel started (${_tunnelCfg.provider}): ${state.url}`);
+        } else {
+          _log.info(`Tunnel started (${_tunnelCfg.provider}), status=${state.status}`);
+        }
+      } catch (err_) {
+        _log.warn(`Failed to auto-start tunnel: ${(err_ as Error).message}`);
+      }
+    })().catch(() => {});
+  }
+
   // Auto-start chrome-bridge if configured (non-blocking)
   const _chromeCfg = _serverConfig.chromeBridge;
   if (_chromeCfg?.enabled && _chromeCfg?.autoStart) {

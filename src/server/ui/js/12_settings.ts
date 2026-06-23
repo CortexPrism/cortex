@@ -398,6 +398,12 @@ async function loadSettings() {
           <div style="font-size:11px;font-weight:500;">Vault</div>
           <div style="font-size:9px;color:var(--text3);">Secrets &amp; keys</div>
         </div>
+        <div class="card" style="padding:12px;text-align:center;cursor:pointer;transition:background 0.15s;" onclick="showPage('tunnel')"
+             onmouseenter="this.style.background='var(--bg2)'" onmouseleave="this.style.background=''">
+          <div style="font-size:20px;margin-bottom:4px;">🔒</div>
+          <div style="font-size:11px;font-weight:500;">Tunnels</div>
+          <div style="font-size:9px;color:var(--text3);">Tailscale / Cloudflare</div>
+        </div>
       </div>
       <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Voice &amp; TTS Configuration</div>

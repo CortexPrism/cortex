@@ -63,6 +63,7 @@ import { routes as mcpConnectionsRoutes } from './routes/mcp-connections.ts';
 import { routes as evalRoutes } from './routes/eval-routes.ts';
 import { routes as sessionLinksRoutes } from './routes/session-links.ts';
 import { routes as workspaceSnapshotsRoutes } from './routes/workspace-snapshots.ts';
+import { routes as tunnelRoutes } from './routes/tunnel.ts';
 
 const publicRoutes: RouteHandler[] = [
   ...corsRoutes,
@@ -129,6 +130,7 @@ const protectedRoutes: RouteHandler[] = [
   ...evalRoutes,
   ...sessionLinksRoutes,
   ...workspaceSnapshotsRoutes,
+  ...tunnelRoutes,
 ];
 
 export async function handleApi(req: Request): Promise<Response | null> {
