@@ -259,6 +259,8 @@ export const routes: RouteHandler[] = [
       if (m) {
         const page = Number(m[1]);
         const section = m[2];
+        // TODO(phase2): Replace placeholder content with real analytics, config,
+        // state, and stats data once the Phase 2 UI feature set is designed.
         return json({
           ok: true,
           page,

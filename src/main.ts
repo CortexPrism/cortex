@@ -65,29 +65,6 @@ for (const entry of registry) {
   }
 }
 
-// Backward-compat aliases for renamed commands
-const aliases: Record<string, string[]> = {
-  'chat': ['agent', 'chat'],
-  'tui': ['agent', 'tui'],
-  'serve': ['server', 'start'],
-  'restart': ['daemon', 'restart'],
-  'start': ['daemon', 'start'],
-  'stop': ['daemon', 'stop'],
-};
-for (const [alias, target] of Object.entries(aliases)) {
-  const aliasCmd = new Command()
-    .name(alias)
-    .description(`Alias for '${target.join(' ')}' (deprecated)`)
-    .action(async () => {
-      console.error(
-        `Warning: 'cortex ${alias}' is deprecated. Use 'cortex ${target.join(' ')}' instead.`,
-      );
-      Deno.exit(1);
-    });
-  // deno-lint-ignore no-explicit-any
-  (program as any).command(alias, aliasCmd);
-}
-
 // deno-lint-ignore no-explicit-any
 await mergePluginCommands(program as any);
 

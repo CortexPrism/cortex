@@ -9,7 +9,6 @@
     "jsr:@cliffy/prompt@^1.2.1": "1.2.1",
     "jsr:@cliffy/table@1.2.1": "1.2.1",
     "jsr:@std/assert@^1.0.19": "1.0.19",
-    "jsr:@std/datetime@~0.225.2": "0.225.7",
     "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.3": "1.0.10",
@@ -89,9 +88,6 @@
       "dependencies": [
         "jsr:@std/internal@^1.0.12"
       ]
-    },
-    "@std/datetime@0.225.7": {
-      "integrity": "e62c6c454a0ecfc2918fe41e7a621e0f334a6f82605e98fd32eb1e6371999328"
     },
     "@std/encoding@1.0.10": {
       "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
@@ -1017,7 +1013,6 @@
       "jsr:@cliffy/command@^1.2.1",
       "jsr:@cliffy/prompt@^1.2.1",
       "jsr:@std/assert@^1.0.19",
-      "jsr:@std/datetime@~0.225.2",
       "jsr:@std/encoding@^1.0.10",
       "jsr:@std/fmt@^1.0.3",
       "jsr:@std/fs@^1.0.6",

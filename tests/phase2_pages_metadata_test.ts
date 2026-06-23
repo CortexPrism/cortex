@@ -1,5 +1,5 @@
 import { handleApi } from '../src/server/new-router.ts';
-import { assertEquals } from 'https://deno.land/std@0.203.0/testing/asserts.ts';
+import { assertEquals } from '@std/assert';
 
 Deno.test('Phase2 pages metadata endpoint (dev mode only)', async () => {
   Deno.env.set('CORTEX_DEV_MODE', '1');

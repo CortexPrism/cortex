@@ -213,4 +213,30 @@ export const registry: CommandEntry[] = [
     load: () => import('./tunnel-cmd.ts').then((m) => m.tunnelCommand._cmd),
     needs: ['config'],
   },
+  {
+    path: ['run'],
+    load: () => import('./run.ts').then((m) => m.runCommand._cmd),
+    needs: ['config'],
+  },
+  {
+    path: ['update'],
+    load: () => import('./update-cmd.ts').then((m) => m.updateCommand._cmd),
+  },
+  {
+    path: ['migrate'],
+    load: () => import('./migrate.ts').then((m) => m.migrateCommand._cmd),
+    needs: ['migrations'],
+  },
+  {
+    path: ['service'],
+    load: () => import('./service-cmd.ts').then((m) => m.serviceCommand._cmd),
+  },
+  {
+    path: ['qm'],
+    load: () => import('./quartermaster-cmd.ts').then((m) => m.quartermasterCommand._cmd),
+  },
+  {
+    path: ['mqm'],
+    load: () => import('./model-qm-cmd.ts').then((m) => m.mqmCommand._cmd),
+  },
 ];

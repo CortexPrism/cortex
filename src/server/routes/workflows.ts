@@ -100,11 +100,24 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/workflows\/([^/]+)$/);
       if (!m) return notFound();
-      const body = await req.json() as { name?: string; definition?: unknown };
-      const { getWorkflow } = await import('../../workflow/engine.ts');
-      const wf = getWorkflow(m[1]);
+      const body = await req.json() as { name?: string; description?: string; definition?: unknown };
+      const { getWorkflow, registerWorkflow, deleteWorkflow } = await import('../../workflow/engine.ts');
+      const existingName = m[1];
+      const wf = getWorkflow(existingName);
       if (!wf) return notFound('Workflow not found');
-      return json({ ok: true });
+
+      if (body.description !== undefined) {
+        wf.description = body.description;
+      }
+      if (body.name !== undefined && body.name !== existingName) {
+        const existingTarget = getWorkflow(body.name);
+        if (existingTarget) return err('A workflow with that name already exists', 409);
+        wf.name = body.name;
+        deleteWorkflow(existingName);
+        registerWorkflow(wf);
+      }
+
+      return json({ ok: true, name: wf.name, description: wf.description });
     },
   },
   {

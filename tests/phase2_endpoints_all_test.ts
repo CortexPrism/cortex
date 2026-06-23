@@ -1,5 +1,5 @@
 import { handleApi } from '../src/server/new-router.ts';
-import { assertEquals } from 'https://deno.land/std@0.203.0/testing/asserts.ts';
+import { assertEquals } from '@std/assert';
 
 function buildUrl(page: number, section: string) {
   return `http://localhost/api/phase2/page${page}/${section}`;

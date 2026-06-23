@@ -1,3 +1,13 @@
+/**
+ * Sandbox contracts — aspirational multi-backend abstraction layer.
+ *
+ * NOTE: ISandboxProvider and ISandboxBackend are currently not implemented.
+ * The active sandbox executor (src/sandbox/executor.ts) uses direct functions
+ * rather than this contract boundary. These interfaces serve as a reference
+ * for a future multi-backend sandbox system (docker / subprocess / gVisor /
+ * E2B / Daytona).
+ */
+
 export type SandboxRuntime = 'docker' | 'subprocess' | 'gvisor' | 'e2b' | 'daytona';
 
 export interface ISandboxOptions {

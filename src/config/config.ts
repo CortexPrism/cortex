@@ -1,5 +1,8 @@
 import { exists } from '@std/fs';
 import { PATHS } from './paths.ts';
+import type { ProviderKind } from '../../packages/core/contracts/config.ts';
+
+export type { ProviderKind };
 
 const CONFIG_ENCRYPTION_PREFIX = 'enc:';
 
@@ -84,32 +87,6 @@ async function decryptProvider(
     secretKey: (await decryptValue(provider.secretKey)) ?? undefined,
   };
 }
-
-export type ProviderKind =
-  | 'anthropic'
-  | 'openai'
-  | 'ollama'
-  | 'google'
-  | 'mistral'
-  | 'groq'
-  | 'deepseek'
-  | 'openrouter'
-  | 'xai'
-  | 'together'
-  | 'bedrock'
-  | 'cohere'
-  | 'kilo'
-  | 'cerebras'
-  | 'fireworks'
-  | 'perplexity'
-  | 'nvidia'
-  | 'moonshot'
-  | 'novita'
-  | 'lmstudio'
-  | 'litellm'
-  | 'huggingface'
-  | 'alibaba'
-  | 'venice';
 
 export interface ProviderConfig {
   kind: ProviderKind;

@@ -25,11 +25,31 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 - **`decryptValue()` returned encrypted `enc:` string on failure** — the config decryption helper caught errors but returned the raw `enc:…` ciphertext instead of `null`. Since the encrypted string is truthy, the `?? null` fallback never triggered, and corrupted encrypted blobs flowed through `loadConfig()` into the vault migration code. Now returns `null` on decryption failure. Added belt-and-suspenders `startsWith('enc:')` guards in `getGitHubToken()` and `loadGitHubToken()` to skip any value that survived. (`src/config/config.ts`, `src/workspace/github.ts`, `src/server/ui/js/12_settings.ts`)
 
+- **Six CLI aliases silently `Deno.exit(1)` instead of delegating** — `cortex chat`, `tui`, `serve`, `start`, `stop`, and `restart` were registered as top-level wrapper commands that printed a deprecation warning and exited with code 1, preventing any actual work. The real implementations in `chat.ts`, `tui-cmd.ts`, `serve.ts`, `start.ts`, and `stop.ts` were fully functional but unreachable through these aliases. Removed the dead alias stubs from `src/main.ts`; users now reach the canonical paths (`cortex agent chat`, `cortex agent tui`, `cortex server start`, `cortex daemon start|stop|restart`) directly.
+
+- **Six fully-implemented CLI commands never registered** — `cortex run`, `cortex update`, `cortex migrate`, `cortex service`, `cortex qm`, and `cortex mqm` had complete implementations (10–293 lines each) but were missing from the active command registry in `src/cli/registry.ts`. Three were in the stale `packages/cli/src/cli/registry.ts` (never imported); three were registered nowhere. All six now registered in the active registry. (`src/cli/registry.ts`)
+
+- **`PUT /api/workflows/:id` parsed update body but never applied mutations** — the handler deserialised `body.name` and `body.description`, validated the workflow exists, then returned `{ ok: true }` without modifying anything. Now applies `description` and `name` updates directly on the `Workflow` instance; renames atomically (delete old name, register under new name) and returns a 409 if the target name is already taken. (`src/server/routes/workflows.ts`)
+
+- **Pipeline stages `pre-reflect` and `post-reflect` defined but never wired** — both were listed in the `PipelineStage` union type but had zero `runHooksForStage()` calls anywhere in the agent loop. The reflection logic in `src/agent/post/background.ts` ran `reflectOnTurn()` and `adversarialReflection()` directly, bypassing the hook system. Now wraps reflection with `pre-reflect` and `post-reflect` hook invocations, building an `AgentState` from the runtime `TurnContext` and passing reflection results (standard + adversarial JSON) into the `post-reflect` stage. (`src/agent/post/background.ts`)
+
+- **Stale `packages/cli/src/cli/registry.ts` removed** — the file was byte-for-byte identical to the active `src/cli/registry.ts` at one point but had drifted (missing 2 entries, held 3 stale entries), and was never imported by anything. Deleted.
+
+- **`AGENTS.md` contained wrong migration paths and count** — claimed migrations live at `packages/core/src/db/migrations/`, registration at `packages/core/src/db/migrate.ts`, and "currently 41 migrations." Corrected to `src/db/migrations/`, `src/db/migrate.ts`, and 42 respectively.
+
+- **Three test files used legacy `deno.land/std@0.203.0/testing/asserts.ts` imports** — `tests/phase2_endpoints_test.ts`, `tests/phase2_endpoints_all_test.ts`, and `tests/phase2_pages_metadata_test.ts` imported from the old Deno CDN URL instead of the project-consistent `@std/assert` import map entry. Updated to `import { assertEquals } from '@std/assert'`.
+
+- **Phase2 dev-mode endpoints now annotated with `TODO(phase2)`** — the three `/api/phase2/` endpoint handlers returned hardcoded placeholder `<div>` strings; now carry explicit `TODO(phase2)` comments describing the planned real analytics/config/state/stats data. (`src/server/routes/health.ts`)
+
 ### Changed
 
-- **GitHub token consolidated to vault** — the Settings page had two duplicate "GitHub Token" fields under Automatic Updates and Plugin Updates, both storing the value in plaintext `config.json`. Replaced with a single vault-backed field: writes to `POST /api/vault/store` (AES-256-GCM encrypted), reads from `GET /api/vault/get`. On first access, existing tokens in `config.update.githubToken` and `config.pluginUpdate.githubToken` auto-migrate to the vault. `getGitHubToken()` now checks vault → env → config (backward compatible). (`src/server/ui/js/12_settings.ts`, `src/server/routes/vault.ts`, `src/workspace/github.ts`)
+- **`ProviderKind` consolidated to single source of truth** — the 24-provider union type was defined identically in three places: `packages/core/contracts/config.ts` (contract layer), `src/config/config.ts` (implementation), and `packages/core/src/config/config.ts` (package implementation). Both implementation files now `import type { ProviderKind }` from the contracts file and re-export it. Adding a new provider now requires changes in only the contracts file. (`src/config/config.ts`, `packages/core/src/config/config.ts`)
 
-- **Added `GET /api/vault/get?key=` endpoint** for reading individual vault entries by name. (`src/server/routes/vault.ts`)
+- **`packages/server/src/server/server.ts` replaced with canonical re-export** — the 321-line packages copy was missing 98 lines of startup logic (install manifest detection, vault availability check, pre-start sanity checks, auto-tunnel, auto-channels, vault guard in UI auth) compared to the canonical `src/server/server.ts`. Since zero files import the packages copy, replaced the entire file with a 1-line `export { startServer, type ServeOptions }` re-export of the canonical version.
+
+- **Sandbox contracts documented as aspirational** — `ISandboxProvider` and `ISandboxBackend` in `packages/gate/contracts/sandbox.ts` had zero implementations (the active executor uses direct functions). Added a header doc comment noting these are aspirational design contracts for a future multi-backend sandbox system (Docker / subprocess / gVisor / E2B / Daytona).
+
+- **Removed unused `@std/datetime` and bare `@std/encoding` from `deno.json` import map** — `@std/datetime` had zero imports across all 1000+ `.ts` files. The bare `@std/encoding` entry was never used; all actual encoding imports go through `@std/encoding/base64`. Both removed. (`deno.json`)
 
 ## [0.51.0] - 2026-06-23
 

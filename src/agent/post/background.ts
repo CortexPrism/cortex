@@ -6,6 +6,8 @@ import { extractSkillFromSession } from '../../memory/skills.ts';
 import { detectAndPersistPreference } from '../helpers/preferences.ts';
 import type { TurnContext } from '../pipeline/context.ts';
 import { pluginManager } from '../../plugins/manager.ts';
+import { createPipelineContext, runHooksForStage } from '../../pipeline/manager.ts';
+import type { AgentState } from '../../pipeline/types.ts';
 
 const _log = logger('agent:loop');
 
@@ -37,6 +39,27 @@ export function fireBackgroundTasks(ctx: TurnContext): void {
 
       if (options.enableReflection && response) {
         try {
+          const reflectState: AgentState = {
+            sessionId,
+            turnId,
+            tokensUsed: ctx.tokensIn + ctx.tokensOut,
+            costUsd: ctx.costUsd,
+            toolCallsMade: ctx.state.toolCallsMade,
+            startedAt: new Date(ctx.started).toISOString(),
+            userMessage,
+            model: effectiveModel,
+          };
+          const preReflectCtx = createPipelineContext({
+            stage: 'pre-reflect',
+            sessionId,
+            turnId,
+            state: reflectState,
+            input: userMessage,
+            output: response,
+          });
+          const preResult = await runHooksForStage('pre-reflect', preReflectCtx);
+          if (preResult.aborted) return;
+
           const r = await reflectOnTurn(
             userMessage,
             response,
@@ -63,6 +86,19 @@ export function fireBackgroundTasks(ctx: TurnContext): void {
             options.reasoningEffort,
           );
           await storeReflection(sessionId, adv, 'adversarial');
+
+          await runHooksForStage(
+            'post-reflect',
+            createPipelineContext({
+              stage: 'post-reflect',
+              sessionId,
+              turnId,
+              state: reflectState,
+              input: userMessage,
+              output: response,
+              reflection: JSON.stringify({ standard: r, adversarial: adv }),
+            }),
+          );
         } catch (reflectionErr) {
           _log.warn('Reflection failed', {
             error: (reflectionErr as Error).message,
