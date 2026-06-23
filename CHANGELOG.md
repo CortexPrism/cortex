@@ -33,6 +33,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed
 
+- **Memori checkpoints never captured** — the entire checkpoint infrastructure (`captureCheckpoint`,
+  `saveCheckpoint`, `restoreCheckpoint`) was implemented but never wired into the agent lifecycle.
+  Added fire-and-forget checkpoint capture to `runCleanup()` so every agent turn persists a full
+  state snapshot (`conversation`, `memory`, `tools`, `reasoning`, `workspace`, `metadata`) to the
+  `memori_checkpoints` table. Auto-prunes to the most recent 5 checkpoints per session.
+  (`src/agent/post/cleanup.ts`)
 - **Server channel auto-start never worked** — the auto-start loop used
   `mod.default || mod.createPlugin?.()` to instantiate channel plugins, but all channel files export
   named classes (e.g. `DiscordChannelPlugin`), not default exports. Replaced with a `switch` on
