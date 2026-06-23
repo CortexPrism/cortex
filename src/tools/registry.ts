@@ -39,6 +39,13 @@ import { serpapiSearchTool } from './builtin/web/serpapi_search.ts';
 import { firecrawlTool } from './builtin/web/firecrawl.ts';
 import { computerTool } from './builtin/computer.ts';
 import { mcpAgentTool } from './builtin/mcp_agent.ts';
+import {
+  toolCallForgedTool,
+  toolExportTool,
+  toolForgeTool,
+  toolListForgedTool,
+} from './builtin/tool_forge.ts';
+import orchestrateTool from './builtin/orchestrate.ts';
 import { fileGlobTool } from './builtin/workspace/file_glob.ts';
 import {
   githubIssueCreateTool,
@@ -236,6 +243,11 @@ export async function registerAllBuiltins(
     mcp_agent: mcpAgentTool,
     image_analyze: imageAnalyzeTool,
     structured_extract: structuredExtractTool,
+    tool_forge: toolForgeTool,
+    forged_call: toolCallForgedTool,
+    tool_export: toolExportTool,
+    tool_list_forged: toolListForgedTool,
+    orchestrate: orchestrateTool,
   };
 
   // ═════════════════════════════════════════════════════════

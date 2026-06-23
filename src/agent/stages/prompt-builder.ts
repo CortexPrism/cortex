@@ -11,6 +11,7 @@ import { injectToolsIntoPrompt } from '../../tools/executor.ts';
 import { buildNodeContextSection, injectNodeContext } from '../node-context.ts';
 import { i18n } from '../../i18n/service.ts';
 import type { TurnContext } from '../pipeline/context.ts';
+import { buildPersonalityPrompt, parsePersonality } from '../personality.ts';
 
 export const FALLBACK_SYSTEM_PROMPT =
   'You are Cortex, an intelligent agentic assistant. Be helpful, precise, and honest.';
@@ -18,7 +19,17 @@ export const FALLBACK_SYSTEM_PROMPT =
 export async function buildPrompt(ctx: TurnContext): Promise<void> {
   const { options, effectiveInput } = ctx;
   const { registry, toolCtx } = ctx;
-  const systemPrompt = options.systemPrompt || FALLBACK_SYSTEM_PROMPT;
+  let systemPrompt = options.systemPrompt || FALLBACK_SYSTEM_PROMPT;
+
+  // Inject HEXACO personality if configured on the agent
+  if (options.agentConfig?.personality) {
+    const personalityBlock = buildPersonalityPrompt(
+      parsePersonality(options.agentConfig.personality),
+    );
+    if (personalityBlock) {
+      systemPrompt = personalityBlock + '\n\n' + systemPrompt;
+    }
+  }
   const metaAssessment = ctx.metaAssessment;
 
   const memoryEnrichedPrompt = await injectMemory(

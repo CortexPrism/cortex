@@ -4,6 +4,7 @@ import type { Db } from '../db/client.ts';
 import type { ToolRegistry } from '../tools/registry.ts';
 import type { ToolContext } from '../tools/types.ts';
 import type { EmbeddingProvider } from '../memory/embeddings.ts';
+import type { AgentConfig } from '../config/config.ts';
 
 export interface AgentTurnOptions {
   userMessage: string;
@@ -56,6 +57,8 @@ export interface AgentTurnOptions {
    * When triggered, the turn returns a partial response gracefully.
    */
   signal?: AbortSignal;
+  /** Full agent config — used for personality injection and MQM routing hints */
+  agentConfig?: AgentConfig;
 }
 
 export interface AgentTurnResult {

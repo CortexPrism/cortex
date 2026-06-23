@@ -560,6 +560,7 @@ export async function handleWebSocket(req: Request): Promise<Response> {
         persistUserMessage: false,
         persistAssistantMessage: false,
         signal,
+        agentConfig: activeAgent ?? undefined,
         ...providerSpecificOpts,
         onChunk: (() => {
           // Buffer to accumulate chunks for proper tool call detection

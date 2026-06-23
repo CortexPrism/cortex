@@ -1,0 +1,51 @@
+name: Memory Benchmark
+
+on:
+  schedule:
+    # Run every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: 'Number of questions to sample (0 = all)'
+        required: false
+        default: '10'
+
+jobs:
+  memory-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run memory benchmark
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CORTEX_DATA_DIR: /tmp/cortex-bench
+        run: |
+          deno run --allow-all src/main.ts eval memory \
+            --sample ${{ github.event.inputs.sample || '10' }} \
+            --json > /tmp/bench_results.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-bench-results-${{ github.run_number }}
+          path: /tmp/bench_results.json
+          retention-days: 90
+
+      - name: Print summary
+        run: |
+          echo "## Memory Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/bench_results.json | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          print(f'Accuracy: {d[\"accuracy\"]*100:.1f}%  ({d[\"correct\"]}/{d[\"totalQuestions\"]})')
+          print(f'Model:    {d[\"model\"]}')
+          print(f'Avg ms:   {d[\"avgDurationMs\"]}')
+          " >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

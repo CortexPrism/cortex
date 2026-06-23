@@ -43,6 +43,7 @@ import { PAGE_DAEMONS } from './pages/daemons.ts';
 import { PAGE_TOOLS } from './pages/tools.ts';
 import { PAGE_METACOGNITION } from './pages/metacognition.ts';
 import { PAGE_TUNNEL } from './pages/tunnel.ts';
+import { PAGE_EVAL_MEMORY } from './pages/eval-memory.ts';
 
 import { JS_00_INIT } from './js/00_init.ts';
 import { JS_01_HELPERS } from './js/01_helpers.ts';
@@ -70,6 +71,7 @@ import { JS_22_MCP_MEMORI } from './js/22_mcp_memori.ts';
 import { JS_23_SANDBOX } from './js/23_sandbox.ts';
 import { JS_24_DEFERRED } from './js/24_deferred.ts';
 import { JS_25_TUNNEL } from './js/25_tunnel.ts';
+import { JS_26_EVAL_MEMORY } from './js/26_eval_memory.ts';
 
 const HEAD = `<!DOCTYPE html>
 <html lang="en">
@@ -117,7 +119,8 @@ const ALL_PAGES = PAGE_CHAT +
   PAGE_DAEMONS +
   PAGE_TOOLS +
   PAGE_METACOGNITION +
-  PAGE_TUNNEL;
+  PAGE_TUNNEL +
+  PAGE_EVAL_MEMORY;
 
 const ALL_JS = JS_00_INIT +
   JS_01_HELPERS +
@@ -144,7 +147,8 @@ const ALL_JS = JS_00_INIT +
   JS_22_MCP_MEMORI +
   JS_23_SANDBOX +
   JS_24_DEFERRED +
-  JS_25_TUNNEL;
+  JS_25_TUNNEL +
+  JS_26_EVAL_MEMORY;
 
 function buildCdnAssets(cdn: string, fonts: string, d3: string): string {
   return `<script src="${cdn}/npm/marked/marked.min.js"></script>

@@ -118,60 +118,218 @@ async function loadMcpGatewayPage() {
 }
 
 // ── Memori Page ─────────────────────────────────────────
+var _memoriCheckpoints = [];
+var _memoriSelected = null;
+
 async function loadMemoriPage() {
-  var c = document.getElementById('memori-content');
-  if (!c) return;
-  c.innerHTML = '<div class="widget-loading">Loading checkpoints…</div>';
+  var listPanel = document.getElementById('memori-list-panel');
+  var detailPanel = document.getElementById('memori-detail-panel');
+  if (!listPanel) return;
+  listPanel.innerHTML = '<div class="widget-loading">Loading checkpoints…</div>';
   try {
     var sessionFilter = document.getElementById('memori-session-filter')?.value || '';
-    var url = '/api/memori/checkpoints' + (sessionFilter ? '?sessionId=' + encodeURIComponent(sessionFilter) : '?limit=20');
+    var url = BASE + '/api/memori/checkpoints' + (sessionFilter ? '?sessionId=' + encodeURIComponent(sessionFilter) + '&limit=100' : '?limit=60');
     var r = await fetch(url);
     var data = await r.json();
-    var checkpoints = data.checkpoints || [];
-    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;">';
-    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + checkpoints.length + '</div><div style="font-size:11px;color:var(--text3);">Checkpoints</div></div>';
-    html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;">' + checkpoints.reduce(function(s,c){return s + (c.toolCallCount||0)},0) + '</div><div style="font-size:11px;color:var(--text3);">Tool Calls</div></div>';
-    html += '</div>';
-    if (checkpoints.length === 0) {
-      html += '<div class="empty">No checkpoints found. Sessions automatically checkpoint after each turn.</div>';
-    } else {
-      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
-      checkpoints.forEach(function(cp) {
-        html += '<div class="card" style="padding:12px;">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">';
-        html += '<div><div style="font-size:12px;font-weight:500;">Turn ' + cp.turnNumber + '</div><div style="font-size:10px;color:var(--text3);">' + esc(cp.sessionId || '') + ' • ' + new Date(cp.timestamp).toLocaleString() + '</div></div>';
-        html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">';
-        html += '<span class="badge">' + (cp.tokensUsed||0) + ' tokens</span>';
-        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" data-cp-id="' + esc(cp.id) + '" data-session-id="' + esc(cp.sessionId || '') + '" onclick="restoreCheckpointUI(this.dataset.cpId, this.dataset.sessionId)">Restore</button>';
-        html += '</div>';
-        html += '</div>';
-        if (cp.goalSnapshot) html += '<div style="font-size:11px;color:var(--text2);margin-top:6px;">' + esc(cp.goalSnapshot) + '</div>';
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-    c.innerHTML = html;
+    _memoriCheckpoints = data.checkpoints || [];
+    _memoriSelected = null;
+    if (detailPanel) detailPanel.innerHTML = '<div style="color:var(--text3);font-size:12px;margin-top:40px;text-align:center;">Select a checkpoint to inspect</div>';
+    renderMemoriList();
   } catch(e) {
-    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load checkpoints: ' + esc(String(e)) + '</div>';
+    listPanel.innerHTML = '<div style="color:var(--accent-red);font-size:11px;padding:8px;">Failed to load: ' + esc(String(e)) + '</div>';
   }
 }
 
-async function restoreCheckpointUI(checkpointId, checkpointSessionId) {
-  if (!checkpointId) return;
-  const ok = await confirmAction('Restore checkpoint', 'Revert this session to the selected checkpoint?', 'Restore');
-  if (!ok) return;
-  const res = await fetch(BASE + '/api/memori/checkpoints/' + encodeURIComponent(checkpointId) + '/restore', {
-    method: 'POST',
-  });
-  if (!res.ok) {
-    toast('Checkpoint restore failed', 'error');
+function renderMemoriList() {
+  var panel = document.getElementById('memori-list-panel');
+  if (!panel) return;
+  var cps = _memoriCheckpoints;
+  if (cps.length === 0) {
+    panel.innerHTML = '<div class="empty" style="font-size:11px;">No checkpoints found.<br>Sessions checkpoint after each turn.</div>';
     return;
   }
-  toast('Checkpoint restored', 'success');
-  if (checkpointSessionId && checkpointSessionId === sessionId) {
-    await loadSessionMessages(checkpointSessionId);
+  // Group by sessionId
+  var groups = {};
+  var groupOrder = [];
+  cps.forEach(function(cp) {
+    var sid = cp.sessionId || 'unknown';
+    if (!groups[sid]) { groups[sid] = []; groupOrder.push(sid); }
+    groups[sid].push(cp);
+  });
+  var html = '';
+  groupOrder.forEach(function(sid) {
+    var items = groups[sid];
+    var latest = items[0];
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="font-size:10px;font-weight:600;color:var(--text3);padding:0 2px 4px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">' + esc(sid) + '</span>';
+    html += '<span style="color:var(--text3);">' + items.length + ' turns</span></div>';
+    html += '<div style="position:relative;padding-left:14px;">';
+    html += '<div style="position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--border);border-radius:1px;"></div>';
+    items.forEach(function(cp, idx) {
+      var isSelected = _memoriSelected && _memoriSelected.id === cp.id;
+      var isLatest = idx === 0;
+      html += '<div class="memori-cp-item" data-cp-id="' + esc(cp.id) + '" onclick="selectMemoriCheckpoint(' + JSON.stringify(esc(cp.id)) + ')" style="position:relative;padding:7px 8px 7px 10px;border-radius:6px;cursor:pointer;margin-bottom:3px;' + (isSelected ? 'background:var(--accent);color:#fff;' : 'background:transparent;') + '">';
+      html += '<div style="position:absolute;left:-11px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:' + (isLatest ? 'var(--accent)' : 'var(--border)') + ';border:2px solid var(--bg);z-index:1;"></div>';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">';
+      html += '<span style="font-size:11px;font-weight:' + (isLatest?'600':'400') + ';">Turn ' + cp.turnNumber + '</span>';
+      html += '<span style="font-size:10px;opacity:.7;">' + fmtTimeAgo(cp.timestamp) + '</span>';
+      html += '</div>';
+      if (cp.goalSnapshot) html += '<div style="font-size:10px;opacity:.8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(cp.goalSnapshot) + '</div>';
+      html += '<div style="font-size:10px;opacity:.6;margin-top:1px;">' + (cp.messageCount||0) + ' msgs · ' + (cp.toolCallCount||0) + ' tools · ' + fmtTokens(cp.tokensUsed||0) + '</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+  panel.innerHTML = html;
+}
+
+async function selectMemoriCheckpoint(cpId) {
+  var cp = _memoriCheckpoints.find(function(c) { return c.id === cpId; });
+  if (!cp) return;
+  _memoriSelected = cp;
+  renderMemoriList();
+  var detailPanel = document.getElementById('memori-detail-panel');
+  if (!detailPanel) return;
+  detailPanel.innerHTML = '<div class="widget-loading">Loading checkpoint…</div>';
+  try {
+    var r = await fetch(BASE + '/api/memori/checkpoints/' + encodeURIComponent(cpId));
+    if (!r.ok) { detailPanel.innerHTML = '<div style="color:var(--accent-red);font-size:11px;">Not found</div>'; return; }
+    var full = await r.json();
+    renderMemoriDetail(full);
+  } catch(e) {
+    detailPanel.innerHTML = '<div style="color:var(--accent-red);font-size:11px;">Failed: ' + esc(String(e)) + '</div>';
   }
-  await loadMemoriPage();
+}
+
+function renderMemoriDetail(cp) {
+  var panel = document.getElementById('memori-detail-panel');
+  if (!panel) return;
+  var msgs = (cp.conversation && cp.conversation.messages) || [];
+  var tools = (cp.tools && cp.tools.toolCallHistory) || [];
+  var reasoning = cp.reasoning || {};
+  var meta = cp.metadata || {};
+  var html = '';
+  // Header
+  html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;">';
+  html += '<div><div style="font-size:14px;font-weight:600;">Turn ' + cp.turnNumber + '</div>';
+  html += '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + esc(cp.sessionId) + ' · ' + new Date(cp.timestamp).toLocaleString() + '</div></div>';
+  html += '<div style="display:flex;gap:6px;flex-shrink:0;">';
+  html += '<button class="btn btn-ghost" style="font-size:11px;" onclick="resumeCheckpointUI(' + JSON.stringify(esc(cp.id)) + ',' + JSON.stringify(esc(cp.sessionId)) + ')">⏮ Resume here</button>';
+  html += '<button class="btn" style="font-size:11px;" onclick="forkCheckpointUI(' + JSON.stringify(esc(cp.id)) + ')">⑂ Branch from here</button>';
+  html += '</div></div>';
+  // Stats row
+  html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">';
+  html += memoriStat(msgs.length + ' messages', '💬');
+  html += memoriStat(tools.length + ' tool calls', '🔧');
+  html += memoriStat(fmtTokens(meta.totalTokensUsed||0) + ' tokens', '⚡');
+  html += memoriStat('$' + ((meta.totalCostUsd||0).toFixed(4)), '💰');
+  if (meta.modelName) html += memoriStat(esc(meta.modelName), '🤖');
+  html += '</div>';
+  // Goal
+  if (reasoning.currentGoal) {
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Current Goal</div>';
+    html += '<div style="font-size:12px;background:var(--bg2);border-radius:6px;padding:8px 10px;">' + esc(reasoning.currentGoal) + '</div>';
+    html += '</div>';
+  }
+  // Completed goals
+  if (reasoning.completedGoals && reasoning.completedGoals.length > 0) {
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Completed (' + reasoning.completedGoals.length + ')</div>';
+    html += '<div style="font-size:11px;display:flex;flex-direction:column;gap:3px;">' + reasoning.completedGoals.map(function(g) { return '<div style="display:flex;gap:6px;"><span style="color:var(--accent-green);">✓</span><span>' + esc(g) + '</span></div>'; }).join('') + '</div>';
+    html += '</div>';
+  }
+  // Tool call history
+  if (tools.length > 0) {
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">Tool Calls</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+    tools.slice(0, 20).forEach(function(t) {
+      var statusColor = t.success === false ? 'var(--accent-red)' : 'var(--accent-green)';
+      html += '<div style="font-size:11px;background:var(--bg2);border-radius:5px;padding:5px 8px;display:flex;align-items:center;gap:8px;">';
+      html += '<span style="color:' + statusColor + ';font-size:10px;">' + (t.success === false ? '✗' : '✓') + '</span>';
+      html += '<span style="font-weight:500;font-family:monospace;">' + esc(t.toolName) + '</span>';
+      if (t.durationMs) html += '<span style="color:var(--text3);margin-left:auto;">' + t.durationMs + 'ms</span>';
+      html += '</div>';
+    });
+    if (tools.length > 20) html += '<div style="font-size:10px;color:var(--text3);padding:2px 0;">…and ' + (tools.length-20) + ' more</div>';
+    html += '</div></div>';
+  }
+  // Recent messages preview
+  if (msgs.length > 0) {
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">Last ' + Math.min(msgs.length,4) + ' Messages</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+    msgs.slice(-4).forEach(function(m) {
+      var roleColor = m.role==='user' ? 'var(--accent)' : m.role==='assistant' ? 'var(--accent-green)' : 'var(--text3)';
+      html += '<div style="font-size:11px;background:var(--bg2);border-radius:5px;padding:6px 10px;">';
+      html += '<div style="font-size:10px;font-weight:600;color:' + roleColor + ';margin-bottom:3px;">' + m.role.toUpperCase() + '</div>';
+      html += '<div style="color:var(--text2);white-space:pre-wrap;word-break:break-word;">' + esc(m.content.slice(0,300)) + (m.content.length>300?'…':'') + '</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
+  // Workspace
+  var ws = cp.workspace;
+  if (ws && (ws.gitBranch || ws.openFiles && ws.openFiles.length > 0)) {
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Workspace</div>';
+    html += '<div style="font-size:11px;background:var(--bg2);border-radius:6px;padding:8px 10px;">';
+    if (ws.workingDir) html += '<div><span style="color:var(--text3);">dir:</span> <code>' + esc(ws.workingDir) + '</code></div>';
+    if (ws.gitBranch) html += '<div><span style="color:var(--text3);">branch:</span> <code>' + esc(ws.gitBranch) + '</code>' + (ws.gitHeadCommit ? ' <code style="color:var(--text3);">' + esc(ws.gitHeadCommit.slice(0,8)) + '</code>' : '') + '</div>';
+    if (ws.openFiles && ws.openFiles.length > 0) html += '<div style="margin-top:4px;"><span style="color:var(--text3);">open files:</span> ' + ws.openFiles.slice(0,5).map(function(f){return '<code>'+esc(f)+'</code>';}).join(', ') + '</div>';
+    html += '</div></div>';
+  }
+  panel.innerHTML = html;
+}
+
+function memoriStat(label, icon) {
+  return '<div style="display:flex;align-items:center;gap:4px;font-size:11px;background:var(--bg2);border-radius:5px;padding:4px 8px;">' + icon + ' ' + label + '</div>';
+}
+
+function fmtTokens(n) {
+  if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function fmtTimeAgo(ts) {
+  if (!ts) return '';
+  var diff = Date.now() - new Date(ts).getTime();
+  var s = Math.floor(diff/1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+
+async function resumeCheckpointUI(checkpointId, checkpointSessionId) {
+  if (!checkpointId) return;
+  var ok = await confirmAction('Resume here', 'Roll this session back to turn ' + (_memoriSelected ? _memoriSelected.turnNumber : '?') + '? All turns after this checkpoint will be replaced.', 'Resume here');
+  if (!ok) return;
+  var res = await fetch(BASE + '/api/memori/checkpoints/' + encodeURIComponent(checkpointId) + '/restore', { method: 'POST' });
+  if (!res.ok) { toast('Restore failed', 'error'); return; }
+  toast('Session restored to checkpoint', 'success');
+  if (checkpointSessionId && typeof loadSessionMessages === 'function') {
+    if (checkpointSessionId === sessionId) loadSessionMessages(checkpointSessionId);
+  }
+  loadMemoriPage();
+}
+
+async function forkCheckpointUI(checkpointId) {
+  if (!checkpointId) return;
+  var turnNum = _memoriSelected ? _memoriSelected.turnNumber : '?';
+  var ok = await confirmAction('Branch from here', 'Create a new session branching from turn ' + turnNum + '? The original session is untouched.', 'Branch from here');
+  if (!ok) return;
+  var res = await fetch(BASE + '/api/memori/checkpoints/' + encodeURIComponent(checkpointId) + '/fork', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) { toast('Fork failed', 'error'); return; }
+  var data = await res.json();
+  toast('Branched → ' + (data.newSessionId || 'new session'), 'success');
+  loadMemoriPage();
 }
 
 

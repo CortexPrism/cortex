@@ -9,6 +9,39 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Checkpoint Time-Travel UI** — the Memori page (`/memori`) now renders a full two-panel timeline: a session-grouped checkpoint list on the left and a rich detail view on the right. Each checkpoint shows turn number, goals, message count, tool calls, and workspace snapshot. Two action buttons — **Resume here** (restore the checkpoint into the current session) and **Branch from here** (fork into a new child session) — are available on every checkpoint. Helper functions `fmtTokens`, `fmtTimeAgo`, and `memoriStat` power the compact summary cards. (`src/server/ui/pages/memori.ts`, `src/server/ui/js/22_mcp_memori.ts`)
+
+- **Runtime Tool Forging** — agents can now create, test, and export custom tools at runtime via three new built-in tools:
+  - `tool_forge` — takes `name`, `description`, and TypeScript `code`; runs a static safety scan against `UNSAFE_PATTERNS`; optionally calls an LLM security judge; executes pure-compute code in a Deno Worker (no net/read/write permissions) or shell-touching code in the existing Docker sandbox; registers the result in a session-scoped forged-tool registry.
+  - `forged_call` — invokes a previously forged tool by name with arbitrary arguments.
+  - `tool_export` — promotes a forged tool to the persistent skills system (lifecycle: `candidate`) so it survives across sessions.
+  - `tool_list_forged` — lists all forged tools registered in the current session.
+  (`src/tools/builtin/tool_forge.ts`, `src/tools/registry.ts`)
+
+- **Multi-Agent Orchestration — `orchestrate` tool with 6 strategies** — a single `orchestrate` tool now exposes six composable multi-agent execution strategies, all backed by `spawnSubAgent`:
+  - `sequential` — chains agents; each receives the previous agent's output as context.
+  - `parallel` — runs agents concurrently via `Promise.allSettled`; a synthesiser agent merges outputs.
+  - `debate` — N agents argue assigned positions for R rounds; an impartial judge synthesises the final answer.
+  - `review-loop` — a writer agent drafts, a reviewer agent critiques, iterating up to `max_iterations` times until the reviewer emits an approval keyword.
+  - `hierarchical` — a coordinator agent decomposes the task, worker agents execute sub-tasks in parallel, the coordinator synthesises results.
+  - `graph` — user-defined DAG of `{id, task, dependsOn[]}` nodes; topological execution with dependency context injection.
+  (`src/agent/orchestration/strategies.ts`, `src/tools/builtin/orchestrate.ts`, `src/tools/registry.ts`)
+
+- **HEXACO Personality System** — agents can now be configured with a six-factor HEXACO personality (`h`, `e`, `x`, `a`, `c`, `o` ∈ [0, 1]). The personality drives:
+  - **System prompt injection** — `buildPersonalityPrompt()` generates a natural-language paragraph describing the agent's voice, honesty, emotional tone, extraversion, agreeableness, conscientiousness, and openness, prepended to the system prompt on every turn.
+  - **Memory retrieval bias** — `getMemoryBiasWeights()` returns per-tier multipliers (episodic, semantic, procedural, preference) and BM25/vector balance weights derived from personality scores.
+  - **Response style hints** — `buildResponseStyleHints()` produces brief post-processing nudges (structured output, warmth, perspective acknowledgement, creative alternatives).
+  - **MQM routing hints** — `getMqmPersonalityHints()` returns `accuracyWeight`, `creativityWeight`, and `preferFast` signals for the Model Quartermaster.
+  The `personality` field is optional on `AgentConfig`; absent or neutral scores (0.5) produce no change in behaviour.
+  (`src/agent/personality.ts`, `src/config/config.ts`, `src/agent/types.ts`, `src/agent/stages/prompt-builder.ts`, `src/server/ws.ts`)
+
+- **Memory Benchmark Runner — LongMemEval-S compatible** — a new benchmarking subsystem evaluates the agent's memory recall against a question-answer suite:
+  - `src/eval/memory-bench.ts` — core runner with configurable concurrency, token-overlap + Jaccard scoring, per-category aggregation, and JSON persistence to `~/.cortex/data/memory_bench_results.json` and `memory_bench_history.json`.
+  - `cortex eval memory` CLI command — supports `--suite <file>`, `--sample <n>`, `--full`, and `--json` flags. (`src/cli/eval-memory-cmd.ts`, `src/cli/registry.ts`)
+  - REST API — `GET /api/eval/memory/results`, `GET /api/eval/memory/history`, `POST /api/eval/memory/run`. (`src/server/routes/eval-routes.ts`)
+  - Web UI — new **Memory Benchmark** page (`page-eval-memory`) with summary stat cards, per-category accuracy bar chart, per-question result table, and historical run trend table. One-click **▶ Run Benchmark** button triggers a live run via the API. (`src/server/ui/pages/eval-memory.ts`, `src/server/ui/js/26_eval_memory.ts`, `src/server/ui/mod.ts`)
+  - CI workflow — `.github/workflows/memory-bench.yml` runs the benchmark weekly (Monday 06:00 UTC) and on manual dispatch; results are uploaded as a GitHub Actions artifact and summarised in the job step summary.
+
 - **10 built-in agents (5 new, 5 refined)** — the agent roster now ships with 10 selectable built-in agents. Five new specialist agents join the existing five: **Writer** ✍️ (technical documentation, changelogs, READMEs, API references), **DevOps** 🚀 (Docker, Kubernetes, Terraform, CI/CD pipelines), **Security** 🔐 (OWASP Top 10 auditing, CVE scanning, compliance review — read-only), **Code Reviewer** 👁️ (structured BLOCKER/SUGGESTION/NITPICK/QUESTION review format — read-only), and **QA / Tester** 🧪 (test generation, coverage analysis, regression discipline). All five existing agents (Assistant, Developer, Researcher, Architect, Analyst) received deep soul rewrites adding Capabilities, Guardrails, and Limitations sections, explicit sub-agent delegation hints, and improved output format specs. (`src/agent/builtin-agents.ts`)
 
 - **Two new sub-agent types** — `reviewer` (Code Reviewer) and `writer` (Technical Writer) added to the sub-agent type system. `reviewer` produces structured review reports with BLOCKER/SUGGESTION/NITPICK/QUESTION labels and a per-finding rationale/suggestion format. `writer` produces audience-appropriate documentation following Keep a Changelog and API doc conventions with accuracy-first constraints. Both are accessible via `sub_agent` tool with their respective type strings. (`src/agent/sub-agent-types.ts`)

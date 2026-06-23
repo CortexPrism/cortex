@@ -240,6 +240,8 @@ export interface AgentConfig {
   builtin?: boolean;
   /** Resource limits for this agent's processes */
   resourceLimits?: ResourceLimits;
+  /** HEXACO personality scores (0–1 each) shaping voice, memory bias, and model routing */
+  personality?: { h?: number; e?: number; x?: number; a?: number; c?: number; o?: number };
   createdAt: string;
   updatedAt: string;
 }

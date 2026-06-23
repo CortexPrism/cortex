@@ -1,7 +1,7 @@
 import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { loadConfig } from '../../config/config.ts';
-import { getMemoryDb } from '../../db/client.ts';
-import { getSession, updateSessionProgress } from '../../db/sessions.ts';
+import { getCoreDb } from '../../db/client.ts';
+import { createSession, getSession, updateSessionProgress } from '../../db/sessions.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -27,15 +27,108 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const url = new URL(req.url);
       const sessionId = url.searchParams.get('sessionId') || undefined;
+      const agentId = url.searchParams.get('agentId') || undefined;
       const limit = Number(url.searchParams.get('limit') ?? 20);
       try {
-        const db = await (await import('../../db/client.ts')).getCoreDb();
+        const db = await getCoreDb();
         const { listCheckpoints } = await import('../../memori/store.ts');
-        const checkpoints = await listCheckpoints(db, { sessionId, limit });
+        const checkpoints = await listCheckpoints(db, { sessionId, agentId, limit });
         return json({ checkpoints });
       } catch {
         return json({ checkpoints: [] });
       }
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/memori\/checkpoints\/([^/]+)$/,
+    handler: async (_req, path) => {
+      const m = path.match(/^\/api\/memori\/checkpoints\/([^/]+)$/);
+      if (!m) return notFound();
+      const { loadCheckpoint } = await import('../../memori/store.ts');
+      const checkpoint = await loadCheckpoint(await getCoreDb(), m[1]);
+      if (!checkpoint) return notFound('Checkpoint not found');
+      return json(checkpoint);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/memori\/checkpoints\/([^/]+)\/fork$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/memori\/checkpoints\/([^/]+)\/fork$/);
+      if (!m) return notFound();
+      const checkpointId = m[1];
+      const body = await req.json().catch(() => ({})) as { name?: string };
+      const { loadCheckpoint, saveCheckpoint } = await import('../../memori/store.ts');
+      const { buildResumePrompt, restoreCheckpoint } = await import('../../memori/restore.ts');
+      const coreDb = await getCoreDb();
+      const checkpoint = await loadCheckpoint(coreDb, checkpointId);
+      if (!checkpoint) return notFound('Checkpoint not found');
+      const sourceSession = await getSession(checkpoint.sessionId);
+      if (!sourceSession) return notFound('Source session not found');
+      const newSessionId = `fork_${checkpoint.sessionId.slice(0, 16)}_t${checkpoint.turnNumber}_${
+        Date.now().toString(36)
+      }`;
+      const forkName = body.name ??
+        `Fork of turn ${checkpoint.turnNumber} (${
+          sourceSession.name ?? checkpoint.sessionId.slice(0, 8)
+        })`;
+      await createSession(
+        newSessionId,
+        sourceSession.channel,
+        forkName,
+        checkpoint.agentId,
+        checkpoint.sessionId,
+      );
+      const restored = restoreCheckpoint(checkpoint);
+      const resumePrompt =
+        `[Forked from session ${checkpoint.sessionId} at turn ${checkpoint.turnNumber}]\n\n` +
+        buildResumePrompt(restored) +
+        (restored.toolCallHistory.length > 0
+          ? `\n\n## Tool History\n${
+            restored.toolCallHistory.map((t) => `- ${t.toolName}`).join('\n')
+          }`
+          : '');
+      const { initSessionDb } = await import('../../db/migrate.ts');
+      const sessionDb = await initSessionDb(newSessionId);
+      await sessionDb.exec('BEGIN IMMEDIATE');
+      try {
+        await sessionDb.run(
+          `INSERT INTO session_messages (role, content, token_count, created_at) VALUES (?, ?, ?, ?)`,
+          ['system', resumePrompt, null, checkpoint.timestamp],
+        );
+        for (const message of checkpoint.conversation.messages) {
+          await sessionDb.run(
+            `INSERT INTO session_messages (role, content, token_count, created_at) VALUES (?, ?, ?, ?)`,
+            [message.role, message.content, null, message.timestamp ?? checkpoint.timestamp],
+          );
+        }
+        await sessionDb.exec('COMMIT');
+      } catch (e) {
+        await sessionDb.exec('ROLLBACK').catch(() => {});
+        throw e;
+      }
+      await updateSessionProgress(
+        newSessionId,
+        checkpoint.turnNumber,
+        checkpoint.timestamp,
+        checkpoint.agentId,
+      );
+      const forkedCheckpoint = {
+        ...checkpoint,
+        id: `${checkpoint.id}_fork_${newSessionId.slice(-8)}`,
+        sessionId: newSessionId,
+        agentId: checkpoint.agentId,
+      };
+      await saveCheckpoint(coreDb, forkedCheckpoint);
+      return json({
+        success: true,
+        newSessionId,
+        forkName,
+        sourceSessionId: checkpoint.sessionId,
+        checkpointId,
+        turnNumber: checkpoint.turnNumber,
+      }, 201);
     },
   },
   {
@@ -47,7 +140,7 @@ export const routes: RouteHandler[] = [
       const checkpointId = m[1];
       const { loadCheckpoint } = await import('../../memori/store.ts');
       const { buildResumePrompt, restoreCheckpoint } = await import('../../memori/restore.ts');
-      const checkpoint = await loadCheckpoint(await getMemoryDb(), checkpointId);
+      const checkpoint = await loadCheckpoint(await getCoreDb(), checkpointId);
       if (!checkpoint) return notFound('Checkpoint not found');
       const restored = restoreCheckpoint(checkpoint);
       const resumePrompt = buildResumePrompt(restored) +
@@ -667,6 +760,72 @@ export const routes: RouteHandler[] = [
       const { clearSearchCache } = await import('../../tools/builtin/web/cache.ts');
       const cleared = await clearSearchCache();
       return json({ ok: true, cleared });
+    },
+  },
+  // ── Memory Benchmark API ──────────────────────────────────────
+  {
+    method: 'GET',
+    pattern: /^\/api\/eval\/memory\/results$/,
+    handler: async () => {
+      const { loadLatestResults } = await import('../../eval/memory-bench.ts');
+      const results = await loadLatestResults();
+      return results ? json(results) : json({ error: 'No results yet' }, 404);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/eval\/memory\/history$/,
+    handler: async () => {
+      const { loadHistory } = await import('../../eval/memory-bench.ts');
+      return json(await loadHistory());
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/eval\/memory\/run$/,
+    handler: async (req) => {
+      try {
+        const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+        const config = await loadConfig();
+        const { buildProvider } = await import('../../llm/router.ts');
+        const provider = buildProvider(config);
+        if (!provider) return err('No LLM provider configured', 503);
+
+        const { runMemoryBenchmark, LONGMEMEVAL_S_SAMPLE, loadBenchmarkFile } = await import(
+          '../../eval/memory-bench.ts'
+        );
+
+        let questions = LONGMEMEVAL_S_SAMPLE;
+        if (body.suitePath && typeof body.suitePath === 'string') {
+          try {
+            questions = await loadBenchmarkFile(body.suitePath);
+          } catch (e) {
+            return err(`Failed to load suite: ${(e as Error).message}`, 400);
+          }
+        }
+
+        const sampleN = typeof body.sample === 'number' ? body.sample : 0;
+        if (sampleN > 0 && sampleN < questions.length) {
+          const arr = [...questions];
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+          questions = arr.slice(0, sampleN);
+        }
+
+        const model = config.providers[config.defaultProvider]?.model ?? '';
+        const summary = await runMemoryBenchmark({
+          provider,
+          model,
+          providerName: config.defaultProvider,
+          questions,
+          concurrency: 3,
+        });
+        return json(summary);
+      } catch (e) {
+        return err(`Benchmark failed: ${(e as Error).message}`, 500);
+      }
     },
   },
 ];

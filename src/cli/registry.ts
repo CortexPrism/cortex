@@ -55,6 +55,10 @@ export const registry: CommandEntry[] = [
     load: () => import('./eval-cmd.ts').then((m) => m.evalCmd._cmd),
   },
   {
+    path: ['eval', 'memory'],
+    load: () => import('./eval-memory-cmd.ts').then((m) => m.evalMemoryCmd._cmd),
+  },
+  {
     path: ['agent', 'reflect'],
     load: () => import('./reflect.ts').then((m) => m.reflectCommand._cmd),
     needs: ['config', 'migrations'],
