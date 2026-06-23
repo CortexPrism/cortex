@@ -246,17 +246,73 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       const { listChannels: listStoredChannels, buildChannelConfig } = await import(
         '../channels/store.ts'
       );
+      const { registerChannel, startChannel, setEventHandler } = await import(
+        '../channels/manager.ts'
+      );
+      const { createChannelEventHandler } = await import('../channels/bridge.ts');
       const stored = await listStoredChannels();
       for (const record of stored) {
         if (!record.enabled) continue;
         try {
-          const adapterPath = `../channels/${record.channelType}.ts`;
-          const mod = await import(adapterPath);
-          const plugin = mod.default || mod.createPlugin?.();
-          if (!plugin) continue;
           const channelConfig = await buildChannelConfig(record);
-          const { registerChannel, startChannel } = await import('../channels/manager.ts');
+
+          let plugin;
+          switch (record.channelType) {
+            case 'discord': {
+              const { DiscordChannelPlugin } = await import('../channels/discord.ts');
+              plugin = new DiscordChannelPlugin();
+              break;
+            }
+            case 'slack': {
+              const { SlackChannelPlugin } = await import('../channels/slack.ts');
+              plugin = new SlackChannelPlugin();
+              break;
+            }
+            case 'telegram': {
+              const { TelegramChannelPlugin } = await import('../channels/telegram.ts');
+              plugin = new TelegramChannelPlugin();
+              break;
+            }
+            case 'teams': {
+              const { TeamsChannelPlugin } = await import('../channels/teams.ts');
+              plugin = new TeamsChannelPlugin();
+              break;
+            }
+            case 'mattermost': {
+              const { MattermostChannelPlugin } = await import('../channels/mattermost.ts');
+              plugin = new MattermostChannelPlugin();
+              break;
+            }
+            case 'rocketchat': {
+              const { RocketChatChannelPlugin } = await import('../channels/rocketchat.ts');
+              plugin = new RocketChatChannelPlugin();
+              break;
+            }
+            case 'whatsapp': {
+              const { WhatsAppChannelPlugin } = await import('../channels/whatsapp.ts');
+              plugin = new WhatsAppChannelPlugin();
+              break;
+            }
+            case 'google-chat': {
+              const { GoogleChatChannelPlugin } = await import('../channels/google-chat.ts');
+              plugin = new GoogleChatChannelPlugin();
+              break;
+            }
+            case 'lark': {
+              const { LarkChannelPlugin } = await import('../channels/lark.ts');
+              plugin = new LarkChannelPlugin();
+              break;
+            }
+            default:
+              _log.warn(`Unknown channel type: ${record.channelType}, skipping`);
+              continue;
+          }
+
           registerChannel(record.id, plugin, channelConfig, record.agentId);
+          setEventHandler(
+            record.id,
+            createChannelEventHandler(record.id, record.channelType, record.agentId),
+          );
           await startChannel(record.id);
           _log.info(`Channel auto-started: ${record.channelType} (${record.id})`);
         } catch (e) {

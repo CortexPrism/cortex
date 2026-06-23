@@ -551,4 +551,8 @@ export class TelegramChannelPlugin implements ChannelPlugin {
   handleWebhookUpdate(update: TelegramUpdate): void {
     this.handleUpdate(update);
   }
+
+  handleWebhook(data: unknown): void {
+    this.handleWebhookUpdate(data as TelegramUpdate);
+  }
 }

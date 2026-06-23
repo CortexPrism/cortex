@@ -15,6 +15,7 @@ import { routes as jobsBasicRoutes } from './routes/jobs-basic.ts';
 import { routes as diagnosticsRoutes } from './routes/diagnostics.ts';
 import { routes as memorySearchRoutes } from './routes/memory-search.ts';
 import { routes as webhooksRoutes } from './routes/webhooks.ts';
+import { routes as channelsWebhookRoutes } from './routes/channels-webhook.ts';
 import { routes as mcpServerRoutes } from './routes/mcp-server.ts';
 import { routes as metricsRoutes } from './routes/metrics.ts';
 import { routes as lensRoutes } from './routes/lens.ts';
@@ -75,6 +76,7 @@ const publicRoutes: RouteHandler[] = [
   ...daemonsRoutes,
   ...systemRoutes,
   ...a2aRoutes,
+  ...channelsWebhookRoutes,
 ];
 
 const protectedRoutes: RouteHandler[] = [

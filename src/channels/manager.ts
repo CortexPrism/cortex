@@ -90,6 +90,18 @@ export function listChannels(): {
   }));
 }
 
+export function findChannelByProtocol(
+  protocol: string,
+): Array<{ id: string; channel: RegisteredChannel }> {
+  const matches: Array<{ id: string; channel: RegisteredChannel }> = [];
+  for (const [id, channel] of channels) {
+    if (channel.plugin.protocol === protocol) {
+      matches.push({ id, channel });
+    }
+  }
+  return matches;
+}
+
 export function getChannel(id: string): RegisteredChannel | undefined {
   return channels.get(id);
 }

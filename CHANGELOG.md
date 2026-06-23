@@ -9,7 +9,50 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Distributed Agent Swarm** — cross-instance coordination layer in `@cortex/infra` that extends
+- **Channel webhook routes** — `GET`/`POST /api/channels/webhook/:protocol` now dispatches
+  inbound webhook events from WhatsApp, Google Chat, Lark, and Telegram to the appropriate channel
+  plugin. Handles WhatsApp verification (`hub.mode`/`hub.challenge`/`hub.verify_token`) and Lark
+  URL verification (`url_verification` → `{challenge}`). Registered as public routes so external
+  platforms can call them without Cortex auth. (`src/server/routes/channels-webhook.ts`,
+  `src/server/new-router.ts`)
+- **Channel agent-loop bridge** — `createChannelEventHandler()` in `src/channels/bridge.ts` bridges
+  channel inbound messages to `agentTurn()`. Maps channel conversations to Cortex sessions via the
+  `channel_sessions` table (migration 028), auto-creates sessions for new conversations, resolves
+  agent config → provider → model, registers tools, loads plugins, builds system prompt, and sends
+  the agent response back to the channel. Wired on channel start (both API and server auto-start).
+- **Microsoft Teams inbound** — `TeamsChannelPlugin` now has a `handleWebhook()` method that parses
+  Bot Framework Activity format (`type`, `from`, `text`, `conversation`, `channelData`,
+  `attachments`) and emits `ChannelEvent` via the event handler. Teams was previously the only
+  channel with zero inbound path.
+- **`findChannelByProtocol()` on channel manager** — enables webhook route dispatch to all active
+  channels of a given protocol type. Used by the webhook route to route incoming events.
+- **`handleWebhook(data)` on `ChannelPlugin` interface** — optional method on the channel plugin
+  contract, returning `void | Response`. Webhook-capable channels (WhatsApp, Google Chat, Lark,
+  Telegram, Teams) implement this to receive and process inbound events from their respective
+  platforms. (`src/channels/types.ts`)
+
+### Fixed
+
+- **Server channel auto-start never worked** — the auto-start loop used
+  `mod.default || mod.createPlugin?.()` to instantiate channel plugins, but all channel files export
+  named classes (e.g. `DiscordChannelPlugin`), not default exports. Replaced with a `switch` on
+  `record.channelType` that constructs the correct named class for all 9 channel types. Also wires
+  the bridge event handler (`createChannelEventHandler` + `setEventHandler`) before `startChannel`.
+  (`src/server/server.ts`)
+- **Channel contracts were stale and unused** — `packages/server/contracts/channels.ts` defined
+  `IChannelAdapter` with a single untyped `send(message: unknown)` and `IChannelManager` with
+  `register(adapter)` — imported by zero files. Updated both interfaces to match the actual
+  `ChannelPlugin` system (8 typed methods, `handleWebhook`, `registerChannel`, `findChannelByProtocol`,
+  `setEventHandler`, `sendToChannel`). (`packages/server/contracts/channels.ts`)
+- **Telegram webhook method named `handleWebhookUpdate`, not `handleWebhook`** — the webhook route
+  dispatches to `channel.plugin.handleWebhook()`, but Telegram's method was `handleWebhookUpdate`.
+  Added `handleWebhook(data)` that delegates to `handleWebhookUpdate`. (`src/channels/telegram.ts`)
+- **Channel bridge missing tool registration and `toolContext`** — `createChannelEventHandler()`
+  called `agentTurn()` without `registry`, `toolContext`, workspace directory, system prompt, or
+  plugin loading. The agent would have had zero tools available. Added `registerAllBuiltins`,
+  `pluginManager.loadAll()`, `loadAgentIdentity` + `buildSystemPrompt`, workspace dir creation, and
+  full `toolContext` with `workingDir`/`agentId`/`workspaceDir`/`model`/`provider`. Also now sends
+  error responses back to the channel when `agentTurn()` throws. (`src/channels/bridge.ts`)
   kernel process trees and resource accounting across machines using the A2A protocol as the wire
   transport. Cortex instances can now form a swarm: register as nodes, discover peers, dispatch
   directives, and aggregate resource usage across the entire fleet.

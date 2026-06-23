@@ -257,6 +257,56 @@ export class TeamsChannelPlugin implements ChannelPlugin {
     };
   }
 
+  handleWebhook(data: {
+    type: string;
+    id?: string;
+    timestamp?: string;
+    from?: { id: string; name: string };
+    text?: string;
+    conversation?: { id: string; isGroup?: boolean };
+    channelData?: { team?: { id: string }; channel?: { id: string } };
+    attachments?: Array<{ contentType: string; contentUrl?: string }>;
+    replyToId?: string;
+  }): void {
+    if (data.type !== 'message' || !data.text) return;
+
+    const isGroup = data.conversation?.isGroup ?? false;
+    const teamId = data.channelData?.team?.id;
+    const channelId = data.channelData?.channel?.id;
+
+    const event: ChannelEvent = {
+      id: data.id || crypto.randomUUID(),
+      channel: {
+        type: isGroup && channelId ? 'channel' : isGroup ? 'group' : 'dm',
+        id: data.conversation?.id || '',
+        parentId: teamId,
+      },
+      author: {
+        id: data.from?.id || '',
+        name: data.from?.name || 'Unknown',
+        bot: false,
+      },
+      text: data.text,
+      attachments: data.attachments
+        ?.filter((a) => a.contentUrl)
+        .map((a) => ({
+          type: 'file' as const,
+          url: a.contentUrl!,
+          name: a.contentUrl!.split('/').pop() || 'file',
+          mimeType: a.contentType || 'application/octet-stream',
+        })),
+      replyTo: data.replyToId,
+      timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+      raw: data,
+    };
+
+    if (this.eventHandler) {
+      this.eventHandler(event).catch((e) =>
+        console.error('[teams] Event handler error:', (e as Error).message)
+      );
+    }
+  }
+
   private async refreshAccessToken(): Promise<void> {
     const tokenEndpoint = `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
 

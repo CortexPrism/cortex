@@ -188,7 +188,10 @@ export const routes: RouteHandler[] = [
       if (action === 'start') {
         try {
           const { getChannel, buildChannelConfig } = await import('../../channels/store.ts');
-          const { registerChannel, startChannel } = await import('../../channels/manager.ts');
+          const { registerChannel, startChannel, setEventHandler } = await import(
+            '../../channels/manager.ts'
+          );
+          const { createChannelEventHandler } = await import('../../channels/bridge.ts');
           const record = await getChannel(channelId);
           if (!record) return err('Channel not found', 404);
           const config = await buildChannelConfig(record);
@@ -245,6 +248,10 @@ export const routes: RouteHandler[] = [
           }
 
           registerChannel(channelId, plugin, config, record.agentId);
+          setEventHandler(
+            channelId,
+            createChannelEventHandler(channelId, record.channelType, record.agentId),
+          );
           await startChannel(channelId);
           const { setChannelEnabled } = await import('../../channels/store.ts');
           await setChannelEnabled(channelId, true);

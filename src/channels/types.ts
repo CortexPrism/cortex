@@ -100,4 +100,5 @@ export interface ChannelPlugin {
   delete(target: ChannelTarget, messageId: string): Promise<void>;
   typing(target: ChannelTarget): Promise<void>;
   upload(target: ChannelTarget, file: FileUpload): Promise<MessageId>;
+  handleWebhook?(data: unknown): void | Response;
 }
