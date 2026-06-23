@@ -7,6 +7,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-06-23
+
 ### Added
 
 - **Checkpoint Time-Travel UI** — the Memori page (`/memori`) now renders a full two-panel timeline: a session-grouped checkpoint list on the left and a rich detail view on the right. Each checkpoint shows turn number, goals, message count, tool calls, and workspace snapshot. Two action buttons — **Resume here** (restore the checkpoint into the current session) and **Branch from here** (fork into a new child session) — are available on every checkpoint. Helper functions `fmtTokens`, `fmtTimeAgo`, and `memoriStat` power the compact summary cards. (`src/server/ui/pages/memori.ts`, `src/server/ui/js/22_mcp_memori.ts`)
