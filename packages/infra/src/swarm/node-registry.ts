@@ -142,7 +142,8 @@ async function getNodeByEndpoint(endpoint: string): Promise<NodeRow | null> {
 
 export async function registerNode(reg: SwarmNodeRegistration): Promise<SwarmNodeId> {
   const db = await getCoreDb();
-  const nodeId = reg.nodeId ?? `node_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const nodeId = reg.nodeId ??
+    `node_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
   const now = new Date().toISOString();
   const endpoint = `http${reg.host === 'localhost' ? '' : 's'}://${reg.host}:${String(reg.port)}`;
   const a2aEndpoint = reg.a2aEndpoint ?? `${endpoint}/a2a`;
@@ -239,9 +240,9 @@ export async function heartbeat(
       metrics.activeSessions,
       metrics.activeProcesses,
       metrics.uptimeSeconds,
-       metrics.tokensUsedToday,
-       metrics.tokensOutToday,
-       metrics.costUsdToday,
+      metrics.tokensUsedToday,
+      metrics.tokensOutToday,
+      metrics.costUsdToday,
       0,
       0,
       now,
@@ -331,7 +332,8 @@ export async function discoverPeers(
           name: card.name,
           host: new URL(card.url).hostname,
           port: parseInt(new URL(card.url).port || (card.url.startsWith('https') ? '443' : '80')),
-          a2aEndpoint: card.interfaces.find((i) => i.protocol === 'json-rpc')?.url ?? `${card.url}/a2a`,
+          a2aEndpoint: card.interfaces.find((i) => i.protocol === 'json-rpc')?.url ??
+            `${card.url}/a2a`,
           capabilities: card.skills.map((s) => s.id as CapabilityGroup),
         };
         const nodeId = await registerNode(reg);
@@ -357,8 +359,9 @@ export async function discoverPeers(
           const reg: SwarmNodeRegistration = {
             name: card.name,
             host: new URL(card.url).hostname,
-            port: parseInt(new URL(card.url).port || ((card.url.startsWith('https') ? '443' : '80'))),
-            a2aEndpoint: card.interfaces.find((i) => i.protocol === 'json-rpc')?.url ?? `${card.url}/a2a`,
+            port: parseInt(new URL(card.url).port || (card.url.startsWith('https') ? '443' : '80')),
+            a2aEndpoint: card.interfaces.find((i) => i.protocol === 'json-rpc')?.url ??
+              `${card.url}/a2a`,
             capabilities: card.skills.map((s) => s.id as CapabilityGroup),
           };
           const nodeId = await registerNode(reg);
@@ -412,7 +415,10 @@ export async function markNodesOffline(staleMs = NODE_STALE_MS): Promise<number>
 export async function removeNode(nodeId: SwarmNodeId): Promise<void> {
   const db = await getCoreDb();
   await db.run(`DELETE FROM swarm_resource_snapshots WHERE node_id = ?`, [nodeId]);
-  await db.run(`DELETE FROM swarm_directives WHERE source_node_id = ? OR target_node_id = ?`, [nodeId, nodeId]);
+  await db.run(`DELETE FROM swarm_directives WHERE source_node_id = ? OR target_node_id = ?`, [
+    nodeId,
+    nodeId,
+  ]);
   await db.run(`DELETE FROM nodes WHERE id = ?`, [nodeId]);
 }
 

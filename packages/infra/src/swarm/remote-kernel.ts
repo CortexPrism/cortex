@@ -186,7 +186,11 @@ export async function getSwarmTopology(): Promise<
   const nodes = await listNodes();
   const localResources = kernel.getAllResources();
   const localTokens = localResources.reduce(
-    (acc, r) => ({ in: acc.in + r.tokensIn, out: acc.out + r.tokensOut, cost: acc.cost + r.costUsd }),
+    (acc, r) => ({
+      in: acc.in + r.tokensIn,
+      out: acc.out + r.tokensOut,
+      cost: acc.cost + r.costUsd,
+    }),
     { in: 0, out: 0, cost: 0 },
   );
 
@@ -196,7 +200,11 @@ export async function getSwarmTopology(): Promise<
     );
     const remoteRes = aggregatedResources.get(n.nodeId) ?? [];
     const remoteTokens = remoteRes.reduce(
-      (acc, r) => ({ in: acc.in + r.tokensIn, out: acc.out + r.tokensOut, cost: acc.cost + r.costUsd }),
+      (acc, r) => ({
+        in: acc.in + r.tokensIn,
+        out: acc.out + r.tokensOut,
+        cost: acc.cost + r.costUsd,
+      }),
       { in: 0, out: 0, cost: 0 },
     );
 

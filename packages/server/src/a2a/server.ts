@@ -347,10 +347,13 @@ async function handleSendMessage(req: SendMessageRequest): Promise<Task> {
   if (swarmKind && typeof swarmKind === 'string' && swarmHandler) {
     try {
       let payload: Record<string, unknown> = {};
-      try { payload = JSON.parse(userText); } catch { /* raw text, use as-is */ }
+      try {
+        payload = JSON.parse(userText);
+      } catch { /* raw text, use as-is */ }
       if (!payload || typeof payload !== 'object') payload = { message: userText };
 
-      const sourceNodeId = (req.message.metadata as Record<string, unknown>)?.swarmSourceNodeId as string ?? 'unknown';
+      const sourceNodeId =
+        (req.message.metadata as Record<string, unknown>)?.swarmSourceNodeId as string ?? 'unknown';
 
       const result = await swarmHandler.handle(swarmKind, payload, taskId, sourceNodeId);
 

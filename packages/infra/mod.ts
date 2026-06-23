@@ -9,10 +9,12 @@ export {
   getSwarmTopology,
   handleSwarmDirective,
   heartbeat,
+  HEARTBEAT_INTERVAL_MS,
   initRemoteKernel,
   initSwarmCoordinator,
   listNodes,
   markNodesOffline,
+  NODE_STALE_MS,
   registerNode,
   registerRemoteProcess,
   removeNode,
@@ -21,8 +23,6 @@ export {
   syncRemoteResources,
   unregisterRemoteProcess,
   updateNodeStatus,
-  HEARTBEAT_INTERVAL_MS,
-  NODE_STALE_MS,
 } from './src/swarm/mod.ts';
 export type {
   AggregatedResourceEntry,

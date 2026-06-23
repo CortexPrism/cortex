@@ -17,7 +17,14 @@ export type NodeTier = 'root' | 'sudo' | 'unprivileged';
  *  These values are mapped to the `nodes` table's CHECK constraint
  *  ('connecting','connected','disconnected','error','deregistered') in node-registry.ts.
  *  `online`→`connected`, `offline`→`disconnected`, `draining`→`connected`, `sealed`→`disconnected`. */
-export type NodeStatus = 'online' | 'offline' | 'connected' | 'disconnected' | 'degraded' | 'draining' | 'sealed';
+export type NodeStatus =
+  | 'online'
+  | 'offline'
+  | 'connected'
+  | 'disconnected'
+  | 'degraded'
+  | 'draining'
+  | 'sealed';
 
 /** Runtime metrics reported by a node during heartbeat. */
 export interface NodeMetrics {
@@ -130,9 +137,14 @@ export interface ISwarmCoordinator {
   /** List all known nodes. */
   listNodes(status?: NodeStatus): Promise<ISwarmNode[]>;
   /** Send a directive to a remote node and await result. */
-  dispatch(directive: Omit<SwarmDirective, 'directiveId' | 'createdAt' | 'expiresAt'>): Promise<SwarmDirectiveResult>;
+  dispatch(
+    directive: Omit<SwarmDirective, 'directiveId' | 'createdAt' | 'expiresAt'>,
+  ): Promise<SwarmDirectiveResult>;
   /** Broadcast a directive to all online nodes in a group. */
-  broadcast(directive: Omit<SwarmDirective, 'directiveId' | 'createdAt' | 'expiresAt' | 'targetNodeId'>, group?: string): Promise<SwarmDirectiveResult[]>;
+  broadcast(
+    directive: Omit<SwarmDirective, 'directiveId' | 'createdAt' | 'expiresAt' | 'targetNodeId'>,
+    group?: string,
+  ): Promise<SwarmDirectiveResult[]>;
   /** Get the aggregated resource report across the swarm. */
   getResourceReport(): Promise<SwarmResourceReport>;
   /** Send heartbeat and update local metrics. */
@@ -152,7 +164,10 @@ export interface ISwarmTransport {
   /** Send a directive to a specific node. */
   sendDirective(nodeId: SwarmNodeId, directive: SwarmDirective): Promise<SwarmDirectiveResult>;
   /** Broadcast a directive to multiple nodes. */
-  broadcastDirective(nodeIds: SwarmNodeId[], directive: SwarmDirective): Promise<SwarmDirectiveResult[]>;
+  broadcastDirective(
+    nodeIds: SwarmNodeId[],
+    directive: SwarmDirective,
+  ): Promise<SwarmDirectiveResult[]>;
   /** Fetch the agent card of a remote node. */
   fetchRemoteAgentCard(endpoint: string): Promise<Record<string, unknown>>;
   /** Ping a remote node for health check. */

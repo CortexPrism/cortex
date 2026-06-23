@@ -159,8 +159,8 @@ replacement.
 - `vault.db` — AES-256-GCM encrypted credentials (PBKDF2 key derivation)
 - `plugins.db` — plugin registry
 
-Migrations are in `src/db/migrations/` (NNN_name.sql format, currently 42 migrations).
-Register new migrations in `src/db/migrate.ts`.
+Migrations are in `src/db/migrations/` (NNN_name.sql format, currently 42 migrations). Register new
+migrations in `src/db/migrate.ts`.
 
 ### LLM Provider System
 

@@ -55,7 +55,9 @@ export const routes: RouteHandler[] = [
                   active_sessions, active_processes, a2a_endpoint, labels, metrics_json
            FROM nodes`,
         );
-        const swarmMap = new Map(swarmFields.map((r: Record<string, unknown>) => [String(r.id), r]));
+        const swarmMap = new Map(
+          swarmFields.map((r: Record<string, unknown>) => [String(r.id), r]),
+        );
         return json(nodes.map((n) => ({
           ...n,
           cpu_percent: Number(swarmMap.get(n.id)?.cpu_percent ?? 0),

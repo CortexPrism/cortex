@@ -5,15 +5,8 @@
  * wire protocol between swarm nodes. Each directive is mapped to an A2A
  * task on the target node.
  */
-import {
-  fetchAgentCard,
-  sendMessage,
-} from '../../../server/src/a2a/client.ts';
-import type {
-  AgentCard,
-  SendMessageRequest,
-  Task,
-} from '../../../server/src/a2a/types.ts';
+import { fetchAgentCard, sendMessage } from '../../../server/src/a2a/client.ts';
+import type { AgentCard, SendMessageRequest, Task } from '../../../server/src/a2a/types.ts';
 import type {
   ISwarmNode,
   ISwarmTransport,
@@ -162,15 +155,13 @@ export function createSwarmTransport(): ISwarmTransport {
         ),
       );
       return results.map((r) =>
-        r.status === 'fulfilled'
-          ? r.value
-          : {
-              directiveId: directive.directiveId,
-              nodeId: directive.targetNodeId,
-              status: 'failed',
-              error: (r as PromiseRejectedResult).reason?.message ?? 'Broadcast failed',
-              completedAt: new Date().toISOString(),
-            }
+        r.status === 'fulfilled' ? r.value : {
+          directiveId: directive.directiveId,
+          nodeId: directive.targetNodeId,
+          status: 'failed',
+          error: (r as PromiseRejectedResult).reason?.message ?? 'Broadcast failed',
+          completedAt: new Date().toISOString(),
+        }
       );
     },
 

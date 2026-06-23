@@ -11,11 +11,11 @@ import { createSwarmTransport } from './transport.ts';
 import {
   getNode,
   heartbeat as sendHeartbeat,
+  HEARTBEAT_INTERVAL_MS,
   listNodes,
   markNodesOffline,
   registerNode,
   updateNodeStatus,
-  HEARTBEAT_INTERVAL_MS,
 } from './node-registry.ts';
 import type {
   ISwarmCoordinator,
@@ -67,7 +67,11 @@ function startHeartbeat(): void {
     try {
       const resources = kernel.getAllResources();
       const totalTokens = resources.reduce(
-        (acc, r) => ({ in: acc.in + r.tokensIn, out: acc.out + r.tokensOut, cost: acc.cost + r.costUsd }),
+        (acc, r) => ({
+          in: acc.in + r.tokensIn,
+          out: acc.out + r.tokensOut,
+          cost: acc.cost + r.costUsd,
+        }),
         { in: 0, out: 0, cost: 0 },
       );
       const memoryInfo = getSystemMemory();
@@ -136,7 +140,9 @@ export const swarm: ISwarmCoordinator = {
     return listNodes(status);
   },
 
-  async dispatch(directive: Omit<SwarmDirective, 'directiveId' | 'createdAt' | 'expiresAt'>): Promise<SwarmDirectiveResult> {
+  async dispatch(
+    directive: Omit<SwarmDirective, 'directiveId' | 'createdAt' | 'expiresAt'>,
+  ): Promise<SwarmDirectiveResult> {
     const directiveId = generateDirectiveId();
     const now = new Date().toISOString();
 
@@ -296,7 +302,11 @@ export const swarm: ISwarmCoordinator = {
     try {
       const resources = kernel.getAllResources();
       const totalTokens = resources.reduce(
-        (acc, r) => ({ in: acc.in + r.tokensIn, out: acc.out + r.tokensOut, cost: acc.cost + r.costUsd }),
+        (acc, r) => ({
+          in: acc.in + r.tokensIn,
+          out: acc.out + r.tokensOut,
+          cost: acc.cost + r.costUsd,
+        }),
         { in: 0, out: 0, cost: 0 },
       );
       const memoryInfo = getSystemMemory();

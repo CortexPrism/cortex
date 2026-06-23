@@ -53,7 +53,11 @@ async function handleQueryResources(): Promise<SwarmDirectiveResponse> {
   const t0 = performance.now();
   const resources = kernel.getAllResources();
   const totalTokens = resources.reduce(
-    (acc, r) => ({ in: acc.in + r.tokensIn, out: acc.out + r.tokensOut, cost: acc.cost + r.costUsd }),
+    (acc, r) => ({
+      in: acc.in + r.tokensIn,
+      out: acc.out + r.tokensOut,
+      cost: acc.cost + r.costUsd,
+    }),
     { in: 0, out: 0, cost: 0 },
   );
   const totalCalls = resources.reduce((acc, r) => acc + r.toolCalls, 0);
@@ -117,7 +121,11 @@ async function handleSyncState(
 
   const localResources = kernel.getAllResources();
   const totalTokens = localResources.reduce(
-    (acc, r) => ({ in: acc.in + r.tokensIn, out: acc.out + r.tokensOut, cost: acc.cost + r.costUsd }),
+    (acc, r) => ({
+      in: acc.in + r.tokensIn,
+      out: acc.out + r.tokensOut,
+      cost: acc.cost + r.costUsd,
+    }),
     { in: 0, out: 0, cost: 0 },
   );
 
@@ -167,8 +175,11 @@ async function handleSpawnAgent(
     const model = agent.model || config.providers[providerKind]?.model || 'unknown';
 
     const provider = buildProvider({ ...config, defaultProvider: providerKind as never });
-    const systemPrompt = buildSystemPrompt(identity.soul, agent.systemPrompt, identity.user, identity.memory) +
-      `\n\nYou are processing a swarm directive from a peer node. Agent type: ${agentType ?? 'general'}. Complete the task efficiently.`;
+    const systemPrompt =
+      buildSystemPrompt(identity.soul, agent.systemPrompt, identity.user, identity.memory) +
+      `\n\nYou are processing a swarm directive from a peer node. Agent type: ${
+        agentType ?? 'general'
+      }. Complete the task efficiently.`;
 
     await registerAllBuiltins(globalRegistry, true);
 
@@ -271,8 +282,11 @@ async function handleExecuteTask(
       status: 'failed',
       error: `Execute task failed: ${(e as Error).message}`,
       metrics: {
-        tokensIn: 0, tokensOut: 0, costUsd: 0,
-        durationMs: performance.now() - t0, toolCalls: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        durationMs: performance.now() - t0,
+        toolCalls: 0,
       },
     };
   }
@@ -307,8 +321,11 @@ async function handleForwardMessage(
       status: 'completed',
       output: JSON.stringify({ forwarded: true, targetSessionId, length: message.length }),
       metrics: {
-        tokensIn: 0, tokensOut: 0, costUsd: 0,
-        durationMs: performance.now() - t0, toolCalls: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        durationMs: performance.now() - t0,
+        toolCalls: 0,
       },
     };
   } catch (e) {
@@ -316,8 +333,11 @@ async function handleForwardMessage(
       status: 'failed',
       error: `Forward message failed: ${(e as Error).message}`,
       metrics: {
-        tokensIn: 0, tokensOut: 0, costUsd: 0,
-        durationMs: performance.now() - t0, toolCalls: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        durationMs: performance.now() - t0,
+        toolCalls: 0,
       },
     };
   }

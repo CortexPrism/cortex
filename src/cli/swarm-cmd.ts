@@ -114,8 +114,16 @@ swarmCommand
           console.log(`  ${n.name} (${n.nodeId}) — ${statusColor(n.status)}`);
           console.log(`    Host: ${n.host}:${String(n.port)}  Tier: ${cyan(n.tier)}`);
           if (n.group) console.log(`    Group: ${n.group}`);
-          console.log(`    Sessions: ${String(n.metrics.activeSessions)}  Processes: ${String(n.metrics.activeProcesses)}`);
-          console.log(`    Memory: ${String(Math.round(n.metrics.memoryUsedMb))}/${String(Math.round(n.metrics.memoryTotalMb))}MB`);
+          console.log(
+            `    Sessions: ${String(n.metrics.activeSessions)}  Processes: ${
+              String(n.metrics.activeProcesses)
+            }`,
+          );
+          console.log(
+            `    Memory: ${String(Math.round(n.metrics.memoryUsedMb))}/${
+              String(Math.round(n.metrics.memoryTotalMb))
+            }MB`,
+          );
           if (n.lastHeartbeatAt) console.log(`    Last heartbeat: ${n.lastHeartbeatAt}`);
           console.log();
         }
@@ -144,8 +152,12 @@ swarmCommand
         for (const t of topology) {
           const marker = t.isSelf ? cyan(' (self)') : '';
           console.log(`\n  ${bold(t.name + marker)}`);
-          console.log(`    Processes: ${String(t.processCount)}  Remote: ${String(t.remoteProcessCount)}`);
-          console.log(`    Tokens: ${String(t.tokenUsage.in)} in / ${String(t.tokenUsage.out)} out`);
+          console.log(
+            `    Processes: ${String(t.processCount)}  Remote: ${String(t.remoteProcessCount)}`,
+          );
+          console.log(
+            `    Tokens: ${String(t.tokenUsage.in)} in / ${String(t.tokenUsage.out)} out`,
+          );
           console.log(`    Cost: $${t.tokenUsage.cost.toFixed(4)}`);
         }
         console.log();
@@ -166,7 +178,11 @@ swarmCommand
 
         console.log(bold('\nSwarm Resource Report:'));
         console.log(`  Nodes: ${String(report.onlineNodes)}/${String(report.totalNodes)} online`);
-        console.log(`  Total tokens: ${String(report.totalTokensIn)} in / ${String(report.totalTokensOut)} out`);
+        console.log(
+          `  Total tokens: ${String(report.totalTokensIn)} in / ${
+            String(report.totalTokensOut)
+          } out`,
+        );
         console.log(`  Total cost: $${report.totalCostUsd.toFixed(4)}`);
         console.log(`  Total tool calls: ${String(report.totalToolCalls)}`);
         console.log(`  Total CPU ms: ${String(report.totalCpuMs)}`);
@@ -176,9 +192,13 @@ swarmCommand
           console.log(bold('\n  Per Node:'));
           for (const [nodeId, info] of Object.entries(report.perNode)) {
             console.log(`    ${nodeId}:`);
-            console.log(`      Tokens: ${String(info.tokensIn)} in / ${String(info.tokensOut)} out`);
+            console.log(
+              `      Tokens: ${String(info.tokensIn)} in / ${String(info.tokensOut)} out`,
+            );
             console.log(`      Cost: $${info.costUsd.toFixed(4)}`);
-            console.log(`      Calls: ${String(info.toolCalls)}  Sessions: ${String(info.activeSessions)}`);
+            console.log(
+              `      Calls: ${String(info.toolCalls)}  Sessions: ${String(info.activeSessions)}`,
+            );
             console.log(`      Memory: ${String(Math.round(info.peakMemoryMb))}MB`);
           }
         }

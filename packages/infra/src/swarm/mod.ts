@@ -5,10 +5,7 @@
  * as the wire transport. Provides node registry, swarm coordinator,
  * remote kernel extensions, and A2A-based transport.
  */
-export type {
-  AggregatedResourceEntry,
-  RemoteProcessEntry,
-} from './remote-kernel.ts';
+export type { AggregatedResourceEntry, RemoteProcessEntry } from './remote-kernel.ts';
 export {
   getAggregatedResources,
   getFullProcessTree,
@@ -24,27 +21,18 @@ export {
   discoverPeers,
   getNode,
   heartbeat,
+  HEARTBEAT_INTERVAL_MS,
   listNodes,
   markNodesOffline,
+  NODE_STALE_MS,
   registerNode,
   removeNode,
   updateNodeStatus,
-  HEARTBEAT_INTERVAL_MS,
-  NODE_STALE_MS,
 } from './node-registry.ts';
 
 export { createSwarmTransport } from './transport.ts';
 
-export {
-  handleSwarmDirective,
-} from './directive-handler.ts';
-export type {
-  SwarmDirectiveContext,
-  SwarmDirectiveResponse,
-} from './directive-handler.ts';
+export { handleSwarmDirective } from './directive-handler.ts';
+export type { SwarmDirectiveContext, SwarmDirectiveResponse } from './directive-handler.ts';
 
-export {
-  initSwarmCoordinator,
-  shutdownSwarmCoordinator,
-  swarm,
-} from './coordinator.ts';
+export { initSwarmCoordinator, shutdownSwarmCoordinator, swarm } from './coordinator.ts';

@@ -120,9 +120,7 @@ async function indexFile(
       })),
       edges: result.edges.map((e) => ({
         ...e,
-        sourceQName: e.sourceQName
-          ? e.sourceQName.replace(filePath, relPath)
-          : `${relPath}`,
+        sourceQName: e.sourceQName ? e.sourceQName.replace(filePath, relPath) : `${relPath}`,
       })),
       relPath,
       language: result.language,

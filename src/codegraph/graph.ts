@@ -496,7 +496,8 @@ export async function bulkInsertNodes(
     );
   }
 
-  const sql = `INSERT INTO code_nodes (project_id, label, name, qualified_name, file_path, line_start, line_end, signature, return_type, language, is_exported, complexity, decorators, metadata, content_hash)
+  const sql =
+    `INSERT INTO code_nodes (project_id, label, name, qualified_name, file_path, line_start, line_end, signature, return_type, language, is_exported, complexity, decorators, metadata, content_hash)
        VALUES ${placeholders}`;
   const firstId = await db.insert(sql, params);
   if (firstId === 0) {
@@ -535,7 +536,9 @@ export async function bulkInsertEdges(
 
   if (validEdges.length === 0) {
     console.error(
-      `[codegraph] bulkInsertEdges: ALL ${edges.length} edges filtered — source/target IDs not found in DB. Sample source_id: ${Number(edges[0].source_id)}, target_id: ${Number(edges[0].target_id)}, DB has ${existingNodeIds.size} node IDs`,
+      `[codegraph] bulkInsertEdges: ALL ${edges.length} edges filtered — source/target IDs not found in DB. Sample source_id: ${
+        Number(edges[0].source_id)
+      }, target_id: ${Number(edges[0].target_id)}, DB has ${existingNodeIds.size} node IDs`,
     );
     return [];
   }

@@ -9,7 +9,9 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/codegraph\/projects$/,
     handler: async () => {
-      const { listProjects: listCodeProjects, deleteCodeProject } = await import('../../codegraph/graph.ts');
+      const { listProjects: listCodeProjects, deleteCodeProject } = await import(
+        '../../codegraph/graph.ts'
+      );
       const { listProjects: listFsProjects } = await import('../../projects/manager.ts');
       const codeProjects = await listCodeProjects();
       const fsProjects = await listFsProjects();
@@ -464,7 +466,8 @@ export const routes: RouteHandler[] = [
         );
         if ((actual?.cnt ?? 0) === 0) {
           console.error(
-            '[codegraph] architecture endpoint: project=' + project + ' has node_count=0, re-running index',
+            '[codegraph] architecture endpoint: project=' + project +
+              ' has node_count=0, re-running index',
           );
           const { loadProject } = await import('../../projects/manager.ts');
           const fsProj = await loadProject(project);

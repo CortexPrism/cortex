@@ -100,8 +100,14 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/workflows\/([^/]+)$/);
       if (!m) return notFound();
-      const body = await req.json() as { name?: string; description?: string; definition?: unknown };
-      const { getWorkflow, registerWorkflow, deleteWorkflow } = await import('../../workflow/engine.ts');
+      const body = await req.json() as {
+        name?: string;
+        description?: string;
+        definition?: unknown;
+      };
+      const { getWorkflow, registerWorkflow, deleteWorkflow } = await import(
+        '../../workflow/engine.ts'
+      );
       const existingName = m[1];
       const wf = getWorkflow(existingName);
       if (!wf) return notFound('Workflow not found');
