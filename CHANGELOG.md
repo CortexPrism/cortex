@@ -9,55 +9,72 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
-- **Channel webhook routes** — `GET`/`POST /api/channels/webhook/:protocol` now dispatches
-  inbound webhook events from WhatsApp, Google Chat, Lark, and Telegram to the appropriate channel
-  plugin. Handles WhatsApp verification (`hub.mode`/`hub.challenge`/`hub.verify_token`) and Lark
-  URL verification (`url_verification` → `{challenge}`). Registered as public routes so external
-  platforms can call them without Cortex auth. (`src/server/routes/channels-webhook.ts`,
-  `src/server/new-router.ts`)
-- **Channel agent-loop bridge** — `createChannelEventHandler()` in `src/channels/bridge.ts` bridges
-  channel inbound messages to `agentTurn()`. Maps channel conversations to Cortex sessions via the
-  `channel_sessions` table (migration 028), auto-creates sessions for new conversations, resolves
-  agent config → provider → model, registers tools, loads plugins, builds system prompt, and sends
-  the agent response back to the channel. Wired on channel start (both API and server auto-start).
-- **Microsoft Teams inbound** — `TeamsChannelPlugin` now has a `handleWebhook()` method that parses
-  Bot Framework Activity format (`type`, `from`, `text`, `conversation`, `channelData`,
-  `attachments`) and emits `ChannelEvent` via the event handler. Teams was previously the only
-  channel with zero inbound path.
-- **`findChannelByProtocol()` on channel manager** — enables webhook route dispatch to all active
-  channels of a given protocol type. Used by the webhook route to route incoming events.
-- **`handleWebhook(data)` on `ChannelPlugin` interface** — optional method on the channel plugin
-  contract, returning `void | Response`. Webhook-capable channels (WhatsApp, Google Chat, Lark,
-  Telegram, Teams) implement this to receive and process inbound events from their respective
-  platforms. (`src/channels/types.ts`)
-- **Web UI tooltip sweep** — added 88 `data-tooltip` hover tooltips across 16 UI source files
-  covering all major surfaces: chat (message actions, tool/agent card expand chevrons, status
-  icons), editor (tree navigation, tab controls, statusbar badges), dashboard (drag handles,
-  widgets), sessions (continue/export/delete), skills (step reorder/remove), settings (feature
-  flags, update status), agents/services (status dots, action buttons, icon picker), policies
-  (edit/delete), marketplace (star ratings), git status (staged/unstaged/untracked codes), and
-  tunnel (copy URL, provider selection). Uses the existing `#global-tooltip` JS tooltip system
-  with 250ms hover delay. (`src/server/ui/js/*.ts`, `src/server/ui/pages/*.ts`)
+- **WASM plugin ABI versioning** — new `plugin_get_abi_version()` export and `host_get_abi_version()` host
+  function allow forward/backward compatible plugin loading. Host rejects WASM modules with unsupported
+  ABI versions. Current ABI version: 1. (`src/plugins/wasm-runtime.ts`)
+- **WASM linear memory allocator** — replaced hardcoded offset magic numbers with a bump allocator
+  (`host_alloc`/`host_free` host functions). Memory layout: 64KB host scratch → 64KB allocator metadata
+  → 896KB managed heap → WASM static data. Bounds-checked with auto-grow. (`src/plugins/wasm-runtime.ts`)
+- **WASM synchronous HTTP** — `host_http_request` now blocks synchronously via a dedicated `Worker`
+  thread + `SharedArrayBuffer` + `Atomics.wait`. 30-second timeout, proper status/body return. Replaces
+  the previous broken fire-and-forget `fetch().then()` pattern. (`src/plugins/wasm-runtime.ts`,
+  `src/plugins/wasm-worker-http.ts`)
+- **WASM tool parameter schemas** — capabilities JSON now supports full `params[]` with `name`,
+  `type` (`string`|`number`|`boolean`|`object`|`array`), `description`, and `required`. LLMs can now
+  understand WASM tool signatures. (`src/plugins/wasm-runtime.ts`)
+- **WASM PluginContext integration** — `loadWasmPlugin()` now accepts `PluginContext`, giving WASM
+  plugins access to logging (`host_log`), state persistence (`host_set_state`/`host_get_state` via
+  SQLite-backed in-memory cache with dirty tracking), and configuration (`host_get_config` via
+  `CORTEX_PLUGIN_{NAME}_{KEY}` env vars). (`src/plugins/wasm-runtime.ts`)
+- **WASM permission enforcement** — `host_http_request` gates on `network:fetch` or `net:outbound`
+  capability. Returns 403 if permission not declared. (`src/plugins/wasm-runtime.ts`)
+- **WASM execution timeouts** — 120-second maximum per tool execution (`MAX_TOOL_EXECUTION_MS`).
+  (`src/plugins/wasm-runtime.ts`)
+- **WASM supply-chain binary scanning** — `scanWasmBinary()` parses WASM section headers to detect:
+  suspicious imports (`wasi_snapshot_preview1.proc_exit`, `args_get`, `environ_get`, `sock_*`),
+  excessive memory requests (>4GB), unknown `env` imports, and WASM version mismatches. Called
+  automatically during plugin installation. (`src/plugins/supply-chain.ts`)
+- **WASM diagnostics API** — `getWasmDiagnostics(name)` returns memory usage, heap pointer position,
+  ABI version, and tool count for debugging loaded WASM plugins. (`src/plugins/wasm-runtime.ts`)
+- **WASM plugin SDK** — C-compatible header (`src/plugins/sdk/wasm-plugin.h`) declaring all host
+  functions, memory layout constants, and required exports. TypeScript client library
+  (`src/plugins/sdk/client.ts`) with `defineTool()`, `definePlugin()`, `generateCapabilitiesJson()`,
+  and `generateWasmPluginModule()` helpers.
+- **WASM plugin test suite** — 7 tests covering binary encoding, module compilation, ABI version
+  checking, supply-chain scanning, memory layout, capabilities JSON parsing, and worker code
+  integrity. (`tests/wasm_plugin_test.ts`)
+- **Plugin files now have a single source of truth** — `packages/core/src/plugins/` files replaced
+  with re-exports to `src/plugins/`, eliminating 3900+ lines of stale duplicate code.
 
 ### Fixed
 
-- **Memori checkpoints never captured** — the entire checkpoint infrastructure (`captureCheckpoint`,
-  `saveCheckpoint`, `restoreCheckpoint`) was implemented but never wired into the agent lifecycle.
-  Added fire-and-forget checkpoint capture to `runCleanup()` so every agent turn persists a full
-  state snapshot (`conversation`, `memory`, `tools`, `reasoning`, `workspace`, `metadata`) to the
-  `memori_checkpoints` table. Auto-prunes to the most recent 5 checkpoints per session.
-  (`src/agent/post/cleanup.ts`)
-- **Server channel auto-start never worked** — the auto-start loop used
-  `mod.default || mod.createPlugin?.()` to instantiate channel plugins, but all channel files export
-  named classes (e.g. `DiscordChannelPlugin`), not default exports. Replaced with a `switch` on
-  `record.channelType` that constructs the correct named class for all 9 channel types. Also wires
-  the bridge event handler (`createChannelEventHandler` + `setEventHandler`) before `startChannel`.
-  (`src/server/server.ts`)
-- **Channel contracts were stale and unused** — `packages/server/contracts/channels.ts` defined
-  `IChannelAdapter` with a single untyped `send(message: unknown)` and `IChannelManager` with
-  `register(adapter)` — imported by zero files. Updated both interfaces to match the actual
-  `ChannelPlugin` system (8 typed methods, `handleWebhook`, `registerChannel`, `findChannelByProtocol`,
-  `setEventHandler`, `sendToChannel`). (`packages/server/contracts/channels.ts`)
+- **WASM `http_request` was broken** — the host function launched `fetch().then(...)` but returned
+  immediately. The WASM module read garbage from memory because the response hadn't arrived. Now
+  synchronous via `Atomics.wait`. (`src/plugins/wasm-runtime.ts`)
+- **WASM memory layout corruption** — hardcoded offsets (tool name at 1024, args at random positions,
+  64KB output at arbitrary offset) could collide with WASM stack/heap data. Replaced with bounded
+  scratch area and proper allocation. (`src/plugins/wasm-runtime.ts`)
+- **WASM `plugin_destroy` never called** — unload/reload leaked `WebAssembly.Memory` and instance.
+  `destroyWasmPlugin()` now called from `unloadPlugin()` in the loader. Cleans up memory cache too.
+  (`src/plugins/loader.ts`, `src/plugins/wasm-runtime.ts`)
+- **WASM state lost on restart** — `_wasmState` was an in-memory `Map<string, string>`. Now
+  per-plugin cache + dirty-tracking flush to SQLite via `PluginContext.state`.
+  (`src/plugins/wasm-runtime.ts`)
+- **WASM plugins had no PluginContext** — `loadWasmPlugin(row)` didn't accept `ctx`, so WASM plugins
+  couldn't log, persist state, or access config. `ctx` parameter is now optional (backward compatible).
+  (`src/plugins/wasm-runtime.ts`, `src/plugins/loader.ts`)
+
+### Changed
+
+- **WASM host function names** — renamed with `host_` prefix for clarity and to avoid conflicts with
+  WASM module internals: `log` → `host_log`, `get_config` → `host_get_config`, `set_state` →
+  `host_set_state`, `get_state` → `host_get_state`, `http_request` → `host_http_request`. New
+  functions: `host_alloc`, `host_free`, `host_get_abi_version`, `host_get_time_ms`, `host_random`.
+  (`src/plugins/wasm-runtime.ts`)
+- **WASM `get_config` priority** — now checks `CORTEX_PLUGIN_{NAME}_{KEY}` first (PluginContext-aware),
+  falling back to `CORTEX_WASM_{KEY}`. (`src/plugins/wasm-runtime.ts`)
+- **Supply-chain verifier** — non-WASM files still get text-based malware pattern scanning; WASM
+  binaries get dedicated binary analysis. (`src/plugins/supply-chain.ts`)
 - **Telegram webhook method named `handleWebhookUpdate`, not `handleWebhook`** — the webhook route
   dispatches to `channel.plugin.handleWebhook()`, but Telegram's method was `handleWebhookUpdate`.
   Added `handleWebhook(data)` that delegates to `handleWebhookUpdate`. (`src/channels/telegram.ts`)

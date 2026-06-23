@@ -3,7 +3,7 @@ import type { PluginRow } from './types.ts';
 import type { LoadedPlugin, PluginContext, PluginModule } from './types.ts';
 import type { Tool, ToolContext } from '../tools/types.ts';
 import { globalRegistry } from '../tools/registry.ts';
-import { loadWasmPlugin } from './wasm-runtime.ts';
+import { destroyWasmPlugin, loadWasmPlugin } from './wasm-runtime.ts';
 import { registerHook, unregisterAllForPlugin } from '../pipeline/manager.ts';
 import type { HookResult } from '../pipeline/types.ts';
 import { registerUIPlugin, unregisterUIPlugin } from './ui-slots.ts';
@@ -27,6 +27,11 @@ export function unloadPlugin(name: string): void {
   }
   unregisterAllForPlugin(name);
   unregisterUIPlugin(name);
+
+  if (loaded.row.type === 'wasm') {
+    destroyWasmPlugin(name);
+  }
+
   _loaded.delete(name);
 }
 
@@ -199,7 +204,7 @@ export async function loadPlugin(row: PluginRow, ctx: PluginContext): Promise<Lo
   } else if (row.type === 'esm') {
     return await loadEsmPlugin(row, ctx);
   } else if (row.type === 'wasm') {
-    return await loadWasmPlugin(row);
+    return await loadWasmPlugin(row, ctx);
   } else {
     throw new Error(`Unsupported plugin type: ${row.type}`);
   }

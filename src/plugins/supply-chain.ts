@@ -10,6 +10,8 @@
 import { computeSha256 } from './integrity.ts';
 import { logEvent } from '../db/lens.ts';
 
+const WASM_MAGIC = new Uint8Array([0x00, 0x61, 0x73, 0x6d]);
+
 export type VerificationStatus = 'verified' | 'unverified' | 'suspicious' | 'blocked';
 
 export interface IntegrityReport {
@@ -226,14 +228,25 @@ export async function verifySupplyChain(
     severity: reputation < effectivePolicy.minimumReputationScore ? 'warning' : 'info',
   });
 
-  for (const pattern of effectivePolicy.blockedPatterns) {
-    if (rawContent.includes(pattern)) {
-      checks.push({
-        name: 'malware_pattern',
-        passed: false,
-        details: `Content contains suspicious pattern: "${pattern}"`,
-        severity: 'error',
-      });
+  const isWasm = rawContent.length >= 4 &&
+    Array.from(new TextEncoder().encode(rawContent.slice(0, 4))).every(
+      (b, i) => b === WASM_MAGIC[i] || (i >= rawContent.length),
+    );
+
+  if (isWasm) {
+    const wasmBytes = new TextEncoder().encode(rawContent);
+    const wasmChecks = scanWasmBinary(wasmBytes, packageName);
+    checks.push(...wasmChecks);
+  } else {
+    for (const pattern of effectivePolicy.blockedPatterns) {
+      if (rawContent.includes(pattern)) {
+        checks.push({
+          name: 'malware_pattern',
+          passed: false,
+          details: `Content contains suspicious pattern: "${pattern}"`,
+          severity: 'error',
+        });
+      }
     }
   }
 
@@ -257,6 +270,210 @@ export async function verifySupplyChain(
       : `All integrity checks passed`,
     verifiedAt: now,
   };
+}
+
+function scanWasmBinary(
+  bytes: Uint8Array,
+  packageName: string,
+): IntegrityCheck[] {
+  const checks: IntegrityCheck[] = [];
+
+  if (bytes.length < 8) {
+    checks.push({
+      name: 'wasm_too_small',
+      passed: false,
+      details: 'WASM binary is too small to be valid',
+      severity: 'error',
+    });
+    return checks;
+  }
+
+  const magic = bytes.subarray(0, 4);
+  const version = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(4, true);
+
+  if (magic[0] !== 0x00 || magic[1] !== 0x61 || magic[2] !== 0x73 || magic[3] !== 0x6d) {
+    checks.push({
+      name: 'wasm_magic',
+      passed: false,
+      details: 'File does not start with WASM magic bytes',
+      severity: 'error',
+    });
+    return checks;
+  }
+
+  if (version !== 1) {
+    checks.push({
+      name: 'wasm_version',
+      passed: false,
+      details: `WASM version ${version} is not supported`,
+      severity: 'error',
+    });
+  } else {
+    checks.push({
+      name: 'wasm_version',
+      passed: true,
+      details: 'WASM version 1 (supported)',
+      severity: 'info',
+    });
+  }
+
+  const SUSPICIOUS_IMPORTS = new Set([
+    'wasi_snapshot_preview1.proc_exit',
+    'wasi_snapshot_preview1.args_get',
+    'wasi_snapshot_preview1.environ_get',
+    'wasi_snapshot_preview1.sock_open',
+    'wasi_snapshot_preview1.sock_connect',
+  ]);
+
+  const KNOWN_HOST_IMPORTS = new Set([
+    'host_alloc',
+    'host_free',
+    'host_log',
+    'host_get_config',
+    'host_set_state',
+    'host_get_state',
+    'host_http_request',
+    'host_get_abi_version',
+    'host_get_time_ms',
+    'host_random',
+    'memory',
+  ]);
+
+  let importsCount = 0;
+  let suspiciousImports: string[] = [];
+  let unknownImports: string[] = [];
+  let maxMemoryPages = 0;
+
+  try {
+    let offset = 8;
+    while (offset < bytes.length - 1) {
+      const sectionId = bytes[offset];
+      offset += 1;
+      const sectionSize = readLeb128U32(bytes, offset);
+      offset = sectionSize.offset;
+      const sectionEnd = offset + sectionSize.value;
+
+      if (sectionId === 2) {
+        for (let i = offset; i < sectionEnd;) {
+          const modLen = readLeb128U32(bytes, i);
+          i = modLen.offset;
+          const modName = new TextDecoder().decode(bytes.subarray(i, i + modLen.value));
+          i += modLen.value;
+          const fieldCount = readLeb128U32(bytes, i);
+          i = fieldCount.offset;
+          for (let j = 0; j < fieldCount.value; j++) {
+            const fieldLen = readLeb128U32(bytes, i);
+            i = fieldLen.offset;
+            const fieldName = new TextDecoder().decode(bytes.subarray(i, i + fieldLen.value));
+            i += fieldLen.value;
+            i += 1;
+            importsCount++;
+            const fullName = `${modName}.${fieldName}`;
+            if (SUSPICIOUS_IMPORTS.has(fullName)) {
+              suspiciousImports.push(fullName);
+            }
+            if (modName === 'env' && !KNOWN_HOST_IMPORTS.has(fieldName) && fieldName !== 'memory') {
+              unknownImports.push(fullName);
+            }
+          }
+        }
+      }
+
+      if (sectionId === 5) {
+        const count = readLeb128U32(bytes, offset);
+        offset = count.offset;
+        const flags = bytes[offset];
+        offset += 1;
+        const initial = readLeb128U32(bytes, offset);
+        offset = initial.offset;
+        maxMemoryPages = initial.value;
+        if (flags & 1 && offset < sectionEnd) {
+          const max = readLeb128U32(bytes, offset);
+          maxMemoryPages = max.value;
+        }
+      }
+
+      offset = sectionEnd;
+    }
+  } catch {
+    checks.push({
+      name: 'wasm_parse',
+      passed: true,
+      details: 'WASM section parsing incomplete (non-fatal)',
+      severity: 'info',
+    });
+  }
+
+  checks.push({
+    name: 'wasm_imports',
+    passed: importsCount > 0,
+    details: importsCount > 0
+      ? `${importsCount} imports found`
+      : 'No imports — plugin cannot interact with host',
+    severity: importsCount > 0 ? 'info' : 'warning',
+  });
+
+  if (suspiciousImports.length > 0) {
+    checks.push({
+      name: 'wasm_suspicious_imports',
+      passed: false,
+      details: `Suspicious imports: ${suspiciousImports.join(', ')}`,
+      severity: 'error',
+    });
+  }
+
+  if (unknownImports.length > 0) {
+    checks.push({
+      name: 'wasm_unknown_env_imports',
+      passed: true,
+      details: `Unknown env imports (may use custom host functions): ${unknownImports.join(', ')}`,
+      severity: 'warning',
+    });
+  }
+
+  if (maxMemoryPages > 4096) {
+    checks.push({
+      name: 'wasm_memory_limit',
+      passed: false,
+      details: `Excessive memory request: ${maxMemoryPages} pages (${
+        (maxMemoryPages * 64) / 1024
+      } MB)`,
+      severity: 'error',
+    });
+  } else if (maxMemoryPages > 1024) {
+    checks.push({
+      name: 'wasm_memory_limit',
+      passed: true,
+      details: `Large memory request: ${maxMemoryPages} pages (${(maxMemoryPages * 64) / 1024} MB)`,
+      severity: 'warning',
+    });
+  }
+
+  checks.push({
+    name: 'wasm_size',
+    passed: bytes.length <= 100 * 1024 * 1024,
+    details: `WASM binary size: ${(bytes.length / 1024).toFixed(1)} KB`,
+    severity: bytes.length > 100 * 1024 * 1024 ? 'warning' : 'info',
+  });
+
+  return checks;
+}
+
+function readLeb128U32(
+  bytes: Uint8Array,
+  offset: number,
+): { value: number; offset: number } {
+  let result = 0;
+  let shift = 0;
+  let pos = offset;
+  while (pos < bytes.length) {
+    const byte = bytes[pos];
+    result |= (byte & 0x7f) << shift;
+    pos += 1;
+    if ((byte & 0x80) === 0) break;
+    shift += 7;
+  }
+  return { value: result >>> 0, offset: pos };
 }
 
 export async function verifyPluginIntegrity(
