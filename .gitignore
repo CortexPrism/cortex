@@ -25,7 +25,6 @@ desktop/src-tauri/target/
 .idea/
 *.swp
 *.swo
-.DS_Store
 Thumbs.db
 
 # ── Logs ──────────────────────────────────────────────────────
@@ -40,6 +39,14 @@ npm-debug.log*
 .Trashes
 ehthumbs.db
 
+# ── AI / editor agent config (local) ──────────────────────────
+.kilo/
+.devin/
+.contextstream/
+.windsurf/
+.cursor/
+.claude/
+
 # ── Cortex runtime data ───────────────────────────────────────
 .cortex/
 /data/
@@ -52,12 +59,10 @@ coverage/
 docs/design/
 docs/research/
 docs/marketing/
+
+# ── Auth tokens / eval results ────────────────────────────────
 /.cortex/eval_suite.json
 /.cortex/eval_baseline.json
-
-# Kilo AI
-.kilo/
-.devin/
 
 .playwright-mcp/
 cortex.code-workspace
