@@ -46,6 +46,8 @@ ehthumbs.db
 .windsurf/
 .cursor/
 .claude/
+kilo.jsonc
+.vscode/mcp.json
 
 # ── Cortex runtime data ───────────────────────────────────────
 .cortex/
