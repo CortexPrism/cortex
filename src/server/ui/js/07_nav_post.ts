@@ -70,9 +70,7 @@ function showPage(name) {
     });
   }
 
-  // Hamburger visibility
-  var ham = document.getElementById('hamburger');
-  if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
+  // Hamburger visibility is handled entirely by CSS (responsive media query)
 
   var loaders = {
     lens: loadLens, memory: loadMemoryOverview,

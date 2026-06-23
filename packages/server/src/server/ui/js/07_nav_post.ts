@@ -23,9 +23,9 @@ function showPage(name) {
   requestAnimationFrame(() => {
     page.classList.add('page-fade-in');
   });
-  // Show hamburger only on non-chat pages
+  // Show hamburger only on mobile (CSS handles desktop via media query)
   const ham = document.getElementById('hamburger');
-  if (ham) ham.style.display = name === 'chat' && window.innerWidth > 768 ? 'none' : window.innerWidth <= 768 ? 'flex' : name !== 'chat' ? 'flex' : 'none';
+  if (ham) ham.style.display = window.innerWidth <= 768 ? '' : 'none';
 
   const loaders = {
     lens: loadLens, memory: loadMemoryOverview, jobs: () => { loadJobs(); injectSubNav('automation', 'Triggers & Hooks', [['automation','Triggers & Hooks'],['workflow','Workflows'],['eval','Eval'],['jobs','Jobs']], 'jobs'); },

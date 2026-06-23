@@ -3,9 +3,6 @@ export const PAGE_CHAT = `
 
     <!-- Chat header -->
     <div style="padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:12px;flex-shrink:0;">
-      <button id="hamburger" onclick="toggleSidebar()" data-tip="Toggle sidebar" aria-label="Toggle sidebar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
       <span id="chat-agent-name" style="font-size:13px;font-weight:500;color:var(--accent2);"></span>
       <span id="chat-session-name" style="font-size:13px;font-weight:500;color:var(--text2);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       <span id="chat-session-id" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;"></span>
