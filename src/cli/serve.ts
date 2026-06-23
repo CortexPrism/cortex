@@ -99,7 +99,6 @@ export async function startServerBackground(port: number, host: string): Promise
       execPath,
       'run',
       '--allow-all',
-      '--reload=file://',
       `--config=${configPath}`,
       mainPath,
       'server',
@@ -117,7 +116,7 @@ export async function startServerBackground(port: number, host: string): Promise
     }).spawn();
   }
 
-  const alive = await waitForServer(host, port, 5000);
+  const alive = await waitForServer(host, port, 20_000);
   if (alive) {
     console.log(green(i18n.t('cli.serve.startedInBackground', { url: `http://${host}:${port}` })));
   } else {

@@ -138,7 +138,7 @@ export const restartCommand = cortexCommand('restart')
     const startWait = Date.now();
     while (Date.now() - startWait < maxWaitMs) {
       try {
-        const listener = Deno.listen({ port, hostname: '127.0.0.1' });
+        const listener = Deno.listen({ port, hostname: host });
         listener.close();
         break;
       } catch {
