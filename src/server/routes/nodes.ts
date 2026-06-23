@@ -45,7 +45,30 @@ export const routes: RouteHandler[] = [
       const status = url.searchParams.get('status') ?? undefined;
       const { listNodes } = await import('../../hub/node-registry.ts');
       const nodes = await listNodes({ group, tier: tier as never, status: status as never });
-      return json(nodes);
+
+      // Enrich with swarm fields from the nodes table
+      try {
+        const { getCoreDb } = await import('../../db/client.ts');
+        const db = await getCoreDb();
+        const swarmFields = await db.all(
+          `SELECT id, cpu_percent, memory_used_mb, memory_total_mb,
+                  active_sessions, active_processes, a2a_endpoint, labels, metrics_json
+           FROM nodes`,
+        );
+        const swarmMap = new Map(swarmFields.map((r: Record<string, unknown>) => [String(r.id), r]));
+        return json(nodes.map((n) => ({
+          ...n,
+          cpu_percent: Number(swarmMap.get(n.id)?.cpu_percent ?? 0),
+          memory_used_mb: Number(swarmMap.get(n.id)?.memory_used_mb ?? 0),
+          memory_total_mb: Number(swarmMap.get(n.id)?.memory_total_mb ?? 0),
+          active_sessions: Number(swarmMap.get(n.id)?.active_sessions ?? 0),
+          active_processes: Number(swarmMap.get(n.id)?.active_processes ?? 0),
+          a2a_endpoint: String(swarmMap.get(n.id)?.a2a_endpoint ?? ''),
+          labels: swarmMap.get(n.id)?.labels ?? '{}',
+        })));
+      } catch {
+        return json(nodes);
+      }
     },
   },
   {

@@ -64,6 +64,7 @@ import { routes as evalRoutes } from './routes/eval-routes.ts';
 import { routes as sessionLinksRoutes } from './routes/session-links.ts';
 import { routes as workspaceSnapshotsRoutes } from './routes/workspace-snapshots.ts';
 import { routes as tunnelRoutes } from './routes/tunnel.ts';
+import { routes as swarmRoutes } from './routes/swarm.ts';
 
 const publicRoutes: RouteHandler[] = [
   ...corsRoutes,
@@ -131,6 +132,7 @@ const protectedRoutes: RouteHandler[] = [
   ...sessionLinksRoutes,
   ...workspaceSnapshotsRoutes,
   ...tunnelRoutes,
+  ...swarmRoutes,
 ];
 
 export async function handleApi(req: Request): Promise<Response | null> {

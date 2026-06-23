@@ -239,4 +239,8 @@ export const registry: CommandEntry[] = [
     path: ['mqm'],
     load: () => import('./model-qm-cmd.ts').then((m) => m.mqmCommand._cmd),
   },
+  {
+    path: ['swarm'],
+    load: () => import('./swarm-cmd.ts').then((m) => m.swarmCommand._cmd),
+  },
 ];

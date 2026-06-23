@@ -7,6 +7,7 @@
     "./contracts/ipc": "./contracts/ipc.ts",
     "./contracts/scheduler": "./contracts/scheduler.ts",
     "./contracts/services": "./contracts/services.ts",
-    "./contracts/triggers": "./contracts/triggers.ts"
+    "./contracts/triggers": "./contracts/triggers.ts",
+    "./contracts/swarm": "./contracts/swarm.ts"
   }
 }

@@ -378,6 +378,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '042_policy_review.sql',
       label: 'cortex.db (policy review — regex fixes, path/domain/computer rules)',
     },
+    {
+      db: coreDb,
+      sqlFile: '043_swarm.sql',
+      label: 'cortex.db (swarm directives, resource snapshots, node metrics)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

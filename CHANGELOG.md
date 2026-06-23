@@ -7,7 +7,58 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **Distributed Agent Swarm** — cross-instance coordination layer in `@cortex/infra` that extends
+  kernel process trees and resource accounting across machines using the A2A protocol as the wire
+  transport. Cortex instances can now form a swarm: register as nodes, discover peers, dispatch
+  directives, and aggregate resource usage across the entire fleet.
+  - **Swarm contracts** (`packages/infra/contracts/swarm.ts`) — `ISwarmNode`,
+    `ISwarmCoordinator`, `ISwarmTransport`, plus types for directives, resource reports, node
+    registration payloads, and runtime metrics (`NodeMetrics`).
+  - **Node registry** (`packages/infra/src/swarm/node-registry.ts`) — CRUD over the existing
+    `nodes` table (migration 015); periodic heartbeat with metrics snapshots into new
+    `swarm_resource_snapshots` table; stale-node eviction; peer discovery via A2A agent cards,
+    config seed nodes, or shared DB fallback.
+  - **A2A-based transport** (`packages/infra/src/swarm/transport.ts`) — maps swarm directives to
+    A2A `SendMessage` JSON-RPC calls; agent card caching; `Promise.allSettled` broadcast fan-out.
+  - **Swarm coordinator** (`packages/infra/src/swarm/coordinator.ts`) — `swarm` singleton:
+    self-registration, peer discovery, directive dispatch (tracked in new `swarm_directives`
+    table), broadcast to node groups, aggregated resource reporting, 30s heartbeat loop with
+    CPU/memory/token metrics, drain/seal lifecycle.
+  - **Directive handler** (`packages/infra/src/swarm/directive-handler.ts`) — receiving side: processes
+    all 5 directive kinds (`spawn_agent`, `execute_task`, `query_resources`, `forward_message`,
+    `sync_state`) on the target node.
+  - **Remote kernel** (`packages/infra/src/swarm/remote-kernel.ts`) — proxy remote processes into the
+    local `OsKernel` process tree (synthetic PIDs ≥900000); aggregated resource accounting across
+    all connected nodes.
+  - **A2A server integration** (`packages/server/src/a2a/server.ts`) — `registerSwarmHandler()` and
+    `SwarmDirectiveHandler` interface; `handleSendMessage` detects `metadata.swarmKind` and routes
+    swarm directives to the directive handler instead of the normal Cortex executor.
+  - **Migration 043** (`src/db/migrations/043_swarm.sql`) — `swarm_directives` and
+    `swarm_resource_snapshots` tables plus metrics/labels/a2a_endpoint columns on `nodes`.
+  - **CLI** (`src/cli/swarm-cmd.ts`) — `cortex swarm` command with `init`, `nodes`, `topology`,
+    `report`, `drain`, and `seal` subcommands.
+  - **Config** (`src/config/config.ts`) — `SwarmConfig` interface with `seedNodes`, `group`, and
+    `enabled` fields under `config.swarm`.
+  - **Web UI — Nodes page** (`src/server/ui/pages/nodes.ts`, `src/server/ui/js/15_nodes.ts`) —
+    new swarm fleet summary cards (CPU avg, memory, sessions, processes, tokens today) computed
+    from per-node heartbeat metrics; enhanced node cards with CPU/memory color-coded bars, active
+    session/process counts, A2A endpoint, and key=value labels; view-mode toggle between Node
+    List, Swarm Topology (process tree + fleet token/cost report), and Directive History table.
+  - **Swarm API routes** (`src/server/routes/swarm.ts`) — `GET /api/swarm/topology`,
+    `GET /api/swarm/report`, `GET /api/swarm/directives`, `GET /api/swarm/nodes/metrics`,
+    `GET /api/swarm/nodes/:id/snapshots`; registered in `new-router.ts` under protected routes.
+  - **Nodes API enrichment** (`src/server/routes/nodes.ts`) — `GET /api/nodes` now includes swarm
+    fields (`cpu_percent`, `memory_used_mb`, `memory_total_mb`, `active_sessions`,
+    `active_processes`, `a2a_endpoint`, `labels`) alongside existing hub node data.
+
 ### Fixed
+
+- **Migration 043 placed in wrong directory** — `043_swarm.sql` was created in
+  `packages/core/src/db/migrations/` but `migrate.ts` reads from `src/db/migrations/`, causing
+  `server start` to crash with `NotFound: No such file or directory`. Copied to
+  `src/db/migrations/043_swarm.sql`.
 
 - **Codegraph: call edges attributed to wrong source node** — `extractCalls()` was setting `sourceQName: ''` for every call, causing all edges in a file to point to the first indexed node via `fileNodeMap` fallback. Now tracks parent function/method context through the AST walk and emits `${filePath}:${containingFunction}` sourceQName, matching the node qualified-name format. (`src/codegraph/indexer.ts`)
 

@@ -480,6 +480,8 @@ export interface CortexConfig {
   codeGraph?: CodeGraphConfig;
   /** A2A (Agent-to-Agent) protocol configuration */
   a2a?: import('../a2a/types.ts').A2AConfig;
+  /** Swarm (distributed agent) configuration */
+  swarm?: SwarmConfig;
   /** Server-level security configuration */
   server?: ServerConfig;
   /** Security supervisor model override */
@@ -530,6 +532,15 @@ export interface ApprovalsConfig {
 
 export interface SchedulerConfig {
   runningJobTimeoutMs?: number;
+}
+
+export interface SwarmConfig {
+  /** A2A endpoints of seed nodes for initial peer discovery. */
+  seedNodes?: string[];
+  /** Node group name for this instance. */
+  group?: string;
+  /** Whether this node is enabled in the swarm (default true). */
+  enabled?: boolean;
 }
 
 export interface UICdnConfig {

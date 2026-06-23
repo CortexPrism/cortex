@@ -28,6 +28,26 @@ interface CortexExecution {
   ) => Promise<{ response: string; tokensIn: number; tokensOut: number }>;
 }
 
+export interface SwarmDirectiveHandler {
+  handle: (
+    kind: string,
+    payload: Record<string, unknown>,
+    directiveId: string,
+    sourceNodeId: string,
+  ) => Promise<{
+    status: string;
+    output?: string;
+    error?: string;
+    metrics?: {
+      tokensIn: number;
+      tokensOut: number;
+      costUsd: number;
+      durationMs: number;
+      toolCalls: number;
+    };
+  }>;
+}
+
 let agentCard: AgentCard | null = null;
 const activeTasks = new Map<
   string,
@@ -38,6 +58,7 @@ const taskContexts = new Map<
   { messages: Array<{ role: 'user' | 'agent'; content: string }>; createdAt: number }
 >();
 let cortexExecutor: CortexExecution | null = null;
+let swarmHandler: SwarmDirectiveHandler | null = null;
 let defaultSkills: AgentSkill[] = [];
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -87,6 +108,10 @@ function validateA2ARequest(
 
 export function registerA2AExecutor(executor: CortexExecution): void {
   cortexExecutor = executor;
+}
+
+export function registerSwarmHandler(handler: SwarmDirectiveHandler): void {
+  swarmHandler = handler;
 }
 
 export function setA2ASkills(skills: AgentSkill[]): void {
@@ -303,7 +328,7 @@ async function handleSendMessage(req: SendMessageRequest): Promise<Task> {
   const contextId = extractContextId(req.message);
   const task = createTask(taskId, contextId ?? undefined);
 
-  if (!cortexExecutor) {
+  if (!cortexExecutor && !swarmHandler) {
     updateTaskState(taskId, 'TASK_STATE_FAILED', {
       messageId: crypto.randomUUID(),
       role: 'agent',
@@ -316,6 +341,58 @@ async function handleSendMessage(req: SendMessageRequest): Promise<Task> {
     .filter((p) => p.text)
     .map((p) => p.text)
     .join('\n');
+
+  // Route swarm directives to the swarm handler
+  const swarmKind = req.message.metadata?.swarmKind;
+  if (swarmKind && typeof swarmKind === 'string' && swarmHandler) {
+    try {
+      let payload: Record<string, unknown> = {};
+      try { payload = JSON.parse(userText); } catch { /* raw text, use as-is */ }
+      if (!payload || typeof payload !== 'object') payload = { message: userText };
+
+      const sourceNodeId = (req.message.metadata as Record<string, unknown>)?.swarmSourceNodeId as string ?? 'unknown';
+
+      const result = await swarmHandler.handle(swarmKind, payload, taskId, sourceNodeId);
+
+      const agentMsg: Message = {
+        messageId: crypto.randomUUID(),
+        role: 'agent',
+        parts: [{ text: JSON.stringify(result) }],
+      };
+
+      const entry = activeTasks.get(taskId);
+      if (entry) {
+        entry.history.push(req.message);
+        entry.history.push(agentMsg);
+        entry.artifacts.push({ parts: [{ text: JSON.stringify(result) }] });
+      }
+
+      const taskState: TaskState = result.status === 'completed'
+        ? 'TASK_STATE_COMPLETED'
+        : result.status === 'failed'
+        ? 'TASK_STATE_FAILED'
+        : 'TASK_STATE_CANCELED';
+
+      updateTaskState(taskId, taskState, agentMsg);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      updateTaskState(taskId, 'TASK_STATE_FAILED', {
+        messageId: crypto.randomUUID(),
+        role: 'agent',
+        parts: [{ text: `Swarm directive failed: ${errorMsg}` }],
+      });
+    }
+    return rebuildTask(taskId)!;
+  }
+
+  if (!cortexExecutor) {
+    updateTaskState(taskId, 'TASK_STATE_FAILED', {
+      messageId: crypto.randomUUID(),
+      role: 'agent',
+      parts: [{ text: 'Cortex A2A server: no Cortex executor registered for non-swarm messages.' }],
+    });
+    return rebuildTask(taskId)!;
+  }
 
   let historyContext: string | undefined;
   const contextKey = contextId ?? taskId;

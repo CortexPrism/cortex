@@ -1,2 +1,32 @@
-// @cortex/infra — processes, services, scheduler, ipc, triggers, workflow, observability
-export {};
+// @cortex/infra — processes, services, scheduler, ipc, triggers, workflow, observability, swarm
+export {
+  createSwarmTransport,
+  discoverPeers,
+  getAggregatedResources,
+  getFullProcessTree,
+  getNode,
+  getRemoteProcessesForNode,
+  getSwarmTopology,
+  handleSwarmDirective,
+  heartbeat,
+  initRemoteKernel,
+  initSwarmCoordinator,
+  listNodes,
+  markNodesOffline,
+  registerNode,
+  registerRemoteProcess,
+  removeNode,
+  shutdownSwarmCoordinator,
+  swarm,
+  syncRemoteResources,
+  unregisterRemoteProcess,
+  updateNodeStatus,
+  HEARTBEAT_INTERVAL_MS,
+  NODE_STALE_MS,
+} from './src/swarm/mod.ts';
+export type {
+  AggregatedResourceEntry,
+  RemoteProcessEntry,
+  SwarmDirectiveContext,
+  SwarmDirectiveResponse,
+} from './src/swarm/mod.ts';

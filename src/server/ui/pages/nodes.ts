@@ -17,6 +17,29 @@ export const PAGE_NODES = `
       <div class="stat"><div class="stat-num" style="color:#fbbf24;" id="nodes-disconnected">—</div><div class="stat-label">Disconnected</div></div>
       <div class="stat"><div class="stat-num" style="color:#818cf8;" id="nodes-groups">—</div><div class="stat-label">Groups</div></div>
     </div>
+    <!-- Swarm metrics cards -->
+    <div style="padding:0 24px 12px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+      <div class="stat" style="background:var(--bg2);padding:10px 12px;border-radius:6px;">
+        <div class="stat-num" style="font-size:16px;color:#818cf8;" id="swarm-cpu">—</div>
+        <div class="stat-label" style="font-size:10px;">Fleet CPU Avg</div>
+      </div>
+      <div class="stat" style="background:var(--bg2);padding:10px 12px;border-radius:6px;">
+        <div class="stat-num" style="font-size:16px;color:#22c55e;" id="swarm-memory">—</div>
+        <div class="stat-label" style="font-size:10px;">Fleet Memory</div>
+      </div>
+      <div class="stat" style="background:var(--bg2);padding:10px 12px;border-radius:6px;">
+        <div class="stat-num" style="font-size:16px;color:#a78bfa;" id="swarm-sessions">—</div>
+        <div class="stat-label" style="font-size:10px;">Active Sessions</div>
+      </div>
+      <div class="stat" style="background:var(--bg2);padding:10px 12px;border-radius:6px;">
+        <div class="stat-num" style="font-size:16px;color:#f59e0b;" id="swarm-processes">—</div>
+        <div class="stat-label" style="font-size:10px;">Processes</div>
+      </div>
+      <div class="stat" style="background:var(--bg2);padding:10px 12px;border-radius:6px;">
+        <div class="stat-num" style="font-size:16px;color:#ec4899;" id="swarm-tokens">—</div>
+        <div class="stat-label" style="font-size:10px;">Tokens Today</div>
+      </div>
+    </div>
     <!-- Filter bar -->
     <div style="padding:10px 24px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;">
       <select id="nodes-filter-tier" class="inp" style="width:120px;font-size:12px;" onchange="loadNodes()">
@@ -34,6 +57,12 @@ export const PAGE_NODES = `
       </select>
       <select id="nodes-filter-group" class="inp" style="width:140px;font-size:12px;" onchange="loadNodes()">
         <option value="">All groups</option>
+      </select>
+      <div style="flex:1;"></div>
+      <select id="nodes-view-mode" class="inp" style="width:130px;font-size:12px;" onchange="switchNodesView()">
+        <option value="list">\ud83d\udccb Node List</option>
+        <option value="topology">\ud83d\udda7 Topology</option>
+        <option value="directives">\u21c4 Directives</option>
       </select>
     </div>
     <!-- Node list -->
