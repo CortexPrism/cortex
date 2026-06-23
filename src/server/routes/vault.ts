@@ -3,6 +3,23 @@ import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 export const routes: RouteHandler[] = [
   {
     method: 'GET',
+    pattern: /^\/api\/vault\/get$/,
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const key = url.searchParams.get('key');
+      if (!key) return err('Missing key parameter', 400);
+      const { vaultGet } = await import('../../security/vault.ts');
+      try {
+        const value = await vaultGet(key, 'system');
+        if (!value) return notFound('Credential not found');
+        return json({ key, value });
+      } catch (e) {
+        return err((e as Error).message, 500);
+      }
+    },
+  },
+  {
+    method: 'GET',
     pattern: /^\/api\/vault\/list$/,
     handler: async () => {
       const { vaultList } = await import('../../security/vault.ts');

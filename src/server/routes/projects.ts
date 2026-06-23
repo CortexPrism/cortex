@@ -32,8 +32,9 @@ export const routes: RouteHandler[] = [
         const agentId = body.agentId || 'assistant';
         const cloneDir = join(PATHS.workspacesDir, agentId, name);
         await Deno.mkdir(join(PATHS.workspacesDir, agentId), { recursive: true });
+        const cloneUrl = `https://${token}@github.com/${body.fullName}.git`;
         const cmd = new Deno.Command('git', {
-          args: ['clone', repo.html_url, cloneDir],
+          args: ['clone', cloneUrl, cloneDir],
           stdout: 'null',
           stderr: 'null',
         });

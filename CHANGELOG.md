@@ -7,6 +7,30 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Fixed
+
+- **Codegraph: call edges attributed to wrong source node** — `extractCalls()` was setting `sourceQName: ''` for every call, causing all edges in a file to point to the first indexed node via `fileNodeMap` fallback. Now tracks parent function/method context through the AST walk and emits `${filePath}:${containingFunction}` sourceQName, matching the node qualified-name format. (`src/codegraph/indexer.ts`)
+
+- **Codegraph: edge sourceQName absolute↔relative path mismatch** — edge sourceQNames carried absolute paths while node qualified-names used relative paths from `indexFile` normalisation, causing `resolveEdges` to miss valid source nodes. Now transforms absolute `filePath` to `relPath` in edge sourceQNames during `indexFile`. (`src/codegraph/sync.ts`)
+
+- **Codegraph: `bulkInsertNodes` returned wrong IDs causing edge FK violations** — used `BEGIN`/`INSERT`/`SELECT last_insert_rowid()`/`COMMIT` across separate `db.run()` calls. The libSQL client may use different connections per call, so `last_insert_rowid()` returned stale/zero values and computed IDs drifted from actual DB rowids by 2+. Replaced with single `db.insert()` call that captures `lastInsertRowid` from the same execute result. (`src/codegraph/graph.ts`)
+
+- **Codegraph: post-insert DELETE removed all edges** — after each chunk's edge INSERT, a cleanup `DELETE … WHERE source_id NOT IN (SELECT id FROM code_nodes …)` ran. Due to connection state issues the subquery returned empty and deleted all edges including freshly inserted ones. Removed; the pre-insert `validEdges` filter already guarantees referential integrity. (`src/codegraph/graph.ts`)
+
+- **Codegraph: auto-index infinite loop + data corruption** — the architecture endpoint re-triggered auto-index on every page load when `node_count === 0`. A failed prior auto-index left `node_count` stuck at 0 (nodes persisted but edges failed), causing each subsequent load to delete-and-retry, corrupting data indefinitely. Now only auto-indexes when the project truly does not exist; if `node_count` is stale but actual nodes are present, fixes the counter without re-indexing; on index failure clears `p` to return "Project not found" instead of serving corrupted state. (`src/server/routes/codegraph.ts`)
+
+- **Codegraph: stale projects from deleted workspaces persisted** — `deleteProject()` in `projects/manager.ts` only removed the filesystem directory; codegraph data in memory.db was never cleaned up. Added `deleteCodeProject()` that deletes the `code_projects` row (child tables cascade via `ON DELETE CASCADE` FK). The project list endpoint now cross-references with workspace directories, excludes stale entries, and fire-and-forget cleans them from the DB. (`src/codegraph/graph.ts`, `src/server/routes/codegraph.ts`)
+
+- **GitHub clone missing token authentication** — `POST /api/projects/import-github` called `git clone` with `repo.html_url` (bare `https://github.com/owner/name`) without embedding the GitHub token, so private repos and rate-limited public access failed. Now constructs `https://{token}@github.com/{fullName}.git` and passes it to `git clone`. (`src/server/routes/projects.ts`)
+
+- **`decryptValue()` returned encrypted `enc:` string on failure** — the config decryption helper caught errors but returned the raw `enc:…` ciphertext instead of `null`. Since the encrypted string is truthy, the `?? null` fallback never triggered, and corrupted encrypted blobs flowed through `loadConfig()` into the vault migration code. Now returns `null` on decryption failure. Added belt-and-suspenders `startsWith('enc:')` guards in `getGitHubToken()` and `loadGitHubToken()` to skip any value that survived. (`src/config/config.ts`, `src/workspace/github.ts`, `src/server/ui/js/12_settings.ts`)
+
+### Changed
+
+- **GitHub token consolidated to vault** — the Settings page had two duplicate "GitHub Token" fields under Automatic Updates and Plugin Updates, both storing the value in plaintext `config.json`. Replaced with a single vault-backed field: writes to `POST /api/vault/store` (AES-256-GCM encrypted), reads from `GET /api/vault/get`. On first access, existing tokens in `config.update.githubToken` and `config.pluginUpdate.githubToken` auto-migrate to the vault. `getGitHubToken()` now checks vault → env → config (backward compatible). (`src/server/ui/js/12_settings.ts`, `src/server/routes/vault.ts`, `src/workspace/github.ts`)
+
+- **Added `GET /api/vault/get?key=` endpoint** for reading individual vault entries by name. (`src/server/routes/vault.ts`)
+
 ## [0.51.0] - 2026-06-23
 
 ### Added

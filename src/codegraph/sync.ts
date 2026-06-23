@@ -120,7 +120,9 @@ async function indexFile(
       })),
       edges: result.edges.map((e) => ({
         ...e,
-        sourceQName: e.sourceQName || `${relPath}`,
+        sourceQName: e.sourceQName
+          ? e.sourceQName.replace(filePath, relPath)
+          : `${relPath}`,
       })),
       relPath,
       language: result.language,
@@ -198,7 +200,7 @@ export async function indexRepository(
       languageStats[result.language] = (languageStats[result.language] ?? 0) + 1;
 
       for (const node of result.nodes) {
-        allNodes.push({ ...node, projectId: project.id });
+        allNodes.push({ ...node, projectId: Number(project.id) });
       }
 
       for (const edge of result.edges) {

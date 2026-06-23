@@ -208,29 +208,37 @@ function extractCalls(
   node: TreeSitterNode,
   source: string,
   filePath: string,
+  language: string,
 ): ExtractedEdge[] {
   const edges: ExtractedEdge[] = [];
   const callPatterns = getCallPatterns();
 
-  function walk(n: TreeSitterNode): void {
-    for (const { nodeType, extractFn } of callPatterns) {
-      if (n.type === nodeType) {
-        const target = extractFn(n, source);
-        if (target) {
-          edges.push({
-            type: 'CALLS',
-            sourceQName: '',
-            targetQName: target,
-            confidence: 0.85,
-            callLine: n.startPosition.row + 1,
-            argToParam: null,
-            metadata: {},
-          });
+  function walk(n: TreeSitterNode, parentName?: string): void {
+    const label = nodeTypeToLabel(n.type, language);
+    const name = label ? extractName(n, source, language) : null;
+    const currentParent = name ?? parentName;
+
+    if (currentParent) {
+      for (const { nodeType, extractFn } of callPatterns) {
+        if (n.type === nodeType) {
+          const target = extractFn(n, source);
+          if (target) {
+            edges.push({
+              type: 'CALLS',
+              sourceQName: `${filePath}:${currentParent}`,
+              targetQName: target,
+              confidence: 0.85,
+              callLine: n.startPosition.row + 1,
+              argToParam: null,
+              metadata: {},
+            });
+          }
         }
       }
     }
+
     for (const child of n.namedChildren) {
-      walk(child);
+      walk(child, currentParent);
     }
   }
 
@@ -508,7 +516,7 @@ export async function parseFile(
     const rootNode = tree.rootNode;
 
     const nodes = extractDefinitions(rootNode, source, filePath, language);
-    const calls = extractCalls(rootNode, source, filePath);
+    const calls = extractCalls(rootNode, source, filePath, language);
     const imports = extractImports(rootNode, source, filePath);
 
     return {

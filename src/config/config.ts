@@ -42,7 +42,7 @@ async function decryptValue(value: string | null | undefined): Promise<string | 
     const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
     return new TextDecoder().decode(dec);
   } catch {
-    return value;
+    return null;
   }
 }
 

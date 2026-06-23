@@ -8,13 +8,19 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/codegraph\/projects$/,
     handler: async () => {
-      const { listProjects: listCodeProjects } = await import('../../codegraph/graph.ts');
+      const { listProjects: listCodeProjects, deleteCodeProject } = await import('../../codegraph/graph.ts');
       const { listProjects: listFsProjects } = await import('../../projects/manager.ts');
       const codeProjects = await listCodeProjects();
       const fsProjects = await listFsProjects();
-      const codeNames = new Set(codeProjects.map((p) => p.name));
+      const fsNames = new Set(fsProjects.map((p) => p.name));
+      const liveCodeProjects = codeProjects.filter((p) => fsNames.has(p.name));
+      const staleProjects = codeProjects.filter((p) => !fsNames.has(p.name));
+      for (const stale of staleProjects) {
+        deleteCodeProject(stale.name).catch(() => {});
+      }
+      const codeNames = new Set(liveCodeProjects.map((p) => p.name));
       const merged = [
-        ...codeProjects,
+        ...liveCodeProjects,
         ...fsProjects.filter((p) => !codeNames.has(p.name)).map((p) => ({
           id: -1,
           name: p.name,
@@ -420,14 +426,15 @@ export const routes: RouteHandler[] = [
       const project = url.searchParams.get('project');
       if (!project) return err('Missing project', 400);
       const { getProject, getArchitecture } = await import('../../codegraph/graph.ts');
+      const { updateProjectCounts } = await import('../../codegraph/graph.ts');
+      const { getMemoryDb } = await import('../../db/client.ts');
       let p = await getProject(project);
-      if (!p || p.node_count === 0) {
+      if (!p) {
         const { loadProject } = await import('../../projects/manager.ts');
         const fsProj = await loadProject(project);
         console.error(
-          '[codegraph] architecture endpoint: project=' + project + ' found_in_codegraph=' + !!p +
-            ' node_count=' + (p?.node_count ?? 'N/A') + ' fsProj=' + !!fsProj + ' fsPath=' +
-            (fsProj?.path || 'N/A'),
+          '[codegraph] architecture endpoint: project=' + project + ' not in codegraph, fsProj=' +
+            !!fsProj + ' fsPath=' + (fsProj?.path || 'N/A'),
         );
         if (fsProj?.path) {
           console.error(
@@ -445,8 +452,45 @@ export const routes: RouteHandler[] = [
             console.error(
               '[codegraph] architecture endpoint: index FAILED — ' + (e as Error).message,
             );
+            p = undefined;
           }
         } else console.error('[codegraph] architecture endpoint: no fsProj path to index');
+      } else if (p.node_count === 0) {
+        const db = await getMemoryDb();
+        const actual = await db.get(
+          `SELECT COUNT(*) as cnt FROM code_nodes WHERE project_id = ?`,
+          [p.id],
+        ) as { cnt: number } | undefined;
+        if ((actual?.cnt ?? 0) === 0) {
+          console.error(
+            '[codegraph] architecture endpoint: project=' + project + ' has node_count=0, re-running index',
+          );
+          const { loadProject } = await import('../../projects/manager.ts');
+          const fsProj = await loadProject(project);
+          if (fsProj?.path) {
+            try {
+              const { indexRepository } = await import('../../codegraph/sync.ts');
+              const result = await indexRepository(fsProj.path, project);
+              console.error(
+                '[codegraph] architecture endpoint: index complete — ' + result.nodeCount +
+                  ' nodes, ' + result.edgeCount + ' edges in ' + result.durationMs + 'ms',
+              );
+              p = await getProject(project);
+            } catch (e) {
+              console.error(
+                '[codegraph] architecture endpoint: index FAILED — ' + (e as Error).message,
+              );
+              p = undefined;
+            }
+          }
+        } else {
+          console.error(
+            '[codegraph] architecture endpoint: project=' + project +
+              ' node_count=0 but actual nodes=' + (actual?.cnt ?? 0) + ', fixing counts',
+          );
+          await updateProjectCounts(p.id);
+          p = await getProject(project);
+        }
       }
       if (!p) return notFound('Project not found');
       const arch = await getArchitecture(p.id);

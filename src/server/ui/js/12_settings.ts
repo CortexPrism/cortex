@@ -609,14 +609,6 @@ async function loadSettings() {
             <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for updates (1-168 hours)</p>
           </div>
         </div>
-        <div style="margin-top:16px;">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
-            GitHub Token (optional, for rate limits)
-            <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
-          </label>
-          <input class="inp" id="cfg-update-token" type="password" placeholder="ghp_..." value="\${config.update?.githubToken ?? ''}" />
-          <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — avoids GitHub API rate limits</p>
-        </div>
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
           <div style="display:flex;align-items:center;gap:10px;">
             <input type="checkbox" id="cfg-update-startup" \${config.update?.checkOnStartup?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);" />
@@ -634,6 +626,21 @@ async function loadSettings() {
       </div>
 
       <div class="card" style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">GitHub Token</div>
+        <p style="font-size:11px;color:var(--text3);margin-bottom:12px;">Stored encrypted in vault. Used for GitHub API rate limits, private repos, and project imports.</p>
+        <div>
+          <input class="inp" id="cfg-github-token" type="password" placeholder="ghp_..." />
+          <p style="font-size:10px;color:var(--text3);margin-top:4px;">
+            Classic PAT with <code style="color:var(--text2);">public_repo</code> scope.
+            <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none;">Generate token &#x2197;</a>
+          </p>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveGitHubToken()">Save Token</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Plugin Updates</div>
         <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure how Cortex checks for and installs plugin updates</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -641,14 +648,6 @@ async function loadSettings() {
             <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Check Interval (hours)</label>
             <input class="inp" id="cfg-plugin-update-interval" type="number" min="1" max="168" value="\${config.pluginUpdate?.checkIntervalHours ?? 24}" />
             <p style="font-size:10px;color:var(--text3);margin-top:2px;">How often to check for plugin updates</p>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">
-              GitHub Token (optional)
-              <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=CortexPrism+Plugin+Updates" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-size:10px;color:var(--accent);text-decoration:none;">&#x2197; Generate token</a>
-            </label>
-            <input class="inp" id="cfg-plugin-update-token" type="password" placeholder="ghp_..." value="\${config.pluginUpdate?.githubToken ?? ''}" />
-            <p style="font-size:10px;color:var(--text3);margin-top:2px;">Classic PAT with <code style="color:var(--text2);">public_repo</code> scope — for GitHub Releases API calls</p>
           </div>
         </div>
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
@@ -808,6 +807,7 @@ async function loadSettings() {
   \`;
   refreshSecuritySection();
   if (settingsActiveTab === 'tools') loadToolConfigs();
+  loadGitHubToken();
 }
 
 function switchSettingsTab(tabName) {
@@ -906,18 +906,52 @@ async function saveUpdateSettings() {
       checkOnStartup: document.getElementById('cfg-update-startup')?.checked ?? true,
       autoUpdate: document.getElementById('cfg-update-auto')?.checked ?? false,
       checkIntervalHours: Number(document.getElementById('cfg-update-interval')?.value) || 24,
-      githubToken: document.getElementById('cfg-update-token')?.value?.trim() || null,
-      gpgKeyPath: null,
     },
     pluginUpdate: {
       checkOnStartup: document.getElementById('cfg-plugin-update-startup')?.checked ?? true,
       autoUpdate: document.getElementById('cfg-plugin-update-auto')?.checked ?? false,
       checkIntervalHours: Number(document.getElementById('cfg-plugin-update-interval')?.value) || 24,
-      githubToken: document.getElementById('cfg-plugin-update-token')?.value?.trim() || null,
     },
   };
   const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   if (res.ok) { toast('Update settings saved', 'success'); } else { toast('Failed to save settings', 'error'); }
+}
+
+async function saveGitHubToken() {
+  const val = document.getElementById('cfg-github-token')?.value?.trim();
+  if (!val) { toast('Enter a token first', 'error'); return; }
+  const res = await fetch(BASE + '/api/vault/store', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ key: 'github_token', value: val }),
+  });
+  if (res.ok) { toast('GitHub token saved to vault', 'success'); document.getElementById('cfg-github-token').value = ''; }
+  else { toast('Failed to save token', 'error'); }
+}
+
+async function loadGitHubToken() {
+  try {
+    const res = await fetch(BASE + '/api/vault/get?key=' + encodeURIComponent('github_token'));
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.value) {
+        document.getElementById('cfg-github-token').value = data.value;
+        return;
+      }
+    }
+  } catch { /* vault may not be initialized yet */ }
+
+  try {
+    const cfg = await fetch(BASE + '/api/config').then(r => r.json()).catch(() => null);
+    var existingToken = cfg?.update?.githubToken || cfg?.pluginUpdate?.githubToken || null;
+    if (existingToken && !existingToken.startsWith('enc:')) {
+      document.getElementById('cfg-github-token').value = existingToken;
+      await fetch(BASE + '/api/vault/store', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key: 'github_token', value: existingToken }),
+      });
+      toast('GitHub token migrated from config to vault', 'success');
+    }
+  } catch { /* migration skipped */ }
 }
 
 async function checkPluginUpdatesNow() {

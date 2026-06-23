@@ -112,10 +112,9 @@ async function ghPaginated<T>(
 
 export async function getGitHubToken(): Promise<string | null> {
   try {
-    const { loadConfig } = await import('../config/config.ts');
-    const config = await loadConfig();
-    if (config.update?.githubToken) return config.update.githubToken;
-    if (config.pluginUpdate?.githubToken) return config.pluginUpdate.githubToken;
+    const { vaultGet } = await import('../security/vault.ts');
+    const vaultToken = await vaultGet('github_token');
+    if (vaultToken && !vaultToken.startsWith('enc:')) return vaultToken;
   } catch { /* ignore */ }
 
   try {
@@ -124,8 +123,19 @@ export async function getGitHubToken(): Promise<string | null> {
   } catch { /* ignore */ }
 
   try {
-    const { vaultGet } = await import('../security/vault.ts');
-    return await vaultGet('github_token');
+    const { loadConfig } = await import('../config/config.ts');
+    const config = await loadConfig();
+    const configToken = config.update?.githubToken || config.pluginUpdate?.githubToken || null;
+    if (configToken && !configToken.startsWith('enc:')) {
+      const { vaultStore } = await import('../security/vault.ts');
+      vaultStore({
+        name: 'github_token',
+        service: 'github',
+        value: configToken,
+        credentialType: 'api_key',
+      }).catch(() => {});
+      return configToken;
+    }
   } catch { /* ignore */ }
 
   return null;

@@ -496,27 +496,18 @@ export async function bulkInsertNodes(
     );
   }
 
-  try {
-    await db.run(`BEGIN`);
-    await db.run(
-      `INSERT INTO code_nodes (project_id, label, name, qualified_name, file_path, line_start, line_end, signature, return_type, language, is_exported, complexity, decorators, metadata, content_hash)
-       VALUES ${placeholders}`,
-      params,
-    );
-    const row = await db.get<{ id: number }>(`SELECT last_insert_rowid() as id`);
-    await db.run(`COMMIT`);
-    const firstId = row?.id ?? 0;
-    const ids: number[] = [];
-    for (let i = 0; i < nodes.length; i++) {
-      ids.push(firstId + i);
-    }
-    return ids;
-  } catch (e) {
-    try {
-      await db.run(`ROLLBACK`);
-    } catch { /* ignore */ }
-    throw e;
+  const sql = `INSERT INTO code_nodes (project_id, label, name, qualified_name, file_path, line_start, line_end, signature, return_type, language, is_exported, complexity, decorators, metadata, content_hash)
+       VALUES ${placeholders}`;
+  const firstId = await db.insert(sql, params);
+  if (firstId === 0) {
+    console.error('[codegraph] bulkInsertNodes: insert returned id 0');
+    return [];
   }
+  const ids: number[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    ids.push(firstId + i);
+  }
+  return ids;
 }
 
 export async function rebuildFtsIndex(): Promise<void> {
@@ -530,19 +521,24 @@ export async function bulkInsertEdges(
   if (edges.length === 0) return [];
   const db = await getMemoryDb();
 
-  const projectId = edges[0].project_id;
+  const projectId = Number(edges[0].project_id);
   const existingNodeIds = new Set<number>();
-  const nodeRows = await db.all<{ id: number }>(
+  const nodeRows = await db.all<Record<string, unknown>>(
     `SELECT id FROM code_nodes WHERE project_id = ?`,
     [projectId],
   );
-  for (const r of nodeRows) existingNodeIds.add(r.id);
+  for (const r of nodeRows) existingNodeIds.add(Number(r.id));
 
   const validEdges = edges.filter((e) =>
-    existingNodeIds.has(e.source_id) && existingNodeIds.has(e.target_id)
+    existingNodeIds.has(Number(e.source_id)) && existingNodeIds.has(Number(e.target_id))
   );
 
-  if (validEdges.length === 0) return [];
+  if (validEdges.length === 0) {
+    console.error(
+      `[codegraph] bulkInsertEdges: ALL ${edges.length} edges filtered — source/target IDs not found in DB. Sample source_id: ${Number(edges[0].source_id)}, target_id: ${Number(edges[0].target_id)}, DB has ${existingNodeIds.size} node IDs`,
+    );
+    return [];
+  }
 
   const placeholders = validEdges.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
   const params: InValue[] = [];
@@ -575,11 +571,6 @@ export async function bulkInsertEdges(
     [projectId],
   );
 
-  await db.run(
-    `DELETE FROM code_edges WHERE project_id = ? AND (source_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?) OR target_id NOT IN (SELECT id FROM code_nodes WHERE project_id = ?))`,
-    [projectId, projectId],
-  );
-
   const inserted = Math.max(0, (afterInsert?.cnt ?? 0) - (before?.cnt ?? 0));
   if (inserted < validEdges.length) {
     console.error(
@@ -608,6 +599,17 @@ export async function clearProjectNodes(projectId: number): Promise<void> {
   await db.run(`DELETE FROM code_communities WHERE project_id = ?`, [projectId]);
   await db.run(`DELETE FROM code_edges WHERE project_id = ?`, [projectId]);
   await db.run(`DELETE FROM code_nodes WHERE project_id = ?`, [projectId]);
+}
+
+export async function deleteCodeProject(name: string): Promise<boolean> {
+  const db = await getMemoryDb();
+  const project = await db.get<CodeProject>(
+    `SELECT * FROM code_projects WHERE name = ?`,
+    [name],
+  );
+  if (!project) return false;
+  await db.run(`DELETE FROM code_projects WHERE id = ?`, [project.id]);
+  return true;
 }
 
 export async function getFileHash(

@@ -1,4 +1,3 @@
-import { getNodeByQName, searchNodes } from './graph.ts';
 import type { ExtractedEdge, ExtractedNode } from './indexer.ts';
 
 interface ResolvedEdge {
