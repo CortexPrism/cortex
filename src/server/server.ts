@@ -6,10 +6,10 @@ import { serveUi } from './ui/mod.ts';
 import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { ensureDaemons, schedulePluginUpdateChecks } from '../cli/daemon.ts';
-import { loadConfig } from '../config/config.ts';
+import { loadConfig, isFirstRun } from '../config/config.ts';
 import { configureLogger } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
-import { hasPassword, parseCookies, requireAuth } from './auth.ts';
+import { hasPassword, checkVaultAvailability, isVaultUnavailable, parseCookies, requireAuth } from './auth.ts';
 import { startAutoServices, stopAllServices } from '../services/manager.ts';
 import { setWebhookJobCreator } from '../triggers/webhook.ts';
 import { setWatcherJobCreator, startWatchers } from '../triggers/watcher.ts';
@@ -30,6 +30,14 @@ export interface ServeOptions {
 export async function startServer(opts: ServeOptions): Promise<void> {
   await runMigrations();
 
+  // Ensure install manifest exists (auto-detect install type)
+  try {
+    const { loadManifest } = await import('../update/installer.ts');
+    await loadManifest();
+  } catch {
+    // Non-critical
+  }
+
   // Initialise the logger from persisted config
   const _serverConfig = await loadConfig();
 
@@ -44,6 +52,28 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     fileMaxBytes: _loggingCfg.fileMaxBytes,
     fileMaxFiles: _loggingCfg.fileMaxFiles,
   });
+
+  // Pre-start sanity checks
+  if (await isFirstRun()) {
+    _log.warn('No config file found — server starting with defaults. Run `cortex setup` or visit /onboarding.');
+  }
+
+  const activeProvider = _serverConfig.defaultProvider;
+  const providerCfg = _serverConfig.providers[activeProvider];
+  if (!providerCfg?.apiKey && activeProvider !== 'ollama' && activeProvider !== 'lmstudio' && activeProvider !== 'litellm') {
+    _log.warn(`No API key configured for provider "${activeProvider}". LLM operations will fail. Run \`cortex setup\` or visit /onboarding.`);
+  }
+
+  // Vault availability check
+  await checkVaultAvailability();
+  if (isVaultUnavailable()) {
+    _log.warn('VAULT UNAVAILABLE: CORTEX_VAULT_KEY not set. Web password auth and encrypted credential storage are disabled. Set CORTEX_VAULT_KEY to enable security features.');
+  }
+
+  const pwExists = await hasPassword();
+  if (!pwExists && !(await isFirstRun())) {
+    _log.warn('No web password set. Web UI is UNPROTECTED. Set a password at /onboarding or run `cortex setup`.');
+  }
 
   // Emit startup marker — always lands in file (warn >= FILE_MIN_LEVEL)
   _log.warn(`Cortex server starting`, {
@@ -175,6 +205,34 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     })().catch(() => {});
   }
 
+  // Auto-start enabled channels from DB on server boot
+  (async () => {
+    try {
+      const { listChannels: listStoredChannels, buildChannelConfig } = await import(
+        '../channels/store.ts'
+      );
+      const stored = await listStoredChannels();
+      for (const record of stored) {
+        if (!record.enabled) continue;
+        try {
+          const adapterPath = `../channels/${record.channelType}.ts`;
+          const mod = await import(adapterPath);
+          const plugin = mod.default || mod.createPlugin?.();
+          if (!plugin) continue;
+          const channelConfig = await buildChannelConfig(record);
+          const { registerChannel, startChannel } = await import('../channels/manager.ts');
+          registerChannel(record.id, plugin, channelConfig, record.agentId);
+          await startChannel(record.id);
+          _log.info(`Channel auto-started: ${record.channelType} (${record.id})`);
+        } catch (e) {
+          _log.warn(`Failed to auto-start channel ${record.id}: ${(e as Error).message}`);
+        }
+      }
+    } catch {
+      // Non-critical
+    }
+  })().catch(() => {});
+
   const { port, host } = opts;
 
   _log.info(`Cortex server starting on http://${host}:${port}`, { host, port });
@@ -247,6 +305,15 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       const config = await loadConfig();
       const webAuth = config.webAuth || {};
       if (webAuth.requireAuth !== false) {
+        if (isVaultUnavailable()) {
+          return new Response(
+            'CortexPrism server requires CORTEX_VAULT_KEY to be set. Authentication is unavailable.',
+            {
+              status: 503,
+              headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' },
+            },
+          );
+        }
         const pwExists = await hasPassword();
         if (pwExists) {
           const auth = await requireAuth(req);

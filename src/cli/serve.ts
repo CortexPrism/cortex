@@ -146,7 +146,7 @@ export async function stopBackgroundServer(port = 3000): Promise<boolean> {
 }
 
 export const serveCommand = cortexCommand('serve')
-  .description('Start the Cortex HTTP + WebSocket server with Web UI')
+  .description(i18n.t('cli.serve.commandDescription'))
   .option('-p, --port <port:number>', 'Port to listen on', { default: 3000 })
   .option('-H, --host <host:string>', 'Host to bind to', { default: '127.0.0.1' })
   .option('-d, --daemon', 'Run the server in the background')

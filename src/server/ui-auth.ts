@@ -434,7 +434,7 @@ const ONBOARDING_HTML = `<!DOCTYPE html>
 <script>
 const BASE = window.location.origin;
 let currentStep = 0;
-let onboardingData = { password: null, provider: null, personality: null, telemetry: false, channels: [], advanced: {} };
+let onboardingData = { password: null, provider: null, personality: null, telemetry: null, channels: [], advanced: {}, profile: null };
 
 const TOTAL_STEPS = 8;
 
@@ -456,6 +456,22 @@ function showStep(n) {
   document.getElementById('step-' + names[n]).style.display = 'block';
   updateProgress();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Save progress
+  fetch(BASE + '/api/onboarding/progress', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentStep: n, steps: getStepFlags() }),
+  }).catch(() => {});
+}
+
+function getStepFlags() {
+  return {
+    password: !!onboardingData.password,
+    provider: !!onboardingData.provider,
+    profile: !!onboardingData.profile,
+    personality: !!onboardingData.personality,
+    channels: onboardingData.channels.length > 0,
+    telemetry: onboardingData.telemetry !== null,
+  };
 }
 
 // ── Password ─────────────────────────────────────
@@ -642,6 +658,7 @@ async function submitAnswer() {
       addAIMessage(data.nextQuestion || 'Thanks! I\'ve got a good sense of how to help you now.');
       questionId = data.questionId || null;
       if (data.done) {
+        onboardingData.profile = 'completed';
         document.getElementById('ai-progress').textContent = '✓ Profile saved';
         setTimeout(() => showStep(4), 1000);
       }
@@ -840,6 +857,14 @@ async function finishSetup() {
 (async function() {
   try {
     const status = await fetch(BASE + '/api/onboarding/status').then(r => r.json());
+    if (status.completed) {
+      window.location.href = '/';
+      return;
+    }
+    if (status.currentStep != null) {
+      showStep(status.currentStep);
+      return;
+    }
     if (status.hasPassword) {
       showStep(2);
     } else {

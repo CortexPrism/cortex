@@ -5,6 +5,40 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.50.1] - 2026-06-23
+
+### Fixed
+
+- **CLI setup channel credentials discarded** — channel credentials collected during `cortex setup` (Discord, Slack, Telegram, Teams, Mattermost, Rocket.Chat, WhatsApp, Google Chat, Lark) were stored in a local `Map` but never persisted to vault or database. Now saved to vault (`channel:` entries) and `channels` DB table during setup. (`src/cli/setup.ts`)
+
+- **Web onboarding provider test always returned success** — `POST /api/onboarding/provider` hardcoded `connected: true` without testing the provider connection. Now runs an actual `provider.complete("Hi")` test and returns the real connection status. The web UI correctly shows success/failure. (`src/server/routes/onboarding.ts`)
+
+- **Channels never auto-started on server boot** — channel configurations saved during onboarding were never loaded at runtime. Added `initChannelsFromDb()` that reads enabled channels from the `channels` DB table, instantiates the adapter plugin, and calls `startChannel()` during server bootstrap. Channels now auto-start after restart. (`src/server/server.ts`)
+
+- **Missing `CORTEX_VAULT_KEY` silently disabled all authentication** — when the vault encryption key env var was unset, `hasPassword()` returned `false` (any vault error), causing `requireAuth()` to return `authenticated: true` — bypassing all auth. Now: `checkVaultAvailability()` runs at server startup (logs warning), `isVaultUnavailable()` tracked globally, `requireAuth()` returns 503 when vault is unavailable, and UI routes show a clear error message instead of silently granting access. (`src/server/auth.ts`, `src/server/server.ts`)
+
+- **Two parallel channel config systems with no bridge** — web onboarding saved channels to `config.plugins.channels` (plaintext in config.json) while the runtime manager used a separate `channels` DB table with vault-encrypted credentials. Now: `POST /api/onboarding/channels` bridges both systems — saves to config.json AND persists to DB+vault. (`src/server/routes/onboarding.ts`)
+
+- **Server started with zero pre-start sanity checks** — the server bootstrap performed no validation of: config file existence, provider API key configuration, vault key availability, or web password status. Now emits startup warnings for each missing element. Config `loadConfig()` also catches corrupted JSON and file read errors gracefully instead of crashing. (`src/server/server.ts`, `src/config/config.ts`)
+
+- **`printSetupHint()` was dead code** — the function was defined but never imported or called. Removed and replaced with inline console warnings in `buildProvider()` and `getActiveProvider()` that display the setup hint when a provider is not configured. (`src/cli/setup.ts`, `src/llm/router.ts`, `src/config/config.ts`)
+
+- **Web onboarding ignored `onboarding.completed` status** — the onboarding page checked `/api/onboarding/status` but only read `hasPassword`, ignoring the `completed` field. Users with completed onboarding could revisit `/onboarding` and overwrite config. Now: JS init redirects to `/` when `completed` is true, restores last step from progress data, and calls the progress endpoint on each step change. (`src/server/ui-auth.ts`)
+
+- **CLI setup never set a web password** — the CLI setup wizard had no password step. Users who ran `cortex setup` via CLI and later started the web UI had no password protection. Added optional web password step (step 4/7) with complexity validation and retry on mismatch. Credentials stored in vault via `setupPassword()`. (`src/cli/setup.ts`)
+
+- **CLI onboarding lost all progress on Ctrl+C** — `SIGINT`/`SIGTERM` handlers called `Deno.exit(0)` immediately with no config save. Now saves progress (current step, completed steps) after each major step (provider, personality, password, channels). On restart, prompts user to resume from the last saved step. (`src/cli/setup.ts`)
+
+- **Web onboarding progress endpoint existed but was unused** — `POST /api/onboarding/progress` saved step state but the web UI JS never called it. Now wired into `showStep()` to persist step position, and init reads `currentStep` from status to restore position on page reload. (`src/server/ui-auth.ts`)
+
+- **Web AI personalization was a single hardcoded question** — `POST /api/onboarding/profile/start` returned one fixed question ("What do you do?"). Now uses the configured LLM provider to generate contextual questions, extract structured profile data, and ask intelligent follow-ups. Falls back to hardcoded question if provider is unavailable. Web UI now supports multi-turn LLM conversation. (`src/server/routes/onboarding.ts`)
+
+- **CLI provider test failed with no retry option** — the connection test ran once and the wizard continued regardless of result. Now offers retry prompt on failure, looping until connection succeeds or user declines. (`src/cli/setup.ts`)
+
+- **Serve command description was hardcoded English** — `cortex serve` description was a literal string not using i18n. Now uses `i18n.t('cli.serve.commandDescription')`. (`src/cli/serve.ts`)
+
+- **Install manifest not created on non-update startup** — `install.json` was only created during self-update checks. Added `loadManifest()` call during server bootstrap to auto-detect and persist install type on first server start. (`src/server/server.ts`)
+
 ## [0.50.0] - 2026-06-22
 
 ### Added

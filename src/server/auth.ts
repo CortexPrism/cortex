@@ -117,6 +117,28 @@ export async function hasPassword(): Promise<boolean> {
   }
 }
 
+let _vaultUnavailable = false;
+
+export function isVaultUnavailable(): boolean {
+  return _vaultUnavailable;
+}
+
+export async function checkVaultAvailability(): Promise<boolean> {
+  const KEY_ENV = 'CORTEX_VAULT_KEY';
+  if (!Deno.env.get(KEY_ENV)) {
+    _vaultUnavailable = true;
+    return false;
+  }
+  try {
+    await import('../security/vault.ts');
+    _vaultUnavailable = false;
+    return true;
+  } catch {
+    _vaultUnavailable = true;
+    return false;
+  }
+}
+
 export async function changePassword(oldPassword: string, newPassword: string): Promise<boolean> {
   const pwExists = await hasPassword();
   if (pwExists) {
@@ -211,6 +233,19 @@ export async function requireAuth(
 
   if (webAuth.requireAuth === false) {
     return { authenticated: true };
+  }
+
+  if (_vaultUnavailable) {
+    return {
+      authenticated: false,
+      response: new Response(
+        JSON.stringify({ error: 'Vault encryption key not configured. Set CORTEX_VAULT_KEY environment variable.' }),
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    };
   }
 
   const pwExists = await hasPassword();

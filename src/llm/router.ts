@@ -183,6 +183,9 @@ export function buildProvider(config: CortexConfig): LLMProvider {
   const providerConfig = config.providers[kind];
 
   if (!providerConfig) {
+    console.warn(
+      `\x1b[33m  No provider configured. Run \`cortex setup\` to get started.\x1b[0m\n`,
+    );
     throw new Error(
       `Provider "${kind}" is not configured. Run \`cortex setup\` to add credentials.`,
     );

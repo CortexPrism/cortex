@@ -28,7 +28,9 @@ import {
   saveUserProfile,
 } from './onboarding/personalization.ts';
 import { generatePersonalitySoul } from '../agent/soul.ts';
+import { storeChannel, storeChannelCredentials } from '../channels/store.ts';
 import { i18n } from '../i18n/service.ts';
+import { setupPassword as setupWebPassword } from '../server/auth.ts';
 
 const LABEL_WIDTH = 36;
 
@@ -195,6 +197,41 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     }
   }
 
+  const updated: CortexConfig = { ...config };
+  let currentStepNumber = 0;
+
+  const saveProgress = async (step: number, steps?: Record<string, boolean>) => {
+    const cfg = updated as unknown as Record<string, unknown>;
+    const existing = (cfg.onboarding as Record<string, unknown>) || {};
+    cfg.onboarding = {
+      ...existing,
+      currentStep: step + 1,
+      currentMode: 'cli',
+      completed: false,
+      version: ONBOARDING_VERSION,
+      startedAt: (existing as Record<string, unknown>).startedAt || new Date().toISOString(),
+      steps: steps || (existing as Record<string, unknown>).steps || {},
+    };
+    try {
+      await saveConfig(updated);
+    } catch {
+      // Non-critical: progress save can fail
+    }
+  };
+
+  // Check for and offer resume of partial progress
+  const existingOnboarding = (updated as unknown as Record<string, unknown>).onboarding as Record<string, unknown> | undefined;
+  if (existingOnboarding?.currentStep && existingOnboarding?.currentMode === 'cli' && !existingOnboarding?.completed) {
+    const resumeStep = existingOnboarding.currentStep as number;
+    const resume = await Confirm.prompt({
+      message: i18n.t('cli.setup.confirm.resumeProgress', { step: resumeStep }),
+      default: true,
+    });
+    if (resume) {
+      currentStepNumber = resumeStep;
+    }
+  }
+
   registerCleanup();
 
   if (!noAnim) {
@@ -204,7 +241,6 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   }
 
   console.log('');
-  const updated: CortexConfig = { ...config };
 
   if (noAnim) {
     console.log(bold(cyan('  ⚡ ' + i18n.t('cli.setup.welcomeBanner'))));
@@ -272,20 +308,28 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
 
     const providerKind = providerChoice as ProviderKind;
 
-    const connected = await testConnection(providerKind, model, apiKey, baseUrl);
-    if (noAnim) {
-      console.log(
-        connected
-          ? '  ✓ ' + i18n.t('cli.setup.connected.success')
-          : '  ⚠ ' + i18n.t('cli.setup.connected.failed'),
-      );
-    } else {
-      if (connected) {
-        successBadge(i18n.t('cli.setup.success.reachable', { model }));
+    let connected = await testConnection(providerKind, model, apiKey, baseUrl);
+    while (!connected) {
+      if (noAnim) {
+        console.log('  ⚠ ' + i18n.t('cli.setup.connected.failed'));
       } else {
         errorBadge(i18n.t('cli.setup.error.unreachable', { model }));
-        infoBadge(i18n.t('cli.setup.info.reconfigureHint'));
       }
+      const retry = await Confirm.prompt({
+        message: i18n.t('cli.setup.confirm.retryConnection'),
+        default: true,
+      });
+      if (!retry) break;
+      connected = await testConnection(providerKind, model, apiKey, baseUrl);
+    }
+    if (connected) {
+      if (noAnim) {
+        console.log('  ✓ ' + i18n.t('cli.setup.connected.success'));
+      } else {
+        successBadge(i18n.t('cli.setup.success.reachable', { model }));
+      }
+    } else {
+      infoBadge(i18n.t('cli.setup.info.reconfigureHint'));
     }
 
     (updated.providers as Record<string, unknown>)[providerKind] = {
@@ -295,6 +339,8 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
       ...(baseUrl && { baseUrl }),
       ...(secretKey && { secretKey }),
     };
+
+    await saveProgress(1, { provider: true });
 
     // AI Personalization (optional)
     stepHeader(2, 7, i18n.t('cli.setup.step.aiPersonalization'));
@@ -360,8 +406,52 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     infoBadge(i18n.t('cli.setup.info.customSoul'));
   }
 
+  await saveProgress(2, { provider: true, personality: true });
+
+  // Web password (optional)
+  stepHeader(providerChoice === 'skip' ? 3 : 4, 7, i18n.t('cli.setup.step.webPassword'));
+
+  const setPw = await Confirm.prompt({
+    message: i18n.t('cli.setup.confirm.webPassword'),
+    default: false,
+  });
+
+  if (setPw) {
+    let pwSet = false;
+    while (!pwSet) {
+      const pw = await Secret.prompt(i18n.t('cli.setup.secret.webPassword'));
+      const pwConfirm = await Secret.prompt(i18n.t('cli.setup.secret.webPasswordConfirm'));
+      if (pw !== pwConfirm) {
+        errorBadge(i18n.t('cli.setup.error.passwordMismatch'));
+        continue;
+      }
+      if (pw.length < 8) {
+        errorBadge(i18n.t('cli.setup.error.passwordTooShort'));
+        continue;
+      }
+      const complexity = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/];
+      const checks = complexity.filter((re) => re.test(pw)).length;
+      if (checks < 2) {
+        errorBadge(i18n.t('cli.setup.error.passwordComplexity'));
+        continue;
+      }
+      try {
+        await setupWebPassword(pw);
+        successBadge(i18n.t('cli.setup.success.webPassword'));
+        pwSet = true;
+      } catch (e) {
+        errorBadge(i18n.t('cli.setup.error.vaultUnavailable'));
+        pwSet = true;
+      }
+    }
+  } else {
+    infoBadge(i18n.t('cli.setup.info.noWebPassword'));
+  }
+
+  await saveProgress(3, { provider: true, personality: true, password: true });
+
   // Channels — multi-select with credential prompts
-  stepHeader(providerChoice === 'skip' ? 3 : 4, 7, i18n.t('cli.setup.step.channels'));
+  stepHeader(providerChoice === 'skip' ? 4 : 5, 7, i18n.t('cli.setup.step.channels'));
 
   const selectedChannels = await Checkbox.prompt({
     message: i18n.t('cli.setup.checkbox.channels'),
@@ -384,8 +474,43 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
     }
   }
 
+  // Persist channel configs to DB and vault
+  if (channelCredentials.size > 0) {
+    const persistSpin = spinner(i18n.t('cli.setup.spinner.savingChannels'));
+    try {
+      for (const [channel, creds] of channelCredentials) {
+        const channelId = `onboarding-${channel}`;
+        const credObj: Record<string, string> = {};
+        if (creds.token) credObj['token'] = creds.token;
+        if (creds.webhookUrl) credObj['webhookUrl'] = creds.webhookUrl;
+        if (creds.botToken) credObj['botToken'] = creds.botToken;
+        if (creds.appId) credObj['appId'] = creds.appId;
+        if (creds.appSecret) credObj['appSecret'] = creds.appSecret;
+        if (creds.tenantId) credObj['tenantId'] = creds.tenantId;
+        if (creds.verifyToken) credObj['verifyToken'] = creds.verifyToken;
+
+        const vaultRef = await storeChannelCredentials(channelId, channel, credObj);
+        await storeChannel({
+          id: channelId,
+          channelType: channel,
+          name: channel.charAt(0).toUpperCase() + channel.slice(1),
+          enabled: true,
+          settings: {},
+          vaultRef,
+          agentId: updated.defaultAgent || 'assistant',
+        });
+      }
+      persistSpin.succeed(i18n.t('cli.setup.spinner.channelsSaved'));
+    } catch (e) {
+      persistSpin.stop();
+      infoBadge(i18n.t('cli.setup.info.channelsVaultSkipped'));
+    }
+  }
+
+  await saveProgress(4, { provider: true, personality: true, password: true, channels: true });
+
   // Advanced: Embeddings + Vector Store + Chrome Bridge + Voice
-  stepHeader(providerChoice === 'skip' ? 4 : 5, 7, i18n.t('cli.setup.step.advancedFeatures'));
+  stepHeader(providerChoice === 'skip' ? 5 : 6, 7, i18n.t('cli.setup.step.advancedFeatures'));
 
   const configureAdvanced = await Confirm.prompt({
     message: i18n.t('cli.setup.confirm.advancedFeatures'),
@@ -537,7 +662,7 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   }
 
   // Telemetry
-  stepHeader(providerChoice === 'skip' ? 5 : 6, 7, i18n.t('cli.setup.step.usageData'));
+  stepHeader(providerChoice === 'skip' ? 6 : 7, 7, i18n.t('cli.setup.step.usageData'));
   const telemetry = await Confirm.prompt({
     message: i18n.t('cli.setup.confirm.telemetry'),
     default: false,
@@ -609,8 +734,4 @@ async function handleWebOnboarding(config: CortexConfig): Promise<CortexConfig> 
   await saveConfig(updated);
 
   return updated;
-}
-
-export function printSetupHint(): void {
-  console.log(yellow('  ' + i18n.t('cli.setup.hint.noProvider') + '\n'));
 }

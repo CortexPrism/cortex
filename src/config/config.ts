@@ -675,8 +675,22 @@ export async function loadConfig(): Promise<CortexConfig> {
   if (_config) return _config;
 
   if (await exists(PATHS.configFile)) {
-    const raw = await Deno.readTextFile(PATHS.configFile);
-    const disk = JSON.parse(raw) as Partial<CortexConfig>;
+    let raw: string;
+    try {
+      raw = await Deno.readTextFile(PATHS.configFile);
+    } catch (e) {
+      console.warn(`Failed to read config file: ${(e as Error).message}. Using defaults.`);
+      _config = { ...DEFAULT_CONFIG };
+      return _config;
+    }
+    let disk: Partial<CortexConfig>;
+    try {
+      disk = JSON.parse(raw) as Partial<CortexConfig>;
+    } catch (e) {
+      console.warn(`Config file is corrupted JSON: ${(e as Error).message}. Using defaults.`);
+      _config = { ...DEFAULT_CONFIG };
+      return _config;
+    }
     const providers = { ...DEFAULT_CONFIG.providers };
     if (disk.providers) {
       for (const [kind, provider] of Object.entries(disk.providers)) {
@@ -781,6 +795,9 @@ export async function isFirstRun(): Promise<boolean> {
 export function getActiveProvider(config: CortexConfig): ProviderConfig {
   const provider = config.providers[config.defaultProvider];
   if (!provider) {
+    console.warn(
+      `\x1b[33m  No provider configured for "${config.defaultProvider}". Run \`cortex setup\` to get started.\x1b[0m\n`,
+    );
     throw new Error(
       `No provider configured for "${config.defaultProvider}". Run \`cortex setup\` to configure.`,
     );
