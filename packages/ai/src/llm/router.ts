@@ -22,6 +22,12 @@ import { LiteLLMProvider } from './litellm.ts';
 import { HuggingFaceProvider } from './huggingface.ts';
 import { AlibabaProvider } from './alibaba.ts';
 import { VeniceProvider } from './venice.ts';
+import { DeepInfraProvider } from './deepinfra.ts';
+import { HyperbolicProvider } from './hyperbolic.ts';
+import { MiniMaxProvider } from './minimax.ts';
+import { ZhipuProvider } from './zhipu.ts';
+import { ReplicateProvider } from './replicate.ts';
+import { CloudflareProvider } from './cloudflare.ts';
 import type {
   CompletionChunk,
   CompletionOptions,
@@ -62,6 +68,12 @@ export const PROVIDER_DEFAULT_CONTEXT_WINDOWS: Record<ProviderKind, number> = {
   huggingface: 128_000,
   alibaba: 128_000,
   venice: 200_000,
+  deepinfra: 128_000,
+  hyperbolic: 128_000,
+  minimax: 1_000_000,
+  zhipu: 128_000,
+  replicate: 128_000,
+  cloudflare: 128_000,
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -172,6 +184,31 @@ function createProvider(kind: ProviderKind, cfg: ProviderConfig): LLMProvider {
     case 'venice':
       if (!cfg.apiKey) throw new Error('Venice AI API key is required.');
       return new VeniceProvider(cfg.apiKey, cfg.pricing);
+
+    case 'deepinfra':
+      if (!cfg.apiKey) throw new Error('DeepInfra API key is required.');
+      return new DeepInfraProvider(cfg.apiKey, cfg.pricing);
+
+    case 'hyperbolic':
+      if (!cfg.apiKey) throw new Error('Hyperbolic API key is required.');
+      return new HyperbolicProvider(cfg.apiKey, cfg.pricing);
+
+    case 'minimax':
+      if (!cfg.apiKey) throw new Error('MiniMax API key is required.');
+      return new MiniMaxProvider(cfg.apiKey, cfg.pricing);
+
+    case 'zhipu':
+      if (!cfg.apiKey) throw new Error('Zhipu (GLM) API key is required.');
+      return new ZhipuProvider(cfg.apiKey, cfg.pricing);
+
+    case 'replicate':
+      if (!cfg.apiKey) throw new Error('Replicate API key is required.');
+      return new ReplicateProvider(cfg.apiKey, cfg.pricing);
+
+    case 'cloudflare':
+      if (!cfg.apiKey) throw new Error('Cloudflare API token is required.');
+      if (!cfg.accountId) throw new Error('Cloudflare Account ID is required.');
+      return new CloudflareProvider(cfg.apiKey, cfg.accountId, cfg.pricing);
 
     default:
       throw new Error(`Unknown provider kind: ${kind}`);

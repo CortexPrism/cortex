@@ -133,7 +133,10 @@ export const routes: RouteHandler[] = [
           if (!stored?.apiKey && kind !== 'ollama' && kind !== 'lmstudio') {
             return json([]);
           }
-          models = await fetchModels(kind, stored?.apiKey ?? '', stored?.baseUrl ?? baseUrl);
+          const extUrl = kind === 'cloudflare'
+            ? (stored?.accountId ?? '')
+            : (stored?.baseUrl ?? baseUrl);
+          models = await fetchModels(kind, stored?.apiKey ?? '', extUrl);
         }
         return json(models);
       } catch (err) {
@@ -162,7 +165,10 @@ export const routes: RouteHandler[] = [
           if (!stored?.apiKey && kind !== 'ollama' && kind !== 'lmstudio') {
             return json([]);
           }
-          models = await fetchModels(kind, stored?.apiKey ?? '', stored?.baseUrl ?? baseUrl);
+          const extUrl = kind === 'cloudflare'
+            ? (stored?.accountId ?? '')
+            : (stored?.baseUrl ?? baseUrl);
+          models = await fetchModels(kind, stored?.apiKey ?? '', extUrl);
         }
         return json(models);
       } catch (err) {

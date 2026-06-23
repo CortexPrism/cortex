@@ -71,6 +71,7 @@ export const routes: RouteHandler[] = [
         keepAlive?: string;
         dropParams?: boolean;
         includeVeniceSystemPrompt?: boolean;
+        accountId?: string;
       };
       const config = await loadConfig();
       const kind = body.kind as keyof typeof config.providers;

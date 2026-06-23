@@ -26,6 +26,12 @@ const PROVIDER_META = {
   huggingface: { label: 'Hugging Face',     defaultModel: 'meta-llama/Llama-3.3-70B-Instruct',               needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
   alibaba:     { label: 'Alibaba (Qwen)',   defaultModel: 'qwen-plus',                                       needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
   venice:      { label: 'Venice AI',        defaultModel: 'llama-3.3-70b',                                   needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  deepinfra:   { label: 'DeepInfra',         defaultModel: 'meta-llama/Llama-3.3-70B-Instruct',               needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  hyperbolic:  { label: 'Hyperbolic',        defaultModel: 'deepseek-ai/DeepSeek-V3',                          needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  minimax:     { label: 'MiniMax',           defaultModel: 'MiniMax-M3',                                       needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  zhipu:       { label: 'Zhipu (GLM)',       defaultModel: 'glm-4-flash',                                     needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  replicate:   { label: 'Replicate',         defaultModel: 'meta/meta-llama-3.3-70b-instruct',                needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
+  cloudflare:  { label: 'Cloudflare AI',     defaultModel: '@cf/meta/llama-3.3-70b-instruct',                 needsBaseUrl: false, needsSecret: false, defaultBaseUrl: '' },
 };
 
 const PROVIDER_KINDS = Object.keys(PROVIDER_META);
@@ -93,13 +99,6 @@ const PROVIDER_EXTRA_FIELDS = {
     { key: 'keepAlive', label: 'Keep Alive', type: 'text', placeholder: '5m',
       hint: 'How long to keep the model loaded: e.g. 5m, 1h, -1 (forever), 0 (unload immediately)' },
   ],
-  lmstudio: [
-    { key: 'numCtx', label: 'Context Window (num_ctx)', type: 'number',
-      min: 512, max: 131072, step: 512, placeholder: '4096',
-      hint: 'Override the model context length in LM Studio.' },
-    { key: 'keepAlive', label: 'Keep Alive', type: 'text', placeholder: '5m',
-      hint: 'How long to keep the model loaded: e.g. 5m, 1h, -1 (forever)' },
-  ],
   litellm: [
     { key: 'dropParams', label: 'Drop Unsupported Params', type: 'checkbox',
       hint: 'LiteLLM will silently ignore parameters not supported by the target model instead of erroring' },
@@ -107,6 +106,11 @@ const PROVIDER_EXTRA_FIELDS = {
   venice: [
     { key: 'includeVeniceSystemPrompt', label: 'Include Venice System Prompt', type: 'checkbox',
       hint: 'Prepend the Venice character/uncensored system prompt to every request' },
+  ],
+  cloudflare: [
+    { key: 'accountId', label: 'Account ID', type: 'text',
+      placeholder: 'abc123...',
+      hint: 'Your Cloudflare Account ID (found in the dashboard URL)' },
   ],
 };
 
@@ -1466,7 +1470,7 @@ async function fetchModelsForModal() {
   const baseUrl = document.getElementById('modal-baseurl')?.value;
   if (!kind) return;
 
-  if (!apiKey && kind !== 'ollama') {
+  if (!apiKey && kind !== 'ollama' && kind !== 'lmstudio' && kind !== 'litellm') {
     document.getElementById('modal-fetch-status').textContent = 'API key required';
     return;
   }

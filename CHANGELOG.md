@@ -110,12 +110,75 @@ Versioning: [Semantic Versioning](https://semver.org/)
     fields (`cpu_percent`, `memory_used_mb`, `memory_total_mb`, `active_sessions`,
     `active_processes`, `a2a_endpoint`, `labels`) alongside existing hub node data.
 
+- **DeepInfra provider** — OpenAI-compatible provider for `api.deepinfra.com/v1/openai`.
+  Default model: `meta-llama/Llama-3.3-70B-Instruct`. Supports all standard parameters plus
+  repetition penalty. Includes pricing for 6 popular models. (`packages/ai/src/llm/deepinfra.ts`,
+  `src/llm/deepinfra.ts`)
+
+- **Hyperbolic provider** — OpenAI-compatible provider for `api.hyperbolic.xyz/v1`. Default
+  model: `deepseek-ai/DeepSeek-V3`. 80% cheaper than traditional cloud providers. Includes
+  pricing for 4 models. (`packages/ai/src/llm/hyperbolic.ts`, `src/llm/hyperbolic.ts`)
+
+- **MiniMax provider** — OpenAI-compatible provider for `api.minimax.chat/v1`. Ships the MiniMax
+  M3 model (80.5% SWE-bench Verified at $0.30/$1.20 per 1M tokens), the cheapest 80%+ coding
+  model available through a hosted API. Includes pricing for 4 models.
+  (`packages/ai/src/llm/minimax.ts`, `src/llm/minimax.ts`)
+
+- **Zhipu (GLM) provider** — OpenAI-compatible provider for `open.bigmodel.cn/api/paas/v4`.
+  Default model: `glm-4-flash` (free tier). Includes pricing for 5 models.
+  (`packages/ai/src/llm/zhipu.ts`, `src/llm/zhipu.ts`)
+
+- **Replicate provider** — custom REST API provider for `api.replicate.com/v1`. Uses the
+  predictions-based API with polling for non-streaming completions and SSE streaming for
+  streaming mode. Includes pricing for 4 popular open-source models.
+  (`packages/ai/src/llm/replicate.ts`, `src/llm/replicate.ts`)
+
+- **Cloudflare Workers AI provider** — custom REST API provider for Cloudflare's edge
+  inference platform (`api.cloudflare.com/client/v4/accounts/{account_id}/ai/run`). Requires
+  both API token and Account ID. Supports SSE streaming. Includes pricing for 4 models.
+  `accountId` field added to `IProviderConfig` and `ProviderConfig`; flow plumbed through
+  config save route, model fetch route, UI provider modal (extra field), and router factory.
+  (`packages/ai/src/llm/cloudflare.ts`, `src/llm/cloudflare.ts`,
+  `packages/core/contracts/config.ts`, `src/config/config.ts`,
+  `src/server/routes/config-routes.ts`, `src/server/routes/providers.ts`,
+  `src/server/ui/js/12_settings.ts`)
+
 ### Fixed
 
 - **Migration 043 placed in wrong directory** — `043_swarm.sql` was created in
   `packages/core/src/db/migrations/` but `migrate.ts` reads from `src/db/migrations/`, causing
   `server start` to crash with `NotFound: No such file or directory`. Copied to
   `src/db/migrations/043_swarm.sql`.
+
+- **Novita models endpoint returned 404** — the model fetcher used
+  `api.novita.ai/openai/v1/models` but the provider's base URL is `api.novita.ai/v3/openai`.
+  Fixed to `api.novita.ai/v3/openai/models` to match the provider's API version.
+  (`src/server/models.ts`, `packages/server/src/server/models.ts`)
+
+- **Alibaba models fetcher used wrong regional domain** — used `dashscope-intl.aliyuncs.com`
+  (international endpoint) while the Alibaba provider uses `dashscope.aliyuncs.com` (China
+  mainland). Unified to the China endpoint to match the provider. (`src/server/models.ts`,
+  `packages/server/src/server/models.ts`)
+
+- **`fetchModelsForModal` required API key for localhost providers** — the model fetch button
+  in the Add/Edit Provider modal required an API key for all providers except Ollama. LM Studio
+  and LiteLLM (localhost providers) were also blocked. Added `lmstudio` and `litellm` to the
+  bypass list. (`src/server/ui/js/12_settings.ts`,
+  `packages/server/src/server/ui/js/12_settings.ts`)
+
+- **LM Studio dead `numCtx`/`keepAlive` configuration fields** — the UI showed context window
+  and keep-alive fields for LM Studio in the provider modal, but LM Studio's OpenAI-compatible
+  chat API doesn't support these as request parameters (they're server-side model-loading
+  settings). Removed from `PROVIDER_EXTRA_FIELDS` to avoid misleading users.
+  (`src/server/ui/js/12_settings.ts`, `packages/server/src/server/ui/js/12_settings.ts`)
+
+- **Cloudflare model fetch had no access to Account ID** — the providers route
+  (`/api/providers/{kind}/models`) only passed `baseUrl` to model fetchers, but Cloudflare
+  needs the Account ID. Added special-case routing: when `kind === 'cloudflare'`, passes
+  `stored.accountId` instead of `stored.baseUrl` as the second argument. Also added
+  `accountId` to the config save route handler body interface.
+  (`src/server/routes/providers.ts`, `packages/server/src/server/routes/providers.ts`,
+  `src/server/routes/config-routes.ts`, `packages/server/src/server/routes/config-routes.ts`)
 
 - **Codegraph: call edges attributed to wrong source node** — `extractCalls()` was setting `sourceQName: ''` for every call, causing all edges in a file to point to the first indexed node via `fileNodeMap` fallback. Now tracks parent function/method context through the AST walk and emits `${filePath}:${containingFunction}` sourceQName, matching the node qualified-name format. (`src/codegraph/indexer.ts`)
 

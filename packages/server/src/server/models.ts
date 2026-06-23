@@ -188,7 +188,7 @@ async function moonshotModels(apiKey: string): Promise<ModelEntry[]> {
 }
 
 async function novitaModels(apiKey: string): Promise<ModelEntry[]> {
-  const res = await fetch('https://api.novita.ai/openai/v1/models', {
+  const res = await fetch('https://api.novita.ai/v3/openai/models', {
     headers: { 'Authorization': `Bearer ${apiKey}` },
   });
   if (!res.ok) throw new Error(`Novita API error: ${res.status}`);
@@ -224,7 +224,7 @@ async function huggingfaceModels(apiKey: string): Promise<ModelEntry[]> {
 }
 
 async function alibabaModels(apiKey: string): Promise<ModelEntry[]> {
-  const res = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models', {
+  const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/models', {
     headers: { 'Authorization': `Bearer ${apiKey}` },
   });
   if (!res.ok) {
@@ -247,6 +247,88 @@ async function veniceModels(apiKey: string): Promise<ModelEntry[]> {
   if (!res.ok) throw new Error(`Venice AI API error: ${res.status}`);
   const data = await res.json() as { data: Array<{ id: string }> };
   return data.data.map((m) => ({ id: m.id }));
+}
+
+async function deepinfraModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.deepinfra.com/v1/openai/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`DeepInfra API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function hyperbolicModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.hyperbolic.xyz/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`Hyperbolic API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function minimaxModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.minimax.chat/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) throw new Error(`MiniMax API error: ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function zhipuModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://open.bigmodel.cn/api/paas/v4/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    return [
+      { id: 'glm-4-plus', name: 'GLM-4 Plus' },
+      { id: 'glm-4-flash', name: 'GLM-4 Flash (Free)' },
+      { id: 'glm-4-air', name: 'GLM-4 Air' },
+      { id: 'glm-4-long', name: 'GLM-4 Long' },
+      { id: 'glm-4v-plus', name: 'GLM-4V Plus' },
+    ];
+  }
+  const data = await res.json() as { data: Array<{ id: string }> };
+  return data.data.map((m) => ({ id: m.id }));
+}
+
+async function replicateModels(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://api.replicate.com/v1/models', {
+    headers: { 'Authorization': `Token ${apiKey}` },
+  });
+  if (!res.ok) {
+    return [
+      { id: 'meta/meta-llama-3.3-70b-instruct', name: 'Llama 3.3 70B' },
+      { id: 'meta/meta-llama-3.1-8b-instruct', name: 'Llama 3.1 8B' },
+      { id: 'mistralai/mistral-7b-instruct-v0.3', name: 'Mistral 7B' },
+      { id: 'deepseek-ai/deepseek-r1', name: 'DeepSeek R1' },
+    ];
+  }
+  const data = await res.json() as { results: Array<{ owner: string; name: string }> };
+  return data.results.map((m) => ({ id: `${m.owner}/${m.name}` }));
+}
+
+async function cloudflareModels(apiKey: string, baseUrl?: string): Promise<ModelEntry[]> {
+  const accountId = baseUrl || '';
+  if (!accountId) {
+    return [
+      { id: '@cf/meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B' },
+      { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B' },
+      { id: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 Distill Qwen 32B' },
+      { id: '@cf/mistral/mistral-7b-instruct-v0.2', name: 'Mistral 7B' },
+    ];
+  }
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/models/search`,
+    {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    },
+  );
+  if (!res.ok) throw new Error(`Cloudflare AI API error: ${res.status}`);
+  const data = await res.json() as { result: Array<{ name: string }> };
+  return data.result.map((m) => ({ id: m.name }));
 }
 
 const LISTERS: Record<string, ModelLister | null> = {
@@ -274,6 +356,12 @@ const LISTERS: Record<string, ModelLister | null> = {
   huggingface: huggingfaceModels,
   alibaba: alibabaModels,
   venice: veniceModels,
+  deepinfra: deepinfraModels,
+  hyperbolic: hyperbolicModels,
+  minimax: minimaxModels,
+  zhipu: zhipuModels,
+  replicate: replicateModels,
+  cloudflare: cloudflareModels,
 };
 
 export function fetchModels(

@@ -22,7 +22,13 @@ export type ProviderKind =
   | 'litellm'
   | 'huggingface'
   | 'alibaba'
-  | 'venice';
+  | 'venice'
+  | 'deepinfra'
+  | 'hyperbolic'
+  | 'minimax'
+  | 'zhipu'
+  | 'replicate'
+  | 'cloudflare';
 
 export interface IProviderConfig {
   kind: ProviderKind;
@@ -46,6 +52,7 @@ export interface IProviderConfig {
   keepAlive?: string;
   dropParams?: boolean;
   includeVeniceSystemPrompt?: boolean;
+  accountId?: string;
   pricing?: Record<string, { in: number; out: number }>;
 }
 

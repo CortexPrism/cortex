@@ -125,6 +125,8 @@ export interface ProviderConfig {
   dropParams?: boolean;
   /** Venice AI: prepend Venice system prompt (character/uncensored mode) */
   includeVeniceSystemPrompt?: boolean;
+  /** Cloudflare Workers AI: account ID for constructing the API endpoint */
+  accountId?: string;
   /** Per-model pricing overrides (USD per 1M tokens): { "model-name": { in: 2.5, out: 10.0 } }
    *  Overrides the built-in hardcoded pricing. Add entries for models not in the defaults. */
   pricing?: Record<string, { in: number; out: number }>;
@@ -616,6 +618,12 @@ const DEFAULT_CONFIG: CortexConfig = {
     huggingface: undefined,
     alibaba: undefined,
     venice: undefined,
+    deepinfra: undefined,
+    hyperbolic: undefined,
+    minimax: undefined,
+    zhipu: undefined,
+    replicate: undefined,
+    cloudflare: undefined,
   },
   agent: {
     name: 'Cortex',
