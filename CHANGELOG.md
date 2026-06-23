@@ -7,6 +7,8 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-06-23
+
 ### Added
 
 - **WASM plugin ABI versioning** — new `plugin_get_abi_version()` export and `host_get_abi_version()` host
