@@ -9,6 +9,28 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **10 built-in agents (5 new, 5 refined)** — the agent roster now ships with 10 selectable built-in agents. Five new specialist agents join the existing five: **Writer** ✍️ (technical documentation, changelogs, READMEs, API references), **DevOps** 🚀 (Docker, Kubernetes, Terraform, CI/CD pipelines), **Security** 🔐 (OWASP Top 10 auditing, CVE scanning, compliance review — read-only), **Code Reviewer** 👁️ (structured BLOCKER/SUGGESTION/NITPICK/QUESTION review format — read-only), and **QA / Tester** 🧪 (test generation, coverage analysis, regression discipline). All five existing agents (Assistant, Developer, Researcher, Architect, Analyst) received deep soul rewrites adding Capabilities, Guardrails, and Limitations sections, explicit sub-agent delegation hints, and improved output format specs. (`src/agent/builtin-agents.ts`)
+
+- **Two new sub-agent types** — `reviewer` (Code Reviewer) and `writer` (Technical Writer) added to the sub-agent type system. `reviewer` produces structured review reports with BLOCKER/SUGGESTION/NITPICK/QUESTION labels and a per-finding rationale/suggestion format. `writer` produces audience-appropriate documentation following Keep a Changelog and API doc conventions with accuracy-first constraints. Both are accessible via `sub_agent` tool with their respective type strings. (`src/agent/sub-agent-types.ts`)
+
+### Changed
+
+- **Sub-agent prompts refined across all 11 types** — targeted improvements to every existing sub-agent system prompt:
+  - `explore`: added explicit scope boundary (stay within task, don't roam)
+  - `general`: added scope escalation rule (report unexpected expansion rather than acting unilaterally)
+  - `plan`: steps now require explicit IDs (S1, S2, …) for dependency tracking; constraint wording tightened
+  - `code`: verification is now mandatory — "run tests; do not skip verification"; fix test failures before reporting done
+  - `research`: added source-quality hierarchy (official docs > peer-reviewed > reputable news > blog posts); constraint softened from "no commands" to "no commands unless needed for research"
+  - `security`: dependency checklist expanded with dependency confusion, typosquatting, and supply-chain risks; summary format made explicit; severity uncertainty defaults to higher
+  - `debug`: git history check promoted to step 1 (before reproduce); regression test added to step 7
+  - `architect`: "Extend, don't replace" principle promoted to top-level design principle
+  - `devops`: Kubernetes and Terraform capabilities added explicitly; "show commands before running destructive ops" constraint added
+  - `data`: explicit causation caveat added; "never hide gaps" added to caveats format
+  - `ui`: no prompt change (already well-structured)
+  (`src/agent/sub-agent-types.ts`)
+
+- **`INIT_SOUL_TEMPLATE` sub-agent type list updated** — the default soul now documents all 13 sub-agent types (added `reviewer` and `writer` entries, updated descriptions for `plan`, `code`, `security`, `debug`, `architect`, and `devops` to reflect refined capabilities). (`src/agent/soul.ts`)
+
 - **Extensions top-nav category** — plugins now have a dedicated **Extensions** top-nav tab (sixth tab in the header). Plugin-contributed panels appear as first-class sub-nav items under Extensions rather than being buried in a Panels tab. Clicking a panel item navigates directly via `showPluginPanel()` with full URL hash deep-link support (`#pluginpanel:<pluginId>:<panelId>`). Page restore on reload handles `pluginpanel:` hashes correctly. (`src/server/ui/shell.ts`, `src/server/ui/js/05_nav_pre.ts`, `src/server/ui/js/07_nav_post.ts`, `src/server/ui/js/11_pages.ts`, `src/server/ui/js/24_deferred.ts`)
 
 - **Plugin sidebar slot injection** — plugins declaring `ui:panel` now have their panels registered in the `ui-slots` registry at load time. A new `GET /api/plugins/slots` endpoint exposes live slot registrations. `loadPluginSidebarSlots()` fetches slots at boot and injects `sidebar`-slot plugins as clickable items above the sidebar footer; clicking opens the plugin HTML in an inline modal iframe. (`src/plugins/loader.ts`, `src/server/routes/plugins.ts`, `src/server/ui/js/11_pages.ts`)
