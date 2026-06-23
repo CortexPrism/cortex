@@ -63,9 +63,18 @@ MCP plugins declare their tools in the manifest under the `tools` field for docu
 
 ### WASM (`kind: "wasm"`)
 
-WebAssembly modules. The entryPoint is a `.wasm` binary path. The WASM runtime expects two exports: `plugin_init()` and `plugin_get_capabilities()`. Host functions provided to the WASM instance include `env.log`, `env.http_request`, and `env.store_get`/`env.store_set`.
+WebAssembly modules compiled from any language. The `entryPoint` is a `.wasm` binary path or URL.
+WASM plugins run in a dedicated `Worker` sandbox with synchronous host functions (ABI v1).
 
-**Note:** WASM tool execution is currently stubbed and not yet implemented.
+The WASM binary must export `plugin_get_abi_version` (returns 1), `plugin_get_capabilities`, and
+`plugin_execute_tool`. Optional exports: `plugin_init`, `plugin_destroy`, `memory`.
+
+Required host imports (under `env`): `host_alloc`, `host_free`, `host_log`, `host_get_config`,
+`host_set_state`, `host_get_state`, `host_http_request` (synchronous — gated on `network:fetch`),
+`host_get_abi_version`, `host_get_time_ms`, `host_random`.
+
+See the [WASM Plugins wiki](https://github.com/CortexPrism/cortex.wiki/wiki/WASM-Plugins) for the
+full ABI reference and SDK.
 
 ## Capabilities
 

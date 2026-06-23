@@ -521,7 +521,8 @@ The MCP server must handle standard JSON-RPC 2.0 requests and return responses i
 
 ## WASM Plugin Development
 
-WASM plugins compile to `.wasm` binaries and run in a WebAssembly sandbox.
+WASM plugins compile to `.wasm` and run in a dedicated `Worker` sandbox with synchronous host functions.
+Any language that compiles to WASM is supported (C, Rust, Zig, Go, AssemblyScript).
 
 ### Manifest
 
@@ -533,12 +534,14 @@ WASM plugins compile to `.wasm` binaries and run in a WebAssembly sandbox.
   "kind": "wasm",
   "entryPoint": "./plugin.wasm",
   "runtime": "wasm",
-  "capabilities": ["tools"],
+  "capabilities": ["tools", "network:fetch"],
   "tools": [
     {
       "name": "wasm_tool",
       "description": "Tool implemented in WASM",
-      "params": []
+      "params": [
+        { "name": "input", "type": "string", "description": "Input value", "required": true }
+      ]
     }
   ]
 }
@@ -546,21 +549,51 @@ WASM plugins compile to `.wasm` binaries and run in a WebAssembly sandbox.
 
 ### Required WASM Exports
 
-The WASM binary must export:
+| Export | Signature | Purpose |
+|--------|-----------|---------|
+| `plugin_get_abi_version` | `() → i32` | Return supported ABI version (must match host — currently 1) |
+| `plugin_get_capabilities` | `(outPtr, outLenPtr) → i32` | Write capabilities JSON (with param schemas) |
+| `plugin_execute_tool` | `(namePtr, nameLen, argsPtr, argsLen, outPtr, outLenPtr) → i32` | Execute a tool |
+| `memory` | `WebAssembly.Memory` | Shared linear memory |
+| `plugin_init` | `() → void` | Optional — called once on load |
+| `plugin_destroy` | `() → void` | Optional — called on unload |
 
-- `plugin_init(): void` — called once on load
-- `plugin_get_capabilities(): number` — returns a pointer to a JSON string describing available tools
+### Capabilities JSON Format
 
-### Host Functions (Imports)
+Include full parameter schemas so LLMs understand tool signatures:
 
-The WASM runtime provides these host functions to the module:
+```json
+{
+  "abi_version": 1,
+  "tools": [{
+    "name": "wasm_tool",
+    "description": "Tool implemented in WASM",
+    "params": [
+      { "name": "input", "type": "string", "description": "Input", "required": true }
+    ]
+  }]
+}
+```
 
-- `env.log(ptr: number, len: number): void` — log a message
-- `env.http_request(method_ptr: number, method_len: number, url_ptr: number, url_len: number, body_ptr: number, body_len: number): number` — make an HTTP request, returns result pointer
-- `env.store_get(key_ptr: number, key_len: number): number` — read from plugin state
-- `env.store_set(key_ptr: number, key_len: number, val_ptr: number, val_len: number): void` — write to plugin state
+### Host Functions (import as `env.*`)
 
-**Note:** WASM tool execution is currently stubbed. Full WASM support is under active development.
+| Function | Purpose |
+|----------|---------|
+| `host_alloc(size) → ptr` | Allocate from host-managed heap |
+| `host_log(ptr, len)` | Log to CortexPrism |
+| `host_get_config(keyPtr, keyLen, outPtr, outLenPtr) → i32` | Read `CORTEX_PLUGIN_{NAME}_{KEY}` or `CORTEX_WASM_{KEY}` env var |
+| `host_set_state(keyPtr, keyLen, valPtr, valLen)` | Persist state (in-memory + SQLite) |
+| `host_get_state(keyPtr, keyLen, outPtr, outLenPtr) → i32` | Read persisted state |
+| `host_http_request(methodPtr, methodLen, urlPtr, urlLen, bodyPtr, bodyLen, headersPtr, headersLen, outStatusPtr, outBodyPtr, outBodyLenPtr) → i32` | Synchronous HTTP (30 s timeout, gated on `network:fetch`) |
+| `host_get_abi_version() → i32` | Returns host ABI version |
+| `host_get_time_ms() → i64` | Current time in ms |
+| `host_random(outPtr, len)` | Cryptographically random bytes |
+
+All strings are UTF-8 in linear memory. Return `0` for success, non-zero for error.
+120 s execution timeout per tool. State persists across reloads.
+
+See [WASM Plugins wiki](https://github.com/CortexPrism/cortex.wiki/wiki/WASM-Plugins) for the full
+ABI reference, memory layout diagram, SDK usage, and debugging guide.
 
 ## Testing Your Plugin
 
