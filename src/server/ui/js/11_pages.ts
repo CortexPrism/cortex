@@ -3558,8 +3558,44 @@ async function loadPluginPanels() {
     const res = await fetch(BASE + '/api/plugins/panels');
     pluginPanels = await res.json();
   } catch { pluginPanels = []; }
-  loadPluginPanelsNav();
+  registerPluginPanelPages(pluginPanels);
   loadPluginPanelsTabs();
+  loadPluginSidebarSlots();
+}
+
+async function loadPluginSidebarSlots() {
+  try {
+    const slots = await fetch(BASE + '/api/plugins/slots').then(r => r.json()).catch(() => []);
+    const sidebarSlots = slots.filter(s => s.slot === 'sidebar');
+    let container = document.getElementById('cortex-plugin-sidebar');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'cortex-plugin-sidebar';
+      const footer = document.querySelector('.sidebar-footer');
+      if (footer) footer.insertAdjacentElement('beforebegin', container);
+    }
+    if (!sidebarSlots.length) { container.style.display = 'none'; return; }
+    container.style.display = '';
+    container.innerHTML = \`<div class="nav-section">Plugin Widgets</div>\` +
+      sidebarSlots.map(s => \`<button class="sub-nav-item" onclick="openPluginSidebarSlot('\${esc(s.pluginName)}','\${esc(s.htmlUrl)}')" data-tooltip="\${esc(s.label)}"><span class="icon">\${esc(s.icon || '📦')}</span> \${esc(s.label)}</button>\`).join('');
+  } catch { /* non-fatal */ }
+}
+
+function openPluginSidebarSlot(pluginName, htmlUrl) {
+  var existing = document.getElementById('plugin-slot-modal');
+  if (existing) existing.remove();
+  var modal = document.createElement('div');
+  modal.id = 'plugin-slot-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);';
+  modal.innerHTML = \`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:700px;max-width:95vw;height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-weight:600;font-size:14px;">\${esc(pluginName)}</span>
+      <button class="btn btn-ghost" onclick="document.getElementById('plugin-slot-modal').remove()">✕</button>
+    </div>
+    <iframe src="\${esc(htmlUrl)}" sandbox="allow-scripts allow-same-origin" style="flex:1;border:none;background:var(--bg);"></iframe>
+  </div>\`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
 }
 
 function loadPluginPanelsNav() {

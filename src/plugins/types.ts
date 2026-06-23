@@ -156,6 +156,8 @@ export interface PluginModule {
   onLoad?: (ctx: PluginContext) => Promise<void>;
   onUnload?: (ctx: PluginContext) => Promise<void>;
   onConfigChange?: (key: string, value: unknown, ctx: PluginContext) => Promise<void>;
+  middlewarePre?: (ctx: unknown) => Promise<unknown>;
+  middlewarePost?: (ctx: unknown) => Promise<unknown>;
 }
 
 export interface LoadedPlugin {

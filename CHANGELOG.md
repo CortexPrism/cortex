@@ -7,6 +7,24 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **Extensions top-nav category** — plugins now have a dedicated **Extensions** top-nav tab (sixth tab in the header). Plugin-contributed panels appear as first-class sub-nav items under Extensions rather than being buried in a Panels tab. Clicking a panel item navigates directly via `showPluginPanel()` with full URL hash deep-link support (`#pluginpanel:<pluginId>:<panelId>`). Page restore on reload handles `pluginpanel:` hashes correctly. (`src/server/ui/shell.ts`, `src/server/ui/js/05_nav_pre.ts`, `src/server/ui/js/07_nav_post.ts`, `src/server/ui/js/11_pages.ts`, `src/server/ui/js/24_deferred.ts`)
+
+- **Plugin sidebar slot injection** — plugins declaring `ui:panel` now have their panels registered in the `ui-slots` registry at load time. A new `GET /api/plugins/slots` endpoint exposes live slot registrations. `loadPluginSidebarSlots()` fetches slots at boot and injects `sidebar`-slot plugins as clickable items above the sidebar footer; clicking opens the plugin HTML in an inline modal iframe. (`src/plugins/loader.ts`, `src/server/routes/plugins.ts`, `src/server/ui/js/11_pages.ts`)
+
+- **Plugin middleware pipeline hooks** — ESM plugins can now export `middlewarePre` and `middlewarePost` functions alongside their capabilities declaration. When loaded, plugins declaring `middleware:pre`/`middleware:post` capabilities have their functions automatically registered as `pre-tool`/`post-tool` pipeline hooks. Hooks are fully unregistered when the plugin is disabled or removed. (`src/plugins/types.ts`, `src/plugins/loader.ts`)
+
+- **Plugin event bus wiring** — the plugin event bus now receives live agent lifecycle events: `agent:turn-start` (after user message is persisted), `tool:pre-execute` (before each tool call), `tool:post-execute` (after each tool result), and `agent:turn-end` (in background after response is complete). All emissions are fire-and-forget and never block the response. (`src/agent/stages/setup.ts`, `src/agent/stages/tool-executor.ts`, `src/agent/post/background.ts`)
+
+### Fixed
+
+- **`host.registerTool` / `host.unregisterTool` were no-ops** — `PluginContext.host` stubs silently discarded tool registrations made from lifecycle hooks. Both methods now delegate to `globalRegistry.register()` / `globalRegistry.unregister()` so plugins can register tools dynamically from `onActivate` and unregister them from `onDeactivate`. (`src/plugins/context.ts`)
+
+- **Plugin panel navigation moved to Extensions category** — `extensions` page removed from `system` category and given its own `extensions` category in `CATEGORY_PAGES`. The old sidebar `Plugin Panels` section (a duplicate nav mechanism) removed from shell HTML. (`src/server/ui/shell.ts`, `src/server/ui/js/05_nav_pre.ts`)
+
+- **`unloadPlugin` left dangling pipeline hooks and UI slot registrations** — disabling or removing a plugin now calls `unregisterAllForPlugin()` (pipeline hooks) and `unregisterUIPlugin()` (UI slots) in addition to unregistering tools. (`src/plugins/loader.ts`)
+
 ### Changed
 
 - **Navigation consolidation — 9 pages merged into 5 tabbed hubs** — eliminated duplicate and fragmented pages by merging related UI into unified tabbed interfaces:

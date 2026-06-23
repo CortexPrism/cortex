@@ -25,6 +25,9 @@ export const APP_WRAPPER_OPEN =
       <button class="top-nav-tab" data-category="system" onclick="activateTopCategory('system');showPage('settings');closeMobileSidebar()" data-tooltip="Settings, policies, and system configuration">
         <span class="icon">🛡</span> System
       </button>
+      <button class="top-nav-tab" data-category="extensions" onclick="activateTopCategory('extensions');showPage('extensions');closeMobileSidebar()" data-tooltip="Installed plugins and plugin-contributed pages">
+        <span class="icon">🧩</span> Extensions
+      </button>
     </nav>
 
     <div class="header-right">
@@ -72,9 +75,6 @@ export const SIDEBAR_HTML = `<!-- ── Sidebar ──────────�
       <div class="nav-section">Recent</div>
       <div id="recent-pages-list"></div>
     </div>
-    <!-- Plugin Panels (dynamic) -->
-    <div class="nav-section" onclick="toggleSidebarSection(event)" aria-expanded="true" id="nav-section-plugin-panels" style="display:none;">Plugin Panels <span class="nav-section-toggle">▼</span></div>
-    <div id="plugin-panels-nav"></div>
   </nav>
 
   <!-- Daemon status -->

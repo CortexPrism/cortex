@@ -4,7 +4,15 @@ import { PATHS } from '../config/paths.ts';
 import { ensureDir } from '@std/fs';
 import { join } from '@std/path';
 import { logger } from '../utils/logger.ts';
-import type { PluginConfigStore, PluginContext, PluginLogger, PluginStateStore } from './types.ts';
+import { globalRegistry } from '../tools/registry.ts';
+import type { Tool } from '../tools/types.ts';
+import type {
+  HostApi,
+  PluginConfigStore,
+  PluginContext,
+  PluginLogger,
+  PluginStateStore,
+} from './types.ts';
 
 function createLogger(pluginName: string): PluginLogger {
   const _log = logger(`plugin:${pluginName}`);
@@ -91,6 +99,20 @@ function createConfigStore(pluginName: string): PluginConfigStore {
   };
 }
 
+function createHostApi(pluginName: string): HostApi {
+  const _log = logger(`plugin:${pluginName}`);
+  return {
+    registerTool(tool: Tool): void {
+      globalRegistry.register(tool);
+      _log.info(`Registered tool: ${tool.definition.name}`);
+    },
+    unregisterTool(name: string): void {
+      globalRegistry.unregister(name);
+      _log.info(`Unregistered tool: ${name}`);
+    },
+  };
+}
+
 export async function createPluginContext(pluginName: string): Promise<PluginContext> {
   const pluginDir = join(PATHS.dataDir, 'plugins', pluginName);
   await ensureDir(pluginDir);
@@ -101,13 +123,6 @@ export async function createPluginContext(pluginName: string): Promise<PluginCon
     state: createStateStore(pluginName),
     config: createConfigStore(pluginName),
     logger: createLogger(pluginName),
-    host: {
-      registerTool(_tool) {
-        // Tool registration is handled by PluginManager via globalRegistry
-      },
-      unregisterTool(_name) {
-        // Tool unregistration is handled by PluginManager via globalRegistry
-      },
-    },
+    host: createHostApi(pluginName),
   };
 }

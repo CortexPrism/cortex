@@ -627,6 +627,526 @@ Plugin state and data are stored under `~/.cortex/data/plugins/<plugin-name>/`:
 | UI panel not showing | Declare `ui:panel` capability. Check `htmlPath` is relative to manifest and the file exists |
 | Events not firing | Declare `events:listener` capability AND list event types in `events` manifest field |
 
+## Pipeline Hooks
+
+Plugins can hook into the agent's execution pipeline at 12 named stages. This is more powerful than
+the simple `middleware:pre` / `middleware:post` exports — hooks can abort execution, inject messages,
+modify the LLM response, and more.
+
+Declare `middleware:pre` or `middleware:post` in your manifest `capabilities` and export
+`middlewarePre` / `middlewarePost` from your module. The loader automatically registers them as
+pipeline hooks.
+
+### Pipeline Stages
+
+| Stage | When it runs |
+|-------|-------------|
+| `pre-assess` | Before metacognitive assessment |
+| `post-assess` | After assessment, before prompt build |
+| `pre-reason` | Before the reasoning loop starts |
+| `post-reason` | After the reasoning loop ends |
+| `pre-tool` | Before each tool call (**middleware:pre**) |
+| `post-tool` | After each tool call (**middleware:post**) |
+| `pre-llm` | Before the LLM API call |
+| `post-llm` | After the LLM API call |
+| `pre-reflect` | Before reflection |
+| `post-reflect` | After reflection |
+| `pre-output` | Before the final response is sent |
+| `post-output` | After the final response is sent |
+
+### PipelineContext
+
+The hook receives a read-only `PipelineContext`:
+
+```typescript
+interface PipelineContext {
+  readonly stage: PipelineStage;
+  readonly sessionId: string;
+  readonly turnId: string;
+  readonly input?: string;           // user message (pre-reason and earlier)
+  readonly assessment?: MetaAssessment;
+  readonly messages?: Message[];     // conversation history
+  readonly currentLLMResponse?: string;
+  readonly toolCall?: ToolCallRequest;   // available in pre-tool / post-tool
+  readonly toolResult?: ToolCallResult;  // available in post-tool
+  readonly reflection?: string;
+  readonly output?: string;          // available in pre-output / post-output
+  readonly state: Readonly<AgentState>;
+  setState(updates: Partial<AgentState>): void;
+}
+```
+
+### HookResult
+
+Return a `HookResult` from your hook. All fields are optional.
+
+```typescript
+interface HookResult {
+  abort?: { reason: string; message: string };  // abort the pipeline turn
+  modifyInput?: string;       // replace the user input
+  modifyLLMResponse?: string; // replace the raw LLM response text
+  modifyOutput?: string;      // replace the final output
+  injectMessages?: Message[]; // append messages to conversation history
+  sideEffects?: SideEffect[]; // log | metric | store | notify
+}
+```
+
+### Pre-tool Hook Example
+
+This example blocks tool calls that match a denylist:
+
+```typescript
+import type { PluginContext } from 'cortex/plugins';
+
+export const middlewarePre = async (ctx: unknown) => {
+  const c = ctx as {
+    toolCall?: { name: string };
+    stage: string;
+  };
+
+  if (c.stage !== 'pre-tool' || !c.toolCall) return {};
+
+  const BLOCKED = ['shell_run', 'file_delete'];
+  if (BLOCKED.includes(c.toolCall.name)) {
+    return {
+      abort: {
+        reason: 'policy',
+        message: `Tool "${c.toolCall.name}" is blocked by the security plugin.`,
+      },
+    };
+  }
+
+  return {};
+};
+```
+
+### Post-tool Hook Example
+
+This example logs every tool call duration to the plugin state:
+
+```typescript
+export const middlewarePost = async (ctx: unknown) => {
+  const c = ctx as {
+    toolResult?: { toolName: string; durationMs: number; success: boolean };
+    stage: string;
+  };
+
+  if (c.stage !== 'post-tool' || !c.toolResult) return {};
+
+  console.log(
+    `[audit] ${c.toolResult.toolName} → ${c.toolResult.success ? 'ok' : 'fail'} (${c.toolResult.durationMs}ms)`
+  );
+
+  return {};
+};
+```
+
+> **Note:** Hooks registered by `middlewarePre` run at stage `pre-tool` with `priority: 50`.
+> Hooks registered by `middlewarePost` run at stage `post-tool` with `priority: 50`. Sync hooks
+> time out after **5 seconds**; async hooks after **15 seconds**.
+
+---
+
+## Sandbox Mode
+
+By default, `trusted` plugins run in-process with full declared permissions. `untrusted` and
+`signed` plugins run in a **Deno Worker sandbox** with restricted permissions derived from their
+declared capabilities.
+
+The sandbox communicates with the host via a JSON-RPC protocol over `postMessage`. Tool calls
+are proxied through the worker boundary.
+
+### How Trust Level Is Determined
+
+| Trust Level | Source |
+|-------------|--------|
+| `untrusted` | No verification or blocked/suspicious supply-chain |
+| `signed` | Unverified supply-chain (no hash match) |
+| `trusted` | Verified supply-chain check passes |
+
+### Sandbox Capability → Deno Permission Mapping
+
+| Capability | Deno permission granted |
+|------------|------------------------|
+| `fs:read`, `fs:list` | `read: true` |
+| `fs:write`, `fs:edit`, `fs:delete` | `write: true` |
+| `shell:run` | `run: true` |
+| `network:fetch`, `net:outbound` | `net: true` |
+| `net:inbound` | `net: true` |
+
+### Writing Sandbox-Compatible Code
+
+Sandboxed plugins must export a `ready` signal and respond to `getTools` and `executeTool` RPC
+methods via `postMessage`:
+
+```typescript
+// sandbox-entry.ts (worker)
+import { tools } from './tools.ts';
+
+self.postMessage({ type: 'ready' });
+
+self.onmessage = async (ev) => {
+  const { id, method, params } = ev.data;
+
+  if (method === 'getTools') {
+    self.postMessage({ id, result: tools.map(t => t.definition) });
+    return;
+  }
+
+  if (method === 'executeTool') {
+    const tool = tools.find(t => t.definition.name === params.toolName);
+    if (!tool) {
+      self.postMessage({ id, error: { message: `Unknown tool: ${params.toolName}` } });
+      return;
+    }
+    try {
+      const result = await tool.execute(params.args, {});
+      self.postMessage({ id, result });
+    } catch (e) {
+      self.postMessage({ id, error: { message: (e as Error).message } });
+    }
+    return;
+  }
+
+  self.postMessage({ id, error: { message: `Unknown method: ${method}` } });
+};
+```
+
+> **Timeout:** The sandbox must emit a `{ type: 'ready' }` message within **30 seconds** or the
+> worker is terminated and the plugin fails to load.
+
+---
+
+## Plugin Namespacing
+
+Plugins are namespaced using the `@author/name` convention. This prevents name collisions between
+plugins from different authors.
+
+```
+@acme/weather-plugin
+@cortex/built-in-search
+```
+
+Tool names within a namespaced plugin are accessed as `@author/plugin-name/tool_name`.
+
+```typescript
+import { parsePluginName, formatPluginName, toolName } from 'cortex/plugins';
+
+const parsed = parsePluginName('@acme/weather');
+// { author: 'acme', name: 'weather', fullName: '@acme/weather' }
+
+const full = formatPluginName('acme', 'weather');
+// '@acme/weather'
+
+const tool = toolName('@acme/weather', 'get_weather');
+// '@acme/weather/get_weather'
+```
+
+Unscoped plugin names (e.g. `my-plugin`) are automatically resolved as `@unknown/my-plugin`.
+The author namespace is validated against a signing key to prevent impersonation.
+
+---
+
+## Full Module Export Reference
+
+The plugin loader reads these named exports from your `mod.ts`:
+
+```typescript
+import type {
+  Tool,
+  PluginContext,
+  CliCommandDeclaration,
+} from 'cortex/plugins';
+
+// Tools registered in the agent tool registry
+export const tools: Tool[] = [];
+
+// CLI subcommands (requires cli:commands capability)
+export const cliCommands: CliCommandDeclaration[] = [];
+
+// LLM provider factories (requires config:provider capability)
+export const providers: Record<string, (config: Record<string, unknown>) => unknown> = {};
+
+// Lifecycle hooks
+export const onLoad = async (ctx: PluginContext) => {};
+export const onUnload = async (ctx: PluginContext) => {};
+export const onInstall = async (ctx: PluginContext) => {};
+export const onActivate = async (ctx: PluginContext) => {};
+export const onDeactivate = async (ctx: PluginContext) => {};
+export const onUninstall = async (ctx: PluginContext) => {};
+export const onConfigChange = async (key: string, value: unknown, ctx: PluginContext) => {};
+
+// Pipeline hooks (requires middleware:pre / middleware:post capability)
+export const middlewarePre = async (ctx: unknown) => ({} as HookResult);
+export const middlewarePost = async (ctx: unknown) => ({} as HookResult);
+```
+
+All exports are optional. You only need to export what your plugin uses.
+
+---
+
+## UI Panel JavaScript API (`window.Cortex`)
+
+When your panel HTML is served inside an iframe, the CortexPrism host injects a `window.Cortex`
+global into the panel's JS context. This gives panel JS access to the host without any cross-origin
+issues.
+
+```javascript
+// Available as window.Cortex inside panel iframes
+
+// Make authenticated REST API calls
+const response = await window.Cortex.fetch('/api/sessions');
+const data = await response.json();
+
+// Make plugin-scoped API calls (resolves relative to /api/plugins/<name>/)
+const config = await window.Cortex.fetch('config');
+
+// Read a plugin config value
+const apiKey = await window.Cortex.getConfig('apiKey');
+
+// Write a plugin config value
+await window.Cortex.setConfig('theme', 'dark');
+
+// Listen for events emitted by the parent frame
+window.Cortex.onEvent('session:start', (data) => {
+  console.log('Session started:', data);
+});
+
+// Emit an event to the parent frame
+window.Cortex.emit('my-plugin:refresh', { timestamp: Date.now() });
+
+// Show a host notification
+window.Cortex.notify('Operation complete', 'info');   // 'info' | 'warn' | 'error'
+```
+
+### Panel postMessage Protocol
+
+Under the hood, the panel communicates with the host via `postMessage`. Events from the panel to
+the host use:
+
+```javascript
+window.parent.postMessage({
+  type: 'cortex-event',
+  pluginName: 'my-plugin',
+  event: 'my-event',
+  data: { /* payload */ }
+}, '*');
+```
+
+Notifications from the panel to the host use:
+
+```javascript
+window.parent.postMessage({
+  type: 'cortex-notification',
+  pluginName: 'my-plugin',
+  notification: { msg: 'Done!', type: 'info' }
+}, '*');
+```
+
+### Plugin Commands
+
+Panels can issue structured commands by emitting specific event types:
+
+| Command type | Effect |
+|-------------|--------|
+| `navigate` | Navigate the host UI to a route |
+| `open-modal` | Open a modal with title and HTML content |
+| `notification` | Show a notification at info/warn/error level |
+| `config-get` | Read a config key |
+| `config-set` | Write a config key |
+| `query` | Execute an arbitrary query |
+
+---
+
+## Permission Overrides
+
+Administrators can grant or deny specific capabilities to plugins beyond what the manifest declares.
+Overrides are stored per-plugin in the database.
+
+```typescript
+// Grant an extra capability at runtime (admin action via REST API)
+// POST /api/plugins/:name/permissions
+// { "permission_path": "fs:read", "action": "grant", "value": "" }
+
+// Deny a declared capability
+// POST /api/plugins/:name/permissions
+// { "permission_path": "shell:run", "action": "deny", "value": "" }
+
+// The effective permissions are computed as:
+// declared - denied + granted
+```
+
+Effective permissions determine which Deno Worker permissions are granted in sandbox mode. A plugin
+whose effective permissions do not include `shell:run` cannot spawn subprocesses even if its
+manifest declares it.
+
+---
+
+## Complete Working Example
+
+Here is a minimal but complete plugin that adds a REST-connected tool, subscribes to events, and
+provides a UI panel:
+
+```
+my-weather-plugin/
+├── manifest.json
+├── mod.ts
+└── ui/
+    └── panel.html
+```
+
+**manifest.json:**
+```json
+{
+  "name": "my-weather-plugin",
+  "version": "1.0.0",
+  "description": "Fetches weather and shows a panel",
+  "kind": "esm",
+  "entryPoint": "./mod.ts",
+  "runtime": "deno",
+  "capabilities": ["tools", "ui:panel", "events:listener", "network:fetch"],
+  "events": ["session:start", "llm:post-call"],
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get weather for a city",
+      "params": [
+        { "name": "city", "type": "string", "description": "City name", "required": true }
+      ]
+    }
+  ],
+  "ui": {
+    "panels": [
+      { "id": "weather", "title": "Weather", "icon": "cloud", "htmlPath": "./ui/panel.html" }
+    ],
+    "settings": [
+      {
+        "section": "API",
+        "fields": [
+          { "key": "apiKey", "label": "Weather API Key", "type": "secret", "defaultValue": "" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**mod.ts:**
+```typescript
+import type { Tool, PluginContext } from 'cortex/plugins';
+import { globalEventBus } from 'cortex/plugins';
+
+let callCount = 0;
+
+export const onLoad = async (ctx: PluginContext) => {
+  ctx.logger.info('Weather plugin loaded');
+
+  globalEventBus.on('session:start', (event) => {
+    ctx.logger.info(`New session: ${(event as { sessionId: string }).sessionId}`);
+  });
+
+  globalEventBus.on('llm:post-call', (event) => {
+    const e = event as { tokensIn: number; tokensOut: number };
+    ctx.logger.debug(`LLM call: ${e.tokensIn}in / ${e.tokensOut}out`);
+  });
+};
+
+export const onUnload = async (ctx: PluginContext) => {
+  ctx.logger.info(`Weather plugin unloaded. Total calls: ${callCount}`);
+};
+
+const weatherTool: Tool = {
+  definition: {
+    name: 'get_weather',
+    description: 'Get current weather for a city',
+    params: [
+      { name: 'city', type: 'string', description: 'City name', required: true },
+    ],
+    capabilities: ['network:fetch'],
+  },
+  execute: async (args, ctx) => {
+    const start = Date.now();
+    callCount++;
+
+    const city = args.city as string;
+    if (!city) {
+      return {
+        toolName: 'get_weather',
+        success: false,
+        output: '',
+        error: 'city parameter is required',
+        durationMs: 0,
+      };
+    }
+
+    const apiKey = await ctx.config.get<string>('apiKey');
+    if (!apiKey) {
+      return {
+        toolName: 'get_weather',
+        success: false,
+        output: '',
+        error: 'No API key configured. Set it in plugin settings.',
+        durationMs: Date.now() - start,
+      };
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.weather.example/current?city=${encodeURIComponent(city)}&key=${apiKey}`
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.text();
+      return { toolName: 'get_weather', success: true, output: data, durationMs: Date.now() - start };
+    } catch (err) {
+      return {
+        toolName: 'get_weather',
+        success: false,
+        output: '',
+        error: `Failed to fetch weather: ${(err as Error).message}`,
+        durationMs: Date.now() - start,
+      };
+    }
+  },
+};
+
+export const tools = [weatherTool];
+```
+
+**ui/panel.html:**
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Weather Panel</title>
+  <style>
+    body { font-family: system-ui; padding: 1rem; background: #0a0a0f; color: #e2e2ea; }
+    button { background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; }
+    #output { margin-top: 1rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <input id="city" type="text" placeholder="City name" />
+  <button onclick="getWeather()">Get Weather</button>
+  <div id="output"></div>
+  <script>
+    async function getWeather() {
+      const city = document.getElementById('city').value;
+      const res = await window.Cortex.fetch(`/api/tools/get_weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city }),
+      });
+      const data = await res.json();
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
+```
+
+---
+
 ## Next Steps
 
 - **[Best Practices](best-practices.md)** — Design principles, per-kind guidance, testing, and what to avoid

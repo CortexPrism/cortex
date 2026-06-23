@@ -128,6 +128,10 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     recordUserMessage(sessionId, effectiveInput);
   }).catch(() => {});
 
+  import('../../plugins/manager.ts').then(({ pluginManager }) => {
+    pluginManager.emitToPlugins({ type: 'agent:turn-start', sessionId, turnId });
+  }).catch(() => {});
+
   const maxToolRounds = options.maxToolRounds ?? config.agentRuntime?.maxToolRounds ??
     DEFAULT_MAX_TOOL_ROUNDS;
 

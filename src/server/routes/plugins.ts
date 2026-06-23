@@ -6,6 +6,7 @@ import { extractSettingsSchema } from '../../plugins/extensions/config.ts';
 import { applyPluginUpdate, checkAllUpdates, enrichPluginVersions } from '../../plugins/update.ts';
 import { generatePanelHtml, generatePanelJs } from '../../plugins/extensions/ui.ts';
 import { loadConfig, saveConfig } from '../../config/config.ts';
+import { listUIPlugins } from '../../plugins/ui-slots.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -38,6 +39,13 @@ export const routes: RouteHandler[] = [
         .filter(Boolean)
         .flat();
       return json(panels);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/plugins\/slots$/,
+    handler: () => {
+      return json(listUIPlugins());
     },
   },
   {

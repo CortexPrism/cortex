@@ -5,6 +5,7 @@ import { adversarialReflection, reflectOnTurn, storeReflection } from '../reflec
 import { extractSkillFromSession } from '../../memory/skills.ts';
 import { detectAndPersistPreference } from '../helpers/preferences.ts';
 import type { TurnContext } from '../pipeline/context.ts';
+import { pluginManager } from '../../plugins/manager.ts';
 
 const _log = logger('agent:loop');
 
@@ -78,6 +79,13 @@ export function fireBackgroundTasks(ctx: TurnContext): void {
       });
     }
   })().catch(() => {});
+
+  pluginManager.emitToPlugins({
+    type: 'agent:turn-end',
+    sessionId,
+    turnId,
+    response: (response || '').slice(0, 500),
+  }).catch(() => {});
 
   if (collectedToolCalls.length >= 4) {
     extractSkillFromSession(

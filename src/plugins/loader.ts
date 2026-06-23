@@ -4,6 +4,9 @@ import type { LoadedPlugin, PluginContext, PluginModule } from './types.ts';
 import type { Tool, ToolContext } from '../tools/types.ts';
 import { globalRegistry } from '../tools/registry.ts';
 import { loadWasmPlugin } from './wasm-runtime.ts';
+import { registerHook, unregisterAllForPlugin } from '../pipeline/manager.ts';
+import type { HookResult } from '../pipeline/types.ts';
+import { registerUIPlugin, unregisterUIPlugin } from './ui-slots.ts';
 
 const _loaded = new Map<string, LoadedPlugin>();
 
@@ -22,6 +25,8 @@ export function unloadPlugin(name: string): void {
   for (const tool of loaded.tools) {
     globalRegistry.unregister(tool.definition.name);
   }
+  unregisterAllForPlugin(name);
+  unregisterUIPlugin(name);
   _loaded.delete(name);
 }
 
@@ -67,6 +72,63 @@ export async function loadEsmPlugin(row: PluginRow, ctx: PluginContext): Promise
     for (const tool of tools) {
       globalRegistry.register(tool);
     }
+
+    // Register middleware pipeline hooks if the plugin declares and exports them
+    const capabilities = JSON.parse(row.declared_permissions || '[]') as string[];
+    if (capabilities.includes('middleware:pre') && mod.middlewarePre) {
+      const preFn = mod.middlewarePre;
+      registerHook(
+        {
+          name: `plugin:${row.name}:middleware-pre`,
+          stages: ['pre-tool'],
+          priority: 50,
+          async: false,
+          disableable: true,
+          run: (ctx) => preFn(ctx) as Promise<HookResult>,
+        },
+        'plugin',
+        row.name,
+      );
+      ctx.logger.info(`Registered middleware:pre pipeline hook`);
+    }
+    if (capabilities.includes('middleware:post') && mod.middlewarePost) {
+      const postFn = mod.middlewarePost;
+      registerHook(
+        {
+          name: `plugin:${row.name}:middleware-post`,
+          stages: ['post-tool'],
+          priority: 50,
+          async: false,
+          disableable: true,
+          run: (ctx) => postFn(ctx) as Promise<HookResult>,
+        },
+        'plugin',
+        row.name,
+      );
+      ctx.logger.info(`Registered middleware:post pipeline hook`);
+    }
+
+    // Register UI slot entries from manifest panels
+    try {
+      const manifest = row.manifest_json ? JSON.parse(row.manifest_json) : null;
+      if (manifest?.ui?.panels) {
+        for (const panel of manifest.ui.panels) {
+          registerUIPlugin({
+            pluginName: row.name,
+            slot: 'panel',
+            label: panel.title,
+            icon: panel.icon,
+            htmlUrl: `/api/plugins/${encodeURIComponent(row.name)}/panel/${
+              encodeURIComponent(panel.id)
+            }`,
+            jsUrl: `/api/plugins/${encodeURIComponent(row.name)}/panel/${
+              encodeURIComponent(panel.id)
+            }.js`,
+            settings: {},
+          });
+        }
+      }
+    } catch { /* manifest parse errors are non-fatal */ }
 
     const loaded: LoadedPlugin = { row, tools, module: mod };
     _loaded.set(row.name, loaded);

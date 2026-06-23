@@ -84,7 +84,7 @@ function showPage(name) {
     mcp: function() { switchMcpTab('connections'); loadMCPPage(); injectToolsSubNav('mcp'); },
     vault: function() { loadVaultPage(); injectToolsSubNav('vault'); },
     tunnel: function() { loadTunnelPage(); injectToolsSubNav('tunnel'); },
-    extensions: function() { loadPlugins(); },
+    extensions: function() { loadPlugins(); extShowTab('installed'); },
     soul: loadSoulFile, editor: function() { editorLoadWorkspaces(); editorRefreshTree(); extendEditorPage(); },
     promptlab: loadPromptLab,
     pkm: loadPkmPage,
@@ -199,6 +199,42 @@ function extShowTab(tab) {
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'panels') loadPluginPanelsTabs();
+}
+
+// ── Direct plugin panel navigation from Extensions sub-nav ──
+function showPluginPanel(pluginId, panelId) {
+  currentPage = 'pluginpanel:' + pluginId + ':' + panelId;
+  try {
+    localStorage.setItem('cortex_page', currentPage);
+    if (location.hash !== '#pluginpanel:' + pluginId + ':' + panelId) {
+      history.pushState(null, '', '#pluginpanel:' + pluginId + ':' + panelId);
+    }
+  } catch {}
+
+  // Activate extensions category and highlight sub-nav item
+  var tabs = document.querySelectorAll('.top-nav-tab');
+  tabs.forEach(function(t) {
+    t.classList.toggle('active', t.getAttribute('data-category') === 'extensions');
+  });
+  currentCategory = 'extensions';
+  renderSubNav('extensions');
+
+  // Show extensions page and switch to panels tab, then select the panel
+  PAGES.forEach(function(p) {
+    var pg = document.getElementById('page-' + p);
+    if (pg) { pg.style.display = 'none'; pg.classList.remove('page-fade-in'); }
+  });
+  var extPage = document.getElementById('page-extensions');
+  if (extPage) {
+    extPage.style.display = 'flex';
+    requestAnimationFrame(function() { extPage.classList.add('page-fade-in'); });
+  }
+  extShowTab('panels');
+  selectPluginPanel(pluginId, panelId);
+
+  document.querySelectorAll('.sub-nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('id') === 'nav-pluginpanel:' + pluginId + ':' + panelId);
+  });
 }
 
 `;

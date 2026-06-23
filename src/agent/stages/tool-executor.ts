@@ -79,6 +79,15 @@ async function runToolCall(
       tool: tc.toolName,
       args: JSON.stringify(tc.args).slice(0, 120),
     });
+
+    import('../../plugins/manager.ts').then(({ pluginManager }) => {
+      pluginManager.emitToPlugins({
+        type: 'tool:pre-execute',
+        toolName: tc.toolName,
+        args: tc.args,
+      });
+    }).catch(() => {});
+
     const toolSpanId = `${turnId}-tool-${round}-${tc.toolName}`;
     if (langfuseConfigured()) {
       spanCreate({
@@ -129,6 +138,10 @@ async function runToolCall(
       params: redactParams(tc.args),
       result: result.output || result.error || '',
     };
+
+    import('../../plugins/manager.ts').then(({ pluginManager }) => {
+      pluginManager.emitToPlugins({ type: 'tool:post-execute', toolName: tc.toolName, result });
+    }).catch(() => {});
 
     import('../../quartermaster/mod.ts').then(({ observe }) => {
       observe({
