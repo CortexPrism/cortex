@@ -220,8 +220,13 @@ export async function runSetupWizard(config: CortexConfig): Promise<CortexConfig
   };
 
   // Check for and offer resume of partial progress
-  const existingOnboarding = (updated as unknown as Record<string, unknown>).onboarding as Record<string, unknown> | undefined;
-  if (existingOnboarding?.currentStep && existingOnboarding?.currentMode === 'cli' && !existingOnboarding?.completed) {
+  const existingOnboarding = (updated as unknown as Record<string, unknown>).onboarding as
+    | Record<string, unknown>
+    | undefined;
+  if (
+    existingOnboarding?.currentStep && existingOnboarding?.currentMode === 'cli' &&
+    !existingOnboarding?.completed
+  ) {
     const resumeStep = existingOnboarding.currentStep as number;
     const resume = await Confirm.prompt({
       message: i18n.t('cli.setup.confirm.resumeProgress', { step: resumeStep }),

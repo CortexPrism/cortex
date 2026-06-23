@@ -152,12 +152,13 @@ function createProvider(kind: ProviderKind, cfg: ProviderConfig): LLMProvider {
       return new NovitaProvider(cfg.apiKey, cfg.pricing);
 
     case 'lmstudio':
-      return new LMStudioProvider(cfg.baseUrl ?? 'http://localhost:1234');
+      return new LMStudioProvider(cfg.baseUrl ?? 'http://localhost:1234', cfg.model);
 
     case 'litellm':
       return new LiteLLMProvider(
         cfg.apiKey ?? 'litellm',
         cfg.baseUrl ?? 'http://localhost:4000',
+        cfg.model,
         cfg.pricing,
       );
 

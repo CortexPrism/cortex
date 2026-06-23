@@ -3,6 +3,32 @@ import { enrichPluginVersions } from '../../plugins/update.ts';
 
 const MARKETPLACE_BASE = 'https://cortexprism.io';
 
+async function fetchMarketplace(
+  path: string,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  try {
+    const res = await fetch(`${MARKETPLACE_BASE}${path}`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    const msg = (e as Error).message ?? 'Network error';
+    const offline = msg.includes('connection refused') || msg.includes('network') ||
+      msg.includes('ECONNREFUSED') || e instanceof DOMException;
+    return {
+      ok: false,
+      status: offline ? 503 : 500,
+      data: {
+        error: offline
+          ? 'Marketplace is currently unreachable. Check your internet connection.'
+          : `Marketplace request failed: ${msg}`,
+        offline,
+      },
+    };
+  }
+}
+
 export const routes: RouteHandler[] = [
   {
     method: 'GET',
@@ -10,12 +36,15 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const url = new URL(req.url);
       const params = url.searchParams.toString();
-      const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/plugins?${params}`);
-      const data = await res.json();
-      if (data?.plugins?.length) {
-        await enrichPluginVersions(data.plugins);
+      const { ok, status, data } = await fetchMarketplace(
+        `/api/marketplace/plugins?${params}`,
+      );
+      if (ok && (data as Record<string, unknown>)?.plugins) {
+        await enrichPluginVersions(
+          (data as Record<string, unknown[]>).plugins as Record<string, unknown>[],
+        ).catch(() => {});
       }
-      return json(data, res.status);
+      return json(data, status);
     },
   },
   {
@@ -24,27 +53,24 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const url = new URL(req.url);
       const params = url.searchParams.toString();
-      const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/agents?${params}`);
-      const data = await res.json();
-      return json(data, res.status);
+      const { status, data } = await fetchMarketplace(`/api/marketplace/agents?${params}`);
+      return json(data, status);
     },
   },
   {
     method: 'GET',
     pattern: /^\/api\/marketplace\/categories$/,
     handler: async () => {
-      const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/categories`);
-      const data = await res.json();
-      return json(data, res.status);
+      const { status, data } = await fetchMarketplace('/api/marketplace/categories');
+      return json(data, status);
     },
   },
   {
     method: 'GET',
     pattern: /^\/api\/marketplace\/stats$/,
     handler: async () => {
-      const res = await fetch(`${MARKETPLACE_BASE}/api/marketplace/stats`);
-      const data = await res.json();
-      return json(data, res.status);
+      const { status, data } = await fetchMarketplace('/api/marketplace/stats');
+      return json(data, status);
     },
   },
   {

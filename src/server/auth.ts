@@ -239,7 +239,9 @@ export async function requireAuth(
     return {
       authenticated: false,
       response: new Response(
-        JSON.stringify({ error: 'Vault encryption key not configured. Set CORTEX_VAULT_KEY environment variable.' }),
+        JSON.stringify({
+          error: 'Vault encryption key not configured. Set CORTEX_VAULT_KEY environment variable.',
+        }),
         {
           status: 503,
           headers: { 'Content-Type': 'application/json' },

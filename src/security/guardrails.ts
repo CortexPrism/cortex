@@ -38,7 +38,9 @@ export interface GuardrailContext {
 const classifiers: GuardrailClassifier[] = [];
 
 export function registerClassifier(classifier: GuardrailClassifier): void {
-  classifiers.push(classifier);
+  if (!classifiers.find((c) => c.name === classifier.name)) {
+    classifiers.push(classifier);
+  }
 }
 
 export function unregisterClassifier(name: string): void {

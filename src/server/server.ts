@@ -6,10 +6,16 @@ import { serveUi } from './ui/mod.ts';
 import { serveLoginPage, serveOnboardingPage } from './ui-auth.ts';
 import { runMigrations } from '../db/migrate.ts';
 import { ensureDaemons, schedulePluginUpdateChecks } from '../cli/daemon.ts';
-import { loadConfig, isFirstRun } from '../config/config.ts';
+import { isFirstRun, loadConfig } from '../config/config.ts';
 import { configureLogger } from '../utils/logger.ts';
 import { PATHS } from '../config/paths.ts';
-import { hasPassword, checkVaultAvailability, isVaultUnavailable, parseCookies, requireAuth } from './auth.ts';
+import {
+  checkVaultAvailability,
+  hasPassword,
+  isVaultUnavailable,
+  parseCookies,
+  requireAuth,
+} from './auth.ts';
 import { startAutoServices, stopAllServices } from '../services/manager.ts';
 import { setWebhookJobCreator } from '../triggers/webhook.ts';
 import { setWatcherJobCreator, startWatchers } from '../triggers/watcher.ts';
@@ -55,24 +61,35 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // Pre-start sanity checks
   if (await isFirstRun()) {
-    _log.warn('No config file found — server starting with defaults. Run `cortex setup` or visit /onboarding.');
+    _log.warn(
+      'No config file found — server starting with defaults. Run `cortex setup` or visit /onboarding.',
+    );
   }
 
   const activeProvider = _serverConfig.defaultProvider;
   const providerCfg = _serverConfig.providers[activeProvider];
-  if (!providerCfg?.apiKey && activeProvider !== 'ollama' && activeProvider !== 'lmstudio' && activeProvider !== 'litellm') {
-    _log.warn(`No API key configured for provider "${activeProvider}". LLM operations will fail. Run \`cortex setup\` or visit /onboarding.`);
+  if (
+    !providerCfg?.apiKey && activeProvider !== 'ollama' && activeProvider !== 'lmstudio' &&
+    activeProvider !== 'litellm'
+  ) {
+    _log.warn(
+      `No API key configured for provider "${activeProvider}". LLM operations will fail. Run \`cortex setup\` or visit /onboarding.`,
+    );
   }
 
   // Vault availability check
   await checkVaultAvailability();
   if (isVaultUnavailable()) {
-    _log.warn('VAULT UNAVAILABLE: CORTEX_VAULT_KEY not set. Web password auth and encrypted credential storage are disabled. Set CORTEX_VAULT_KEY to enable security features.');
+    _log.warn(
+      'VAULT UNAVAILABLE: CORTEX_VAULT_KEY not set. Web password auth and encrypted credential storage are disabled. Set CORTEX_VAULT_KEY to enable security features.',
+    );
   }
 
   const pwExists = await hasPassword();
   if (!pwExists && !(await isFirstRun())) {
-    _log.warn('No web password set. Web UI is UNPROTECTED. Set a password at /onboarding or run `cortex setup`.');
+    _log.warn(
+      'No web password set. Web UI is UNPROTECTED. Set a password at /onboarding or run `cortex setup`.',
+    );
   }
 
   // Emit startup marker — always lands in file (warn >= FILE_MIN_LEVEL)

@@ -254,17 +254,17 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/phase2\/page\d+\/(content|config|state|stats)$/,
     handler: async (_req, path) => {
+      if (!Deno.env.get('CORTEX_DEV_MODE')) return json({ error: 'Not found' }, 404);
       const m = path.match(/^\/api\/phase2\/page(\d+)\/(content|config|state|stats)$/);
       if (m) {
         const page = Number(m[1]);
         const section = m[2];
-        const payload = {
+        return json({
           ok: true,
           page,
           section,
           content: `<div>Phase 2 Page ${page} - ${section}</div>`,
-        };
-        return json(payload);
+        });
       }
       return json({ error: 'Not found' }, 404);
     },
@@ -273,6 +273,7 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/phase2\/pages$/,
     handler: async () => {
+      if (!Deno.env.get('CORTEX_DEV_MODE')) return json({ error: 'Not found' }, 404);
       const pages = [1, 2, 3, 4, 5, 6].map((id) => ({
         id,
         slug: `page${id}`,

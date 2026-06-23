@@ -59,22 +59,43 @@ function heuristicSelect(
 
   const complexity = estimateComplexity(userMessage);
 
+  const PROVIDER_COST_RANK: Record<string, number> = {
+    ollama: 0,
+    lmstudio: 1,
+    groq: 2,
+    cerebras: 3,
+    deepseek: 4,
+    mistral: 5,
+    together: 6,
+    openrouter: 7,
+    perplexity: 8,
+    cohere: 9,
+    google: 10,
+    openai: 11,
+    anthropic: 12,
+  };
+
+  const ranked = [...candidates].sort((a, b) => {
+    const ra = PROVIDER_COST_RANK[a.provider] ?? 99;
+    const rb = PROVIDER_COST_RANK[b.provider] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return a.provider.localeCompare(b.provider);
+  });
+
   if (complexity < 0.3) {
-    const cheaper = [...candidates].sort(() => Math.random() - 0.5);
-    const local = cheaper.find((c) => c.provider === 'ollama' || c.provider === 'lmstudio');
+    const local = ranked.find((c) => c.provider === 'ollama' || c.provider === 'lmstudio');
     if (local) return local;
-    return cheaper[0];
+    return ranked[0];
   }
 
   if (complexity > 0.7) {
-    const premium = candidates.find((c) =>
+    const premium = ranked.slice().reverse().find((c) =>
       c.provider === 'anthropic' || c.provider === 'openai' || c.provider === 'google'
     );
     if (premium) return premium;
   }
 
-  const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-  return shuffled[0];
+  return ranked[0];
 }
 
 function estimateComplexity(message: string): number {

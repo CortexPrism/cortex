@@ -38,7 +38,6 @@ export const routes: RouteHandler[] = [
             core: 'cortex.db',
             lens: 'lens.db',
             memory: 'memory.db',
-            sessions: 'sessions.db',
           })
         ) {
           try {
@@ -46,6 +45,20 @@ export const routes: RouteHandler[] = [
             dbFiles[name] = fi.size;
           } catch { /* file doesn't exist */ }
         }
+        // Sessions are stored as individual files under sessions/
+        try {
+          let sessionsTotal = 0;
+          const sessionsDir = join(PATHS.dataDir, 'sessions');
+          for await (const entry of Deno.readDir(sessionsDir)) {
+            if (entry.isFile) {
+              try {
+                const fi = await Deno.stat(join(sessionsDir, entry.name));
+                sessionsTotal += fi.size;
+              } catch { /* skip */ }
+            }
+          }
+          dbFiles['sessions'] = sessionsTotal;
+        } catch { /* sessions dir may not exist yet */ }
       } catch { /* ignore */ }
 
       const memUsage = (() => {

@@ -50,8 +50,29 @@ export const routes: RouteHandler[] = [
       const wf = new Workflow(body.name, body.description);
       if (body.definition && Array.isArray(body.definition)) {
         for (const node of body.definition as Array<Record<string, unknown>>) {
-          if (node.kind === 'step') wf.step(node.name as string, async () => {});
-          else if (node.kind === 'goto') wf.goto(node.target as string);
+          if (node.kind === 'step') {
+            const stepName = node.name as string;
+            const tool = node.tool as string | undefined;
+            const args = (node.args ?? node.params ?? {}) as Record<string, unknown>;
+            const action = node.action as string | undefined;
+            wf.step(stepName, async (ctx) => {
+              if (tool) {
+                const { globalRegistry } = await import('../../tools/registry.ts');
+                const t = globalRegistry.get(tool);
+                if (!t) throw new Error(`Tool not found: ${tool}`);
+                const result = await t.execute(args, {
+                  sessionId: `wf_${wf.name}`,
+                  agentId: 'workflow-engine',
+                  workingDir: Deno.cwd(),
+                  workspaceDir: Deno.cwd(),
+                });
+                ctx.set(`${stepName}_result`, result.output);
+                if (!result.success) throw new Error(result.error ?? `Step ${stepName} failed`);
+              } else if (action) {
+                ctx.set(`${stepName}_result`, { action, args, executed: true });
+              }
+            });
+          } else if (node.kind === 'goto') wf.goto(node.target as string);
         }
       }
       registerWorkflow(wf);

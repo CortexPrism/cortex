@@ -182,9 +182,17 @@ export class Workflow {
       if (node.kind === 'step') labels.set(node.step.name, i);
     }
 
+    const MAX_ITERATIONS = 1000;
+    let iterations = 0;
     try {
       let i = 0;
       while (i < steps.length) {
+        if (++iterations > MAX_ITERATIONS) {
+          throw new Error(
+            `Workflow "${this.name}" exceeded maximum iteration limit (${MAX_ITERATIONS}). ` +
+              `Check for infinite loops in goto nodes.`,
+          );
+        }
         const node = steps[i];
 
         if (node.kind === 'step') {

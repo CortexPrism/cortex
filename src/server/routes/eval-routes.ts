@@ -192,14 +192,37 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/cost\/optimizer$/,
     handler: async () => {
       const config = await loadConfig();
-      return json({
-        providers: Object.keys(config.providers ?? {}).map((k) => ({
-          kind: k,
-          model: config.providers?.[k as keyof typeof config.providers]?.model ?? 'unknown',
-          hasKey: !!config.providers?.[k as keyof typeof config.providers]?.apiKey,
-        })),
-        recommendation: 'Analysis from quartermaster integration pending',
-      });
+      const providers = Object.entries(config.providers ?? {}).map(([k, p]) => ({
+        kind: k,
+        model: p?.model ?? 'unknown',
+        hasKey: !!(p?.apiKey || p?.baseUrl),
+      }));
+
+      let recommendation = 'Configure at least one LLM provider to receive cost recommendations.';
+      try {
+        const { getQmSummary } = await import('../../quartermaster/monitor.ts');
+        const summary = await getQmSummary();
+        const total = summary.totalObservations + summary.totalPredictions;
+        if (summary && total > 0) {
+          const cheapest = providers
+            .filter((p) => p.hasKey)
+            .find((p) => p.kind === 'ollama' || p.kind === 'lmstudio');
+          if (cheapest) {
+            recommendation =
+              `Route low-complexity tasks to ${cheapest.kind}/${cheapest.model} to reduce cost. ` +
+              `QM has made ${total} routing decisions; accuracy: ${
+                ((summary.rollingAccuracy ?? 0) * 100).toFixed(1)
+              }%.`;
+          } else {
+            recommendation = `${total} decisions recorded. ` +
+              `Add a local provider (Ollama/LM Studio) to reduce per-token costs for simple tasks.`;
+          }
+        }
+      } catch {
+        // QM not available yet
+      }
+
+      return json({ providers, recommendation });
     },
   },
   {
@@ -208,11 +231,97 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const url = new URL(req.url);
       const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 50);
-      return json({
-        traces: [],
-        otelEnabled: !!Deno.env.get('OTEL_EXPORTER_OTLP_ENDPOINT'),
-        langfuseEnabled: !!Deno.env.get('LANGFUSE_PUBLIC_KEY'),
-      }, 501);
+      const otelEnabled = !!Deno.env.get('OTEL_EXPORTER_OTLP_ENDPOINT');
+      const langfuseEnabled = !!Deno.env.get('LANGFUSE_PUBLIC_KEY');
+
+      let traces: unknown[] = [];
+      try {
+        const { getLensDb } = await import('../../db/client.ts');
+        const db = await getLensDb();
+        const rows = await db.all<Record<string, unknown>>(
+          `SELECT id, event_type, session_id, turn_id, actor, action, summary, started_at, payload
+           FROM lens_events
+           WHERE event_type IN ('llm_call','tool_call','tool_result','agent_turn')
+           ORDER BY started_at DESC LIMIT ?`,
+          [limit],
+        );
+        traces = rows.map((r) => ({
+          id: r.id,
+          type: r.event_type,
+          sessionId: r.session_id,
+          turnId: r.turn_id,
+          actor: r.actor,
+          action: r.action,
+          summary: r.summary,
+          startedAt: r.started_at,
+          payload: r.payload
+            ? (() => {
+              try {
+                return JSON.parse(r.payload as string);
+              } catch {
+                return {};
+              }
+            })()
+            : {},
+        }));
+      } catch {
+        // lens DB may not be initialised yet
+      }
+
+      return json({ traces, otelEnabled, langfuseEnabled });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/observability\/test-otlp$/,
+    handler: async () => {
+      const endpoint = Deno.env.get('OTEL_EXPORTER_OTLP_ENDPOINT');
+      if (!endpoint) {
+        return json({ ok: false, error: 'OTEL_EXPORTER_OTLP_ENDPOINT not set' }, 400);
+      }
+      try {
+        const res = await fetch(`${endpoint.replace(/\/$/, '')}/v1/traces`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(Deno.env.get('OTEL_EXPORTER_OTLP_HEADERS')
+              ? Object.fromEntries(
+                Deno.env.get('OTEL_EXPORTER_OTLP_HEADERS')!.split(',').map((h) => h.split('=')),
+              )
+              : {}),
+          },
+          body: JSON.stringify({ resourceSpans: [] }),
+          signal: AbortSignal.timeout(5_000),
+        });
+        return json({ ok: res.ok, status: res.status, endpoint });
+      } catch (e) {
+        return json({ ok: false, error: (e as Error).message, endpoint }, 502);
+      }
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/observability\/test-langfuse$/,
+    handler: async () => {
+      const publicKey = Deno.env.get('LANGFUSE_PUBLIC_KEY');
+      const secretKey = Deno.env.get('LANGFUSE_SECRET_KEY');
+      const host = Deno.env.get('LANGFUSE_HOST') ?? 'https://cloud.langfuse.com';
+      if (!publicKey || !secretKey) {
+        return json(
+          { ok: false, error: 'LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set' },
+          400,
+        );
+      }
+      try {
+        const credentials = btoa(`${publicKey}:${secretKey}`);
+        const res = await fetch(`${host}/api/public/projects`, {
+          headers: { 'Authorization': `Basic ${credentials}` },
+          signal: AbortSignal.timeout(5_000),
+        });
+        return json({ ok: res.ok, status: res.status, host });
+      } catch (e) {
+        return json({ ok: false, error: (e as Error).message, host }, 502);
+      }
     },
   },
   {
@@ -530,12 +639,25 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/embeddings\/pipeline$/,
     handler: async () => {
+      const config = await loadConfig();
+      const emb = config.embeddings;
+      const active = !!(emb?.provider && emb.provider !== 'stub');
+      const provider = emb?.provider ?? (
+        config.providers[config.defaultProvider]?.kind === 'ollama'
+          ? 'ollama'
+          : config.providers['openai']?.apiKey
+          ? 'openai'
+          : 'stub'
+      );
       return json({
         stages: ['chunk', 'embed', 'index', 'backfill'],
         backends: ['lancedb', 'chroma', 'pinecone'],
-        active: false,
+        active,
+        provider,
+        model: emb?.model ??
+          (provider === 'ollama' ? 'nomic-embed-text' : 'text-embedding-3-small'),
         config: { chunkSize: 512, chunkOverlap: 64, batchSize: 32 },
-      }, 501);
+      });
     },
   },
   {

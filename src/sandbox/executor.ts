@@ -85,7 +85,14 @@ export async function getAvailableRuntime(): Promise<SandboxRuntime> {
   return 'subprocess';
 }
 
+let _dockerAvailableCache: { result: boolean; ts: number } | null = null;
+const DOCKER_CACHE_TTL_MS = 30_000;
+
 export async function isDockerAvailable(): Promise<boolean> {
+  const now = Date.now();
+  if (_dockerAvailableCache && now - _dockerAvailableCache.ts < DOCKER_CACHE_TTL_MS) {
+    return _dockerAvailableCache.result;
+  }
   try {
     const cmdName = isWindows() ? 'docker.exe' : 'docker';
     const proc = new Deno.Command(cmdName, {
@@ -94,8 +101,10 @@ export async function isDockerAvailable(): Promise<boolean> {
       stderr: 'null',
     });
     const { code } = await proc.output();
-    return code === 0;
+    _dockerAvailableCache = { result: code === 0, ts: now };
+    return _dockerAvailableCache.result;
   } catch {
+    _dockerAvailableCache = { result: false, ts: now };
     return false;
   }
 }

@@ -84,6 +84,10 @@ export async function deleteProject(name: string): Promise<boolean> {
   }
 }
 
-export function getActiveProject(): ProjectConfig | undefined {
-  return [...projects.values()].find((p) => p.path === Deno.cwd());
+export async function getActiveProject(): Promise<ProjectConfig | undefined> {
+  if (projects.size === 0) {
+    await listProjects();
+  }
+  const cwd = Deno.cwd();
+  return [...projects.values()].find((p) => cwd === p.path || cwd.startsWith(p.path + '/'));
 }

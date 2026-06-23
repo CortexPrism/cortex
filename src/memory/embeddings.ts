@@ -135,7 +135,13 @@ export function buildEmbedder(config: CortexConfig): EmbeddingProvider {
   }
 
   const provider = config.providers[config.defaultProvider];
-  if (!provider) return new StubEmbedder();
+  if (!provider) {
+    console.warn(
+      '[cortex] No embedding provider configured — semantic memory search will use a stub ' +
+        'embedder with degraded accuracy. Set config.embeddings to use Ollama or OpenAI embeddings.',
+    );
+    return new StubEmbedder();
+  }
 
   if (provider.kind === 'ollama') {
     const baseUrl = provider.baseUrl ?? 'http://localhost:11434';
@@ -148,5 +154,10 @@ export function buildEmbedder(config: CortexConfig): EmbeddingProvider {
     return new OpenAIEmbedder(provider.apiKey, 'text-embedding-3-small');
   }
 
+  console.warn(
+    `[cortex] Provider "${provider.kind}" does not support embeddings natively — ` +
+      'semantic memory search will use a stub embedder with degraded accuracy. ' +
+      'Set config.embeddings.provider to "ollama" or "openai" for real vector search.',
+  );
   return new StubEmbedder();
 }

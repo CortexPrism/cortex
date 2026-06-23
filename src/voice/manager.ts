@@ -21,6 +21,8 @@ let initialized = false;
 export async function initVoiceSystem(config: VoiceConfig): Promise<void> {
   if (initialized) return;
 
+  _sttProviderName = config.sttProvider ?? 'openai';
+
   if (config.sttProvider === 'openai') {
     const providerConfig = await resolveProviderConfig();
     const stt = new OpenAISTTProvider(providerConfig.apiKey);
@@ -42,8 +44,10 @@ export async function initVoiceSystem(config: VoiceConfig): Promise<void> {
   initialized = true;
 }
 
+let _sttProviderName = 'openai';
+
 export function getSTT(): STTProvider | undefined {
-  return getSTTProvider('openai');
+  return getSTTProvider(_sttProviderName);
 }
 
 export function getTTS(): TTSProvider | undefined {

@@ -71,13 +71,34 @@ export const listenTool: Tool = {
       const providerName = voiceConfig?.sttProvider ?? 'openai';
       const language = String(args.language ?? voiceConfig?.language ?? '');
 
-      const provider = getSTTProvider(providerName);
+      let provider = getSTTProvider(providerName);
+      if (!provider) {
+        try {
+          const { initVoiceSystem } = await import('../../voice/manager.ts');
+          await initVoiceSystem(
+            voiceConfig ?? {
+              enabled: true,
+              sttProvider: 'openai',
+              ttsProvider: 'openai',
+              sttModel: 'whisper-1',
+              ttsModel: 'tts-1',
+              defaultVoice: 'alloy',
+              autoTTS: false,
+              language: 'en',
+            },
+          );
+          provider = getSTTProvider(providerName);
+        } catch {
+          // init failed; error reported below
+        }
+      }
       if (!provider) {
         return {
           toolName: 'listen',
           success: false,
           output: '',
-          error: `STT provider "${providerName}" not registered. Configure voice in config.`,
+          error:
+            `STT provider "${providerName}" not registered. Configure voice.sttProvider and an API key in config.`,
           durationMs: Date.now() - start,
         };
       }

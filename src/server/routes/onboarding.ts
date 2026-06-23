@@ -200,11 +200,14 @@ export const routes: RouteHandler[] = [
           const result = await provider.complete({
             messages: [{
               role: 'system',
-              content: 'You are conducting a brief onboarding questionnaire for a new AI assistant user. Ask ONE conversational question to learn about the user - their work, interests, goals, or how they plan to use the assistant. Return ONLY valid JSON: {"question": "...", "questionId": "q1", "questionNumber": 1, "context": "..."}',
+              content:
+                'You are conducting a brief onboarding questionnaire for a new AI assistant user. Ask ONE conversational question to learn about the user - their work, interests, goals, or how they plan to use the assistant. Return ONLY valid JSON: {"question": "...", "questionId": "q1", "questionNumber": 1, "context": "..."}',
             }],
             model: providerCfg.model,
           });
-          const parsed = JSON.parse(result.content.replace(/```json\n?/g, '').replace(/```/g, '').trim());
+          const parsed = JSON.parse(
+            result.content.replace(/```json\n?/g, '').replace(/```/g, '').trim(),
+          );
           return json({
             question: parsed.question,
             questionId: parsed.questionId || 'llm_1',
@@ -250,11 +253,16 @@ export const routes: RouteHandler[] = [
           const result = await provider.complete({
             messages: [{
               role: 'system',
-              content: `You are conducting a brief onboarding questionnaire. Previous answers:\n${qHistory}\nLatest answer: ${body.answer}\n\nAsk ONE more follow-up question OR say "done" if you have enough info. Return ONLY valid JSON: {"question": "...", "questionId": "q${answerCount + 1}", "done": false} or {"done": true, "summary": "..."}`,
+              content:
+                `You are conducting a brief onboarding questionnaire. Previous answers:\n${qHistory}\nLatest answer: ${body.answer}\n\nAsk ONE more follow-up question OR say "done" if you have enough info. Return ONLY valid JSON: {"question": "...", "questionId": "q${
+                  answerCount + 1
+                }", "done": false} or {"done": true, "summary": "..."}`,
             }],
             model: providerCfg.model,
           });
-          const parsed = JSON.parse(result.content.replace(/```json\n?/g, '').replace(/```/g, '').trim());
+          const parsed = JSON.parse(
+            result.content.replace(/```json\n?/g, '').replace(/```/g, '').trim(),
+          );
           if (parsed.done) {
             return json({ done: true, profile, nextQuestion: parsed.summary });
           }

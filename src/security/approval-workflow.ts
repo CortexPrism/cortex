@@ -52,7 +52,7 @@ const DEFAULT_CONFIG: ApprovalWorkflowConfig = {
 };
 
 const pendingApprovals = new Map<string, ApprovalRequest>();
-const approvalResolvers = new Map<string, (approved: boolean) => void>();
+const approvalResolvers = new Map<string, (approved: boolean | PromiseLike<boolean>) => void>();
 const activeConfig: ApprovalWorkflowConfig = { ...DEFAULT_CONFIG };
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
@@ -123,19 +123,19 @@ export async function submitForApproval(
     payload: { approvalId: id, toolName, riskLevel, riskScore, taskDescription },
   });
 
-  return new Promise((resolve) => {
+  const approved = await new Promise<boolean>((resolve) => {
     approvalResolvers.set(id, resolve);
 
     const timer = setTimeout(() => {
       expireApproval(id);
     }, activeConfig.defaultTimeoutMs!);
 
-    const originalResolver = approvalResolvers.get(id);
-    approvalResolvers.set(id, (approved: boolean) => {
+    approvalResolvers.set(id, (value: boolean | PromiseLike<boolean>) => {
       clearTimeout(timer);
-      originalResolver?.(approved);
+      resolve(value);
     });
   });
+  return { approved, requestId: id };
 }
 
 export function approveRequest(
