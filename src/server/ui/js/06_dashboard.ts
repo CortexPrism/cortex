@@ -116,8 +116,8 @@ function renderWidgets(){
     var w=ws[i];var de=WIDGET_DEFS[w.type]||{label:w.type,icon:"\uD83D\uDCE6"};
     h+="<div class=widget id=widget-"+w.id+" draggable=true style=grid-column:span+"+w.width+";grid-row:span+"+w.height+" data-wid="+w.id+">"
     h+="<div class=widget-header><span>"+de.icon+" "+(w.title||t(de.label))+"</span>"
-    h+="<div class=widget-actions><span class=drag-handle data-tooltip=\"Drag to reorder widget\">\u283F</span>"
-    h+="<button class=widget-remove data-rid="+w.id+" data-tooltip=\"Remove widget\">\u2715</button></div></div>"
+    h+="<div class=widget-actions><span class=drag-handle data-tooltip=\\"Drag to reorder widget\\">\u283F</span>"
+    h+="<button class=widget-remove data-rid="+w.id+" data-tooltip=\\"Remove widget\\">\u2715</button></div></div>"
     h+="<div class=widget-body id=body-"+w.id+"><div class=widget-loading>"+t('common.loading')+"</div></div></div>"
   }
   h+="</div><div class=widget-add-bar><button class=add-btn onclick=showPicker()>+ "+t('ui.dashboard.addWidget')+"</button></div>"
@@ -175,7 +175,7 @@ function showPicker(){
   var c=document.getElementById("dashboard-content");if(!c||!dashboardEditMode)return;
   var ex=c.querySelector(".widget-picker");if(ex){ex.remove();return}
   var p=document.createElement("div");p.className="widget-picker";p.style.cssText="padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg2)";
-  p.innerHTML="<div style=display:flex;align-items:center;justify-content:space-between;margin-bottom:8px><span style=font-size:12px;font-weight:600;color:var(--text2)>"+t('ui.dashboard.addWidget')+"</span><button class=btn data-tooltip=\"Close picker\" onclick=this.parentElement.parentElement.remove()>\u2715</button></div>";
+  p.innerHTML="<div style=display:flex;align-items:center;justify-content:space-between;margin-bottom:8px><span style=font-size:12px;font-weight:600;color:var(--text2)>"+t('ui.dashboard.addWidget')+"</span><button class=btn data-tooltip=\\"Close picker\\" onclick=this.parentElement.parentElement.remove()>\u2715</button></div>";
   var div=document.createElement("div");div.style.cssText="display:flex;flex-wrap:wrap;gap:6px";
   var keys=Object.keys(WIDGET_DEFS).filter(function(k){return k!=="custom"});
   for(var i=0;i<keys.length;i++){
