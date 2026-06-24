@@ -102,6 +102,9 @@ function showPage(name) {
     metacognition: loadMetacognition,
     memori: loadMemoriPage,
     sandbox: function() { switchSandboxTab('coderunner'); loadSandboxPage(); },
+    login: function() {},
+    teams: function() { document.getElementById('teams-content').innerHTML = '<p>Loading teams...</p>'; loadTeamsPage(); },
+    users: function() { document.getElementById('users-content').innerHTML = '<p>Loading users...</p>'; loadUsersPage(); },
   };
   if (loaders[name]) loaders[name]();
 

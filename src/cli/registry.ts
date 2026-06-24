@@ -243,4 +243,24 @@ export const registry: CommandEntry[] = [
     path: ['swarm'],
     load: () => import('./swarm-cmd.ts').then((m) => m.swarmCommand._cmd),
   },
+  {
+    path: ['login'],
+    load: () => import('./user-cmd.ts').then((m) => m.loginCommand._cmd),
+  },
+  {
+    path: ['logout'],
+    load: () => import('./user-cmd.ts').then((m) => m.logoutCommand._cmd),
+  },
+  {
+    path: ['whoami'],
+    load: () => import('./user-cmd.ts').then((m) => m.whoamiCommand._cmd),
+  },
+  {
+    path: ['users'],
+    load: () => import('./user-cmd.ts').then((m) => m.usersCommand),
+  },
+  {
+    path: ['teams'],
+    load: () => import('./user-cmd.ts').then((m) => m.teamsCommand),
+  },
 ];

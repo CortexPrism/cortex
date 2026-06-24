@@ -1,4 +1,8 @@
 import { requireAuth } from '../auth.ts';
+import type { RequestIdentity } from '../identity.ts';
+import { createAnonymousIdentity } from '../identity.ts';
+
+const identityMap = new WeakMap<Request, RequestIdentity>();
 
 export async function authGuard(req: Request): Promise<Response | null> {
   const authResult = await requireAuth(req);
@@ -9,5 +13,11 @@ export async function authGuard(req: Request): Promise<Response | null> {
         headers: { 'Content-Type': 'application/json' },
       });
   }
+  const identity = authResult.identity ?? createAnonymousIdentity();
+  identityMap.set(req, identity);
   return null;
+}
+
+export function getIdentity(req: Request): RequestIdentity {
+  return identityMap.get(req) ?? createAnonymousIdentity();
 }

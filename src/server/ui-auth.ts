@@ -48,11 +48,14 @@ const LOGIN_HTML = `<!DOCTYPE html>
   <div class="logo">
     <div class="logo-icon">✦</div>
     <h1>CortexPrism</h1>
-    <p>Enter your password to continue</p>
+    <p>Sign in to continue</p>
   </div>
   <form id="login-form" onsubmit="handleLogin(event)">
+    <div style="margin-bottom: 12px;">
+      <input class="inp" type="text" id="username" placeholder="Username" required autofocus />
+    </div>
     <div style="margin-bottom: 16px;">
-      <input class="inp" type="password" id="password" placeholder="Password" required autofocus />
+      <input class="inp" type="password" id="password" placeholder="Password" required />
     </div>
     <button type="submit" class="btn btn-primary" id="login-btn">Unlock</button>
     <div id="login-error" class="error"></div>
@@ -65,6 +68,7 @@ async function handleLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('login-btn');
   const err = document.getElementById('login-error');
+  const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Verifying...';
@@ -72,7 +76,7 @@ async function handleLogin(e) {
   try {
     const res = await fetch(BASE + '/api/auth/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
     if (res.ok) {
       window.location.href = '/';

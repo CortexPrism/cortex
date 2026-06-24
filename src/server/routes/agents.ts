@@ -9,22 +9,29 @@ import {
 } from '../../agent/manager.ts';
 import { loadConfig } from '../../config/config.ts';
 import type { AgentConfig } from '../../config/config.ts';
+import { getIdentity } from './auth-guard.ts';
 
 export const routes: RouteHandler[] = [
   {
     method: 'GET',
     pattern: /^\/api\/agents$/,
-    handler: async () => {
-      const agents = await listAgents();
+    handler: async (req) => {
+      const identity = getIdentity(req);
+      const userId = identity.type === 'user' ? identity.userId : undefined;
+      const teamIds = identity.type === 'user' ? identity.teamIds : undefined;
+      const agents = await listAgents(userId, teamIds);
       return json(agents);
     },
   },
   {
     method: 'GET',
     pattern: /^\/api\/agents\/current$/,
-    handler: async () => {
+    handler: async (req) => {
+      const identity = getIdentity(req);
       const { getDefaultAgent } = await import('../../agent/manager.ts');
-      const agent = await getDefaultAgent();
+      const userId = identity.type === 'user' ? identity.userId : undefined;
+      const teamId = identity.type === 'user' ? identity.currentTeamId : undefined;
+      const agent = await getDefaultAgent(userId, teamId);
       const config = await loadConfig();
       return json({
         ...agent,
@@ -78,12 +85,17 @@ export const routes: RouteHandler[] = [
   {
     method: 'GET',
     pattern: /^\/api\/agents\/([^/]+)$/,
-    handler: async (_req, path) => {
+    handler: async (req, path) => {
       const m = path.match(/^\/api\/agents\/([^/]+)$/);
       if (!m) return notFound();
       if (m[1] === 'sub-types') return notFound('Use /api/agents/sub-types');
+      const identity = getIdentity(req);
       const agent = await getAgent(m[1]);
       if (!agent) return notFound('Agent not found');
+      const scope = (agent as AgentConfig & { user_id?: string; team_id?: string });
+      if (identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId && !identity.teamIds?.includes(scope.team_id ?? '')) {
+        return json({ error: 'Forbidden' }, 403);
+      }
       return json(agent);
     },
   },
@@ -104,11 +116,21 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/agents$/,
     handler: async (req) => {
+      const identity = getIdentity(req);
       const body = await req.json() as Omit<AgentConfig, 'id' | 'createdAt' | 'updatedAt'> & {
         id?: string;
+        teamId?: string;
       };
       try {
-        const agent = await registerAgent(body);
+        const userId = identity.type === 'user' ? identity.userId : undefined;
+        let teamId = body.teamId || (identity.type === 'user' ? identity.currentTeamId : undefined);
+        if (teamId && identity.type === 'user') {
+          if (!identity.teamIds?.includes(teamId) && !identity.isInstanceAdmin) {
+            return json({ error: 'Forbidden — not a member of this team' }, 403);
+          }
+        }
+        delete (body as Record<string, unknown>)['teamId'];
+        const agent = await registerAgent(body, userId, teamId);
         return json(agent, 201);
       } catch (e) {
         return err((e as Error).message, 400);
@@ -121,10 +143,17 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/agents\/([^/]+)$/);
       if (!m) return notFound();
+      const identity = getIdentity(req);
+      const agent = await getAgent(m[1]);
+      if (!agent) return notFound('Agent not found');
+      const scope = (agent as AgentConfig & { user_id?: string; team_id?: string });
+      if (identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId && !identity.teamIds?.includes(scope.team_id ?? '')) {
+        return json({ error: 'Forbidden' }, 403);
+      }
       const body = await req.json() as Partial<Omit<AgentConfig, 'id' | 'createdAt'>>;
       try {
-        const agent = await updateAgent(m[1], body);
-        return json(agent);
+        const updated = await updateAgent(m[1], body);
+        return json(updated);
       } catch (e) {
         return err((e as Error).message, 404);
       }
@@ -133,11 +162,12 @@ export const routes: RouteHandler[] = [
   {
     method: 'POST',
     pattern: /^\/api\/agents\/([^/]+)\/select$/,
-    handler: async (_req, path) => {
+    handler: async (req, path) => {
       const m = path.match(/^\/api\/agents\/([^/]+)\/select$/);
       if (!m) return notFound();
+      const identity = getIdentity(req);
       try {
-        await selectAgent(m[1]);
+        await selectAgent(m[1], identity.type === 'user' ? identity.userId : undefined);
         return json({ ok: true });
       } catch (e) {
         return err((e as Error).message, 404);
@@ -164,9 +194,16 @@ export const routes: RouteHandler[] = [
   {
     method: 'DELETE',
     pattern: /^\/api\/agents\/([^/]+)$/,
-    handler: async (_req, path) => {
+    handler: async (req, path) => {
       const m = path.match(/^\/api\/agents\/([^/]+)$/);
       if (!m) return notFound();
+      const identity = getIdentity(req);
+      const agent = await getAgent(m[1]);
+      if (!agent) return notFound('Agent not found');
+      const scope = (agent as AgentConfig & { user_id?: string; team_id?: string });
+      if (identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId && !identity.teamIds?.includes(scope.team_id ?? '')) {
+        return json({ error: 'Forbidden' }, 403);
+      }
       try {
         await deleteAgent(m[1]);
         return json({ ok: true });

@@ -730,3 +730,39 @@ export function ensureDefaultAgent(config: CortexConfig): CortexConfig {
 
   return config;
 }
+
+/**
+ * Seed built-in agents into the DB (instance-scoped: user_id=NULL, team_id=NULL).
+ * Called during migration 044 for new multi-user installs.
+ */
+export async function seedBuiltinAgentsToDb(): Promise<void> {
+  const { insertAgent, getAgent } = await import('../db/agents.ts');
+  for (const def of BUILTIN_AGENT_DEFS) {
+    const existing = await getAgent(def.id);
+    if (existing) continue;
+    const agent: AgentConfig = {
+      id: def.id,
+      name: def.name,
+      description: def.description,
+      icon: def.icon,
+      category: def.category,
+      soul: def.soul,
+      tools: def.tools,
+      maxTurns: def.maxTurns ?? 50,
+      model: def.model,
+      provider: def.provider,
+      temperature: def.temperature,
+      systemPrompt: def.systemPrompt,
+      tags: def.tags,
+      builtin: true,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    if (def.id === 'assistant') {
+      agent.soulFile = PATHS.soulFile;
+      agent.userFile = PATHS.userFile;
+      agent.memoryFile = PATHS.memoryFile;
+    }
+    await insertAgent(agent);
+  }
+}

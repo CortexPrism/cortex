@@ -48,4 +48,32 @@ const subAgentChunks = {};
   }
 })();
 
+async function doLogin() {
+  var username = document.getElementById('login-username').value.trim();
+  var password = document.getElementById('login-password').value;
+  var errEl = document.getElementById('login-error');
+  if (!username || !password) {
+    errEl.style.display = ''; errEl.textContent = 'Username and password required'; return;
+  }
+  try {
+    var resp = await fetch(BASE + '/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username:username, password:password})
+    });
+    var data = await resp.json();
+    if (resp.ok && data.success) {
+      if (data.sessionId) {
+        try { localStorage.setItem('cortex_session_id', data.sessionId); } catch(e) {}
+      }
+      loadTeamSelector();
+      showPage('dashboard');
+    } else {
+      errEl.style.display = ''; errEl.textContent = data.error || 'Invalid credentials';
+    }
+  } catch(e) {
+    errEl.style.display = ''; errEl.textContent = 'Connection failed';
+  }
+}
+
 `;

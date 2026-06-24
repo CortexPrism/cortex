@@ -249,39 +249,6 @@ async function loadSettings() {
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Web Authentication</div>
-        <p style="font-size:11px;color:var(--text3);margin-bottom:16px;">Configure password protection for the web interface</p>
-        <div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="checkbox" id="cfg-auth-require" \${config.webAuth?.requireAuth !== false ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" />
-            <label style="font-size:13px;color:var(--text);font-weight:500;">Require authentication for web UI</label>
-          </div>
-          <p style="font-size:10px;color:var(--text3);margin-top:4px;margin-left:28px;">When enabled, users must log in with password to access the web interface</p>
-        </div>
-        <div style="margin-top:16px;">
-          <div id="cfg-auth-pw-label" style="font-size:12px;font-weight:500;margin-bottom:8px;">Set Password</div>
-          <div id="cfg-auth-oldpass-row" style="display:none;">
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Current Password</label>
-            <input class="inp" id="cfg-auth-oldpass" type="password" placeholder="Enter current password" />
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">New Password</label>
-              <input class="inp" id="cfg-auth-newpass" type="password" placeholder="Enter new password" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Confirm New Password</label>
-              <input class="inp" id="cfg-auth-confirmpass" type="password" placeholder="Confirm new password" />
-            </div>
-          </div>
-          <p style="font-size:10px;color:var(--text3);margin-top:4px;">Leave blank to keep current password unchanged</p>
-        </div>
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="saveSecuritySettings()">Save Security Settings</button>
-        </div>
-      </div>
-    </div>
 
     <!-- AI & Models Tab -->
     <div id="settings-pane-providers" style="display:\${settingsActiveTab === 'providers' ? 'block' : 'none'};">
@@ -809,7 +776,6 @@ async function loadSettings() {
       </div>
     </div>
   \`;
-  refreshSecuritySection();
   if (settingsActiveTab === 'tools') loadToolConfigs();
   loadGitHubToken();
 }
@@ -852,7 +818,6 @@ function switchSettingsTab(tabName) {
       extBar.style.display = 'none';
     }
   }
-  if (tabName === 'general') refreshSecuritySection();
   if (tabName === 'tools') loadToolConfigs();
   if (tabName === 'debug') { loadDebugFormFields(); refreshDebugDiagnostics(); refreshDebugJobs(); refreshDebugSandbox(); }
   // Sync global sub-nav
@@ -1043,67 +1008,6 @@ async function saveUISettings() {
   } else { 
     toast('Failed to save UI settings', 'error'); 
   }
-}
-
-async function saveSecuritySettings() {
-  const body = {
-    webAuth: {
-      requireAuth: document.getElementById('cfg-auth-require')?.checked ?? true,
-    },
-  };
-  
-  const oldPass = document.getElementById('cfg-auth-oldpass')?.value;
-  const newPass = document.getElementById('cfg-auth-newpass')?.value;
-  const confirmPass = document.getElementById('cfg-auth-confirmpass')?.value;
-  
-  if (newPass && newPass !== confirmPass) {
-    toast('Passwords do not match', 'error');
-    return;
-  }
-  
-  const res = await fetch(BASE + '/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  if (!res.ok) { 
-    toast('Failed to save security settings', 'error'); 
-    return;
-  }
-  
-  // Change/set password if provided
-  if (newPass && newPass.length >= 8) {
-    let authStatus = { hasPassword: false };
-    try { authStatus = await fetch(BASE + '/api/auth/status').then(r => r.json()); } catch { /* ignore */ }
-    if (authStatus.hasPassword && !oldPass) {
-      toast('Current password is required to change password', 'error');
-      return;
-    }
-    const passRes = await fetch(BASE + '/api/auth/change-password', { 
-      method: 'POST', 
-      headers: {'Content-Type':'application/json'}, 
-      body: JSON.stringify({ oldPassword: oldPass || '', newPassword: newPass }) 
-    });
-    if (passRes.ok) {
-      toast('Security settings and password updated', 'success');
-      document.getElementById('cfg-auth-oldpass').value = '';
-      document.getElementById('cfg-auth-newpass').value = '';
-      document.getElementById('cfg-auth-confirmpass').value = '';
-      refreshSecuritySection();
-    } else {
-      const data = await passRes.json();
-      toast(data.error || 'Password change failed', 'error');
-    }
-  } else if (newPass) {
-    toast('Password must be at least 8 characters', 'error');
-  } else {
-    toast('Security settings saved', 'success');
-  }
-}
-
-async function refreshSecuritySection() {
-  let authStatus = { hasPassword: false };
-  try { authStatus = await fetch(BASE + '/api/auth/status').then(r => r.json()); } catch { /* ignore */ }
-  const label = document.getElementById('cfg-auth-pw-label');
-  const oldPassRow = document.getElementById('cfg-auth-oldpass-row');
-  if (label) label.textContent = authStatus.hasPassword ? 'Change Password' : 'Set Password';
-  if (oldPassRow) oldPassRow.style.display = authStatus.hasPassword ? 'block' : 'none';
 }
 
 async function loadDebugFormFields() {

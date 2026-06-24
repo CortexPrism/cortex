@@ -9,9 +9,107 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Multi-user collaboration** — users, teams, API tokens, and resource scoping across the entire
+  platform. New `users` table with PBKDF2 password hashing, `teams` table with join policies,
+  `team_memberships` join table with admin/member roles, `user_tokens` table for API access
+  (SHA-256 hashed), `agents` DB table for agent storage (moved from `config.json`), `resource_shares`
+  table for cross-user sharing, `instance_identity` and `federation_peers` tables for instance-to-instance
+  federation. (`packages/core/src/db/migrations/044_users_teams.sql` through `047_core_scoping.sql`,
+  `src/server/auth.ts`)
+- **Database migrations 044–047** — identity tables (users, teams, memberships, tokens, agents,
+  federation, resource_shares), vault scoping columns (`owner_user_id`, `owner_team_id`), memory
+  scoping columns on all memory tables, and resource scoping columns on services/nodes/channels/
+  workspace_config. Auto-admin creation on first run with backfill of existing resource rows.
+  (`src/db/migrate.ts`)
+- **Agent storage moved from `config.json` to `agents` DB table** — full DB-based CRUD with
+  user/team/instance scope filtering. Config.json agents preserved as fallback for backward
+  compatibility during transition. Built-in agents seeded into DB as instance-scoped.
+  (`src/db/agents.ts`, `src/agent/manager.ts`, `src/agent/builtin-agents.ts`)
+- **Request identity system** — `RequestIdentity` interface (`user`/`instance`/`anonymous`) with
+  userId, teamIds, currentTeamId, isInstanceAdmin fields. Extracted from session cookies or
+  `Authorization: Bearer` API tokens via `extractIdentity()`. (`src/server/identity.ts`,
+  `src/server/auth.ts`)
+- **Authorization guards** — `requireInstanceAdmin()`, `requireTeamAdmin()`, `requireTeamMember()`,
+  `requireResourceOwner()` functions for coarse permission checks. Authorization enforced on
+  agent detail endpoints (GET/PUT/DELETE) and agent creation with team membership validation.
+  (`src/server/guards.ts`, `src/server/routes/agents.ts`)
+- **API token management** — `POST /api/auth/tokens` to create tokens, `GET /api/auth/tokens` to
+  list, `DELETE /api/auth/tokens/:id` to revoke. Tokens support team-scoping via `team_ids` JSON
+  column, expiration dates, and last-used tracking. (`src/server/routes/public-auth.ts`)
+- **Team management API** — `GET/POST /api/teams`, `GET/PATCH/DELETE /api/teams/:id`,
+  `GET/POST/PATCH/DELETE /api/teams/:id/members`, `GET/POST /api/teams/:id/agents`.
+  Team-scoped agent creation with membership validation. (`src/server/routes/teams.ts`)
+- **Resource sharing API** — `POST /api/shares` to share resources between users,
+  `GET /api/shares/given` and `GET /api/shares/received` to list shares,
+  `DELETE /api/shares/:id` to revoke. Ownership validation enforced before sharing.
+  (`src/server/routes/shares.ts`)
+- **Federation API** — `POST /api/federation/generate-pairing-token`, `POST /api/federation/pair`,
+  `GET /api/federation/peers`, `DELETE /api/federation/peers/:id` for instance-to-instance
+  trust establishment. (`src/server/routes/federation.ts`)
+- **User management API** — `GET/POST /api/users`, `POST /api/users/:id/disable` and
+  `POST /api/users/:id/enable` (instance admin only). (`src/server/routes/public-auth.ts`)
+- **Multi-user web UI** — login page with username+password fields (`src/server/ui-auth.ts`),
+  team selector dropdown in header (`src/server/ui/shell.ts`), Teams page with member management,
+  Users page with create/disable/enable (instance admin). (`src/server/ui/js/27_teams.ts`,
+  `src/server/ui/js/28_users.ts`, `src/server/ui/pages/login.ts`, `src/server/ui/pages/teams.ts`)
+- **CLI commands for multi-user** — `cortex login` (username+password or API token),
+  `cortex logout`, `cortex whoami`, `cortex users list/create/disable/enable`,
+  `cortex teams list/create`. Auth token stored in `~/.cortex/auth.json`.
+  (`src/cli/user-cmd.ts`, `src/cli/registry.ts`)
 - **Locale translations** — all 10 non-English locale files (ar, de, es, fr, hi, ja, ko, pt, ru, zh)
   fully translated from English source. Preserves `{variable}` placeholders, Unicode symbols, CLI
   commands, and JSON structure. (`locales/*.json`)
+
+### Changed
+
+- **Login flow** — `/api/auth/login` now accepts `{ username, password }` for multi-user
+  authentication. Falls back to legacy vault-based password verification when username is omitted
+  (`src/server/routes/public-auth.ts`)
+- **Session model** — `Session` interface gained `userId` and `username` fields. Sessions
+  are still in-memory (7-day expiry) but track the authenticated user for downstream scoping.
+  (`src/server/auth.ts`)
+- **Auth middleware** — `requireAuth()` now extracts `RequestIdentity` with user/team/admin context
+  and returns it alongside the authenticate flag. `authGuard` stores identity in a `WeakMap` for
+  downstream route handlers. (`src/server/auth.ts`, `src/server/routes/auth-guard.ts`)
+- **Agent CRUD scoped** — `listAgents()` accepts optional `userId` and `teamIds` for three-layer
+  filtering (user → team → instance). Agent routes pass identity context for scope-aware
+  operations. (`src/agent/manager.ts`, `src/server/routes/agents.ts`)
+- **Settings page** — Removed "Web Authentication" section (password setup/change, require-auth
+  toggle) now that user management is handled through the Users page. (`src/server/ui/js/12_settings.ts`)
+
+### Fixed
+
+- **Migration version collision** — four-part migration 044 (identity, vault, memory, core scoping)
+  now uses unique version numbers 044–047 to prevent skip of subsequent migrations after the first
+  sub-migration is applied. (`src/db/migrate.ts`)
+- **Team agent listing** — `listAgents()` now correctly returns team-scoped agents when called with
+  `teamIds` but without `userId`. (`src/db/agents.ts`)
+- **Agent authorization** — GET/PUT/DELETE on individual agents now validates the authenticated user
+  owns or has team access to the agent, preventing unauthorized access to private agents.
+  (`src/server/routes/agents.ts`)
+- **Agent creation scoping** — `POST /api/agents` now validates team membership before accepting
+  a `teamId` parameter, preventing agent injection into arbitrary teams.
+  (`src/server/routes/agents.ts`)
+- **Per-user default agent isolation** — `selectAgent()` no longer overwrites the global
+  `defaultAgent` when a user selects a personal default. (`src/agent/manager.ts`)
+- **Share ownership validation** — `POST /api/shares` now verifies the sender owns the resource
+  before creating the share. (`src/server/routes/shares.ts`)
+- **Federation pairing token** — `POST /api/federation/generate-pairing-token` now returns the
+  actual stored token instead of a mismatched new UUID. (`src/server/routes/federation.ts`)
+- **Auth per-request DB query** — `requireAuth()` now caches the user-existence check using a
+  module-level flag with invalidation on user create/disable/enable, eliminating a `COUNT(*)`
+  query on every API request. (`src/server/auth.ts`)
+- **Teams/Users page rendering** — fixed incorrect DOM target (`main-panel` → `teams-content` /
+  `users-content`) and wrong escape function (`escHtml` → `esc`) in teams and users page JS.
+  (`src/server/ui/js/27_teams.ts`, `src/server/ui/js/28_users.ts`)
+
+### Removed
+
+- **`src/server/precedence.ts`** — dead file with no consumers (29 lines). Resource precedence
+  resolution will be re-added when needed by callers.
+- **`getAgentsForConfigFallback()`** — unused export from `src/db/agents.ts`.
+- **`getUserScopeFilter()`** — unused export from `src/server/guards.ts`.
+- **`extractIdentity` import** — removed dead import from `src/server/routes/auth-guard.ts`.
 
 ## [0.52.0] - 2026-06-23
 

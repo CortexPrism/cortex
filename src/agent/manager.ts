@@ -4,8 +4,8 @@ import type { AgentConfig } from '../config/config.ts';
 import { PATHS } from '../config/paths.ts';
 import { DEFAULT_SOUL } from './soul.ts';
 import { ensureDefaultAgent, isBuiltinAgentId } from './builtin-agents.ts';
+import * as dbAgents from '../db/agents.ts';
 
-/** Generate a short unique agent ID */
 function makeAgentId(name: string): string {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return slug || `agent_${Date.now().toString(36)}`;
@@ -15,16 +15,18 @@ function now(): string {
   return new Date().toISOString();
 }
 
-/** Ensure default and built-in agents exist in config. Re-exported from builtin-agents. */
 export { ensureDefaultAgent } from './builtin-agents.ts';
 
-/** Register a new agent */
+// ── DB-based Agent CRUD ──────────────────────────────────────
+
 export async function registerAgent(
   cfg: Omit<AgentConfig, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  userId?: string,
+  teamId?: string,
 ): Promise<AgentConfig> {
-  const config = await loadConfig();
   const id = cfg.id || makeAgentId(cfg.name);
-  if (config.agents[id]) {
+  const existing = await dbAgents.getAgent(id);
+  if (existing) {
     throw new Error(`Agent "${id}" already exists`);
   }
   const agent: AgentConfig = {
@@ -33,45 +35,83 @@ export async function registerAgent(
     createdAt: now(),
     updatedAt: now(),
   };
-  config.agents[id] = agent;
-  await saveConfig(config);
+  const row = agent as AgentConfig & { user_id?: string; team_id?: string };
+  row.user_id = userId ?? undefined;
+  row.team_id = teamId ?? undefined;
+  await dbAgents.insertAgent(row);
+
+  // Also store in config for backward compat
+  try {
+    const config = await loadConfig();
+    config.agents[id] = agent;
+    await saveConfig(config);
+  } catch { /* config save is best-effort for compat */ }
+
   return agent;
 }
 
-/** Get an agent by ID */
 export async function getAgent(id: string): Promise<AgentConfig | null> {
+  const agent = await dbAgents.getAgent(id);
+  if (agent) return agent;
+
+  // Fall back to config for backward compat
   const config = await loadConfig();
   return config.agents?.[id] ?? null;
 }
 
-/** Get the currently selected/default agent */
-export async function getDefaultAgent(): Promise<AgentConfig> {
+export async function getDefaultAgent(userId?: string, teamId?: string): Promise<AgentConfig> {
+  const defaultId = await dbAgents.getDefaultAgentId(userId);
+  let agent = await dbAgents.getAgent(defaultId ?? 'assistant');
+  if (agent) return agent;
+
+  // Fall back to config
   const config = await loadConfig();
-  const id = (config.defaultAgent && config.defaultAgent !== 'default')
+  const withDefaults = ensureDefaultAgent(config);
+  const fallbackId = config.defaultAgent && config.defaultAgent !== 'default'
     ? config.defaultAgent
     : 'assistant';
-  // Ensure built-in agents exist
-  const withDefaults = ensureDefaultAgent(config);
-  return withDefaults.agents[id] ?? withDefaults.agents['assistant']!;
+  return withDefaults.agents[fallbackId] ?? withDefaults.agents['assistant']!;
 }
 
-/** List all registered agents */
-export async function listAgents(): Promise<AgentConfig[]> {
+export async function listAgents(
+  userId?: string,
+  teamIds?: string[],
+): Promise<AgentConfig[]> {
+  const agents = await dbAgents.listAgents(userId, teamIds);
+
+  // Merge with config agents for backward compat
   const config = await loadConfig();
   ensureDefaultAgent(config);
-  return Object.values(config.agents)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  for (const [id, agent] of Object.entries(config.agents)) {
+    if (!agents.find((a) => a.id === id)) {
+      agents.push(agent);
+    }
+  }
+
+  return agents.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Update an existing agent */
 export async function updateAgent(
   id: string,
   patch: Partial<Omit<AgentConfig, 'id' | 'createdAt'>>,
 ): Promise<AgentConfig> {
+  let agent = await dbAgents.getAgent(id);
+
+  // Fall back to config
+  if (!agent) {
+    const config = await loadConfig();
+    const existing = config.agents[id];
+    if (!existing) throw new Error(`Agent "${id}" not found`);
+    agent = existing;
+  }
+
+  const result = await dbAgents.updateAgent(id, patch);
+  if (result) return result;
+
+  // Update in config as fallback
   const config = await loadConfig();
   const existing = config.agents[id];
   if (!existing) throw new Error(`Agent "${id}" not found`);
-
   config.agents[id] = {
     ...existing,
     ...patch,
@@ -82,17 +122,16 @@ export async function updateAgent(
   return config.agents[id];
 }
 
-/** Clone an existing agent with a new name */
 export async function cloneAgent(
   sourceId: string,
   newName: string,
 ): Promise<AgentConfig> {
-  const config = await loadConfig();
-  const source = config.agents[sourceId];
+  const source = await getAgent(sourceId);
   if (!source) throw new Error(`Source agent "${sourceId}" not found`);
 
   const id = makeAgentId(newName);
-  if (config.agents[id]) {
+  const existing = await dbAgents.getAgent(id);
+  if (existing) {
     throw new Error(`Agent "${id}" already exists`);
   }
 
@@ -107,44 +146,51 @@ export async function cloneAgent(
     updatedAt: now(),
   };
 
-  config.agents[id] = cloned;
-  await saveConfig(config);
+  await dbAgents.insertAgent(cloned);
   return cloned;
 }
 
-/** Delete an agent */
 export async function deleteAgent(id: string): Promise<void> {
-  const config = await loadConfig();
-  if (!config.agents[id]) throw new Error(`Agent "${id}" not found`);
   if (isBuiltinAgentId(id)) throw new Error(`Cannot delete built-in agent "${id}"`);
 
-  delete config.agents[id];
+  const deleted = await dbAgents.deleteAgent(id);
 
-  // Reset defaultAgent if it was the deleted one
-  if (config.defaultAgent === id) {
-    config.defaultAgent = 'assistant';
-  }
-  await saveConfig(config);
-}
-
-/** Set the default/active agent */
-export async function selectAgent(id: string): Promise<void> {
+  // Also delete from config for backward compat
   const config = await loadConfig();
-  if (!config.agents[id]) throw new Error(`Agent "${id}" not found`);
-  config.defaultAgent = id;
-  await saveConfig(config);
+  const existedInConfig = !!config.agents[id];
+  if (existedInConfig) {
+    delete config.agents[id];
+    if (config.defaultAgent === id) {
+      config.defaultAgent = 'assistant';
+    }
+    await saveConfig(config);
+  }
+
+  if (!deleted && !existedInConfig) {
+    throw new Error(`Agent "${id}" not found`);
+  }
 }
 
-/**
- * Load the identity context for a given agent.
- * Returns soul/user/memory content strings.
- */
+export async function selectAgent(id: string, userId?: string): Promise<void> {
+  // Verify agent exists
+  const agent = await getAgent(id);
+  if (!agent) throw new Error(`Agent "${id}" not found`);
+
+  await dbAgents.setDefaultAgent(userId, id);
+
+  // Only update global config default when this is a global selection (no userId)
+  if (!userId) {
+    const config = await loadConfig();
+    config.defaultAgent = id;
+    await saveConfig(config);
+  }
+}
+
 export async function loadAgentIdentity(
   agent: AgentConfig,
 ): Promise<{ soul: string; user: string; memory: string }> {
   const result = { soul: '', user: '', memory: '' };
 
-  // Soul: inline takes precedence
   if (agent.soul) {
     result.soul = agent.soul;
   } else if (agent.soulFile && await exists(agent.soulFile)) {
@@ -153,13 +199,11 @@ export async function loadAgentIdentity(
     result.soul = await readOrDefault(agent.soulFile || PATHS.soulFile, DEFAULT_SOUL);
   }
 
-  // User file — agent-specific first, then global fallback
   const userPath = agent.userFile || PATHS.userFile;
   if (await exists(userPath)) {
     result.user = await Deno.readTextFile(userPath);
   }
 
-  // Memory file — agent-specific first, then global fallback
   const memoryPath = agent.memoryFile || PATHS.memoryFile;
   if (await exists(memoryPath)) {
     result.memory = await Deno.readTextFile(memoryPath);
@@ -168,9 +212,8 @@ export async function loadAgentIdentity(
   return result;
 }
 
-/** Resolve a tool allow-list: null means all tools, string[] means those only */
 export function resolveAgentTools(agent: AgentConfig): string[] | null {
-  if (!agent.tools || agent.tools.length === 0) return null; // all tools
+  if (!agent.tools || agent.tools.length === 0) return null;
   return agent.tools;
 }
 

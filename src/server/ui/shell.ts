@@ -31,6 +31,12 @@ export const APP_WRAPPER_OPEN =
     </nav>
 
     <div class="header-right">
+      <div id="team-selector-header" style="display:none;margin-right:4px;">
+        <select id="team-selector" class="inp" style="font-size:11px;padding:2px 6px;width:auto;min-width:100px;" onchange="switchTeam(this.value)">
+          <option value="">Personal</option>
+        </select>
+      </div>
+
       <button class="header-btn" onclick="openCmdPalette()" data-tooltip="Search pages and actions (Ctrl+K)" aria-label="Command palette">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
       </button>

@@ -66,6 +66,9 @@ import { routes as sessionLinksRoutes } from './routes/session-links.ts';
 import { routes as workspaceSnapshotsRoutes } from './routes/workspace-snapshots.ts';
 import { routes as tunnelRoutes } from './routes/tunnel.ts';
 import { routes as swarmRoutes } from './routes/swarm.ts';
+import { routes as teamsRoutes } from './routes/teams.ts';
+import { routes as sharesRoutes } from './routes/shares.ts';
+import { routes as federationRoutes } from './routes/federation.ts';
 
 const publicRoutes: RouteHandler[] = [
   ...corsRoutes,
@@ -135,6 +138,9 @@ const protectedRoutes: RouteHandler[] = [
   ...workspaceSnapshotsRoutes,
   ...tunnelRoutes,
   ...swarmRoutes,
+  ...teamsRoutes,
+  ...sharesRoutes,
+  ...federationRoutes,
 ];
 
 export async function handleApi(req: Request): Promise<Response | null> {

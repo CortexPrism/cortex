@@ -44,6 +44,8 @@ import { PAGE_TOOLS } from './pages/tools.ts';
 import { PAGE_METACOGNITION } from './pages/metacognition.ts';
 import { PAGE_TUNNEL } from './pages/tunnel.ts';
 import { PAGE_EVAL_MEMORY } from './pages/eval-memory.ts';
+import { PAGE_LOGIN } from './pages/login.ts';
+import { PAGE_TEAMS, PAGE_USERS } from './pages/teams.ts';
 
 import { JS_00_INIT } from './js/00_init.ts';
 import { JS_01_HELPERS } from './js/01_helpers.ts';
@@ -72,6 +74,8 @@ import { JS_23_SANDBOX } from './js/23_sandbox.ts';
 import { JS_24_DEFERRED } from './js/24_deferred.ts';
 import { JS_25_TUNNEL } from './js/25_tunnel.ts';
 import { JS_26_EVAL_MEMORY } from './js/26_eval_memory.ts';
+import { JS_27_TEAMS } from './js/27_teams.ts';
+import { JS_28_USERS } from './js/28_users.ts';
 
 const HEAD = `<!DOCTYPE html>
 <html lang="en">
@@ -120,7 +124,10 @@ const ALL_PAGES = PAGE_CHAT +
   PAGE_TOOLS +
   PAGE_METACOGNITION +
   PAGE_TUNNEL +
-  PAGE_EVAL_MEMORY;
+  PAGE_EVAL_MEMORY +
+  PAGE_LOGIN +
+  PAGE_TEAMS +
+  PAGE_USERS;
 
 const ALL_JS = JS_00_INIT +
   JS_01_HELPERS +
@@ -148,7 +155,9 @@ const ALL_JS = JS_00_INIT +
   JS_23_SANDBOX +
   JS_24_DEFERRED +
   JS_25_TUNNEL +
-  JS_26_EVAL_MEMORY;
+  JS_26_EVAL_MEMORY +
+  JS_27_TEAMS +
+  JS_28_USERS;
 
 function buildCdnAssets(cdn: string, fonts: string, d3: string): string {
   return `<script src="${cdn}/npm/marked/marked.min.js"></script>

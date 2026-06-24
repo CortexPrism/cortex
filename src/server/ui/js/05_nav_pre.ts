@@ -45,6 +45,8 @@ const CATEGORY_PAGES = {
     { id:'vault', label:'Vault', icon:'\ud83d\udd10', tooltip:'Encrypted credential storage', level:'intermediate' },
     { id:'tunnel', label:'Tunnels', icon:'\ud83d\udd12', tooltip:'Tailscale Funnel and Cloudflare Zero Trust secure tunnels', level:'intermediate' },
     { id:'chrome-bridge', label:'Chrome Bridge', icon:'\ud83c\udf10', tooltip:'Browser automation via CDP', level:'advanced' },
+    { id:'teams', label:'Teams', icon:'\ud83d\udc65', tooltip:'Team management and collaboration', level:'intermediate' },
+    { id:'users', label:'Users', icon:'\ud83d\udc64', tooltip:'User management (instance admin)', level:'advanced' },
   ],
   extensions: [
     { id:'extensions', label:'Manage Plugins', icon:'\ud83e\udde9', tooltip:'Installed plugins, marketplace, and plugin panels', level:'beginner' },
@@ -185,7 +187,7 @@ function renderRecentPages() {
 }
 
 // ── PAGES array (for backwards compat — showPage iterates this) ─
-const PAGES = ['dashboard','chat','sessions','editor','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','automation','channels','tools','chrome-bridge','mcp','vault','tunnel','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','promptlab','pkm'];
+const PAGES = ['dashboard','chat','sessions','editor','vcs','projects','codegraph','alcove','sandbox','memory','skills','metacognition','soul','lens','agents','services','nodes','automation','channels','tools','chrome-bridge','mcp','vault','tunnel','remote','daemons','extensions','settings','policies','analytics','quartermaster','memori','promptlab','pkm','login','teams','users'];
 
 function loadDashboard() {
   var c = document.getElementById('dashboard-content');

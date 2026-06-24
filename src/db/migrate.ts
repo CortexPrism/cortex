@@ -383,6 +383,26 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '043_swarm.sql',
       label: 'cortex.db (swarm directives, resource snapshots, node metrics)',
     },
+    {
+      db: coreDb,
+      sqlFile: '044_users_teams.sql',
+      label: 'cortex.db (identity: users, teams, agents, membership, federation)',
+    },
+    {
+      db: vaultDb,
+      sqlFile: '045_vault_scoping.sql',
+      label: 'vault.db (scoping columns)',
+    },
+    {
+      db: memoryDb,
+      sqlFile: '046_memory_scoping.sql',
+      label: 'memory.db (scoping columns)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '047_core_scoping.sql',
+      label: 'cortex.db (resource scoping columns)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
@@ -397,9 +417,113 @@ export async function runMigrations(): Promise<void> {
 
   await seedSystemJobs();
 
+  // Seed built-in agents into DB (instance-scoped)
+  try {
+    const { seedBuiltinAgentsToDb } = await import('../agent/builtin-agents.ts');
+    await seedBuiltinAgentsToDb();
+  } catch { /* non-critical */ }
+
+  // Create auto-admin if no users exist (one-time after identity tables are ready)
+  try {
+    await createAutoAdmin();
+  } catch { /* non-critical — setup can be done later via cortex setup */ }
+
   // Run sensitivity backfill if needed (one-time after adding sensitivity columns)
   const { runBackfill } = await import('../security/backfill.ts');
   await runBackfill();
+}
+
+export async function createAutoAdmin(
+  username?: string,
+  password?: string,
+): Promise<{ id: string; username: string } | null> {
+  // Check if users already exist
+  const coreDb = await getCoreDb();
+  const existing = await coreDb.get<{ cnt: number }>(
+    `SELECT COUNT(*) as cnt FROM users`,
+  );
+  const userCount = existing?.cnt ?? 0;
+  if (userCount > 0) return null;
+
+  const autoUsername = username || Deno.env.get('CORTEX_ADMIN_USERNAME') || 'admin';
+  const autoPassword = password || Deno.env.get('CORTEX_ADMIN_PASSWORD');
+
+  let pw: string;
+  if (autoPassword) {
+    pw = autoPassword;
+  } else if (!Deno.stdin.isTerminal()) {
+    // Headless CI without password: skip
+    console.log(
+      `  ⚠ No users exist. Set CORTEX_ADMIN_USERNAME + CORTEX_ADMIN_PASSWORD env vars to create admin, or run \`cortex setup\`.`,
+    );
+    return null;
+  } else {
+    // Interactive terminal: prompt for password
+    pw = prompt(`Admin password for "${autoUsername}" (min 8 chars, 2+ classes): `) || '';
+    if (!pw || pw.length < 8) {
+      console.log(`  ⚠ Password too short or empty — admin not created. Run \`cortex setup\` later.`);
+      return null;
+    }
+  }
+
+  const { createUser, getUserByUsername } = await import('../server/auth.ts');
+  const user = await createUser(autoUsername, pw, 'Administrator', undefined, true);
+
+  // Create default "General" team
+  const teamId = `team_${crypto.randomUUID()}`;
+  await coreDb.run(
+    `INSERT INTO teams (id, name, description, join_policy, created_by, created_at)
+     VALUES (?, ?, ?, 'open', ?, datetime('now'))`,
+    [teamId, 'General', 'Default team for all instance members', user.id],
+  );
+  await coreDb.run(
+    `INSERT INTO team_memberships (user_id, team_id, role, permissions_json, joined_at)
+     VALUES (?, ?, 'admin', '{}', datetime('now'))`,
+    [user.id, teamId],
+  );
+
+  // Backfill all existing resource rows with admin user_id
+  const backfillTables = [
+    ['sessions', 'id'],
+    ['services', 'id'],
+    ['nodes', 'key'],
+    ['workspace_config', 'id'],
+    ['channels', 'id'],
+  ];
+  for (const [table, key] of backfillTables) {
+    try {
+      await coreDb.run(
+        `UPDATE ${table} SET user_id = ? WHERE user_id IS NULL`,
+        [user.id],
+      );
+    } catch { /* table may not have user_id column yet, or table may be empty */ }
+  }
+
+  // Migrate agents from config.json to DB
+  try {
+    const { loadConfig } = await import('../config/config.ts');
+    const { insertAgent, getAgent } = await import('./agents.ts');
+    const config = await loadConfig();
+    if (config.agents) {
+      for (const [, agent] of Object.entries(config.agents)) {
+        const existing = await getAgent(agent.id);
+        if (!existing) {
+          await insertAgent(agent);
+        }
+      }
+    }
+  } catch { /* non-critical */ }
+
+  console.log(
+    `\n  ✓ Admin user created: ${autoUsername}`,
+  );
+  if (autoPassword) {
+    console.log(`    (password from CORTEX_ADMIN_PASSWORD env var)`);
+  }
+  console.log(`  ✓ Default "General" team created`);
+  console.log(`  ✓ Backfilled existing resource rows with admin ownership`);
+
+  return { id: user.id, username: user.username };
 }
 
 export async function seedSystemJobs(): Promise<void> {
