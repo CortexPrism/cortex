@@ -19,7 +19,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.53.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.53.1-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1515847007372181584?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wYxbmQeWY3)
 
@@ -73,9 +73,9 @@ enterprise-grade security — all running locally on your machine or server.
   session resume
 - **Tool use with approval gates** — every tool call is reviewed by the security policy before
   execution; agents can request human approval for sensitive operations
-- **Sub-agent orchestration** — agents can spawn 13 specialized child agents (Explorer, Coder,
-  Researcher, Planner, Generalist, Security Auditor, Debugger, Architect, DevOps Engineer, Data
-  Analyst, UI/UX Designer, Code Reviewer, Technical Writer) for parallel and delegated work
+- **Sub-agent orchestration** — agents can spawn 11 specialized child agents (Explorer, General,
+  Planner, Coder, Researcher, Security, Debugger, Architect, DevOps, Data Analyst, UI/UX Designer)
+  for parallel and delegated work
 - **Per-turn reflection** — LLM self-assessment of confidence and quality after each response; meta-
   pattern consolidation over time
 - **Voice pipeline** — speech-to-text (OpenAI Whisper), text-to-speech (OpenAI TTS / ElevenLabs),
@@ -167,9 +167,10 @@ See [docs/SKILLS.md](docs/SKILLS.md) for the full reference.
 ### Web UI & REST API
 
 - **Built-in HTTP server** — `cortex server start` starts a WebSocket-powered chat UI on port 3000
-- **Tabs**: Chat, Editor (CodeMirror), Git, GitHub, Code Runner, Activity, Memory, Jobs, Sessions,
-  Agents, Services, Settings, Soul, Plugins, Marketplace, Analytics, A2A Bridge, Memori, AgentLint,
-  Sandbox
+- **Pages**: Chat, Dashboard, Editor, VCS, Sessions, Memory, Skills, Soul, Agents, Services, Nodes,
+  Daemons, Automation, Channels, Tools, MCP, Codegraph, Policies, Vault, Settings, Quartermaster,
+  Extensions, Analytics, Lens (Activity), Workflows, Eval Runner, Computer Use, Remote Agents,
+  Sandbox, Prompt Lab, PKM, Metacognition, Voice, Tunnel, Projects, Teams, Users
 - **File upload** — drag-and-drop or click to attach PDFs, images, and documents in chat
 - **REST API** — full HTTP API for sessions, memory, jobs, git, GitHub, and code execution
 - **Session persistence** — page refresh resumes the active session (full history preserved)
@@ -282,7 +283,7 @@ provider.
 ```bash
 git clone https://github.com/CortexPrism/cortex.git ~/.cortex
 cd ~/.cortex
-deno run --allow-all src/db/migrate.ts
+deno task migrate
 deno run --allow-all src/main.ts setup
 ```
 
@@ -314,26 +315,20 @@ cortex server start        # Open the Web UI at http://127.0.0.1:3000
 cortex <command>
 
 Commands:
-  agent chat        Interactive streaming chat session
+  agent             Agent commands (chat, exec, tui, sessions, eval, reflect, lint, voice)
   setup             Re-run the setup wizard
-  sessions          List recent chat sessions
-  sandbox run <file>Execute a code file in the sandbox
   server start      Start the HTTP + WebSocket server with Web UI
   daemon            Manage background processes (validator, executor, scheduler)
-  daemon start      Start daemon + server processes
-  daemon restart    Restart daemon + server processes
-  daemon stop       Stop all background processes
-  voice             Manage voice mode (enable, disable, status, set-voice)
+  sandbox           Code execution in sandboxed environment
   memory            Search and manage memory
-  reflect           Inspect and consolidate reflection patterns
   jobs              Manage scheduled jobs
   vault             Encrypted credential vault (store / get / list / delete)
   policy            Security policy rules (list / add / remove / check)
   db migrate        Initialise or migrate all databases
   self update       Check for and apply updates
+  config            View and edit configuration
   git               Git workspace operations
   github            GitHub integration (PRs, issues, repos)
-  remote            Manage remote Cortex agents
   mqm               Model Quartermaster stats and configuration
   qm                Quartermaster tool orchestration stats
   models            List and configure LLM models
@@ -341,28 +336,32 @@ Commands:
   plugins           Install and manage plugins
   marketplace       Browse and install from the plugin/agent marketplace
   log               View and manage logging configuration
-  agent             Manage custom agents
-  service           Manage micro-services
+  service           Manage micro-services (start, stop, install, uninstall)
   node              Manage distributed nodes
-  eval              Run agent evaluation suites
-  install           Install as system service
-  uninstall         Remove system service
   hooks             Manage pipeline hooks
   triggers          Manage event triggers
   channels          Manage channel adapters (Discord, etc.)
-  mcp               Start MCP server (stdio)
-  agent tui         Launch terminal UI
+  mcp               MCP server commands (serve, stdio, chrome, a2a)
   desktop           Desktop automation
   workflow          Workflow engine operations
   projects          Project management
   swarm             Distributed agent swarm (init, nodes, topology, report)
   login             Authenticate with username/password or API token
+  logout            End current authenticated session
   whoami            Show current authenticated user
   users             User management (list, create, disable, enable)
   teams             Team management (list, create)
+  compliance        Compliance policy management
+  debug             Debug utilities
+  memori            Memori checkpointing and persistence
+  import            Tool output import
+  tunnel            Tunnel management
+  run               Execute a task via CLI
+  update            Update CortexPrism
+  migrate           Run pending database migrations
 ```
 
-### `cortex agent chat`
+### `cortex agent`
 
 ```bash
 cortex agent chat                          # Start a new chat session
@@ -370,6 +369,13 @@ cortex agent chat --model gpt-4o           # Override the active model
 cortex agent chat --resume sess_abc123     # Resume an existing session
 cortex agent chat -s sess_abc123           # Resume (short flag)
 cortex agent chat --no-stream              # Disable streaming output
+cortex agent exec <task>                   # Execute a one-shot agent task
+cortex agent tui                           # Launch terminal UI
+cortex agent sessions                      # List recent chat sessions
+cortex agent eval <suite>                  # Run an evaluation suite
+cortex agent reflect                       # Inspect and consolidate reflection patterns
+cortex agent lint                          # Run AgentLint auditing
+cortex agent voice                         # Voice mode management
 ```
 
 Slash commands inside chat:
@@ -418,9 +424,9 @@ cortex daemon run                    # Run supervisor in foreground (for systemd
 cortex daemon status
 ```
 
-Three daemon processes: **Validator** (policy enforcement), **Executor** (tool execution),
-**Scheduler** (cron jobs and memory consolidation). The supervisor auto-restarts any crashed daemon
-with exponential backoff.
+Four daemon processes: **Validator** (policy enforcement), **Executor** (tool execution),
+**Scheduler** (cron jobs and memory consolidation), **Supervisor** (LLM security supervisor). The
+daemon supervisor auto-restarts any crashed daemon with exponential backoff.
 
 ### `cortex git`
 
@@ -460,6 +466,14 @@ cortex github repo list [--type all|owner|public|private] [--limit 20]
 cortex github repo get <repo>
 cortex github repo branches <repo> [--limit 30]
 cortex github token
+```
+
+### `cortex agent sessions`
+
+```bash
+cortex agent sessions                      # List recent sessions
+cortex agent sessions --limit 20           # Limit results
+cortex agent sessions --agent <id>         # Filter by agent
 ```
 
 ### `cortex memory`
@@ -527,13 +541,13 @@ cortex mqm weights          # Current signal weights
 cortex mqm accuracy         # Prediction accuracy metrics
 ```
 
-### `cortex voice`
+### `cortex agent voice`
 
 ```bash
-cortex voice enable         # Enable voice mode
-cortex voice disable
-cortex voice status
-cortex voice set-voice <voice-id>
+cortex agent voice enable            # Enable voice mode
+cortex agent voice disable
+cortex agent voice status
+cortex agent voice set-voice <voice-id>
 ```
 
 ### `cortex log`
@@ -563,14 +577,21 @@ cortex plugins verify <name>                  # Verify integrity hash
 cortex plugins permissions <name>             # Inspect plugin permissions
 ```
 
-### `cortex eval`
+### `cortex agent eval`
 
 ```bash
-cortex eval list                              # List available evaluation suites
-cortex eval run <suite>                       # Run an evaluation suite
-cortex eval run <suite> --save-baseline       # Save results as baseline
-cortex eval run <suite> --baseline <name>     # Compare against a baseline
-cortex eval baselines                         # List saved baselines
+cortex agent eval list                        # List available evaluation suites
+cortex agent eval run <suite>                 # Run an evaluation suite
+cortex agent eval run <suite> --save-baseline # Save results as baseline
+cortex agent eval run <suite> --baseline <name> # Compare against a baseline
+cortex agent eval baselines                   # List saved baselines
+```
+
+### `cortex eval memory`
+
+```bash
+cortex eval memory list                       # List memory evaluation suites
+cortex eval memory run <suite>                # Run a memory evaluation
 ```
 
 ### `cortex node`
@@ -589,6 +610,9 @@ cortex node connect <endpoint> [--tier <tier>]                 # Connect as a Co
 ```bash
 cortex mcp serve                              # Start MCP server in HTTP mode
 cortex mcp stdio                              # Start MCP server over stdio (Claude Desktop)
+cortex mcp chrome                             # Start Chrome Bridge MCP
+cortex mcp a2a                                # Manage A2A protocol agents
+cortex mcp a2a remote                         # List configured remote A2A agents
 ```
 
 ### `cortex workflow`
@@ -726,6 +750,7 @@ Start with `cortex server start` and open `http://127.0.0.1:3000`.
 | Core           | **Chat**            | WebSocket streaming chat with file upload (PDF, images, documents)      |
 | Core           | **Dashboard**       | Widget-based overview with KPI cards, daemon status, system resources   |
 | Core           | **Sessions**        | Browse, search, archive, and resume past chat sessions                  |
+| Core           | **Projects**        | Workspace-scoped project management with CRUD operations                |
 | Intelligence   | **Memory**          | 5-tier memory search with graph browser, reflections, and health        |
 | Intelligence   | **Skills**          | Skill library with lifecycle badges, trust stars, and dependency graphs |
 | Intelligence   | **Soul**            | Edit agent identity / system prompt (SOUL.md, USER.md, MEMORY.md)       |
@@ -741,6 +766,9 @@ Start with `cortex server start` and open `http://127.0.0.1:3000`.
 | Tools & MCP    | **Tools**           | Full tool registry browser with parameter schemas and capability badges |
 | Tools & MCP    | **MCP Server**      | Model Context Protocol connections with tool browser and start/stop     |
 | Tools & MCP    | **Codegraph**       | D3.js force-directed dependency graph, symbol search, impact analysis   |
+| Tools & MCP    | **MCP Gateway**     | Enterprise MCP server management with rate limiting, health checks      |
+| Tools & MCP    | **Chrome Bridge**   | Chrome browser automation bridge via MCP                                |
+| Tools & MCP    | **Memori**          | Agent state serialization, checkpointing, and restore                   |
 | Security       | **Policies**        | Enable/disable toggles, inline pattern editing, classification rules    |
 | Security       | **Vault**           | AES-256-GCM credential store with table view, audit log, export/import  |
 | System         | **Settings**        | Providers, model router, security supervisor, metrics, observability    |
@@ -750,6 +778,13 @@ Start with `cortex server start` and open `http://127.0.0.1:3000`.
 | System         | **Activity**        | Full audit timeline with level filter, auto-refresh, actor column       |
 | Other          | **Workflows**       | Visual workflow designer with JSON editor, run history, approvals       |
 | Other          | **Eval Runner**     | Suite browser, run configuration, results dashboard, regression diff    |
+| Other          | **Eval Memory**     | Memory-focused evaluation suites for testing recall and search          |
+| Other          | **Prompt Lab**      | Prompt engineering workspace with version history and testing           |
+| Other          | **PKM**             | Personal knowledge management — notes, references, and tags             |
+| Other          | **Alcove**          | Sandboxed workspace for experiments and quick prototyping               |
+| Other          | **Tunnel**          | Secure tunnel management for exposing local services                    |
+| System         | **Teams**           | Team management with members, roles, and join policies                  |
+| System         | **Users**           | User management with API tokens, permissions, and status controls       |
 | Other          | **Computer Use**    | Screenshot gallery, action log, display configuration                   |
 | Other          | **Remote Agents**   | Distributed agent deployment with status badges and directive history   |
 | Other          | **Metacognition**   | Task assessment tester, decision distribution, assessment history       |
