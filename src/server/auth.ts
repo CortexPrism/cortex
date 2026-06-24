@@ -107,10 +107,18 @@ export async function createUser(
   );
 
   if (isAdmin) {
+    const existing = await db.get<{ value: string }>(
+      `SELECT value FROM config WHERE key = 'instance_admins'`,
+    );
+    const admins: string[] = [];
+    if (existing) {
+      try { admins.push(...JSON.parse(existing.value)); } catch { /* */ }
+    }
+    if (!admins.includes(id)) admins.push(id);
     await db.run(
       `INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-      ['instance_admins', JSON.stringify([id])],
+      ['instance_admins', JSON.stringify(admins)],
     );
   }
 
@@ -241,6 +249,111 @@ export async function enableUser(userId: string): Promise<boolean> {
   const user = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [userId]);
   if (!user) return false;
   await db.run(`UPDATE users SET disabled_at = NULL WHERE id = ?`, [userId]);
+  invalidateUserCache();
+  return true;
+}
+
+export async function changeUserPassword(
+  userId: string,
+  oldPassword: string,
+  newPassword: string,
+): Promise<boolean> {
+  if (newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
+  const complexity = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/];
+  const checks = complexity.filter((re) => re.test(newPassword)).length;
+  if (checks < 2) {
+    throw new Error('Password must contain at least 2 of: lowercase, uppercase, numbers, symbols');
+  }
+  const db = await getCoreDb();
+  const user = await db.get<{ password_hash: string; password_salt: string; disabled_at: string | null }>(
+    `SELECT password_hash, password_salt, disabled_at FROM users WHERE id = ?`,
+    [userId],
+  );
+  if (!user || user.disabled_at) return false;
+  const storedSalt = fromHex(user.password_salt);
+  const oldHash = await deriveKey(oldPassword, storedSalt);
+  if (!constantTimeEqual(oldHash, fromHex(user.password_hash))) return false;
+
+  const newSalt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const newHash = await deriveKey(newPassword, newSalt);
+  await db.run(
+    `UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?`,
+    [toHex(newHash), toHex(newSalt), userId],
+  );
+  return true;
+}
+
+export async function adminResetUserPassword(
+  userId: string,
+  newPassword: string,
+): Promise<boolean> {
+  if (newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
+  const complexity = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/];
+  const checks = complexity.filter((re) => re.test(newPassword)).length;
+  if (checks < 2) {
+    throw new Error('Password must contain at least 2 of: lowercase, uppercase, numbers, symbols');
+  }
+  const db = await getCoreDb();
+  const user = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [userId]);
+  if (!user) return false;
+  const newSalt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const newHash = await deriveKey(newPassword, newSalt);
+  await db.run(
+    `UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?`,
+    [toHex(newHash), toHex(newSalt), userId],
+  );
+  return true;
+}
+
+export async function updateUserProfile(
+  userId: string,
+  fields: { displayName?: string; email?: string },
+): Promise<boolean> {
+  const db = await getCoreDb();
+  const user = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [userId]);
+  if (!user) return false;
+  const sets: string[] = [];
+  const vals: InValue[] = [];
+  if (fields.displayName !== undefined) {
+    sets.push('display_name = ?');
+    vals.push(fields.displayName);
+  }
+  if (fields.email !== undefined) {
+    sets.push('email = ?');
+    vals.push(fields.email);
+  }
+  if (sets.length === 0) return false;
+  vals.push(userId);
+  await db.run(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, vals);
+  return true;
+}
+
+export async function deleteUser(userId: string): Promise<boolean> {
+  const db = await getCoreDb();
+  const user = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [userId]);
+  if (!user) return false;
+  await db.run(`DELETE FROM user_tokens WHERE user_id = ?`, [userId]);
+  await db.run(`DELETE FROM team_memberships WHERE user_id = ?`, [userId]);
+  await db.run(`DELETE FROM resource_shares WHERE from_user_id = ? OR to_user_id = ?`, [userId, userId]);
+  await db.run(`DELETE FROM users WHERE id = ?`, [userId]);
+
+  const adminsRow = await db.get<{ value: string }>(
+    `SELECT value FROM config WHERE key = 'instance_admins'`,
+  );
+  if (adminsRow) {
+    try {
+      const admins: string[] = JSON.parse(adminsRow.value);
+      const filtered = admins.filter((a) => a !== userId);
+      await db.run(
+        `UPDATE config SET value = ?, updated_at = datetime('now') WHERE key = 'instance_admins'`,
+        [JSON.stringify(filtered)],
+      );
+    } catch { /* */ }
+  }
   invalidateUserCache();
   return true;
 }
@@ -452,7 +565,10 @@ export async function checkVaultAvailability(): Promise<boolean> {
   }
 }
 
-export async function changePassword(oldPassword: string, newPassword: string): Promise<boolean> {
+export async function changePassword(oldPassword: string, newPassword: string, userId?: string): Promise<boolean> {
+  if (userId) {
+    return await changeUserPassword(userId, oldPassword, newPassword);
+  }
   const pwExists = await hasPassword();
   if (pwExists) {
     const valid = await verifyPassword(oldPassword);
@@ -483,6 +599,17 @@ export async function createSession(
     userAgent,
   };
   sessions.set(id, session);
+
+  try {
+    const db = await getCoreDb();
+    await db.run(
+      `INSERT INTO sessions (id, user_id, channel, agent_id, created_at, expires_at, metadata)
+       VALUES (?, ?, 'web', NULL, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET user_id = excluded.user_id, expires_at = excluded.expires_at`,
+      [id, userId ?? null, session.createdAt, session.expiresAt, '{}'],
+    ).catch(() => {});
+  } catch { /* non-critical */ }
+
   return session;
 }
 
@@ -516,6 +643,25 @@ export function getActiveSessions(): Session[] {
     }
   }
   return active;
+}
+
+export async function listUserSessions(userId: string): Promise<Session[]> {
+  const now = new Date();
+  const userSessions: Session[] = [];
+  for (const session of sessions.values()) {
+    if (session.userId === userId && new Date(session.expiresAt) > now) {
+      userSessions.push(session);
+    }
+  }
+  return userSessions;
+}
+
+export async function destroyAllUserSessions(userId: string, exceptSessionId?: string): Promise<void> {
+  for (const [id, session] of sessions) {
+    if (session.userId === userId && id !== exceptSessionId) {
+      sessions.delete(id);
+    }
+  }
 }
 
 export function parseCookies(cookieHeader: string): Record<string, string> {

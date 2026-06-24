@@ -1,6 +1,6 @@
 import { json, type RouteHandler } from './_helpers.ts';
-import { cancelJob, createJob } from '../../../../../src/scheduler/scheduler.ts';
-import type { CreateJobOptions } from '../../../../../src/scheduler/scheduler.ts';
+import { cancelJob, createJob } from '../../../../infra/src/scheduler/scheduler.ts';
+import type { CreateJobOptions } from '../../../../infra/src/scheduler/scheduler.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -37,7 +37,7 @@ export const routes: RouteHandler[] = [
     handler: async (_req, path) => {
       const m = path.match(/^\/api\/jobs\/([^/]+)\/trigger$/);
       if (!m) return json({ error: 'Not found' }, 404);
-      const db = await (await import('../../../../../src/db/client.ts')).getCoreDb();
+      const db = await (await import('../../../core/src/db/client.ts')).getCoreDb();
       await db.run(
         `UPDATE jobs SET status='pending', next_run_at=datetime('now') WHERE id=?`,
         [m[1]],
@@ -50,7 +50,7 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/jobs\/batch$/,
     handler: async (req) => {
       const body = await req.json() as { ids: string[] };
-      const { deleteJobsBatch } = await import('../../../../../src/scheduler/scheduler.ts');
+      const { deleteJobsBatch } = await import('../../../../infra/src/scheduler/scheduler.ts');
       await deleteJobsBatch(body.ids ?? []);
       return json({ ok: true });
     },
@@ -61,9 +61,9 @@ export const routes: RouteHandler[] = [
     handler: async (_req, path) => {
       const m = path.match(/^\/api\/jobs\/status\/([^/]+)$/);
       if (!m) return json({ error: 'Not found' }, 404);
-      const { deleteJobsByStatus } = await import('../../../../../src/scheduler/scheduler.ts');
+      const { deleteJobsByStatus } = await import('../../../../infra/src/scheduler/scheduler.ts');
       await deleteJobsByStatus(
-        m[1] as import('../../../../../src/scheduler/scheduler.ts').JobStatus,
+        m[1] as import('../../../../infra/src/scheduler/scheduler.ts').JobStatus,
       );
       return json({ ok: true });
     },
@@ -74,7 +74,7 @@ export const routes: RouteHandler[] = [
     handler: async (_req, path) => {
       const m = path.match(/^\/api\/jobs\/([^/]+)$/);
       if (!m) return json({ error: 'Not found' }, 404);
-      const db = await (await import('../../../../../src/db/client.ts')).getCoreDb();
+      const db = await (await import('../../../core/src/db/client.ts')).getCoreDb();
       await db.run(`DELETE FROM jobs WHERE id=?`, [m[1]]);
       return json({ ok: true });
     },

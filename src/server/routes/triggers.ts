@@ -51,6 +51,8 @@ export const routes: RouteHandler[] = [
           stopWatcher(config.name);
         }
       }
+      const { setTriggerEnabled } = await import('../../packages/infra/src/triggers/db.ts');
+      await setTriggerEnabled(config.name, enabling);
       return json({ ok: true, enabled: config.enabled });
     },
   },

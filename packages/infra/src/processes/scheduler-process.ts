@@ -69,6 +69,39 @@ async function runDueJobs(): Promise<void> {
         if (job.kind === 'cron' && job.schedule) {
           await reschedule(job.id, job.schedule);
         }
+      } else if (job.action_kind === 'agent_turn') {
+        _log.info(`dispatching agent turn`, { jobId: job.id, name: job.name });
+        let config: { prompt?: string; agent_id?: string } = {};
+        try {
+          config = JSON.parse(job.action_config ?? '{}');
+        } catch { /* use defaults */ }
+
+        const prompt = config.prompt ?? job.command;
+        const agentId = config.agent_id ?? 'default';
+
+        const { createTriggerJobCreator } = await import(
+          '../../../../src/triggers/job-creator.ts'
+        );
+        const jobCreator = createTriggerJobCreator();
+        const result = await jobCreator.createJob(agentId, prompt);
+
+        const elapsed = Date.now() - t0;
+        await markJobDone(job.id, runId, {
+          stdout: `Agent turn dispatched: session=${result.sessionId} turn=${result.turnId}`,
+          durationMs: elapsed,
+          exitCode: 0,
+        });
+        _log.info(`agent turn dispatched`, {
+          jobId: job.id,
+          name: job.name,
+          sessionId: result.sessionId,
+          duration: formatDuration(elapsed),
+          kind: 'agent_turn',
+        });
+
+        if (job.kind === 'cron' && job.schedule) {
+          await reschedule(job.id, job.schedule);
+        }
       } else {
         _log.debug(`executing shell`, { jobId: job.id, command: job.command.slice(0, 200) });
         const { cmd, args } = getShellCommand();

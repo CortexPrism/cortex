@@ -1,22 +1,28 @@
-import { checkAuthRateLimit, json, type RouteHandler, savePartialProfile } from './_helpers.ts';
+import { checkAuthRateLimit, json, type RouteHandler } from './_helpers.ts';
 import {
+  adminResetUserPassword,
   changePassword,
+  changeUserPassword,
   clearSessionCookie,
   createApiToken,
   createSession,
+  deleteUser,
+  destroyAllUserSessions,
   destroySession,
   hasPassword,
   listApiTokens,
+  listUserSessions,
+  listUsers,
   parseCookies,
   revokeApiToken,
   setSessionCookie,
   setupPassword,
+  updateUserProfile,
   validateSession,
   verifyPassword,
   verifyUserPassword,
 } from '../auth.ts';
-import { loadConfig, saveConfig } from '../../config/config.ts';
-import type { ProviderConfig, ProviderKind } from '../../config/config.ts';
+import { loadConfig } from '../../config/config.ts';
 import { getIdentity } from './auth-guard.ts';
 import { extractIdentity } from '../auth.ts';
 
@@ -88,20 +94,10 @@ export const routes: RouteHandler[] = [
         return json({ error: 'Password required' }, 400);
       }
 
-      // Try multi-user login first if username is provided
       if (username) {
         const user = await verifyUserPassword(username, password);
         if (user) {
           const session = await createSession(user.id, user.username, clientIp);
-          // Update session's user_id in the DB sessions table
-          try {
-            const { getCoreDb } = await import('../../db/client.ts');
-            const db = await getCoreDb();
-            await db.run(
-              `UPDATE sessions SET user_id = ? WHERE id = ? AND channel = 'web'`,
-              [user.id, session.id],
-            ).catch(() => {});
-          } catch { /* non-critical */ }
           return json(
             {
               success: true,
@@ -115,7 +111,6 @@ export const routes: RouteHandler[] = [
         return json({ error: 'Invalid username or password' }, 401);
       }
 
-      // Fall back to legacy single-password auth
       const valid = await verifyPassword(password);
       if (!valid) return json({ error: 'Invalid password' }, 401);
       const session = await createSession(undefined, undefined, clientIp);
@@ -154,20 +149,28 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/auth\/change-password$/,
     handler: async (req) => {
-      const pwExists = await hasPassword();
-      if (pwExists) {
-        const cookies = parseCookies(req.headers.get('cookie') || '');
-        const sessionId = cookies['cortex_session'];
-        if (!sessionId || !validateSession(sessionId)) {
-          return json({ error: 'Unauthorized' }, 401);
-        }
-      }
-      const { oldPassword, newPassword } = await req.json() as {
+      const identity = await extractIdentity(req);
+      const body = await req.json() as {
         oldPassword: string;
         newPassword: string;
       };
+
       try {
-        const success = await changePassword(oldPassword, newPassword);
+        if (identity.type === 'user' && identity.userId) {
+          const ok = await changeUserPassword(identity.userId, body.oldPassword, body.newPassword);
+          if (!ok) return json({ error: 'Current password is incorrect' }, 401);
+          return json({ success: true });
+        }
+
+        const pwExists = await hasPassword();
+        if (pwExists) {
+          const cookies = parseCookies(req.headers.get('cookie') || '');
+          const sessionId = cookies['cortex_session'];
+          if (!sessionId || !validateSession(sessionId)) {
+            return json({ error: 'Unauthorized' }, 401);
+          }
+        }
+        const success = await changePassword(body.oldPassword, body.newPassword);
         if (!success) {
           return json({ error: 'Current password is incorrect' }, 401);
         }
@@ -178,7 +181,101 @@ export const routes: RouteHandler[] = [
       }
     },
   },
-  // ── API Token Management ───────────────────────────────────
+
+  // ── Session Management ──────────────────────────────────────
+  {
+    method: 'GET',
+    pattern: /^\/api\/auth\/sessions$/,
+    handler: async (req) => {
+      const identity = await extractIdentity(req);
+      if (identity.type !== 'user' || !identity.userId) {
+        return json({ error: 'Authentication required' }, 401);
+      }
+      const sessions = await listUserSessions(identity.userId);
+      return json(sessions.map((s) => ({
+        id: s.id,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+        lastActivity: s.lastActivity,
+        ipAddress: s.ipAddress,
+      })));
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/auth\/sessions\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/auth\/sessions\/([^/]+)$/);
+      if (!m) return json({ error: 'Session not found' }, 404);
+      const identity = await extractIdentity(req);
+      if (identity.type !== 'user' || !identity.userId) {
+        return json({ error: 'Authentication required' }, 401);
+      }
+      const cookies = parseCookies(req.headers.get('cookie') || '');
+      const currentSessionId = cookies['cortex_session'];
+      if (m[1] === currentSessionId) {
+        return json({ error: 'Cannot revoke current session. Use logout instead.' }, 400);
+      }
+      destroySession(m[1]);
+      return json({ ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/auth\/sessions$/,
+    handler: async (req) => {
+      const identity = await extractIdentity(req);
+      if (identity.type !== 'user' || !identity.userId) {
+        return json({ error: 'Authentication required' }, 401);
+      }
+      const cookies = parseCookies(req.headers.get('cookie') || '');
+      const currentSessionId = cookies['cortex_session'];
+      await destroyAllUserSessions(identity.userId, currentSessionId);
+      return json({ ok: true });
+    },
+  },
+
+  // ── User Profile (self-service) ─────────────────────────────
+  {
+    method: 'GET',
+    pattern: /^\/api\/auth\/profile$/,
+    handler: async (req) => {
+      const identity = await extractIdentity(req);
+      if (identity.type !== 'user' || !identity.userId) {
+        return json({ error: 'Authentication required' }, 401);
+      }
+      const { getUserById } = await import('../auth.ts');
+      const user = await getUserById(identity.userId);
+      if (!user) return json({ error: 'User not found' }, 404);
+      return json({
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        email: user.email,
+        disabledAt: user.disabled_at,
+        isInstanceAdmin: identity.isInstanceAdmin,
+      });
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: /^\/api\/auth\/profile$/,
+    handler: async (req) => {
+      const identity = await extractIdentity(req);
+      if (identity.type !== 'user' || !identity.userId) {
+        return json({ error: 'Authentication required' }, 401);
+      }
+      const body = await req.json() as { displayName?: string; email?: string };
+      const ok = await updateUserProfile(identity.userId, {
+        displayName: body.displayName,
+        email: body.email,
+      });
+      if (!ok) return json({ error: 'User not found' }, 404);
+      return json({ ok: true });
+    },
+  },
+
+  // ── API Token Management ────────────────────────────────────
   {
     method: 'GET',
     pattern: /^\/api\/auth\/tokens$/,
@@ -233,7 +330,8 @@ export const routes: RouteHandler[] = [
       return json({ ok: true });
     },
   },
-  // ── User Management (instance admin) ───────────────────────
+
+  // ── User Management (instance admin) ────────────────────────
   {
     method: 'GET',
     pattern: /^\/api\/users$/,
@@ -242,7 +340,6 @@ export const routes: RouteHandler[] = [
       if (!identity.isInstanceAdmin) {
         return json({ error: 'Forbidden' }, 403);
       }
-      const { listUsers } = await import('../auth.ts');
       const users = await listUsers();
       return json(users);
     },
@@ -272,6 +369,76 @@ export const routes: RouteHandler[] = [
           body.isAdmin ?? false,
         );
         return json(user, 201);
+      } catch (e) {
+        return json({ error: (e as Error).message }, 400);
+      }
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/users\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/users\/([^/]+)$/);
+      if (!m) return json({ error: 'Not found' }, 404);
+      const identity = await extractIdentity(req);
+      if (!identity.isInstanceAdmin && identity.userId !== m[1]) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      const { getUserById } = await import('../auth.ts');
+      const user = await getUserById(m[1]);
+      if (!user) return json({ error: 'User not found' }, 404);
+      return json(user);
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: /^\/api\/users\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/users\/([^/]+)$/);
+      if (!m) return json({ error: 'Not found' }, 404);
+      const identity = await extractIdentity(req);
+      if (!identity.isInstanceAdmin && identity.userId !== m[1]) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      const body = await req.json() as { displayName?: string; email?: string };
+      const ok = await updateUserProfile(m[1], {
+        displayName: body.displayName,
+        email: body.email,
+      });
+      if (!ok) return json({ error: 'User not found' }, 404);
+      return json({ ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/users\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/users\/([^/]+)$/);
+      if (!m) return json({ error: 'Not found' }, 404);
+      const identity = await extractIdentity(req);
+      if (!identity.isInstanceAdmin) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      const ok = await deleteUser(m[1]);
+      if (!ok) return json({ error: 'User not found' }, 404);
+      return json({ ok: true });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/users\/([^/]+)\/reset-password$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/users\/([^/]+)\/reset-password$/);
+      if (!m) return json({ error: 'Not found' }, 404);
+      const identity = await extractIdentity(req);
+      if (!identity.isInstanceAdmin) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      const body = await req.json() as { newPassword: string };
+      try {
+        const ok = await adminResetUserPassword(m[1], body.newPassword);
+        if (!ok) return json({ error: 'User not found' }, 404);
+        return json({ ok: true });
       } catch (e) {
         return json({ error: (e as Error).message }, 400);
       }
@@ -309,6 +476,8 @@ export const routes: RouteHandler[] = [
       return json({ ok: true });
     },
   },
+
+  // ── Onboarding Status ───────────────────────────────────────
   {
     method: 'GET',
     pattern: /^\/api\/onboarding\/status$/,

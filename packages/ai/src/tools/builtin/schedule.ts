@@ -13,9 +13,9 @@ import {
   listJobs,
   type markJobDone,
   type markJobFailed,
-} from '../../../../../src/scheduler/scheduler.ts';
-import { nextCronDate } from '../../../../../src/scheduler/cron.ts';
-import type { JobRow, JobStatus } from '../../../../../src/scheduler/scheduler.ts';
+} from '../../../../infra/src/scheduler/scheduler.ts';
+import { nextCronDate } from '../../../../infra/src/scheduler/cron.ts';
+import type { JobRow, JobStatus } from '../../../../infra/src/scheduler/scheduler.ts';
 
 function formatJob(job: JobRow): string {
   const lines = [

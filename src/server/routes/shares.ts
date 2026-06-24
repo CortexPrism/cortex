@@ -75,6 +75,58 @@ export const routes: RouteHandler[] = [
     },
   },
   {
+    method: 'GET',
+    pattern: /^\/api\/shares\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/shares\/([^/]+)$/);
+      if (!m) return notFound();
+      const identity = getIdentity(req);
+      if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
+      const db = await getCoreDb();
+      const share = await db.get<Record<string, unknown>>(
+        `SELECT * FROM resource_shares WHERE id = ?`,
+        [m[1]],
+      );
+      if (!share) return notFound('Share not found');
+      if (
+        (share.from_user_id as string) !== identity.userId &&
+        (share.to_user_id as string) !== identity.userId &&
+        !identity.isInstanceAdmin
+      ) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      return json(share);
+    },
+  },
+  {
+    method: 'PATCH',
+    pattern: /^\/api\/shares\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/shares\/([^/]+)$/);
+      if (!m) return notFound();
+      const identity = getIdentity(req);
+      if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
+      const db = await getCoreDb();
+      const share = await db.get<{ from_user_id: string; resource_type: string; resource_id: string }>(
+        `SELECT from_user_id, resource_type, resource_id FROM resource_shares WHERE id = ?`,
+        [m[1]],
+      );
+      if (!share) return notFound('Share not found');
+      if (share.from_user_id !== identity.userId && !identity.isInstanceAdmin) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      const body = await req.json() as { permission?: string };
+      if (!body.permission || !['read', 'write', 'admin'].includes(body.permission)) {
+        return json({ error: 'Invalid permission. Must be: read, write, admin' }, 400);
+      }
+      await db.run(
+        `UPDATE resource_shares SET permission = ? WHERE id = ?`,
+        [body.permission, m[1]],
+      );
+      return json({ ok: true });
+    },
+  },
+  {
     method: 'DELETE',
     pattern: /^\/api\/shares\/([^/]+)$/,
     handler: async (req, path) => {

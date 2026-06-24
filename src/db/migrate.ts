@@ -403,6 +403,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '047_core_scoping.sql',
       label: 'cortex.db (resource scoping columns)',
     },
+    {
+      db: coreDb,
+      sqlFile: '048_triggers_persistence.sql',
+      label: 'cortex.db (triggers persistence)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

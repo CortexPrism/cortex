@@ -85,6 +85,16 @@ function resourceTypeToTable(type: string): string | null {
       return 'nodes';
     case 'channel':
       return 'channels';
+    case 'workspace':
+      return 'workspace_config';
+    case 'trigger':
+      return 'triggers';
+    case 'workflow':
+      return 'workflows';
+    case 'project':
+      return 'projects';
+    case 'glossary':
+      return 'glossary';
     default:
       return null;
   }

@@ -2,7 +2,7 @@ import { Command } from '@cliffy/command';
 import { getVersion } from './config/version.ts';
 import { runValidator } from './processes/validator-process.ts';
 import { runExecutor } from './processes/executor-process.ts';
-import { runScheduler } from './processes/scheduler-process.ts';
+import { runScheduler } from '../packages/infra/src/processes/scheduler-process.ts';
 import { runSupervisor } from './processes/supervisor-process.ts';
 import { runMcpServerStdio } from './mcp/server.ts';
 import { i18n } from './i18n/service.ts';

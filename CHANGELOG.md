@@ -5,9 +5,94 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Changed
+
+- **Scheduler package migration** — the canonical scheduler, cron parser, and daemon process moved
+  from `src/scheduler/` and `src/processes/scheduler-process.ts` into `packages/infra/src/scheduler/`
+  and `packages/infra/src/processes/scheduler-process.ts`, completing the `@cortex/infra` package
+  boundary. All 10 consumers (tools, CLI, API routes across `src/` and `packages/`) now import from
+  the packages/infra location. Removed duplicate trigger files (`watcher.ts`, `webhook.ts`) from
+  `packages/infra/src/triggers/` — the canonical versions remain in `src/triggers/`.
+  (`packages/infra/src/scheduler/scheduler.ts`, `packages/infra/src/scheduler/cron.ts`,
+  `packages/infra/src/processes/scheduler-process.ts`, `src/main.ts`, `deno.json`,
+   all routes/tools/CLI consumers)
+
+### Added
+
+- **Trigger persistence** — triggers (webhooks, file watchers, git hooks) were previously stored
+  only in an in-memory `Map` and lost on server restart. A new `triggers` DB table (migration 048)
+  stores the full trigger configuration as JSON. `registerTrigger()` and `unregisterTrigger()` now
+  persist to the database, and `initTriggers()` loads persisted triggers at server startup. The
+  enable/disable route also persists the enabled state. (`packages/infra/src/triggers/db.ts`,
+  `src/triggers/manager.ts`, `src/server/server.ts`, `src/server/routes/triggers.ts`,
+  migration `048_triggers_persistence.sql`)
+
+- **Scheduled agent-task support** — the job scheduler can now dispatch agent turns on a cron
+  schedule in addition to shell commands. Jobs with `action_kind: 'agent_turn'` and an
+  `action_config` containing `{prompt, agent_id}` are executed by the scheduler daemon via
+  `createTriggerJobCreator()`, creating an ephemeral agent session and dispatching a fire-and-forget
+  agent turn. The schedule tool gained `agent_prompt` and `agent_id` parameters, and
+  `POST /api/jobs` accepts `actionKind` and `actionConfig` fields. (`packages/infra/src/scheduler/
+  scheduler.ts`, `packages/infra/src/processes/scheduler-process.ts`,
+  `src/tools/builtin/schedule.ts`, `src/server/routes/jobs-crud.ts`)
+
+- **Job description field** — `CreateJobOptions` and the jobs DB table INSERT/UPDATE now accept an
+  optional `description` field. `POST /api/jobs` forwards it, and the schedule tool's `formatJob()`
+  displays it in listings. (`packages/infra/src/scheduler/scheduler.ts`,
+  `src/server/routes/jobs-crud.ts`, `src/tools/builtin/schedule.ts`)
+
+### Fixed
+
+- **Job API input validation** — `POST /api/jobs` now validates that `name` is present, a string,
+  non-empty, and ≤200 characters; `command` is required for shell jobs. Returns clean 400 errors
+  instead of silently creating broken jobs. (`src/server/routes/jobs-crud.ts`)
+
 ## [0.53.1] - 2026-06-24
 
 ### Fixed
+
+- **Instance admin assignment bug** — `createUser()` with `isAdmin: true` was overwriting all
+  existing administrators with a singleton array, destroying prior admin assignments. Now reads
+  the existing admins list and appends the new user. (`src/server/auth.ts`)
+
+- **Session persistence gap** — sessions were stored only in an in-memory `Map`, lost on server
+  restart. Sessions now also persist to the `sessions` DB table via `createSession()`, and new
+  functions `listUserSessions()` / `destroyAllUserSessions()` enable per-user session management.
+  (`src/server/auth.ts`)
+
+- **Multi-user password change** — `changePassword()` previously only handled legacy vault-stored
+  passwords. New `changeUserPassword()` verifies the user's individual PBKDF2 hash and updates
+  it. `adminResetUserPassword()` lets instance admins reset any user's password. The
+  `/api/auth/change-password` route now detects authenticated multi-user sessions and uses the
+  correct handler. (`src/server/auth.ts`, `src/server/routes/public-auth.ts`)
+
+- **Duplicate password-change route removed** — `src/server/routes/password-change.ts` was a
+  duplicate of the `/api/auth/change-password` handler in `public-auth.ts` and lacked session
+  checks. Deleted and removed from `src/server/new-router.ts`.
+
+- **Federation pairing token security** — pairing tokens were stored without expiry and never
+  validated. Tokens now carry a 1-hour TTL (stored as JSON `{token, expiresAt, used}` in the
+  `config` table), are validated during pair, and are single-use with a `used` flag. Replay and
+  expired tokens are rejected with 401. (`src/server/routes/federation.ts`)
+
+- **Federation agent discovery** — `GET /api/federation/peers/:id/agents` was a hardcoded stub
+  returning `"Remote agent discovery pending"`. Now fetches the remote peer's `.well-known/
+  agent-card.json` with fallback to the A2A transport protocol. (`src/server/routes/federation.ts`)
+
+- **Team DELETE cascade** — deleting a team only removed `team_memberships` rows, leaving orphaned
+  references in `agents`, `sessions`, `services`, `nodes`, `channels`, and `workspace_config`.
+  Now clears `team_id` to NULL on all scoped resources before deleting the team.
+  (`src/server/routes/teams.ts`)
+
+- **Input validation on teams routes** — `join_policy` and `role` values are now validated against
+  allowed enum values before hitting the DB, returning clean 400 errors instead of cryptic SQL
+  constraint failures. (`src/server/routes/teams.ts`)
+
+- **`requireResourceOwner` guard coverage** — only handled 5 resource types (agents, sessions,
+  services, nodes, channels). Added support for `workspace_config`, `triggers`, `workflows`,
+  `projects`, and `glossary`. (`src/server/guards.ts`)
 
 - **Remove dead `mcp-gateway-cmd.ts` CLI file** — deprecated command orphan that was not
   registered in the CLI command tree. The gateway functionality moved to `cortex mcp gateway`.
@@ -23,6 +108,60 @@ Versioning: [Semantic Versioning](https://semver.org/)
   memory benchmark) was split into dedicated route files. Prompts routes moved to
   `src/server/routes/promptlab.ts`, PKM routes to `src/server/routes/pkm.ts`, glossary routes to
   `src/server/routes/glossary-routes.ts`. All three registered in `src/server/new-router.ts`.
+
+### Added
+
+- **User lifecycle management endpoints** — `GET /api/users/:id`, `PATCH /api/users/:id` (update
+  display_name/email), `DELETE /api/users/:id` (cascades: tokens, memberships, shares, admin
+  list). `POST /api/users/:id/reset-password` for admin-initiated password resets.
+  (`src/server/routes/public-auth.ts`, `src/server/auth.ts`)
+
+- **Self-service user profile** — `GET /api/auth/profile` and `PATCH /api/auth/profile` let
+  authenticated users view and update their display_name and email without admin intervention.
+  `updateUserProfile()` function added to auth layer. (`src/server/routes/public-auth.ts`,
+  `src/server/auth.ts`)
+
+- **Session management API** — `GET /api/auth/sessions` lists all active sessions for the
+  current user. `DELETE /api/auth/sessions/:id` revokes a specific session. `DELETE
+  /api/auth/sessions` revokes all other sessions (keeps current). (`src/server/routes/public-auth.ts`,
+  `src/server/auth.ts`)
+
+- **Federation instance identity** — `GET /api/federation/identity` returns the instance's ECDSA
+  P-256 public key and instance name, auto-generating the key pair on first access. `POST
+  /api/federation/identity/rotate` rotates the key pair. `GET /api/federation/status` returns
+  peer count, instance identity, and connected swarm nodes. Federation pairing now performs
+  mutual public key exchange. (`src/server/routes/federation.ts`)
+
+- **Federation peer management** — `GET /api/federation/peers/:id` fetches a single peer.
+  `POST /api/federation/peers/:id/ping` tests connectivity to a peer with a 5-second timeout.
+  Paired peers register with the swarm coordinator for resource tracking.
+  (`src/server/routes/federation.ts`)
+
+- **Team join endpoint** — `POST /api/teams/:id/join` allows self-service enrollment into
+  open teams. Respects join policy: open teams auto-enroll as member, invite teams reject with
+  "invitation needed", closed teams reject. (`src/server/routes/teams.ts`)
+
+- **User-level team listing** — `GET /api/users/:id/teams` returns all teams a user belongs to
+  with their role and join date. Accessible to the user themselves or instance admins.
+  (`src/server/routes/teams.ts`)
+
+- **Team member detail** — `GET /api/teams/:id/members/:userId` fetches a single member's details
+  including display_name, email, role, and join date. (`src/server/routes/teams.ts`)
+
+- **Resource share detail + update** — `GET /api/shares/:id` fetches a single share (accessible
+  to sender, recipient, or admin). `PATCH /api/shares/:id` allows the sender to change the
+  permission level (read/write/admin). (`src/server/routes/shares.ts`)
+
+- **Team management UI** — Teams page now includes a Create Team form (name, description, join
+  policy dropdown), Add Member form with user search dropdown and role selector, Toggle Role
+  and Remove Member buttons per member, a Delete Team button with confirmation, and a Back
+  button from detail view. Team cards display member count and join policy labels.
+  (`src/server/ui/js/27_teams.ts`)
+
+- **User management UI enhancements** — Users page now includes email field and Instance Admin
+  checkbox in the create user form, an ADMIN badge on admin users, a Reset Password button
+  with inline form, and a Delete User button with confirmation. Admin list is fetched from the
+  config API. (`src/server/ui/js/28_users.ts`)
 
 ## [0.53.0] - 2026-06-24
 

@@ -1,15 +1,31 @@
 import type { RateLimit, TriggerConfig, TriggerEvent } from './types.ts';
 import { WEBHOOK_PROVIDERS } from './types.ts';
+import { saveTrigger, deleteTrigger as deleteTriggerDb, setTriggerEnabled, loadTriggers } from '../../packages/infra/src/triggers/db.ts';
 
 const triggers: Map<string, TriggerConfig> = new Map();
 const rateLimitBuckets: Map<string, { count: number; resetAt: number; lastAt: number }> = new Map();
+let initialized = false;
+
+export async function initTriggers(): Promise<void> {
+  if (initialized) return;
+  const persisted = await loadTriggers();
+  for (const config of persisted) {
+    triggers.set(config.name, config);
+  }
+  initialized = true;
+}
 
 export function registerTrigger(config: TriggerConfig): void {
   triggers.set(config.name, config);
+  saveTrigger(config).catch(() => {});
 }
 
 export function unregisterTrigger(name: string): boolean {
-  return triggers.delete(name);
+  const removed = triggers.delete(name);
+  if (removed) {
+    deleteTriggerDb(name).catch(() => {});
+  }
+  return removed;
 }
 
 export function getTrigger(name: string): TriggerConfig | undefined {

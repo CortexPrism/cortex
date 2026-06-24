@@ -60,6 +60,9 @@ export interface CreateJobOptions {
   runAt?: Date;
   source?: string;
   upsert?: boolean;
+  description?: string;
+  actionKind?: string;
+  actionConfig?: Record<string, unknown>;
 }
 
 function jobId(): string {
@@ -129,6 +132,8 @@ export async function createJob(opts: CreateJobOptions): Promise<string> {
         `UPDATE jobs
          SET kind = ?, schedule = ?, command = ?, max_attempts = ?,
              source = COALESCE(?, source),
+             description = COALESCE(?, description),
+             action_kind = ?, action_config = ?,
              next_run_at = CASE WHEN status = 'failed' THEN ? ELSE next_run_at END,
              status = CASE WHEN status = 'failed' THEN 'pending' ELSE status END,
              attempts = CASE WHEN status = 'failed' THEN 0 ELSE attempts END,
@@ -142,6 +147,9 @@ export async function createJob(opts: CreateJobOptions): Promise<string> {
           opts.command,
           opts.maxAttempts ?? 3,
           opts.source ?? null,
+          opts.description ?? null,
+          opts.actionKind ?? 'shell',
+          JSON.stringify(opts.actionConfig ?? {}),
           nextRunAt,
           existing.id,
         ] as InValue[],
@@ -154,9 +162,9 @@ export async function createJob(opts: CreateJobOptions): Promise<string> {
 
   await db.run(
     `INSERT INTO jobs (
-       id, name, kind, schedule, command, source, status, attempts, max_attempts, next_run_at,
+       id, name, kind, schedule, command, source, description, status, attempts, max_attempts, next_run_at,
        schedule_kind, schedule_config, action_kind, action_config, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, 'once', '{}', 'shell', '{}', datetime('now'), datetime('now'))`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, 'once', '{}', ?, ?, datetime('now'), datetime('now'))`,
     [
       id,
       opts.name,
@@ -164,8 +172,11 @@ export async function createJob(opts: CreateJobOptions): Promise<string> {
       opts.schedule ?? null,
       opts.command,
       opts.source ?? null,
+      opts.description ?? null,
       opts.maxAttempts ?? 3,
       nextRunAt,
+      opts.actionKind ?? 'shell',
+      JSON.stringify(opts.actionConfig ?? {}),
     ] as InValue[],
   );
 

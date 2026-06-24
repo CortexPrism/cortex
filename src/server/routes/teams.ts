@@ -4,6 +4,9 @@ import { requireInstanceAdmin, requireTeamAdmin, requireTeamMember } from '../gu
 import { getCoreDb } from '../../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 
+const VALID_ROLES = ['admin', 'member'];
+const VALID_JOIN_POLICIES = ['open', 'invite', 'closed'];
+
 export const routes: RouteHandler[] = [
   {
     method: 'GET',
@@ -46,6 +49,9 @@ export const routes: RouteHandler[] = [
         joinPolicy?: string;
       };
       if (!body.name?.trim()) return json({ error: 'Team name required' }, 400);
+      if (body.joinPolicy && !VALID_JOIN_POLICIES.includes(body.joinPolicy)) {
+        return json({ error: `Invalid join policy. Must be: ${VALID_JOIN_POLICIES.join(', ')}` }, 400);
+      }
       const db = await getCoreDb();
       const id = `team_${crypto.randomUUID()}`;
       await db.run(
@@ -65,6 +71,29 @@ export const routes: RouteHandler[] = [
         [identity.userId!, id],
       );
       return json({ id, name: body.name.trim() }, 201);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/users\/([^/]+)\/teams$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/users\/([^/]+)\/teams$/);
+      if (!m) return notFound();
+      const identity = getIdentity(req);
+      if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
+      if (!identity.isInstanceAdmin && identity.userId !== m[1]) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+      const db = await getCoreDb();
+      const teams = await db.all<Record<string, unknown>>(
+        `SELECT t.*, tm.role, tm.joined_at
+         FROM teams t
+         JOIN team_memberships tm ON t.id = tm.team_id
+         WHERE tm.user_id = ?
+         ORDER BY t.name`,
+        [m[1]],
+      );
+      return json(teams);
     },
   },
   {
@@ -105,6 +134,9 @@ export const routes: RouteHandler[] = [
         description?: string;
         join_policy?: string;
       };
+      if (body.join_policy !== undefined && !VALID_JOIN_POLICIES.includes(body.join_policy)) {
+        return json({ error: `Invalid join policy. Must be: ${VALID_JOIN_POLICIES.join(', ')}` }, 400);
+      }
       const sets: string[] = [];
       const vals: InValue[] = [];
       if (body.name !== undefined) {
@@ -138,6 +170,12 @@ export const routes: RouteHandler[] = [
       if (guard) return guard;
       const db = await getCoreDb();
       await db.run(`DELETE FROM team_memberships WHERE team_id = ?`, [m[1]]);
+      await db.run(`UPDATE agents SET team_id = NULL WHERE team_id = ?`, [m[1]]);
+      await db.run(`DELETE FROM sessions WHERE team_id = ?`, [m[1]]);
+      await db.run(`UPDATE services SET team_id = NULL WHERE team_id = ?`, [m[1]]);
+      await db.run(`UPDATE nodes SET team_id = NULL WHERE team_id = ?`, [m[1]]);
+      await db.run(`UPDATE channels SET team_id = NULL WHERE team_id = ?`, [m[1]]);
+      await db.run(`UPDATE workspace_config SET team_id = NULL WHERE team_id = ?`, [m[1]]);
       await db.run(`DELETE FROM teams WHERE id = ?`, [m[1]]);
       return json({ ok: true });
     },
@@ -154,12 +192,34 @@ export const routes: RouteHandler[] = [
       if (guard) return guard;
       const db = await getCoreDb();
       const members = await db.all(
-        `SELECT u.id, u.username, u.display_name, tm.role, tm.joined_at
+        `SELECT u.id, u.username, u.display_name, u.email, tm.role, tm.joined_at
          FROM team_memberships tm JOIN users u ON tm.user_id = u.id
          WHERE tm.team_id = ? ORDER BY u.username`,
         [m[1]],
       );
       return json(members);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/teams\/([^/]+)\/members\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/teams\/([^/]+)\/members\/([^/]+)$/);
+      if (!m) return notFound();
+      const teamId = m[1], userId = m[2];
+      const identity = getIdentity(req);
+      if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
+      const guard = await requireTeamMember(identity, teamId);
+      if (guard) return guard;
+      const db = await getCoreDb();
+      const member = await db.get<Record<string, unknown>>(
+        `SELECT u.id, u.username, u.display_name, u.email, tm.role, tm.joined_at
+         FROM team_memberships tm JOIN users u ON tm.user_id = u.id
+         WHERE tm.team_id = ? AND tm.user_id = ?`,
+        [teamId, userId],
+      );
+      if (!member) return notFound('Member not found');
+      return json(member);
     },
   },
   {
@@ -174,6 +234,9 @@ export const routes: RouteHandler[] = [
       if (guard) return guard;
       const body = await req.json() as { userId: string; role?: string };
       if (!body.userId) return json({ error: 'userId required' }, 400);
+      if (body.role && !VALID_ROLES.includes(body.role)) {
+        return json({ error: `Invalid role. Must be: ${VALID_ROLES.join(', ')}` }, 400);
+      }
       const db = await getCoreDb();
       const user = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [body.userId]);
       if (!user) return json({ error: 'User not found' }, 404);
@@ -181,6 +244,34 @@ export const routes: RouteHandler[] = [
         `INSERT OR REPLACE INTO team_memberships (user_id, team_id, role, joined_at)
          VALUES (?, ?, ?, datetime('now'))`,
         [body.userId, m[1], body.role ?? 'member'],
+      );
+      return json({ ok: true }, 201);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/teams\/([^/]+)\/join$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/teams\/([^/]+)\/join$/);
+      if (!m) return notFound();
+      const identity = getIdentity(req);
+      if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
+      const db = await getCoreDb();
+      const team = await db.get<{ join_policy: string; id: string }>(
+        `SELECT id, join_policy FROM teams WHERE id = ?`,
+        [m[1]],
+      );
+      if (!team) return notFound('Team not found');
+      if (team.join_policy === 'closed') {
+        return json({ error: 'This team is closed. An admin must invite you.' }, 403);
+      }
+      if (team.join_policy === 'invite') {
+        return json({ error: 'This team requires an invitation from a team admin.' }, 403);
+      }
+      await db.run(
+        `INSERT OR IGNORE INTO team_memberships (user_id, team_id, role, joined_at)
+         VALUES (?, ?, 'member', datetime('now'))`,
+        [identity.userId!, m[1]],
       );
       return json({ ok: true }, 201);
     },
@@ -197,7 +288,9 @@ export const routes: RouteHandler[] = [
       const guard = await requireTeamAdmin(identity, teamId);
       if (guard) return guard;
       const body = await req.json() as { role?: string };
-      if (!body.role) return json({ error: 'role required' }, 400);
+      if (!body.role || !VALID_ROLES.includes(body.role)) {
+        return json({ error: `Invalid role. Must be: ${VALID_ROLES.join(', ')}` }, 400);
+      }
       const db = await getCoreDb();
       await db.run(
         `UPDATE team_memberships SET role = ? WHERE team_id = ? AND user_id = ?`,

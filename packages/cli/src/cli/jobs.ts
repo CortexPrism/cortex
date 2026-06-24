@@ -11,10 +11,10 @@ import {
   markJobFailed,
   markJobRunning,
   recoverStaleJobs,
-} from '../../../../src/scheduler/scheduler.ts';
-import { runConsolidation } from '../../../../src/memory/consolidate.ts';
-import { getShellCommand } from '../../../../src/utils/platform.ts';
-import { i18n } from '../../../../src/i18n/service.ts';
+} from '../../../infra/src/scheduler/scheduler.ts';
+import { runConsolidation } from '../../../core/src/memory/consolidate.ts';
+import { getShellCommand } from '../../../core/src/utils/platform.ts';
+import { i18n } from '../../../core/src/i18n/service.ts';
 
 function statusColor(status: string): string {
   switch (status) {
@@ -195,7 +195,7 @@ export const jobsCommand = cortexCommand('jobs')
               await markJobDone(job.id, runId, { durationMs: Date.now() - t0 });
 
               if (job.kind === 'cron' && job.schedule) {
-                const { nextCronDate } = await import('../../../../src/scheduler/cron.ts');
+                const { nextCronDate } = await import('../../../infra/src/scheduler/cron.ts');
                 const next = nextCronDate(job.schedule);
                 const db = (await import('../../../../src/db/client.ts')).getCoreDb;
                 const coreDb = await db();

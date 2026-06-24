@@ -13,18 +13,21 @@ import {
   listJobs,
   markJobDone,
   markJobFailed,
-} from '../../scheduler/scheduler.ts';
-import { nextCronDate } from '../../scheduler/cron.ts';
-import type { JobRow, JobStatus } from '../../scheduler/scheduler.ts';
+} from '../../../packages/infra/src/scheduler/scheduler.ts';
+import { nextCronDate } from '../../../packages/infra/src/scheduler/cron.ts';
+import type { JobRow, JobStatus } from '../../../packages/infra/src/scheduler/scheduler.ts';
 
 function formatJob(job: JobRow): string {
+  const actionLabel = job.action_kind === 'agent_turn' ? 'Agent Turn' : 'Shell';
   const lines = [
     `  **${job.name}**  \`${job.id}\``,
     `    Status: \`${job.status}\` | Kind: \`${job.kind}\` | Schedule: \`${
       job.schedule ?? 'N/A'
     }\``,
-    `    Command: \`${job.command}\``,
+    `    Type: \`${actionLabel}\``,
+    `    Command: \`${job.command.slice(0, 120)}${job.command.length > 120 ? '…' : ''}\``,
     `    Attempts: ${job.attempts}/${job.max_attempts}`,
+    job.description ? `    Description: ${job.description}` : '',
     job.next_run_at ? `    Next Run: ${job.next_run_at}` : '',
     job.last_run_at ? `    Last Run: ${job.last_run_at}` : '',
     job.last_error ? `    Last Error: ${job.last_error}` : '',
@@ -36,7 +39,7 @@ export const scheduleTool: Tool = {
   definition: {
     name: 'schedule',
     description:
-      'Create, list, cancel, and manage scheduled recurring tasks. Supports cron expressions for flexible scheduling (e.g., "0 9 * * *" for daily at 9am).',
+      'Create, list, cancel, and manage scheduled recurring tasks. Supports cron expressions for flexible scheduling (e.g., "0 9 * * *" for daily at 9am). Can schedule shell commands or agent turn tasks.',
     params: [
       {
         name: 'action',
@@ -62,7 +65,19 @@ export const scheduleTool: Tool = {
       {
         name: 'command',
         type: 'string',
-        description: 'Shell command or task to execute on schedule. Required for create.',
+        description: 'Shell command or task description. For agent turns, use agent_prompt instead.',
+        required: false,
+      },
+      {
+        name: 'agent_prompt',
+        type: 'string',
+        description: 'Prompt for an agent turn task. When provided, the job dispatches an AI agent turn instead of a shell command.',
+        required: false,
+      },
+      {
+        name: 'agent_id',
+        type: 'string',
+        description: 'Agent ID to use for agent turn tasks (default: "default"). Only used with agent_prompt.',
         required: false,
       },
       {
@@ -171,13 +186,14 @@ export const scheduleTool: Tool = {
             };
           }
 
-          const command = String(args.command ?? '').trim();
-          if (!command) {
+          const agentPrompt = String(args.agent_prompt ?? '').trim();
+          const command = String(args.command ?? agentPrompt).trim();
+          if (!command && !agentPrompt) {
             return {
               toolName: 'schedule',
               success: false,
               output: '',
-              error: 'command parameter is required for create action',
+              error: 'command or agent_prompt parameter is required for create action',
               durationMs: Date.now() - start,
             };
           }
@@ -185,7 +201,6 @@ export const scheduleTool: Tool = {
           const kind = (args.kind as string) ?? 'cron';
           const schedule = (args.cron as string) ?? null;
 
-          // Validate cron expression if kind is 'cron'
           if (kind === 'cron') {
             if (!schedule) {
               return {
@@ -216,16 +231,26 @@ export const scheduleTool: Tool = {
           const now = new Date();
           const runAt = kind === 'once' ? now : nextCronDate(schedule ?? '* * * * *');
 
+          const isAgentTurn = !!agentPrompt;
+          const actionKind = isAgentTurn ? 'agent_turn' : 'shell';
+          const actionConfig = isAgentTurn
+            ? { prompt: agentPrompt, agent_id: String(args.agent_id ?? 'default') }
+            : {};
+
           const jobId = await createJob({
             name,
             kind: kind as 'once' | 'cron' | 'interval',
             schedule: kind === 'cron' ? schedule : undefined,
-            command,
+            command: command || agentPrompt,
             maxAttempts,
             runAt,
             source: `tool:${_context.agentId ?? 'unknown'}`,
             upsert: true,
+            actionKind,
+            actionConfig,
           });
+
+          const taskType = isAgentTurn ? 'Agent Turn' : 'Shell Command';
 
           return {
             toolName: 'schedule',
@@ -234,10 +259,13 @@ export const scheduleTool: Tool = {
               `**Job Created** \`${jobId}\``,
               '',
               `  Name: ${name}`,
+              `  Type: ${taskType}`,
               `  Kind: ${kind}`,
               schedule ? `  Cron: \`${schedule}\`` : '',
               `  Next Run: ${runAt.toISOString()}`,
-              `  Command: \`${command}\``,
+              isAgentTurn
+                ? `  Agent: \`${args.agent_id ?? 'default'}\``
+                : `  Command: \`${command}\``,
               `  Max Attempts: ${maxAttempts}`,
             ]
               .filter(Boolean)

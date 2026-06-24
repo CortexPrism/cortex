@@ -181,6 +181,8 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // Wire trigger job creators and start file watchers
   try {
+    const { initTriggers } = await import('../triggers/manager.ts');
+    await initTriggers();
     const jobCreator = createTriggerJobCreator();
     setWebhookJobCreator(jobCreator);
     setWatcherJobCreator(jobCreator);

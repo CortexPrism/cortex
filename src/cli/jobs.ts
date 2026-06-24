@@ -11,7 +11,7 @@ import {
   markJobFailed,
   markJobRunning,
   recoverStaleJobs,
-} from '../scheduler/scheduler.ts';
+} from '../../packages/infra/src/scheduler/scheduler.ts';
 import { runConsolidation } from '../memory/consolidate.ts';
 import { getShellCommand } from '../utils/platform.ts';
 import { i18n } from '../i18n/service.ts';
@@ -195,7 +195,7 @@ export const jobsCommand = cortexCommand('jobs')
               await markJobDone(job.id, runId, { durationMs: Date.now() - t0 });
 
               if (job.kind === 'cron' && job.schedule) {
-                const { nextCronDate } = await import('../scheduler/cron.ts');
+                const { nextCronDate } = await import('../../packages/infra/src/scheduler/cron.ts');
                 const next = nextCronDate(job.schedule);
                 const db = (await import('../db/client.ts')).getCoreDb;
                 const coreDb = await db();

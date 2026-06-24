@@ -1,5 +1,5 @@
 import { err, json, notFound, type RouteHandler } from './_helpers.ts';
-import { getJob, listJobRuns, listJobs } from '../../scheduler/scheduler.ts';
+import { getJob, listJobRuns, listJobs } from '../../../packages/infra/src/scheduler/scheduler.ts';
 
 export const routes: RouteHandler[] = [
   {
@@ -42,7 +42,7 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/jobs\/recover$/,
     handler: async (req) => {
-      const { recoverStaleJobs } = await import('../../scheduler/scheduler.ts');
+      const { recoverStaleJobs } = await import('../../../packages/infra/src/scheduler/scheduler.ts');
       const body = await req.json().catch(() => ({})) as { timeoutMs?: number };
       const result = await recoverStaleJobs(body.timeoutMs);
       return json(result);

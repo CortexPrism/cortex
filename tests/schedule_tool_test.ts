@@ -65,14 +65,14 @@ Deno.test('schedule - create requires name', async () => {
   assertStringIncludes(result.error ?? '', 'name parameter is required');
 });
 
-Deno.test('schedule - create requires command', async () => {
+Deno.test('schedule - create requires command or agent_prompt', async () => {
   const result = await scheduleTool.execute(
     { action: 'create', name: 'test-job' },
     mockContext,
   );
 
   assertEquals(result.success, false);
-  assertStringIncludes(result.error ?? '', 'command parameter is required');
+  assertStringIncludes(result.error ?? '', 'command or agent_prompt');
 });
 
 Deno.test('schedule - create with cron requires cron expression', async () => {

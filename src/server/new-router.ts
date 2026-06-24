@@ -54,7 +54,7 @@ import { routes as nodesRoutes } from './routes/nodes.ts';
 import { routes as computerUseRoutes } from './routes/computer-use.ts';
 import { routes as vaultRoutes } from './routes/vault.ts';
 import { routes as quartermasterRoutes } from './routes/quartermaster.ts';
-import { routes as passwordChangeRoutes } from './routes/password-change.ts';
+
 import { routes as voiceRoutes } from './routes/voice.ts';
 import { routes as codegraphRoutes } from './routes/codegraph.ts';
 import { routes as workflowsRoutes } from './routes/workflows.ts';
@@ -129,16 +129,6 @@ const protectedRoutes: RouteHandler[] = [
   ...computerUseRoutes,
   ...vaultRoutes,
   ...quartermasterRoutes,
-  ...passwordChangeRoutes,
-  ...voiceRoutes,
-  ...codegraphRoutes,
-  ...workflowsRoutes,
-  ...cacpRoutes,
-  ...sandboxRoutes,
-  ...mcpConnectionsRoutes,
-  ...evalRoutes,
-  ...sessionLinksRoutes,
-  ...workspaceSnapshotsRoutes,
   ...tunnelRoutes,
   ...swarmRoutes,
   ...teamsRoutes,
