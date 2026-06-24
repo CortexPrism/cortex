@@ -246,6 +246,239 @@ function extractCalls(
   return edges;
 }
 
+function findClassMethods(
+  classNode: TreeSitterNode,
+  source: string,
+  language: string,
+  classQName: string,
+  filePath: string,
+): ExtractedEdge[] {
+  const edges: ExtractedEdge[] = [];
+  for (const child of classNode.namedChildren) {
+    const childLabel = nodeTypeToLabel(child.type, language);
+    if (childLabel === 'CodeMethod') {
+      const methodName = extractName(child, source, language);
+      if (methodName) {
+        edges.push({
+          type: 'DEFINES_METHOD',
+          sourceQName: classQName,
+          targetQName: `${filePath}:${methodName}`,
+          confidence: 0.95,
+          callLine: child.startPosition.row + 1,
+          argToParam: null,
+          metadata: {},
+        });
+      }
+    }
+    if (child.type === 'class_body' || child.type === 'declaration_list' ||
+        child.type === 'block' || child.type === 'body') {
+      edges.push(...findClassMethods(child, source, language, classQName, filePath));
+    }
+  }
+  return edges;
+}
+
+function extractClassEdges(
+  node: TreeSitterNode,
+  source: string,
+  filePath: string,
+  language: string,
+): ExtractedEdge[] {
+  const edges: ExtractedEdge[] = [];
+
+  function walk(n: TreeSitterNode, className?: string): void {
+    const label = nodeTypeToLabel(n.type, language);
+    if (label === 'CodeClass' || label === 'CodeInterface') {
+      const name = extractName(n, source, language);
+      if (name) {
+        const qname = `${filePath}:${name}`;
+
+        const heritage = n.childForFieldName?.('superclass') ??
+          n.childForFieldName?.('interfaces');
+        if (heritage) {
+          const parentName = heritage.text;
+          if (parentName) {
+            edges.push({
+              type: 'INHERITS',
+              sourceQName: qname,
+              targetQName: parentName,
+              confidence: 0.95,
+              callLine: heritage.startPosition.row + 1,
+              argToParam: null,
+              metadata: {},
+            });
+          }
+        }
+
+        const implementsClause = n.childForFieldName?.('interfaces');
+        if (implementsClause && label === 'CodeClass') {
+          for (const child of implementsClause.namedChildren) {
+            const ifaceName = child.type === 'type_identifier' ||
+                child.type === 'identifier'
+              ? child.text
+              : null;
+            if (ifaceName) {
+              edges.push({
+                type: 'IMPLEMENTS',
+                sourceQName: qname,
+                targetQName: ifaceName,
+                confidence: 0.95,
+                callLine: child.startPosition.row + 1,
+                argToParam: null,
+                metadata: {},
+              });
+            }
+          }
+        }
+
+        edges.push(...findClassMethods(n, source, language, qname, filePath));
+
+        for (const child of n.namedChildren) {
+          walk(child, name);
+        }
+        return;
+      }
+    }
+
+    for (const child of n.namedChildren) {
+      walk(child, className);
+    }
+  }
+
+  walk(node);
+  return edges;
+}
+
+function extractTypeEdges(
+  node: TreeSitterNode,
+  source: string,
+  filePath: string,
+  language: string,
+): ExtractedEdge[] {
+  const edges: ExtractedEdge[] = [];
+
+  function walk(n: TreeSitterNode, parentName?: string): void {
+    const label = nodeTypeToLabel(n.type, language);
+    const currentName = label ? extractName(n, source, language) : parentName;
+
+    if (currentName) {
+      // Collect type references from return types and parameter types
+      const returnType = n.childForFieldName?.('return_type') ??
+        n.childForFieldName?.('returnType');
+      if (returnType) {
+        for (const typeRef of collectTypeIdentifiers(returnType)) {
+          edges.push({
+            type: 'USES_TYPE',
+            sourceQName: `${filePath}:${currentName}`,
+            targetQName: typeRef,
+            confidence: 0.7,
+            callLine: returnType.startPosition.row + 1,
+            argToParam: null,
+            metadata: {},
+          });
+        }
+      }
+
+      const parameters = n.childForFieldName?.('parameters');
+      if (parameters) {
+        for (const param of parameters.namedChildren) {
+          const typeAnnot = param.childForFieldName?.('type') ??
+            param.childForFieldName?.('typeAnnotation');
+          if (typeAnnot) {
+            for (const typeRef of collectTypeIdentifiers(typeAnnot)) {
+              edges.push({
+                type: 'USES_TYPE',
+                sourceQName: `${filePath}:${currentName}`,
+                targetQName: typeRef,
+                confidence: 0.7,
+                callLine: typeAnnot.startPosition.row + 1,
+                argToParam: null,
+                metadata: {},
+              });
+            }
+          }
+        }
+      }
+
+      // Collect type references from variable declarations inside function bodies
+      for (const child of n.namedChildren) {
+        if (child.type === 'variable_declaration' ||
+            child.type === 'lexical_declaration') {
+          const typeAnnot = child.childForFieldName?.('type') ??
+            child.childForFieldName?.('typeAnnotation');
+          if (typeAnnot) {
+            for (const typeRef of collectTypeIdentifiers(typeAnnot)) {
+              edges.push({
+                type: 'USES_TYPE',
+                sourceQName: `${filePath}:${currentName}`,
+                targetQName: typeRef,
+                confidence: 0.65,
+                callLine: typeAnnot.startPosition.row + 1,
+                argToParam: null,
+                metadata: {},
+              });
+            }
+          }
+        }
+      }
+    }
+
+    for (const child of n.namedChildren) {
+      walk(child, currentName ?? parentName);
+    }
+  }
+
+  walk(node);
+  return edges;
+}
+
+function collectTypeIdentifiers(node: TreeSitterNode): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  function walk(n: TreeSitterNode): void {
+    if (n.type === 'type_identifier' ||
+        n.type === 'identifier' ||
+        n.type === 'simple_identifier') {
+      const name = n.text;
+      if (!seen.has(name)) {
+        seen.add(name);
+        ids.push(name);
+      }
+      return;
+    }
+    if (n.type === 'generic_type' ||
+        n.type === 'parameterized_type' ||
+        n.type === 'type_arguments' ||
+        n.type === 'type_parameters' ||
+        n.type === 'union_type' ||
+        n.type === 'intersection_type' ||
+        n.type === 'array_type' ||
+        n.type === 'optional_type') {
+      for (const child of n.namedChildren) {
+        walk(child);
+      }
+    }
+    // For other compound type nodes, recurse into children
+    for (const child of n.children) {
+      if (child.type === 'type_identifier' ||
+          child.type === 'identifier' ||
+          child.type === 'simple_identifier') {
+        const name = child.text;
+        if (!seen.has(name)) {
+          seen.add(name);
+          ids.push(name);
+        }
+      } else if (child.namedChildren && child.namedChildren.length > 0) {
+        walk(child);
+      }
+    }
+  }
+
+  walk(node);
+  return ids;
+}
+
 function extractImports(
   node: TreeSitterNode,
   source: string,
@@ -518,12 +751,14 @@ export async function parseFile(
     const nodes = extractDefinitions(rootNode, source, filePath, language);
     const calls = extractCalls(rootNode, source, filePath, language);
     const imports = extractImports(rootNode, source, filePath);
+    const classEdges = extractClassEdges(rootNode, source, filePath, language);
+    const typeEdges = extractTypeEdges(rootNode, source, filePath, language);
 
     return {
       filePath,
       language,
       nodes,
-      edges: [...calls, ...imports],
+      edges: [...calls, ...imports, ...classEdges, ...typeEdges],
     };
   } catch (err) {
     return {

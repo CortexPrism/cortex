@@ -77,11 +77,45 @@ Versioning: [Semantic Versioning](https://semver.org/)
   displays it in listings. (`packages/infra/src/scheduler/scheduler.ts`,
   `src/server/routes/jobs-crud.ts`, `src/tools/builtin/schedule.ts`)
 
+- **Codegraph: DEFINES_METHOD, INHERITS, IMPLEMENTS, USES_TYPE edge extraction** — the indexer
+  previously extracted only `CALLS` and `IMPORTS` edges (2 of 18 defined types), leaving most
+  nodes as disconnected orphans. Now extracts `DEFINES_METHOD` edges from classes to their
+  contained methods (walking through `class_body`/`declaration_list` wrapper nodes), `INHERITS`
+  edges from subclass to superclass via `superclass`/`interfaces` field lookups, `IMPLEMENTS`
+  edges from class to interface from `implements` clauses, and `USES_TYPE` edges from
+  function/method signatures scanning return types, parameter types, and typed variable
+  declarations for all referenced type identifiers (including generic, union, intersection,
+  and optional compound types). (`src/codegraph/indexer.ts`)
+
+- **Codegraph: CONTAINS_FILE structural edges** — creates a `CodeFile` container node for every
+  file that yields parsed symbols, then inserts `CONTAINS_FILE` edges from each file node to
+  every symbol node within that file. These edges use explicit `sourceId`/`targetId` (bypassing
+  the resolver) with 0.99 confidence. This guarantees every symbol node in the graph connects to
+  at least one structural parent, eliminating the island-node problem regardless of whether
+  cross-symbol edges resolve. (`src/codegraph/sync.ts`)
+
+- **Codegraph: improved edge resolution** — the resolver gained four new resolution strategies
+  to reduce dropped edges: file-qualified target matching (`sourceFile:targetName` → direct
+  lookup), same-file candidate preference when import-mapped names collide across files, relative
+  import path resolution (`./foo`, `../bar` → file node lookup by normalized path), same-directory
+  scoring for multi-candidate disambiguation, and fuzzy substring fallback against indexed simple
+  names. For `IMPORTS` edges specifically, module paths are now resolved to file nodes via
+  path normalization and containment matching. (`src/codegraph/resolver.ts`)
+
 ### Fixed
 
 - **Job API input validation** — `POST /api/jobs` now validates that `name` is present, a string,
   non-empty, and ≤200 characters; `command` is required for shell jobs. Returns clean 400 errors
   instead of silently creating broken jobs. (`src/server/routes/jobs-crud.ts`)
+
+- **Codegraph: indexed projects deleted from dropdown** — the `GET /api/codegraph/projects`
+  route cross-referenced indexed projects against filesystem projects and called
+  `deleteCodeProject()` on any mismatch, treating every indexed project without a matching
+  `cortex-project.json` as "stale" and permanently removing it from the DB. Removed the stale
+  cleanup filter — codegraph projects now always appear in the dropdown regardless of
+  filesystem state. Additionally, `POST /api/codegraph/index` now calls `createProject()`
+  before indexing, ensuring every indexed repo gets a filesystem project entry that persists
+  across server restarts. (`src/server/routes/codegraph.ts`)
 
 ## [0.53.1] - 2026-06-24
 

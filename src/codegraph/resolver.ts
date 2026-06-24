@@ -153,6 +153,12 @@ function resolveTarget(
     return { targetId: ctx.nodeMap.get(targetQName)!, confidence: 0.95 };
   }
 
+  // Try matching targetQName as filePath:simpleName (qualified format)
+  const fileQualifiedKey = `${sourceFile}:${targetQName}`;
+  if (ctx.nodeMap.has(fileQualifiedKey)) {
+    return { targetId: ctx.nodeMap.get(fileQualifiedKey)!, confidence: 0.9 };
+  }
+
   const simpleName = targetQName.split('.').pop() ?? targetQName;
   const candidates = ctx.nodeIndex.get(simpleName) ?? [];
 
@@ -161,19 +167,31 @@ function resolveTarget(
     const prefix = parts.slice(0, -1).join('.');
 
     const importMap = ctx.importMaps.get(sourceFile) ?? [];
-    let importResolved = false;
     for (const entry of importMap) {
       if (entry.alias === prefix || targetQName.startsWith(entry.alias + '.')) {
-        for (const id of candidates) {
-          return { targetId: id, confidence: 0.85 };
+        // Prefer candidates from the same file or related files
+        const sameFileCandidates = candidates.filter((id) => {
+          for (const [qname, nid] of ctx.nodeMap) {
+            if (nid === id) return qname.startsWith(sourceFile + ':');
+          }
+          return false;
+        });
+        if (sameFileCandidates.length > 0) {
+          return { targetId: sameFileCandidates[0], confidence: 0.9 };
         }
-        importResolved = true;
-        break;
+        // Try import-resolved: modulePath+simpleName → file-qualified
+        const moduleSimple = entry.modulePath + ':' + simpleName;
+        if (ctx.nodeMap.has(moduleSimple)) {
+          return { targetId: ctx.nodeMap.get(moduleSimple)!, confidence: 0.85 };
+        }
+        for (const id of candidates) {
+          return { targetId: id, confidence: 0.8 };
+        }
       }
     }
 
-    if (!importResolved && candidates.length > 0) {
-      return { targetId: candidates[0], confidence: 0.7 };
+    if (candidates.length > 0) {
+      return { targetId: candidates[0], confidence: 0.65 };
     }
   }
 
@@ -182,7 +200,31 @@ function resolveTarget(
   }
 
   if (candidates.length > 1) {
+    // Try to find candidates in the same directory as sourceFile
+    const sourceDir = sourceFile.includes('/')
+      ? sourceFile.slice(0, sourceFile.lastIndexOf('/'))
+      : '';
+    const sameDirCandidates = candidates.filter((id) => {
+      for (const [qname, nid] of ctx.nodeMap) {
+        if (nid === id) {
+          const filePart = qname.split(':')[0] || '';
+          return sourceDir && filePart.startsWith(sourceDir);
+        }
+      }
+      return false;
+    });
+    if (sameDirCandidates.length > 0) {
+      return { targetId: sameDirCandidates[0], confidence: 0.55 };
+    }
     return { targetId: candidates[0], confidence: 0.4 };
+  }
+
+  // Try fuzzy match: does targetQName contain an indexed simple name?
+  for (const [name] of ctx.nodeIndex) {
+    if (name.length > 1 && targetQName.includes(name)) {
+      const fuzzy = ctx.nodeIndex.get(name)!;
+      return { targetId: fuzzy[0], confidence: 0.3 };
+    }
   }
 
   return { targetId: null, confidence: 0 };
@@ -212,6 +254,45 @@ export async function resolveEdges(
       const result = resolveTarget(simple, edge.sourceFilePath, ctx);
       targetId = result.targetId;
       confidence = result.confidence * 0.5;
+    }
+
+    // For IMPORTS edges, try resolving module paths to file nodes
+    if (targetId === null && edge.type === 'IMPORTS') {
+      const modulePath = edge.targetQName;
+      // Try relative path resolution
+      if (modulePath.startsWith('./') || modulePath.startsWith('../')) {
+        const sourceDir = edge.sourceFilePath.includes('/')
+          ? edge.sourceFilePath.slice(0, edge.sourceFilePath.lastIndexOf('/'))
+          : '';
+        let resolvedPath = sourceDir
+          ? `${sourceDir}/${modulePath}`.replace(/\/\.\//g, '/')
+          : modulePath;
+        // Normalize ../ segments
+        while (resolvedPath.includes('/../')) {
+          resolvedPath = resolvedPath.replace(/\/[^/]+\/\.\.\//, '/');
+        }
+        // Remove leading ./
+        resolvedPath = resolvedPath.replace(/^\.\//, '');
+        // Check for file node at resolved path
+        for (const [qname, nid] of ctx.nodeMap) {
+          if (qname === resolvedPath || qname.startsWith(resolvedPath + ':')) {
+            targetId = nid;
+            confidence = 0.85;
+            break;
+          }
+        }
+      }
+      // Try matching module path to any file node
+      if (targetId === null) {
+        for (const [qname, nid] of ctx.nodeMap) {
+          const filePart = qname.split(':')[0] || '';
+          if (filePart.includes(modulePath) || modulePath.includes(filePart)) {
+            targetId = nid;
+            confidence = 0.5;
+            break;
+          }
+        }
+      }
     }
 
     if (targetId === null) continue;

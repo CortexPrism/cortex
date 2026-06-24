@@ -9,21 +9,15 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/codegraph\/projects$/,
     handler: async () => {
-      const { listProjects: listCodeProjects, deleteCodeProject } = await import(
+      const { listProjects: listCodeProjects } = await import(
         '../../codegraph/graph.ts'
       );
       const { listProjects: listFsProjects } = await import('../../projects/manager.ts');
       const codeProjects = await listCodeProjects();
       const fsProjects = await listFsProjects();
-      const fsNames = new Set(fsProjects.map((p) => p.name));
-      const liveCodeProjects = codeProjects.filter((p) => fsNames.has(p.name));
-      const staleProjects = codeProjects.filter((p) => !fsNames.has(p.name));
-      for (const stale of staleProjects) {
-        deleteCodeProject(stale.name).catch(() => {});
-      }
-      const codeNames = new Set(liveCodeProjects.map((p) => p.name));
+      const codeNames = new Set(codeProjects.map((p) => p.name));
       const merged = [
-        ...liveCodeProjects,
+        ...codeProjects,
         ...fsProjects.filter((p) => !codeNames.has(p.name)).map((p) => ({
           id: -1,
           name: p.name,
@@ -45,13 +39,16 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const body = await req.json() as { rootPath: string; projectName?: string };
       if (!body.rootPath) return err('rootPath is required', 400);
+      const projectName = body.projectName ?? body.rootPath.split('/').pop() ?? 'unknown';
       console.error(
-        '[codegraph] index endpoint: path=' + body.rootPath + ' name=' +
-          (body.projectName || '(auto)'),
+        '[codegraph] index endpoint: path=' + body.rootPath + ' name=' + projectName,
       );
+      // Ensure a filesystem project exists so the codegraph project persists in the dropdown
+      const { createProject } = await import('../../projects/manager.ts');
+      await createProject(projectName, { path: body.rootPath });
       const { indexRepository } = await import('../../codegraph/sync.ts');
       try {
-        const result = await indexRepository(body.rootPath, body.projectName);
+        const result = await indexRepository(body.rootPath, projectName);
         console.error(
           '[codegraph] index endpoint: done — ' + result.nodeCount + ' nodes, ' + result.edgeCount +
             ' edges, ' + result.fileCount + ' files, ' + result.errorCount + ' errors',

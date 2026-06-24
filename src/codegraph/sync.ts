@@ -13,7 +13,7 @@ import {
 import { parseFile } from './indexer.ts';
 import { buildResolutionContext, resolveEdges } from './resolver.ts';
 import type { ExtractedEdge, ExtractedNode } from './indexer.ts';
-import { DEFAULT_IGNORE_DIRS, DEFAULT_IGNORE_FILES } from './schema.ts';
+import { DEFAULT_IGNORE_DIRS, DEFAULT_IGNORE_FILES, EXTENSION_LANG_MAP } from './schema.ts';
 import type { CodeEdgeType } from './schema.ts';
 
 const BATCH_SIZE = 50;
@@ -179,7 +179,7 @@ export async function indexRepository(
     language: string;
     nodes: ExtractedNode[];
   }> = [];
-  const nodeImportMaps = new Map<string, string[]>();
+  const filePathsWithNodes = new Set<string>();
 
   for (let i = 0; i < files.length; i += BATCH_SIZE) {
     const batch = files.slice(i, i + BATCH_SIZE);
@@ -196,6 +196,8 @@ export async function indexRepository(
         continue;
       }
       languageStats[result.language] = (languageStats[result.language] ?? 0) + 1;
+
+      filePathsWithNodes.add(result.relPath);
 
       for (const node of result.nodes) {
         allNodes.push({ ...node, projectId: Number(project.id) });
@@ -224,6 +226,33 @@ export async function indexRepository(
     }
   }
 
+  // Create CodeFile container nodes for every file that has symbols,
+  // ensuring every symbol node has at least a CONTAINS_FILE parent edge.
+  const fileNodeEntries: Array<{ relPath: string; language: string | null }> = [];
+  const fileNodeIdMap = new Map<string, number>();
+  const fileNodeOffset = allNodes.length;
+  for (const relPath of filePathsWithNodes) {
+    const ext = relPath.includes('.') ? relPath.slice(relPath.lastIndexOf('.')).toLowerCase() : '';
+    const lang = EXTENSION_LANG_MAP[ext] ?? null;
+    allNodes.push({
+      label: 'CodeFile',
+      name: relPath,
+      qualifiedName: relPath,
+      filePath: relPath,
+      lineStart: null,
+      lineEnd: null,
+      signature: null,
+      returnType: null,
+      language: lang,
+      isExported: false,
+      complexity: 0,
+      decorators: null,
+      metadata: { kind: 'file-container' },
+      projectId: Number(project.id),
+    });
+    fileNodeEntries.push({ relPath, language: lang });
+  }
+
   const nodeIds = await chunkedBulkInsertNodes(
     project.id,
     allNodes,
@@ -233,6 +262,35 @@ export async function indexRepository(
   const nodeIdMap = new Map<string, number>();
   for (let i = 0; i < allNodes.length; i++) {
     nodeIdMap.set(allNodes[i].qualifiedName, nodeIds[i]);
+    if (allNodes[i].label === 'CodeFile') {
+      fileNodeIdMap.set(allNodes[i].name, nodeIds[i]);
+    }
+  }
+
+  // Build CONTAINS_FILE edges from each CodeFile node to the symbol nodes
+  // contained in that file. These edges use explicit IDs (no resolution needed).
+  const containmentEdges: Array<{
+    type: string;
+    sourceId: number;
+    targetId: number;
+    confidence: number;
+    callLine: number | null;
+    argToParam: string | null;
+  }> = [];
+  for (let i = 0; i < fileNodeOffset; i++) {
+    const node = allNodes[i];
+    if (node.label === 'CodeFile') continue;
+    const fileNodeId = fileNodeIdMap.get(node.qualifiedName.split(':')[0] || '');
+    if (fileNodeId !== undefined) {
+      containmentEdges.push({
+        type: 'CONTAINS_FILE',
+        sourceId: fileNodeId,
+        targetId: nodeIds[i],
+        confidence: 0.99,
+        callLine: null,
+        argToParam: null,
+      });
+    }
   }
 
   const ctx = await buildResolutionContext(project.id, parsedSources, nodeIdMap);
@@ -259,6 +317,10 @@ export async function indexRepository(
     project.id,
     validEdges,
   );
+
+  if (containmentEdges.length > 0) {
+    await chunkedBulkInsertDirectEdges(project.id, containmentEdges);
+  }
 
   await updateProjectCounts(project.id);
   await upsertProject(name, rootPath, languageStats);
@@ -317,6 +379,34 @@ async function chunkedBulkInsertNodes(
     allIds.push(...ids);
   }
   return allIds;
+}
+
+async function chunkedBulkInsertDirectEdges(
+  projectId: number,
+  edges: Array<{
+    type: string;
+    sourceId: number;
+    targetId: number;
+    confidence: number;
+    callLine: number | null;
+    argToParam: string | null;
+  }>,
+): Promise<void> {
+  for (let i = 0; i < edges.length; i += BULK_CHUNK_SIZE) {
+    const chunk = edges.slice(i, i + BULK_CHUNK_SIZE);
+    await bulkInsertEdges(
+      chunk.map((e) => ({
+        project_id: projectId,
+        type: e.type as CodeEdgeType,
+        source_id: e.sourceId,
+        target_id: e.targetId,
+        confidence: e.confidence,
+        call_line: e.callLine,
+        arg_to_param: e.argToParam ?? null,
+        metadata: null,
+      })),
+    );
+  }
 }
 
 async function chunkedBulkInsertEdges(
