@@ -68,3 +68,4 @@ docs/marketing/
 
 .playwright-mcp/
 cortex.code-workspace
+.vscode/mcp.json
