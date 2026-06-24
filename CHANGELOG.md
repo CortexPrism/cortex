@@ -21,6 +21,40 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Logger env-var overrides** — file transport can now be configured entirely via environment
+  variables without touching `config.json`. `CORTEX_LOG_FILE` sets the log file path (and enables
+  file logging), `CORTEX_LOG_FILE_MAX_BYTES` sets the max file size before rotation, and
+  `CORTEX_LOG_FILE_MAX_FILES` sets the rotation count. All three combine with the existing
+  `CORTEX_LOG_LEVEL` for a complete env-driven logging setup. (`src/utils/logger.ts`)
+
+- **JSON-structured stdout logging** — set `CORTEX_LOG_JSON=1` (env) or `jsonStdout: true`
+  (config.json `logging` block) to emit JSON-line log entries to stdout instead of pretty-printed
+  text. Designed for log aggregators (Datadog, Loki, Grafana Cloud, container stdout collectors).
+  Each line includes `ts`, `level`, `msg`, `ns`, `reqId`, `data`, and `stack` fields.
+  (`src/utils/logger.ts`)
+
+- **`resetLogger()` utility** — clears all logger state (level, transports, request ID) for test
+  isolation. Tests can now `resetLogger()` then `configureLogger()` with a clean slate without
+  leaking state between test cases. (`src/utils/logger.ts`)
+
+- **Logger unit tests** — 23 tests covering the full public API: level gating (trace through
+  silent), namespace hierarchy via `.child()`, request ID propagation, error stack traces, env-var
+  overrides, JSON stdout mode, transport broadcasting, concurrent emit safety, and realistic
+  production scenarios (agent loop turn logging, server request lifecycle). (`tests/logger_test.ts`)
+
+- **Metrics unit tests** — 17 tests for the Prometheus metrics module: counter increment
+  accumulation across labels, gauge set replacement, histogram value aggregation, `renderPrometheus`
+  output validation (HELP/TYPE header correctness, label tuple formatting, `_sum`/`_count` suffix),
+  `resetMetrics` clearing all state, custom metric registration, and production scenarios simulating
+  agent turn metrics and node swarm directives. (`tests/metrics_test.ts`)
+
+- **Eval framework tests** — 32 tests for the scoring and regression detection logic: `regex:`,
+  `contains:`, `not_contains:`, and fuzzy pattern matching with edge cases (empty output, unicode,
+  emoji, multi-line code blocks, special regex characters), `scoreFileContent` with and without
+  `shouldContain`, `checkRegression` with threshold boundaries (including floating-point tolerance),
+  and realistic agent output scenarios (code generation, bug fixes with partial failures, TypeScript
+  file checks). (`tests/eval_framework_test.ts`)
+
 - **Trigger persistence** — triggers (webhooks, file watchers, git hooks) were previously stored
   only in an in-memory `Map` and lost on server restart. A new `triggers` DB table (migration 048)
   stores the full trigger configuration as JSON. `registerTrigger()` and `unregisterTrigger()` now

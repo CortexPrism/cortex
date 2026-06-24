@@ -138,12 +138,31 @@ class FileTransport implements LogTransport {
 
 class StdoutTransport implements LogTransport {
   private useColor: boolean;
+  private jsonMode: boolean;
 
-  constructor() {
+  constructor(jsonMode = false) {
     this.useColor = Deno.stdout.isTerminal();
+    this.jsonMode = jsonMode;
+  }
+
+  private _toJSON(entry: LogEntry): string {
+    const out: Record<string, unknown> = {
+      ts: entry.ts,
+      level: entry.level,
+      msg: entry.msg,
+    };
+    if (entry.ns) out.ns = entry.ns;
+    if (entry.data !== undefined) out.data = entry.data;
+    if (entry.reqId) out.reqId = entry.reqId;
+    if (entry.stack) out.stack = entry.stack;
+    return JSON.stringify(out);
   }
 
   write(entry: LogEntry): void {
+    if (this.jsonMode) {
+      console.log(this._toJSON(entry));
+      return;
+    }
     const time = entry.ts.slice(11, 23); // HH:mm:ss.mmm
     const ns = entry.ns ? ` ${entry.ns}` : '';
     if (this.useColor) {
@@ -210,6 +229,7 @@ export interface LoggerConfig {
   filePath?: string;
   fileMaxBytes?: number;
   fileMaxFiles?: number;
+  jsonStdout?: boolean;
 }
 
 // FILE_MIN_LEVEL: floor for the file transport when global level is error or silent.
@@ -225,10 +245,13 @@ class LoggerRegistry {
   configure(config: LoggerConfig): void {
     this.level = config.level;
 
-    // Stdout transport: active whenever level is not silent
+    // Stdout transport: active whenever level is not silent; JSON mode via config or env
     if (config.level !== 'silent') {
+      const jsonMode = config.jsonStdout === true;
       if (!this.stdoutTransport) {
-        this.stdoutTransport = new StdoutTransport();
+        this.stdoutTransport = new StdoutTransport(jsonMode);
+      } else {
+        this.stdoutTransport = new StdoutTransport(jsonMode);
       }
     } else {
       this.stdoutTransport = null;
@@ -302,6 +325,28 @@ class LoggerRegistry {
   }
 }
 
+function parseEnvFileConfig(): Partial<LoggerConfig> {
+  const overrides: Partial<LoggerConfig> = {};
+  const filePath = Deno.env.get('CORTEX_LOG_FILE');
+  if (filePath) {
+    overrides.fileEnabled = true;
+    overrides.filePath = filePath;
+  }
+  const maxBytes = Deno.env.get('CORTEX_LOG_FILE_MAX_BYTES');
+  if (maxBytes && /^\d+$/.test(maxBytes)) {
+    overrides.fileMaxBytes = parseInt(maxBytes, 10);
+  }
+  const maxFiles = Deno.env.get('CORTEX_LOG_FILE_MAX_FILES');
+  if (maxFiles && /^\d+$/.test(maxFiles)) {
+    overrides.fileMaxFiles = parseInt(maxFiles, 10);
+  }
+  const jsonStdout = Deno.env.get('CORTEX_LOG_JSON');
+  if (jsonStdout === '1' || jsonStdout === 'true') {
+    overrides.jsonStdout = true;
+  }
+  return overrides;
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 const _registry = new LoggerRegistry();
@@ -315,11 +360,20 @@ if (_envLevel && _envLevel in LEVEL_RANK) {
 /**
  * Configure the global logger (called once at startup from main/server entry).
  * Safe to call multiple times; subsequent calls update the level.
+ * Env vars CORTEX_LOG_FILE, CORTEX_LOG_FILE_MAX_BYTES, CORTEX_LOG_FILE_MAX_FILES
+ * and CORTEX_LOG_JSON can override config values.
  */
 export function configureLogger(config: LoggerConfig): void {
   const envLevel = Deno.env.get('CORTEX_LOG_LEVEL') as LogLevel | undefined;
   const effectiveLevel = (envLevel && envLevel in LEVEL_RANK) ? envLevel : config.level;
-  _registry.configure({ ...config, level: effectiveLevel });
+  const envOverrides = parseEnvFileConfig();
+  _registry.configure({ ...config, level: effectiveLevel, ...envOverrides });
+}
+
+/** Reset logger state (for testing). */
+export function resetLogger(): void {
+  _registry.configure({ level: 'error', fileEnabled: false });
+  _globalReqId = null;
 }
 
 /** Add an external transport (e.g. Langfuse, OTLP log exporter). */
