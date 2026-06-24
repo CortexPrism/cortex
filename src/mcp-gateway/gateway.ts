@@ -129,17 +129,17 @@ export function assessRiskLevel(
   args: Record<string, unknown>,
 ): 'low' | 'medium' | 'high' | 'critical' {
   const highRiskPatterns = [
-    /rm\s+-rf/,
-    /DROP\s+TABLE/,
-    /DELETE\s+FROM/,
+    /rm\s+-rf/i,
+    /DROP\s+TABLE/i,
+    /DELETE\s+FROM/i,
     /format/i,
     /shutdown/i,
     /kill/i,
     /terminate/i,
   ];
   const criticalPatterns = [
-    /DROP\s+DATABASE/,
-    /rm\s+-rf\s+\//,
+    /DROP\s+DATABASE/i,
+    /rm\s+-rf\s+\//i,
     /TRUNCATE/i,
   ];
 

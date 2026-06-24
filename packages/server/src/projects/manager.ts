@@ -75,13 +75,40 @@ export async function listProjects(): Promise<ProjectConfig[]> {
 
 export async function deleteProject(name: string): Promise<boolean> {
   const dir = getProjectDir(name);
+  const existing = await loadProject(name);
+  if (!existing) return false;
   try {
     await Deno.remove(dir, { recursive: true });
     projects.delete(name);
-    return true;
   } catch {
     return false;
   }
+  const agentId = existing.agentId ?? 'assistant';
+  // Fire-and-forget codegraph cleanup
+  import('../../../../src/codegraph/graph.ts').then(({ deleteCodeProject }) => {
+    deleteCodeProject(name).catch(() => {});
+  }).catch(() => {});
+  // Fire-and-forget agent workspace cleanup if no other project uses the same agent
+  cleanupAgentWorkspaceIfOrphaned(agentId).catch(() => {});
+  return true;
+}
+
+async function cleanupAgentWorkspaceIfOrphaned(agentId: string): Promise<void> {
+  const projectsDir = join(PATHS.dataDir, 'projects');
+  try {
+    for await (const entry of Deno.readDir(projectsDir)) {
+      if (!entry.isDirectory) continue;
+      try {
+        const configPath = join(projectsDir, entry.name, 'cortex-project.json');
+        const data = await Deno.readTextFile(configPath);
+        const config = JSON.parse(data) as ProjectConfig;
+        if ((config.agentId ?? 'assistant') === agentId) return;
+      } catch { /* skip unreadable project */ }
+    }
+    // No other project uses this agent — safe to remove workspace
+    const wsDir = join(PATHS.workspacesDir, agentId);
+    await Deno.remove(wsDir, { recursive: true });
+  } catch { /* best-effort cleanup */ }
 }
 
 export function getActiveProject(): ProjectConfig | undefined {

@@ -250,6 +250,8 @@ async function loadSettings() {
       </div>
 
 
+    </div>
+
     <!-- AI & Models Tab -->
     <div id="settings-pane-providers" style="display:\${settingsActiveTab === 'providers' ? 'block' : 'none'};">
       <div class="card" style="margin-bottom:14px;">

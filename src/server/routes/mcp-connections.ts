@@ -140,7 +140,7 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/mcp-gateway\/servers$/,
     handler: async () => {
       const { listServers } = await import('../../mcp-gateway/registry.ts');
-      const servers = listServers().map((s) => ({
+      const servers = (await listServers()).map((s) => ({
         id: s.id,
         name: s.name,
         endpoint: s.endpoint,
@@ -152,6 +152,94 @@ export const routes: RouteHandler[] = [
       const healthy = servers.filter((s) => s.status === 'healthy').length;
       const degraded = servers.filter((s) => s.status === 'degraded').length;
       return json({ servers, healthy, degraded });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/mcp-gateway\/servers$/,
+    handler: async (req) => {
+      const body = await req.json() as {
+        id?: string;
+        name: string;
+        endpoint: string;
+        transport?: 'stdio' | 'http';
+        tags?: string[];
+      };
+      if (!body.name) return err('name is required', 400);
+      if (!body.endpoint) return err('endpoint is required', 400);
+      const { registerServer } = await import('../../mcp-gateway/registry.ts');
+      const entry = {
+        id: body.id ?? crypto.randomUUID(),
+        name: body.name,
+        endpoint: body.endpoint,
+        transport: body.transport ?? 'http',
+        status: 'unknown' as const,
+        lastHealthCheck: '',
+        tools: [],
+        toolCount: 0,
+        tags: body.tags ?? [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await registerServer(entry);
+      return json(entry, 201);
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/mcp-gateway\/servers\/([^/]+)$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/mcp-gateway\/servers\/([^/]+)$/);
+      if (!m) return notFound();
+      const id = m[1];
+      const body = await req.json() as Partial<{
+        name: string;
+        endpoint: string;
+        transport: 'stdio' | 'http';
+        tags: string[];
+      }>;
+      const { getServer, updateServer } = await import('../../mcp-gateway/registry.ts');
+      const existing = await getServer(id);
+      if (!existing) return notFound('Server not found');
+      const updated = await updateServer(id, body);
+      return json(updated ?? { error: 'Update failed' }, updated ? 200 : 500);
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/mcp-gateway\/servers\/([^/]+)$/,
+    handler: async (_req, path) => {
+      const m = path.match(/^\/api\/mcp-gateway\/servers\/([^/]+)$/);
+      if (!m) return notFound();
+      const id = m[1];
+      const { removeServer } = await import('../../mcp-gateway/registry.ts');
+      const ok = await removeServer(id);
+      if (!ok) return notFound('Server not found');
+      return json({ ok: true });
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/mcp-gateway\/servers\/([^/]+)$/,
+    handler: async (_req, path) => {
+      const m = path.match(/^\/api\/mcp-gateway\/servers\/([^/]+)$/);
+      if (!m) return notFound();
+      const id = m[1];
+      const { getServer } = await import('../../mcp-gateway/registry.ts');
+      const server = await getServer(id);
+      if (!server) return notFound('Server not found');
+      return json(server);
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/mcp-gateway\/audit$/,
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const serverId = url.searchParams.get('serverId') || undefined;
+      const limit = parseInt(url.searchParams.get('limit') ?? '100');
+      const { getAuditLogs } = await import('../../mcp-gateway/gateway.ts');
+      return json(getAuditLogs(serverId, Math.min(limit, 500)));
     },
   },
   {

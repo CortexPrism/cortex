@@ -26,6 +26,7 @@
     "npm:@aws-sdk/client-bedrock-runtime@^3.896.0": "3.1072.0",
     "npm:@google/generative-ai@0.21": "0.21.0",
     "npm:@libsql/client@~0.15.5": "0.15.15",
+    "npm:acorn@*": "8.17.0",
     "npm:openai@^4.98.0": "4.104.0",
     "npm:pdf-parse@*": "2.4.5",
     "npm:playwright@*": "1.61.0",
@@ -655,6 +656,10 @@
       "dependencies": [
         "event-target-shim"
       ]
+    },
+    "acorn@8.17.0": {
+      "integrity": "sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg==",
+      "bin": true
     },
     "agentkeepalive@4.6.0": {
       "integrity": "sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==",

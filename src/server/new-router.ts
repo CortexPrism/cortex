@@ -137,6 +137,15 @@ const protectedRoutes: RouteHandler[] = [
   ...glossaryRoutes,
   ...pkmRoutes,
   ...promptlabRoutes,
+  ...voiceRoutes,
+  ...codegraphRoutes,
+  ...workflowsRoutes,
+  ...cacpRoutes,
+  ...sandboxRoutes,
+  ...mcpConnectionsRoutes,
+  ...evalRoutes,
+  ...sessionLinksRoutes,
+  ...workspaceSnapshotsRoutes,
 ];
 
 export async function handleApi(req: Request): Promise<Response | null> {

@@ -19,6 +19,26 @@ let terminalInstance = null;
 let terminalConnected = false;
 let terminalInputBuffer = '';
 
+const EDITOR_SKIP_DIRS = new Set([
+  '.git',
+  '.kilo',
+  '.cache',
+  '.deno',
+  'node_modules',
+  'target',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+]);
+
+function editorShouldSkipPath(path) {
+  var parts = path.split('/').filter(Boolean);
+  return parts.some(function(part) {
+    return EDITOR_SKIP_DIRS.has(part) || (part.startsWith('.') && part !== '.github' && part !== '.vscode');
+  });
+}
+
 // ── Sidebar / Panel resize ────────────────────────────────────
 function editorStartSidebarResize(e) {
   editorSidebarResizing = true; e.preventDefault();
@@ -315,8 +335,14 @@ async function editorFetchAllFiles() {
     ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
     : BASE + '/api/workspace/files';
   var allFiles = [];
+  function joinPath(parent, name) {
+    var cleanParent = parent ? parent.replace(/\\/+$/, '') : '';
+    var cleanName = name.replace(/^\\/+/, '').replace(/\\/+$/, '');
+    return cleanParent ? cleanParent + '/' + cleanName : cleanName;
+  }
   async function recurse(path) {
-    var url = path ? base + '/' + path.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
+    var normalized = path ? path.replace(/\\/+$/, '') : '';
+    var url = normalized ? base + '/' + normalized.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
     try {
       var res = await fetch(url);
       if (!res.ok) return;
@@ -324,7 +350,8 @@ async function editorFetchAllFiles() {
       if (!Array.isArray(entries)) return;
       for (var i = 0; i < entries.length; i++) {
         var name = entries[i];
-        var full = path ? path + '/' + name : name;
+        var full = joinPath(normalized, name);
+        if (editorShouldSkipPath(full)) continue;
         if (name.endsWith('/')) {
           await recurse(full);
         } else {
@@ -361,7 +388,8 @@ async function editorRefreshTree() {
     var base = agentId
       ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files'
       : BASE + '/api/workspace/files';
-    var url = editorCurrentPath ? base + '/' + editorCurrentPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
+    var currentPath = editorCurrentPath ? editorCurrentPath.replace(/\\/+$/, '') : '';
+    var url = currentPath ? base + '/' + currentPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/') : base;
     var res = await fetch(url);
     if (!res.ok) { tree.innerHTML = '<div style="padding:12px;color:#f87171;font-size:12px;">Folder not found: ' + esc(editorCurrentPath || '/') + '</div>'; return; }
     var entries = await res.json();
@@ -408,6 +436,7 @@ function renderEditorTree() {
   sorted.forEach(function(name) {
     var isDir = name.endsWith('/');
     var nameClean = name.replace(/\\/$/, '');
+    if (editorShouldSkipPath(nameClean)) return;
     var active = editorCurrentFile === nameClean || editorCurrentFile === name;
     var onclick = isDir
       ? 'editorOpenDir(\\'' + escJs(nameClean) + '\\')'
@@ -724,6 +753,28 @@ async function editorDeleteFileByPath(filePath) {
       if (editorCurrentFile === filePath) editorCloseTab(editorCurrentFile);
       editorRefreshTree();
     } else { toast('Failed to delete', 'error'); }
+  } catch (e) { toast('Delete error: ' + e.message, 'error'); }
+}
+async function editorDeleteFolder(dirPath) {
+  var ok = await confirmAction('Delete Folder', 'Delete "' + dirPath + '" and all its contents?', 'Delete');
+  if (!ok) return;
+  var agentId = editorWorkspace === 'global' ? undefined : editorWorkspace;
+  var encPath = dirPath.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
+  var url = agentId
+    ? BASE + '/api/workspace/agents/' + encodeURIComponent(agentId) + '/files/' + encPath
+    : BASE + '/api/workspace/files/' + encPath;
+  try {
+    var res = await fetch(url, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Deleted ' + dirPath, 'success');
+      if (editorOpenFiles.some(function(f) { return f.startsWith(dirPath + '/') || f === dirPath; })) {
+        editorOpenFiles = editorOpenFiles.filter(function(f) { return !f.startsWith(dirPath + '/') && f !== dirPath; });
+        editorCurrentFile = editorOpenFiles.length > 0 ? editorOpenFiles[editorOpenFiles.length - 1] : null;
+        if (editorCurrentFile) editorOpenFile(editorCurrentFile);
+        else editorDestroyEditor();
+      }
+      editorRefreshTree();
+    } else { toast('Failed to delete folder', 'error'); }
   } catch (e) { toast('Delete error: ' + e.message, 'error'); }
 }
 async function editorRenameFile(filePath) {
@@ -1100,6 +1151,8 @@ function editorTreeContextMenu(e, filePath, isDir) {
     items = [
       { label: 'New File...', action: 'editorNewFileInline();editorHideContextMenu();' },
       { label: 'New Folder...', action: 'editorNewFolderInline();editorHideContextMenu();' },
+      '-',
+      { label: 'Delete', action: 'editorDeleteFolder(\\'' + escJs(filePath) + '\\');editorHideContextMenu();', danger: true },
     ];
   } else {
     items = [

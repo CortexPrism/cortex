@@ -293,7 +293,7 @@ export async function indexRepository(
     }
   }
 
-  const ctx = await buildResolutionContext(project.id, parsedSources, nodeIdMap);
+  const ctx = await buildResolutionContext(project.id, parsedSources, nodeIdMap, fileNodeIdMap);
 
   const resolvedEdges = await resolveEdges(
     ctx,
@@ -472,6 +472,29 @@ export async function incrementalSync(
       const result = await indexFile(filePath, rootPath);
       if (!result || 'error' in result || result.nodes.length === 0) continue;
 
+      const ext = relPath.includes('.') ? relPath.slice(relPath.lastIndexOf('.')).toLowerCase() : '';
+      const lang = EXTENSION_LANG_MAP[ext] ?? null;
+      const [fileNodeId] = await bulkInsertNodes(
+        [{
+          project_id: projectId,
+          label: 'CodeFile',
+          name: relPath,
+          qualified_name: relPath,
+          file_path: relPath,
+          line_start: null,
+          line_end: null,
+          signature: null,
+          return_type: null,
+          language: lang,
+          is_exported: false,
+          complexity: 0,
+          decorators: null,
+          metadata: JSON.stringify({ kind: 'file-container' }),
+          content_hash: null,
+        }],
+      );
+      addedNodes += 1;
+
       const nodeIds = await bulkInsertNodes(
         result.nodes.map((n) => ({
           project_id: projectId,
@@ -494,6 +517,22 @@ export async function incrementalSync(
 
       addedNodes += nodeIds.length;
 
+      const containmentEdges = nodeIds.map((symbolId) => ({
+        project_id: projectId,
+        type: 'CONTAINS_FILE' as CodeEdgeType,
+        source_id: fileNodeId,
+        target_id: symbolId,
+        confidence: 0.99,
+        call_line: null,
+        arg_to_param: null,
+        metadata: null,
+      }));
+      const containmentIds = await bulkInsertEdges(containmentEdges);
+      addedEdges += containmentIds.length;
+
+      const fileNodeIdMap = new Map<string, number>();
+      fileNodeIdMap.set(relPath, fileNodeId);
+
       if (result.edges.length > 0) {
         const nodeIdMap = new Map<string, number>();
         for (let j = 0; j < result.nodes.length; j++) {
@@ -507,7 +546,7 @@ export async function incrementalSync(
           source: source ?? '',
           language: result.language,
           nodes: result.nodes,
-        }], nodeIdMap);
+        }], nodeIdMap, fileNodeIdMap);
 
         const resolved = await resolveEdges(
           ctx,

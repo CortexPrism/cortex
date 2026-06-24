@@ -121,10 +121,17 @@ export async function buildResolutionContext(
     nodes: ExtractedNode[];
   }>,
   nodeIdMap: Map<string, number>,
+  fileNodeIdMap?: Map<string, number>,
 ): Promise<ResolutionContext> {
   const importMaps = new Map<string, ImportMapEntry[]>();
   const nodeIndex = new Map<string, number[]>();
   const fileNodeMap = new Map<string, number>();
+
+  if (fileNodeIdMap) {
+    for (const [path, id] of fileNodeIdMap) {
+      fileNodeMap.set(path, id);
+    }
+  }
 
   for (const file of parsedFiles) {
     importMaps.set(file.filePath, parseImportMap(file.source, file.language));
@@ -135,10 +142,6 @@ export async function buildResolutionContext(
     const existing = nodeIndex.get(simpleName) ?? [];
     existing.push(id);
     nodeIndex.set(simpleName, existing);
-    const filePath = qname.split(':')[0] || '';
-    if (filePath && !fileNodeMap.has(filePath)) {
-      fileNodeMap.set(filePath, id);
-    }
   }
 
   return { projectId, nodeMap: nodeIdMap, importMaps, nodeIndex, fileNodeMap };

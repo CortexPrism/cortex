@@ -80,6 +80,7 @@ function showPage(name) {
     tools: function() { loadTools(); injectToolsSubNav('tools'); },
     'chrome-bridge': function() { loadChromeBridgePage(); injectToolsSubNav('chrome-bridge'); },
     mcp: function() { switchMcpTab('connections'); loadMCPPage(); injectToolsSubNav('mcp'); },
+    'mcp-gateway': function() { injectToolsSubNav('mcp-gateway'); loadMcpGatewayPage(); },
     vault: function() { loadVaultPage(); injectToolsSubNav('vault'); },
     tunnel: function() { loadTunnelPage(); injectToolsSubNav('tunnel'); },
     extensions: function() { loadPlugins(); extShowTab('installed'); },
@@ -109,12 +110,12 @@ function showPage(name) {
   if (loaders[name]) loaders[name]();
 
   // Highlight nav-settings for settings-group pages
-  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,vault:1,tunnel:1};
+  var settingsGroup = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,tunnel:1};
   var navSettings = document.getElementById('nav-settings');
   if (navSettings) navSettings.classList.toggle('active', !!settingsGroup[name]);
 
   // Hide global subnav for non-tabbed pages
-  var tabbed = {settings:1,tools:1,'chrome-bridge':1,mcp:1,vault:1,tunnel:1};
+  var tabbed = {settings:1,tools:1,'chrome-bridge':1,mcp:1,'mcp-gateway':1,vault:1,tunnel:1};
   if (!tabbed[name]) hideSubNav();
 }
 

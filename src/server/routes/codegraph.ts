@@ -9,28 +9,40 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/codegraph\/projects$/,
     handler: async () => {
-      const { listProjects: listCodeProjects } = await import(
-        '../../codegraph/graph.ts'
-      );
-      const { listProjects: listFsProjects } = await import('../../projects/manager.ts');
-      const codeProjects = await listCodeProjects();
-      const fsProjects = await listFsProjects();
-      const codeNames = new Set(codeProjects.map((p) => p.name));
-      const merged = [
-        ...codeProjects,
-        ...fsProjects.filter((p) => !codeNames.has(p.name)).map((p) => ({
-          id: -1,
-          name: p.name,
-          root_path: p.path,
-          language_stats: null,
-          node_count: 0,
-          edge_count: 0,
-          indexed_at: p.created,
-          git_commit: null,
-          version: 0,
-        })),
-      ];
-      return json(merged);
+      try {
+        const { listProjects: listCodeProjects, deleteCodeProject } = await import(
+          '../../codegraph/graph.ts'
+        );
+        const { listProjects: listFsProjects } = await import(
+          '../../projects/manager.ts'
+        );
+        const codeProjects = await listCodeProjects();
+        const fsProjects = await listFsProjects();
+        const fsNames = new Set(fsProjects.map((p) => p.name));
+        const liveCodeProjects = codeProjects.filter((p) => fsNames.has(p.name));
+        const staleProjects = codeProjects.filter((p) => !fsNames.has(p.name));
+        for (const stale of staleProjects) {
+          deleteCodeProject(stale.name).catch(() => {});
+        }
+        const codeNames = new Set(liveCodeProjects.map((p) => p.name));
+        const merged = [
+          ...liveCodeProjects,
+          ...fsProjects.filter((p) => !codeNames.has(p.name)).map((p) => ({
+            id: -1,
+            name: p.name,
+            root_path: p.path,
+            language_stats: null,
+            node_count: 0,
+            edge_count: 0,
+            indexed_at: p.created,
+            git_commit: null,
+            version: 0,
+          })),
+        ];
+        return json(merged);
+      } catch (e) {
+        return err((e as Error).message, 500);
+      }
     },
   },
   {

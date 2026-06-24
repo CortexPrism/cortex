@@ -84,10 +84,49 @@ window.addEventListener('hashchange', () => {
 });
 
 // ── MCP Gateway Page ────────────────────────────────────
+var _gwCurrentTab = 'overview';
+
+function switchGatewayTab(tab) {
+  _gwCurrentTab = tab;
+  ['overview','servers','approvals','audit'].forEach(function(t) {
+    var btn = document.getElementById('gw-tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'overview') loadGatewayOverview();
+  if (tab === 'servers') loadGatewayServers();
+  if (tab === 'approvals') loadGatewayApprovals();
+  if (tab === 'audit') loadGatewayAudit();
+}
+
+function closeGatewayModal(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function gwContent() {
+  var standalonePage = document.getElementById('page-mcp-gateway');
+  var standalone = document.getElementById('gw-page-content');
+  var tabbedPane = document.getElementById('mcp-pane-gateway');
+  var tabbed = document.getElementById('mcp-gateway-content');
+  if (standalonePage && standalonePage.style.display !== 'none' && standalone) return standalone;
+  if (tabbedPane && tabbedPane.style.display !== 'none' && tabbed) return tabbed;
+  if (currentPage === 'mcp') return tabbed || standalone;
+  return standalone || tabbed;
+}
+
 async function loadMcpGatewayPage() {
-  var c = document.getElementById('mcp-gateway-content');
+  var c = gwContent();
   if (!c) return;
-  c.innerHTML = '<div class="widget-loading">Loading MCP Gateway…</div>';
+  if (_gwCurrentTab === 'overview') loadGatewayOverview();
+  else if (_gwCurrentTab === 'servers') loadGatewayServers();
+  else if (_gwCurrentTab === 'approvals') loadGatewayApprovals();
+  else if (_gwCurrentTab === 'audit') loadGatewayAudit();
+}
+
+async function loadGatewayOverview() {
+  var c = gwContent();
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading Gateway overview…</div>';
   try {
     var r = await fetch(BASE + '/api/mcp-gateway/servers');
     var data = await r.json();
@@ -97,24 +136,275 @@ async function loadMcpGatewayPage() {
     html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-green);">' + (data.healthy||0) + '</div><div style="font-size:11px;color:var(--text3);">Healthy</div></div>';
     html += '<div class="card" style="flex:1;padding:14px;text-align:center;"><div style="font-size:24px;font-weight:600;color:var(--accent-red);">' + (data.degraded||0) + '</div><div style="font-size:11px;color:var(--text3);">Degraded</div></div>';
     html += '</div>';
+
+    // Approval count
+    try {
+      var ar = await fetch(BASE + '/api/mcp-gateway/approvals');
+      var adata = await ar.json();
+      var pendCount = Array.isArray(adata) ? adata.length : 0;
+      if (pendCount > 0) {
+        html += '<div class="card" style="padding:12px;margin-bottom:16px;border-left:3px solid var(--accent-amber);"><div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;"><span style="font-weight:600;">' + pendCount + '</span> pending approval' + (pendCount>1?'s':'') + '</span><a href="#" onclick=switchGatewayTab(' + escQuote('approvals') + ') style="font-size:11px;color:var(--accent);">Review &rarr;</a></div></div>';
+      }
+    } catch(_) {}
+
     html += '<h3 style="font-size:13px;font-weight:600;margin-bottom:8px;">Managed Servers</h3>';
     if (servers.length === 0) {
-      html += '<div class="empty">No MCP servers managed through the gateway. Add MCP connections in the <a href="#" onclick="showPage(\\'mcp\\')" style="color:var(--accent);">MCP page</a>.</div>';
+      html += '<div class="empty">No MCP servers managed through the gateway. <a href="#" onclick="showGatewayServerAddModal()" style="color:var(--accent);">Add your first server</a>.</div>';
     } else {
       html += '<div style="display:flex;flex-direction:column;gap:8px;">';
       servers.forEach(function(s) {
         var statusColor = s.status === 'healthy' ? 'var(--accent-green)' : s.status === 'degraded' ? 'var(--accent-amber)' : 'var(--accent-red)';
         html += '<div class="card" style="padding:12px;display:flex;align-items:center;justify-content:space-between;">';
-        html += '<div><div style="font-size:12px;font-weight:500;">' + esc(s.name || s.id) + '</div><div style="font-size:10px;color:var(--text3);">' + esc(s.endpoint || '') + ' • ' + (s.toolCount||0) + ' tools</div></div>';
-        html += '<span class="badge" style="background:' + statusColor + ';color:#000;">' + esc(s.status || 'unknown') + '</span>';
-        html += '</div>';
+        html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.name || s.id) + '</div><div style="font-size:10px;color:var(--text3);">' + esc(s.endpoint || '') + ' • ' + s.transport + ' • ' + (s.toolCount||0) + ' tools</div></div>';
+        html += '<span class="badge" style="background:' + statusColor + ';color:#000;flex-shrink:0;margin:0 10px;">' + esc(s.status || 'unknown') + '</span>';
+        html += '<div style="display:flex;gap:4px;flex-shrink:0;">';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;" onclick=editGatewayServer(' + escQuote(s.id) + ')>Edit</button>';
+        html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;color:var(--accent-red);" onclick=deleteGatewayServer(' + escQuote(s.id) + ',' + escQuote(s.name) + ')>Del</button>';
+        html += '</div></div>';
       });
       html += '</div>';
     }
     c.innerHTML = html;
   } catch(e) {
-    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load MCP Gateway: ' + esc(String(e)) + '</div>';
+    c.innerHTML = '<div class="widget-loading" style="color:var(--accent-red);">Failed to load: ' + esc(String(e)) + '</div>';
   }
+}
+
+async function loadGatewayServers() {
+  var c = gwContent();
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading servers…</div>';
+  try {
+    var r = await fetch(BASE + '/api/mcp-gateway/servers');
+    var data = await r.json();
+    var servers = data.servers || [];
+    if (servers.length === 0) {
+      c.innerHTML = '<div class="empty" style="margin-top:40px;">No managed servers.<br><br><button class="btn btn-primary" onclick="showGatewayServerAddModal()" style="font-size:11px;">+ Add Server</button></div>';
+      return;
+    }
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+    servers.forEach(function(s) {
+      var statusColor = s.status === 'healthy' ? 'var(--accent-green)' : s.status === 'degraded' ? 'var(--accent-amber)' : 'var(--accent-red)';
+      html += '<div class="card" style="padding:14px;">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+      html += '<span style="font-size:13px;font-weight:600;">' + esc(s.name) + '</span>';
+      html += '<span class="badge" style="background:' + statusColor + ';color:#000;">' + esc(s.status) + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;">' + esc(s.id) + '</div>';
+      html += '<div style="display:flex;gap:16px;font-size:11px;">';
+      html += '<span><span style="color:var(--text3);">Endpoint:</span> <code>' + esc(s.endpoint) + '</code></span>';
+      html += '<span><span style="color:var(--text3);">Transport:</span> ' + esc(s.transport) + '</span>';
+      html += '<span><span style="color:var(--text3);">Tools:</span> ' + (s.toolCount||0) + '</span>';
+      if (s.lastHealthCheck) html += '<span><span style="color:var(--text3);">Last check:</span> ' + fmtTimeAgo(s.lastHealthCheck) + '</span>';
+      html += '</div>';
+      html += '<div style="margin-top:8px;display:flex;gap:4px;">';
+      html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;" onclick=editGatewayServer(' + escQuote(s.id) + ')>Edit</button>';
+      html += '<button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--accent-red);" onclick=deleteGatewayServer(' + escQuote(s.id) + ',' + escQuote(s.name) + ')>Delete</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div style="color:var(--accent-red);font-size:12px;">Failed to load: ' + esc(String(e)) + '</div>';
+  }
+}
+
+async function loadGatewayApprovals() {
+  var c = gwContent();
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading approval queue…</div>';
+  try {
+    var r = await fetch(BASE + '/api/mcp-gateway/approvals');
+    var approvals = await r.json();
+    if (!Array.isArray(approvals) || approvals.length === 0) {
+      c.innerHTML = '<div class="empty" style="margin-top:40px;text-align:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" style="margin:0 auto 8px;display:block;opacity:0.4;"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>No pending approvals</div>';
+      return;
+    }
+    var html = '<h3 style="font-size:13px;font-weight:600;margin-bottom:10px;">Pending Approvals (' + approvals.length + ')</h3>';
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    approvals.forEach(function(a) {
+      var riskColor = a.riskLevel === 'critical' ? 'var(--accent-red)' : a.riskLevel === 'high' ? 'var(--accent-amber)' : a.riskLevel === 'medium' ? 'var(--accent)' : 'var(--text3)';
+      html += '<div class="card" style="padding:12px;display:flex;align-items:center;justify-content:space-between;">';
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+      html += '<span style="font-size:12px;font-weight:600;">' + esc(a.toolName) + '</span>';
+      html += '<span class="badge" style="background:' + riskColor + ';color:#000;font-size:9px;">' + esc(a.riskLevel) + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:var(--text3);">Server: ' + esc(a.serverId) + ' • Requested by: ' + esc(a.requestedBy) + ' • ' + fmtTimeAgo(a.requestedAt) + '</div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:4px;flex-shrink:0;">';
+      html += '<button class="btn" style="font-size:10px;padding:2px 10px;background:var(--accent-green);color:#000;" onclick=approveGatewayItem(' + escQuote(a.id) + ')>Approve</button>';
+      html += '<button class="btn" style="font-size:10px;padding:2px 10px;background:var(--accent-red);color:#fff;" onclick=denyGatewayItem(' + escQuote(a.id) + ')>Deny</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div style="color:var(--accent-red);font-size:12px;">Failed to load: ' + esc(String(e)) + '</div>';
+  }
+}
+
+async function loadGatewayAudit() {
+  var c = gwContent();
+  if (!c) return;
+  c.innerHTML = '<div class="widget-loading">Loading audit log…</div>';
+  try {
+    var r = await fetch(BASE + '/api/mcp-gateway/audit?limit=50');
+    var data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      c.innerHTML = '<div class="empty" style="margin-top:40px;">No audit entries yet. Tool calls will appear here.</div>';
+      return;
+    }
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    html += '<thead><tr style="text-align:left;border-bottom:1px solid var(--border);">';
+    html += '<th style="padding:8px 10px;font-weight:600;color:var(--text3);">Time</th>';
+    html += '<th style="padding:8px 10px;font-weight:600;color:var(--text3);">Server</th>';
+    html += '<th style="padding:8px 10px;font-weight:600;color:var(--text3);">Tool</th>';
+    html += '<th style="padding:8px 10px;font-weight:600;color:var(--text3);">Client</th>';
+    html += '<th style="padding:8px 10px;font-weight:600;color:var(--text3);">Latency</th>';
+    html += '<th style="padding:8px 10px;font-weight:600;color:var(--text3);">Status</th>';
+    html += '</tr></thead><tbody>';
+    data.forEach(function(e) {
+      html += '<tr style="border-bottom:1px solid var(--border);">';
+      html += '<td style="padding:6px 10px;white-space:nowrap;">' + esc(e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '') + '</td>';
+      html += '<td style="padding:6px 10px;"><code>' + esc(e.serverId || '') + '</code></td>';
+      html += '<td style="padding:6px 10px;">' + esc(e.toolName || '') + '</td>';
+      html += '<td style="padding:6px 10px;">' + esc(e.clientId || '') + '</td>';
+      html += '<td style="padding:6px 10px;">' + (e.latencyMs || 0) + 'ms</td>';
+      html += '<td style="padding:6px 10px;color:' + (e.success ? 'var(--accent-green)' : 'var(--accent-red)') + ';">' + (e.success ? '✓' : '✗') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    c.innerHTML = html;
+  } catch(e) {
+    c.innerHTML = '<div style="color:var(--accent-red);font-size:12px;">Failed: ' + esc(String(e)) + '</div>';
+  }
+}
+
+// Gateway Server CRUD
+
+function showGatewayServerAddModal() {
+  ensureGatewayModals();
+  document.getElementById('gw-server-modal-title').textContent = 'Add Gateway Server';
+  document.getElementById('gw-server-edit-id').value = '';
+  document.getElementById('gw-server-name').value = '';
+  document.getElementById('gw-server-endpoint').value = '';
+  document.getElementById('gw-server-transport').value = 'http';
+  document.getElementById('gw-server-tags').value = '';
+  document.getElementById('gw-server-modal').style.display = 'flex';
+}
+
+async function editGatewayServer(id) {
+  ensureGatewayModals();
+  try {
+    var r = await fetch(BASE + '/api/mcp-gateway/servers/' + encodeURIComponent(id));
+    if (!r.ok) { toast('Server not found', 'error'); return; }
+    var s = await r.json();
+    var title = document.getElementById('gw-server-modal-title');
+    var editId = document.getElementById('gw-server-edit-id');
+    var name = document.getElementById('gw-server-name');
+    var endpoint = document.getElementById('gw-server-endpoint');
+    var transport = document.getElementById('gw-server-transport');
+    var tags = document.getElementById('gw-server-tags');
+    var modal = document.getElementById('gw-server-modal');
+    if (!title || !editId || !name || !endpoint || !transport || !tags || !modal) {
+      toast('Gateway dialog failed to open', 'error');
+      return;
+    }
+    title.textContent = 'Edit Gateway Server';
+    editId.value = s.id;
+    name.value = s.name || '';
+    endpoint.value = s.endpoint || '';
+    transport.value = s.transport || 'http';
+    tags.value = (s.tags || []).join(', ');
+    modal.style.display = 'flex';
+  } catch(e) {
+    toast('Failed to load server: ' + esc(String(e)), 'error');
+  }
+}
+
+async function saveGatewayServer() {
+  var editId = document.getElementById('gw-server-edit-id').value;
+  var name = document.getElementById('gw-server-name').value.trim();
+  var endpoint = document.getElementById('gw-server-endpoint').value.trim();
+  var transport = document.getElementById('gw-server-transport').value;
+  var tags = document.getElementById('gw-server-tags').value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+
+  if (!name || !endpoint) { toast('Name and Endpoint are required', 'error'); return; }
+
+  var isEdit = !!editId;
+  var url = BASE + '/api/mcp-gateway/servers' + (isEdit ? '/' + encodeURIComponent(editId) : '');
+  var method = isEdit ? 'PUT' : 'POST';
+  var body = { name: name, endpoint: endpoint, transport: transport, tags: tags };
+
+  try {
+    var r = await fetch(url, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) { var err = await r.text(); toast('Failed: ' + err, 'error'); return; }
+    document.getElementById('gw-server-modal').style.display = 'none';
+    toast(isEdit ? 'Server updated' : 'Server added', 'success');
+    loadGatewayOverview();
+  } catch(e) {
+    toast('Save failed: ' + esc(String(e)), 'error');
+  }
+}
+
+async function deleteGatewayServer(id, name) {
+  ensureGatewayModals();
+  var msg = document.getElementById('gw-confirm-msg');
+  var ok = document.getElementById('gw-confirm-ok');
+  var modal = document.getElementById('gw-confirm-modal');
+  if (!msg || !ok || !modal) {
+    toast('Gateway dialog failed to open', 'error');
+    return;
+  }
+  msg.textContent = 'Delete server "' + name + '"?';
+  ok.onclick = async function() {
+    try {
+      var r = await fetch(BASE + '/api/mcp-gateway/servers/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!r.ok) { toast('Delete failed', 'error'); return; }
+      closeGatewayModal('gw-confirm-modal');
+      toast('Server deleted', 'success');
+      loadGatewayOverview();
+    } catch(e) {
+      toast('Delete failed: ' + esc(String(e)), 'error');
+    }
+  };
+  modal.style.display = 'flex';
+}
+
+function ensureGatewayModals() {
+  if (!document.getElementById('gw-confirm-modal')) {
+    var body = document.body;
+    var m = document.createElement('div');
+    m.innerHTML = '<div id="gw-confirm-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1001;align-items:center;justify-content:center;"><div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.3);"><div style="padding:20px;text-align:center;"><p style="font-size:13px;margin-bottom:16px;" id="gw-confirm-msg"></p><div style="display:flex;gap:8px;justify-content:center;"><button class="btn btn-ghost" onclick="closeGatewayModal(\\'gw-confirm-modal\\')" style="font-size:11px;">Cancel</button><button class="btn btn-danger" id="gw-confirm-ok" style="font-size:11px;">Confirm</button></div></div></div></div>';
+    body.appendChild(m.firstElementChild);
+  }
+  if (!document.getElementById('gw-server-modal')) {
+    var body = document.body;
+    var m = document.createElement('div');
+    m.innerHTML = '<div id="gw-server-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;"><div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.3);"><div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><h3 style="font-size:14px;font-weight:600;" id="gw-server-modal-title">Add Gateway Server</h3><button class="btn btn-ghost" onclick="closeGatewayModal(\\'gw-server-modal\\')" style="font-size:18px;padding:0 4px;">\u2715</button></div><div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;"><input type="hidden" id="gw-server-edit-id"><div><label style="font-size:11px;font-weight:500;display:block;margin-bottom:4px;">Name</label><input id="gw-server-name" class="inp" placeholder="e.g. my-mcp-server" style="width:100%;"></div><div><label style="font-size:11px;font-weight:500;display:block;margin-bottom:4px;">Endpoint</label><input id="gw-server-endpoint" class="inp" placeholder="http://localhost:9187/mcp" style="width:100%;"></div><div><label style="font-size:11px;font-weight:500;display:block;margin-bottom:4px;">Transport</label><select id="gw-server-transport" class="inp" style="width:100%;"><option value="http">HTTP</option><option value="stdio">Stdio</option></select></div><div><label style="font-size:11px;font-weight:500;display:block;margin-bottom:4px;">Tags (comma-separated)</label><input id="gw-server-tags" class="inp" placeholder="production, critical" style="width:100%;"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;"><button class="btn btn-ghost" onclick="closeGatewayModal(\\'gw-server-modal\\')" style="font-size:11px;">Cancel</button><button class="btn btn-primary" onclick="saveGatewayServer()" style="font-size:11px;">Save Server</button></div></div></div></div>';
+    body.appendChild(m.firstElementChild);
+  }
+}
+
+// Gateway Approvals
+
+async function approveGatewayItem(id) {
+  try {
+    var r = await fetch(BASE + '/api/mcp-gateway/approvals/' + encodeURIComponent(id) + '/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reviewedBy: 'ui' }) });
+    if (!r.ok) { toast('Approve failed', 'error'); return; }
+    toast('Approved', 'success');
+    loadGatewayApprovals();
+  } catch(e) { toast('Error: ' + esc(String(e)), 'error'); }
+}
+
+async function denyGatewayItem(id) {
+  try {
+    var r = await fetch(BASE + '/api/mcp-gateway/approvals/' + encodeURIComponent(id) + '/deny', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reviewedBy: 'ui', reason: 'Denied from UI' }) });
+    if (!r.ok) { toast('Deny failed', 'error'); return; }
+    toast('Denied', 'success');
+    loadGatewayApprovals();
+  } catch(e) { toast('Error: ' + esc(String(e)), 'error'); }
 }
 
 // ── Memori Page ─────────────────────────────────────────
@@ -336,6 +626,11 @@ async function forkCheckpointUI(checkpointId) {
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escQuote(s) {
+  if (!s) return "''";
+  return "'" + String(s).replace(/&/g,'&amp;').replace(/'/g,"\\'").replace(/"/g,'&quot;') + "'";
 }
 
 // ── Memory page patching ─────────────────────────────────────────────

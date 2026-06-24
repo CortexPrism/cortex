@@ -37,5 +37,4 @@ export const PAGE_MCP = `
       </div>
     </div>
   </div>
-
 `;

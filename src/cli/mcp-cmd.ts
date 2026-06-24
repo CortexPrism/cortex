@@ -241,12 +241,12 @@ mcpCommand
           .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
             const { listServers, getHealthyServers, getDegradedServers, getServerCount } =
               await import('../mcp-gateway/mod.ts');
-            const servers = listServers();
-            const healthy = getHealthyServers();
-            const degraded = getDegradedServers();
+            const servers = await listServers();
+            const healthy = await getHealthyServers();
+            const degraded = await getDegradedServers();
             console.log(bold('\nMCP Gateway Status'));
             console.log(
-              `Total: ${getServerCount()} | ${green(`Healthy: ${healthy.length}`)} | ${
+              `Total: ${await getServerCount()} | ${green(`Healthy: ${healthy.length}`)} | ${
                 degraded.length > 0 ? red(`Degraded: ${degraded.length}`) : `Degraded: 0`
               }`,
             );
@@ -285,7 +285,7 @@ mcpCommand
           .action(async (_opts: Record<string, unknown>, _ctx: Ctx) => {
             const { listServers, updateServer } = await import('../mcp-gateway/mod.ts');
             const { healthCheck } = await import('../mcp-gateway/gateway.ts');
-            const servers = listServers();
+            const servers = await listServers();
             if (servers.length === 0) {
               console.log(yellow(i18n.t('cli.mcp.noManagedServersCheck')));
               return;
@@ -303,7 +303,7 @@ mcpCommand
               );
               if (result.error) console.log(`    Error: ${result.error}`);
               if (result.status !== server.status) {
-                updateServer(server.id, {
+                await updateServer(server.id, {
                   status: result.status,
                   lastHealthCheck: result.checkedAt,
                 });

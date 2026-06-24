@@ -408,6 +408,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '048_triggers_persistence.sql',
       label: 'cortex.db (triggers persistence)',
     },
+    {
+      db: coreDb,
+      sqlFile: '049_mcp_gateway.sql',
+      label: 'cortex.db (MCP gateway servers + audit)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

@@ -31,6 +31,7 @@ import { PAGE_SOUL } from './pages/soul.ts';
 import { PAGE_QUARTERMASTER } from './pages/quartermaster.ts';
 import { PAGE_MEMORI } from './pages/memori.ts';
 import { PAGE_SANDBOX } from './pages/sandbox.ts';
+import { PAGE_MCP_GATEWAY } from './pages/mcp-gateway.ts';
 import { PAGE_PROMPTLAB } from './pages/promptlab.ts';
 import { PAGE_PKM } from './pages/pkm.ts';
 import { PAGE_ALCOVE } from './pages/alcove.ts';
@@ -112,6 +113,7 @@ const ALL_PAGES = PAGE_CHAT +
   PAGE_QUARTERMASTER +
   PAGE_MEMORI +
   PAGE_SANDBOX +
+  PAGE_MCP_GATEWAY +
   PAGE_PROMPTLAB +
   PAGE_PKM +
   PAGE_ALCOVE +

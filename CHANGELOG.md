@@ -104,6 +104,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Fixed
 
+- **Settings panes and workspace tree noise** — restored the settings page DOM structure so the
+  General, AI & Models, Tools & Integrations, System, and Debug panes render as sibling sections,
+  and filtered the editor/workspace tree to skip hidden/tooling directories (`.kilo`, `.deno`,
+  `node_modules`, `target`, etc.) so the browser no longer spams 404s for cache paths.
+  (`src/server/ui/js/12_settings.ts`, `packages/server/src/server/ui/js/12_settings.ts`,
+  `src/server/ui/js/14_editor.ts`, `packages/server/src/server/ui/js/14_editor.ts`,
+  `src/server/routes/workspace.ts`, `packages/server/src/server/routes/workspace.ts`)
+
 - **Job API input validation** — `POST /api/jobs` now validates that `name` is present, a string,
   non-empty, and ≤200 characters; `command` is required for shell jobs. Returns clean 400 errors
   instead of silently creating broken jobs. (`src/server/routes/jobs-crud.ts`)
@@ -116,6 +124,17 @@ Versioning: [Semantic Versioning](https://semver.org/)
   filesystem state. Additionally, `POST /api/codegraph/index` now calls `createProject()`
   before indexing, ensuring every indexed repo gets a filesystem project entry that persists
   across server restarts. (`src/server/routes/codegraph.ts`)
+
+- **Codegraph: incrementalSync produced disconnected nodes** — `incrementalSync()` created symbol
+  nodes for changed files but never built `CodeFile` container nodes or `CONTAINS_FILE` edges,
+  so all nodes from watcher-triggered or manual incremental syncs became orphans. Now mirrors the
+  full `indexRepository` logic: a `CodeFile` container node is created per file, and
+  `CONTAINS_FILE` edges (confidence 0.99) connect it to every symbol node in that file.
+  Additionally, `buildResolutionContext()` was populating `fileNodeMap` with an arbitrary
+  first-symbol-node ID per file instead of the actual CodeFile node ID. The function now accepts
+  an explicit `fileNodeIdMap` parameter from callers, ensuring edge source-ID fallbacks point to
+  real CodeFile containers rather than unrelated symbol nodes.
+  (`src/codegraph/sync.ts`, `src/codegraph/resolver.ts`)
 
 ## [0.53.1] - 2026-06-24
 

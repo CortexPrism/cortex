@@ -1,6 +1,19 @@
 import { err, json, type RouteHandler } from './_helpers.ts';
 import { dirname } from '@std/path';
 
+const SKIP_DIRS = new Set([
+  '.git',
+  '.kilo',
+  '.cache',
+  '.deno',
+  'node_modules',
+  'target',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+]);
+
 export const routes: RouteHandler[] = [
   {
     method: 'GET',
@@ -62,6 +75,7 @@ export const routes: RouteHandler[] = [
         if (stat.isDirectory) {
           const entries: string[] = [];
           for await (const entry of Deno.readDir(targetPath)) {
+            if (shouldSkipWorkspaceEntry(entry.name)) continue;
             entries.push(entry.isDirectory ? entry.name + '/' : entry.name);
           }
           return json(entries.sort());
@@ -121,6 +135,7 @@ export const routes: RouteHandler[] = [
         if (stat.isDirectory) {
           const entries: string[] = [];
           for await (const entry of Deno.readDir(targetPath)) {
+            if (shouldSkipWorkspaceEntry(entry.name)) continue;
             entries.push(entry.isDirectory ? entry.name + '/' : entry.name);
           }
           return json(entries.sort());
@@ -173,4 +188,8 @@ export const routes: RouteHandler[] = [
 
 function workspaceRelPath(match: RegExpMatchArray, group = 2): string {
   return (match[group] ?? '').replace(/^\//, '');
+}
+
+function shouldSkipWorkspaceEntry(name: string): boolean {
+  return SKIP_DIRS.has(name) || (name.startsWith('.') && name !== '.github' && name !== '.vscode');
 }
