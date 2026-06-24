@@ -7,6 +7,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Added
+
+- **Locale translations** — all 10 non-English locale files (ar, de, es, fr, hi, ja, ko, pt, ru, zh)
+  fully translated from English source. Preserves `{variable}` placeholders, Unicode symbols, CLI
+  commands, and JSON structure. (`locales/*.json`)
+
 ## [0.52.0] - 2026-06-23
 
 ### Added
