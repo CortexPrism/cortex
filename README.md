@@ -19,7 +19,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Deno 2.x](https://img.shields.io/badge/runtime-Deno%202.x-black)](https://deno.land)
-[![Version](https://img.shields.io/badge/version-0.51.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.53.0-green)](CHANGELOG.md)
 [![CI](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/CortexPrism/cortex/actions/workflows/ci.yml)
 [![Discord](https://img.shields.io/discord/1515847007372181584?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://discord.gg/wYxbmQeWY3)
 
@@ -28,7 +28,7 @@ runtime that turns any LLM into a capable digital agent. It provides persistent 
 ecosystem, sandboxed code execution, multi-agent orchestration, a full-featured web UI, and
 enterprise-grade security — all running locally on your machine or server.
 
-- Works with **24 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
+- Works with **30 LLM providers** out of the box (Anthropic, OpenAI, Gemini, Groq, Ollama, and more)
 - Ships as a **single Deno binary** — no Docker required to get started
 - **100% open source** — Apache 2.0 licensed, no telemetry, data stays on your machine
 
@@ -54,10 +54,11 @@ enterprise-grade security — all running locally on your machine or server.
 
 ### AI Providers & Model Routing
 
-- **24 LLM providers** — Anthropic Claude, OpenAI GPT, Google Gemini, Mistral, Groq, DeepSeek,
+- **30 LLM providers** — Anthropic Claude, OpenAI GPT, Google Gemini, Mistral, Groq, DeepSeek,
   OpenRouter, xAI Grok, Together AI, AWS Bedrock, Cohere, Ollama (local models), Cerebras,
   Fireworks, Perplexity, NVIDIA NIM, Moonshot (Kimi), Novita AI, LM Studio, LiteLLM, Hugging Face,
-  Alibaba (Qwen), Venice AI, Kilo AI
+  Alibaba (Qwen), Venice AI, Kilo AI, DeepInfra, Hyperbolic, MiniMax, Zhipu (GLM), Replicate,
+  Cloudflare Workers AI
 - **Multimodal input** — upload images and documents; native vision support for Anthropic and Google
   Gemini; PDF text auto-extracted for all providers
 - **Model Quartermaster (MQM)** — intelligent model selection that learns which model performs best
@@ -72,9 +73,9 @@ enterprise-grade security — all running locally on your machine or server.
   session resume
 - **Tool use with approval gates** — every tool call is reviewed by the security policy before
   execution; agents can request human approval for sensitive operations
-- **Sub-agent orchestration** — agents can spawn 11 specialized child agents (Explorer, Coder,
-  Researcher, Planner, Generalist, Security Auditor, Debugger, Architect, DevOps, Data Analyst, UI
-  Designer) for parallel and delegated work
+- **Sub-agent orchestration** — agents can spawn 13 specialized child agents (Explorer, Coder,
+  Researcher, Planner, Generalist, Security Auditor, Debugger, Architect, DevOps Engineer, Data
+  Analyst, UI/UX Designer, Code Reviewer, Technical Writer) for parallel and delegated work
 - **Per-turn reflection** — LLM self-assessment of confidence and quality after each response; meta-
   pattern consolidation over time
 - **Voice pipeline** — speech-to-text (OpenAI Whisper), text-to-speech (OpenAI TTS / ElevenLabs),
@@ -221,6 +222,10 @@ See [docs/computer-use/README.md](docs/computer-use/README.md) for the full guid
 
 ### Ops & Extensibility
 
+- **Multi-user collaboration** — users, teams, API tokens with SHA-256 hashing, resource scoping,
+  federation between instances
+- **Distributed swarm** — cross-instance agent coordination via A2A protocol with fleet topology,
+  resource aggregation, and directive dispatch
 - **Scheduled jobs** — SQLite-persisted cron with automatic retry
 - **Daemon supervisor** — manages validator, executor, and scheduler processes with exponential
   backoff restart
@@ -350,6 +355,11 @@ Commands:
   desktop           Desktop automation
   workflow          Workflow engine operations
   projects          Project management
+  swarm             Distributed agent swarm (init, nodes, topology, report)
+  login             Authenticate with username/password or API token
+  whoami            Show current authenticated user
+  users             User management (list, create, disable, enable)
+  teams             Team management (list, create)
 ```
 
 ### `cortex agent chat`

@@ -7,8 +7,8 @@ most recent version.
 
 | Version         | Supported           |
 | --------------- | ------------------- |
-| 0.46.x (latest) | Yes                 |
-| < 0.46          | No — please upgrade |
+| 0.53.x (latest) | Yes                 |
+| < 0.53          | No — please upgrade |
 
 ---
 

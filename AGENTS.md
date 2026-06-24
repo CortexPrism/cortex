@@ -8,21 +8,21 @@ ecosystem, sandboxed code execution, multi-agent orchestration, a full-featured 
 enterprise-grade security.
 
 - **License**: Apache 2.0
-- **Version**: 0.51.0 (see `deno.json`)
+- **Version**: 0.53.0 (see `deno.json`)
 - **Repository**: `CortexPrism/cortex` on GitHub
 - **CI**: `.github/workflows/ci.yml` (runs on push to `main`)
 
 ## Tech Stack
 
-| Layer           | Technology                                           |
-| --------------- | ---------------------------------------------------- |
-| Runtime         | Deno 2.x (TypeScript strict mode)                    |
-| Database        | libSQL (SQLite-compatible) via `@libsql/client`      |
-| Testing         | Deno test runner                                     |
-| CLI framework   | `@cliffy/command`                                    |
-| LLM SDKs        | Anthropic, OpenAI, Google Generative AI, AWS Bedrock |
-| Frontend        | Inline SPA (Tailwind CDN, CodeMirror 6, vanilla JS)  |
-| Package manager | Deno import maps (`deno.json`)                       |
+| Layer           | Technology                                                            |
+| --------------- | --------------------------------------------------------------------- |
+| Runtime         | Deno 2.x (TypeScript strict mode)                                     |
+| Database        | libSQL (SQLite-compatible) via `@libsql/client`                       |
+| Testing         | Deno test runner                                                      |
+| CLI framework   | `@cliffy/command`                                                     |
+| LLM SDKs        | Anthropic, OpenAI, Google Generative AI, AWS Bedrock                  |
+| Frontend        | Inline SPA (Tailwind CDN, CodeMirror 6, vanilla JS, 78 modular files) |
+| Package manager | Deno import maps (`deno.json`)                                        |
 
 ## Build & CI Commands
 
@@ -30,7 +30,7 @@ enterprise-grade security.
 deno task check      # Type-check all files
 deno task lint       # Lint all files
 deno task fmt        # Format all files (auto-fix)
-deno task test       # Run all 303 tests (sets --allow-all)
+deno task test       # Run all tests (sets --allow-all)
 deno run --allow-all src/main.ts <command>  # Run CLI
 ```
 
@@ -71,11 +71,11 @@ src/
 ├── server/
 │   server.ts       — HTTP server entry (composition root for server)
 │   new-router.ts   — route dispatcher (replaced 6,075-line monolith)
-│   routes/         — 62 route modules (one per API area)
+│   routes/         — 69 route modules (one per API area)
 │   ui/
 │   │   mod.ts      — UI assembler (concatenates JS + HTML)
-│   │   js/         — 25 concatenated JS modules
-│   │   pages/      — 41 page HTML templates
+│   │   js/         — 29 concatenated JS modules
+│   │   pages/      — 46 page HTML templates
 │   │   shared/     — shared utilities
 │   │   css.ts      — embedded CSS
 │   │   shell.ts    — sidebar/layout HTML
@@ -134,14 +134,14 @@ Sub-agent dispatch is parallel via `Promise.all`.
 
 ### Router (`src/server/new-router.ts`)
 
-Routes are defined as `RouteHandler[]` arrays in 62 files under `src/server/routes/`. Each handler
+Routes are defined as `RouteHandler[]` arrays in 69 files under `src/server/routes/`. Each handler
 is `{ method: string; pattern: RegExp; handler: (req, path) => Response }`. The dispatcher splits
 routes into `publicRoutes` and `protectedRoutes`, running the auth guard (`requireAuth`) between
 them. Route ORDER matters — handlers are tried in registration order via regex matching.
 
 ### UI Assembly (`src/server/ui/mod.ts`)
 
-The SPA is assembled by concatenating 25 JS files and 41 HTML page templates into a single
+The SPA is assembled by concatenating 29 JS files and 46 HTML page templates into a single
 `<script>` block. Global variables (`ws`, `sessionId`, `currentPage`, etc.) are shared across all JS
 modules since they're concatenated into one scope. The `DASHBOARD_JS` template literal is injected
 at a specific position. `serveUi(locale)` generates the full HTML response with `{LOCALE}`
@@ -152,19 +152,19 @@ replacement.
 5 SQLite databases in WAL mode:
 
 - `cortex.db` — sessions, jobs, policies, services, nodes, workspace, agents, channels, triggers,
-  workflows, projects
+  workflows, projects, users, teams, tokens, federation
 - `memory.db` — episodic_memory, semantic_memory, memory_graph, reflections, skills, glossary,
-  preferences
+  preferences (scoped per user/team)
 - `lens.db` — activity audit log (tool calls, LLM calls, policy decisions, approvals)
 - `vault.db` — AES-256-GCM encrypted credentials (PBKDF2 key derivation)
 - `plugins.db` — plugin registry
 
-Migrations are in `src/db/migrations/` (NNN_name.sql format, currently 42 migrations). Register new
-migrations in `src/db/migrate.ts`.
+Migrations are in `packages/core/src/db/migrations/` (NNN_name.sql format, currently 47 migrations).
+Register new migrations in `packages/core/src/db/migrate.ts`.
 
 ### LLM Provider System
 
-24 providers implemented in `packages/ai/src/llm/`. Each implements `LLMProvider` with `complete()`
+30 providers implemented in `packages/ai/src/llm/`. Each implements `LLMProvider` with `complete()`
 and `stream()` methods. The router (`llm/router.ts`) supports cascade (cheapest-first) and threshold
 (prompt-scoring) strategies. Model Quartermaster (`model-quartermaster/`) uses 6-signal prediction
 for intelligent model selection.
@@ -177,6 +177,21 @@ Three-layer Parallax model:
 2. **LLM supervisor** — fast model (Gemini Flash/GPT-4o Mini) reviews sensitive access with decision
    caching
 3. **Human approval** — CLI prompts + Web UI modal with 1-hour TTL grants
+
+### Multi-User & Federation (`src/server/auth.ts`, `src/server/identity.ts`)
+
+v0.53.0 added multi-user collaboration with PBKDF2 password hashing, team management with join
+policies, API token authentication (SHA-256 hashed), resource sharing between users, and
+instance-to-instance federation. The `RequestIdentity` interface carries user/team/admin context
+through all API routes. Authorization guards (`requireInstanceAdmin`, `requireTeamAdmin`,
+`requireTeamMember`, `requireResourceOwner`) enforce coarse permission checks.
+
+### Swarm (`packages/infra/src/swarm/`)
+
+Distributed agent coordination across multiple Cortex instances using A2A protocol as the wire
+transport. Nodes register, discover peers, dispatch directives, and aggregate resource usage across
+the fleet. 5 directive kinds: `spawn_agent`, `execute_task`, `query_resources`, `forward_message`,
+`sync_state`. Remote processes are proxied into the local `OsKernel` process tree.
 
 ### Pipeline Hooks
 
@@ -227,16 +242,18 @@ execution, or observe results. Registered via `IPipelineManager.registerHook()`.
 
 ## Key Files to Know
 
-| File                                   | Purpose                       | Lines |
-| -------------------------------------- | ----------------------------- | ----- |
-| `src/main.ts`                          | CLI composition root          | ~103  |
-| `src/agent/loop.ts`                    | Agent turn orchestrator       | ~81   |
-| `src/server/server.ts`                 | HTTP server entry             | ~300  |
-| `src/server/new-router.ts`             | API route dispatcher          | ~200  |
-| `src/server/ui/mod.ts`                 | UI assembler                  | ~220  |
-| `packages/ai/src/tools/registry.ts`    | Tool registry                 | ~319  |
-| `packages/ai/src/llm/router.ts`        | Model router                  | ~400  |
-| `packages/gate/src/security/policy.ts` | Policy engine                 | ~500  |
-| `packages/core/src/db/client.ts`       | Database client               | ~200  |
-| `packages/core/src/config/config.ts`   | Config loading                | ~500  |
-| `deno.json`                            | Workspace config + import map | ~73   |
+| File                                      | Purpose                       | Lines |
+| ----------------------------------------- | ----------------------------- | ----- |
+| `src/main.ts`                             | CLI composition root          | ~103  |
+| `src/agent/loop.ts`                       | Agent turn orchestrator       | ~81   |
+| `src/server/server.ts`                    | HTTP server entry             | ~300  |
+| `src/server/new-router.ts`                | API route dispatcher          | ~200  |
+| `src/server/ui/mod.ts`                    | UI assembler                  | ~220  |
+| `packages/ai/src/tools/registry.ts`       | Tool registry                 | ~319  |
+| `packages/ai/src/llm/router.ts`           | Model router                  | ~400  |
+| `packages/gate/src/security/policy.ts`    | Policy engine                 | ~500  |
+| `packages/core/src/db/client.ts`          | Database client               | ~200  |
+| `packages/core/src/config/config.ts`      | Config loading                | ~500  |
+| `src/server/auth.ts`                      | Auth + identity extraction    | ~400  |
+| `packages/infra/src/swarm/coordinator.ts` | Swarm coordinator             | ~300  |
+| `deno.json`                               | Workspace config + import map | ~73   |

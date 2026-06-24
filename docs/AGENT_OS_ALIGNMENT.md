@@ -1,6 +1,8 @@
 # CortexPrism: Agent Harness → Agent Operating System — Alignment Audit
 
-**Version**: 0.48.5 | **Audit Date**: 2026-06-21 | **Status**: Completed
+**Version**: 0.48.5 | **Audit Date**: 2026-06-21 | **Status**: Completed (Historical)
+
+> **Note**: This alignment audit was completed for v0.48.5. The project has since released v0.49.0 through v0.53.0 with major additions including swarm/distributed agent coordination (v0.52.0) and multi-user collaboration with teams, API tokens, and federation (v0.53.0). All terminology updates identified in this audit have been applied. See [CHANGELOG.md](../CHANGELOG.md) for current state.
 
 This is the source-of-truth document for the transition from "agentic harness" to "AI agent operating system" across every layer of CortexPrism.
 

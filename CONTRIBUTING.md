@@ -124,8 +124,8 @@ Refer to an existing simple tool (e.g. `packages/ai/src/tools/builtin/web_fetch.
 
 ## Adding a Database Migration
 
-1. Create `src/db/migrations/NNN_description.sql` using the next sequential number
-2. Add an entry to the `targets` array in `src/db/migrate.ts`
+1. Create `packages/core/src/db/migrations/NNN_description.sql` using the next sequential number
+2. Add an entry to the `targets` array in `packages/core/src/db/migrate.ts`
 3. Migrations are idempotent and guarded by checksum — **never edit a migration that has already
    been applied**; always create a new migration for changes
 

@@ -117,6 +117,14 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Changed
 
+- **Documentation overhaul** — updated all version references from 0.51.0 to 0.53.0 across root
+  docs (AGENTS.md, README.md, CONTRIBUTING.md, SECURITY.md), wiki pages (Home, AGENTS, Sidebar,
+  Architecture, CLI-Reference, Configuration, Distributed-Nodes, Security, Plugin-System, Changelog,
+  LLM-Providers, Agent-Loop, Built-in-Agents), and active docs (ARCHITECTURE.md, AGENT_OS_ALIGNMENT).
+  Created 5 new wiki pages (Swarm, Multi-User-Collaboration, API-Tokens, Federation, Login-&-Auth).
+  Updated provider count 24→30, route modules 62→69, UI modules 74→78, migrations 42→47, and DB
+  migration paths to reflect the packages/core/ source layout.
+
 ### Fixed
 
 ### Removed
