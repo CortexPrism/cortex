@@ -5,6 +5,25 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [0.53.1] - 2026-06-24
+
+### Fixed
+
+- **Remove dead `mcp-gateway-cmd.ts` CLI file** — deprecated command orphan that was not
+  registered in the CLI command tree. The gateway functionality moved to `cortex mcp gateway`.
+  (`src/cli/mcp-gateway-cmd.ts`, `packages/cli/src/cli/mcp-gateway-cmd.ts`)
+
+- **Sync migrations to `@cortex/core` package** — migrations 044–047 (users/teams, vault scoping,
+  memory scoping, core scoping) existed in `src/db/migrations/` but were missing from
+  `packages/core/src/db/migrations/`, causing a pack sync gap for consumers of `@cortex/core`.
+  (`packages/core/src/db/migrations/044_users_teams.sql` through `047_core_scoping.sql`)
+
+- **Split `eval-routes.ts` catch-all** — 831-line monolithic route file holding 7 different
+  API areas (memori, eval, cost optimizer, observability, benchmarks, PKM, glossary, promptlab,
+  memory benchmark) was split into dedicated route files. Prompts routes moved to
+  `src/server/routes/promptlab.ts`, PKM routes to `src/server/routes/pkm.ts`, glossary routes to
+  `src/server/routes/glossary-routes.ts`. All three registered in `src/server/new-router.ts`.
+
 ## [0.53.0] - 2026-06-24
 
 ### Added

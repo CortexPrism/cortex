@@ -69,7 +69,9 @@ import { routes as swarmRoutes } from './routes/swarm.ts';
 import { routes as teamsRoutes } from './routes/teams.ts';
 import { routes as sharesRoutes } from './routes/shares.ts';
 import { routes as federationRoutes } from './routes/federation.ts';
-import { routes as glossaryRoutes } from './routes/glossary.ts';
+import { routes as glossaryRoutes } from './routes/glossary-routes.ts';
+import { routes as pkmRoutes } from './routes/pkm.ts';
+import { routes as promptlabRoutes } from './routes/promptlab.ts';
 
 const publicRoutes: RouteHandler[] = [
   ...corsRoutes,
@@ -143,6 +145,8 @@ const protectedRoutes: RouteHandler[] = [
   ...sharesRoutes,
   ...federationRoutes,
   ...glossaryRoutes,
+  ...pkmRoutes,
+  ...promptlabRoutes,
 ];
 
 export async function handleApi(req: Request): Promise<Response | null> {
