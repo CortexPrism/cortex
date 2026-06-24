@@ -21,6 +21,7 @@ const SLASH_COMMANDS: CompletionCandidate[] = [
   { label: '/diff', description: 'Show last file change as diff', type: 'slash-command' },
   { label: '/review', description: 'Review pending tool approvals', type: 'slash-command' },
   { label: '/plan', description: 'Enter planning mode', type: 'slash-command' },
+  { label: '/soul', description: 'Show agent soul context', type: 'slash-command' },
   { label: '/help', description: 'List all commands and keybindings', type: 'slash-command' },
 ];
 

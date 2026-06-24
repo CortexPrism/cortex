@@ -165,6 +165,71 @@ export const routes: RouteHandler[] = [
   },
   {
     method: 'GET',
+    pattern: /^\/api\/mcp-gateway\/approvals$/,
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const serverId = url.searchParams.get('serverId') || undefined;
+      const { getPendingGatewayApprovals } = await import(
+        '../../mcp-gateway/gateway.ts'
+      );
+      const approvals = getPendingGatewayApprovals(serverId);
+      return json(approvals);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/mcp-gateway\/approvals$/,
+    handler: async (req) => {
+      const body = await req.json() as {
+        serverId: string;
+        toolName: string;
+        args?: Record<string, unknown>;
+        requestedBy?: string;
+        riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+      };
+      if (!body.serverId) return err('Missing serverId', 400);
+      if (!body.toolName) return err('Missing toolName', 400);
+      const { createApproval } = await import('../../mcp-gateway/gateway.ts');
+      const request = createApproval(
+        body.serverId,
+        body.toolName,
+        body.args ?? {},
+        body.requestedBy ?? 'api',
+        body.riskLevel,
+      );
+      return json({ ok: true, request }, 201);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/mcp-gateway\/approvals\/([^/]+)\/approve$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/mcp-gateway\/approvals\/([^/]+)\/approve$/);
+      if (!m) return notFound();
+      const id = m[1];
+      const body = await req.json().catch(() => ({})) as { reviewedBy?: string; reason?: string };
+      const { approveGatewayRequest } = await import('../../mcp-gateway/gateway.ts');
+      const ok = approveGatewayRequest(id, body.reviewedBy ?? 'api', body.reason);
+      if (!ok) return err('Approval not found or not pending', 404);
+      return json({ ok: true, id, status: 'approved' });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/mcp-gateway\/approvals\/([^/]+)\/deny$/,
+    handler: async (req, path) => {
+      const m = path.match(/^\/api\/mcp-gateway\/approvals\/([^/]+)\/deny$/);
+      if (!m) return notFound();
+      const id = m[1];
+      const body = await req.json().catch(() => ({})) as { reviewedBy?: string; reason?: string };
+      const { denyGatewayRequest } = await import('../../mcp-gateway/gateway.ts');
+      const ok = denyGatewayRequest(id, body.reviewedBy ?? 'api', body.reason);
+      if (!ok) return err('Approval not found or not pending', 404);
+      return json({ ok: true, id, status: 'denied' });
+    },
+  },
+  {
+    method: 'GET',
     pattern: /^\/api\/chrome-bridge\/status$/,
     handler: async () => {
       try {

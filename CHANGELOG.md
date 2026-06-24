@@ -115,6 +115,12 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ### Added
 
+- **Glossary REST API** — `GET/POST /api/glossary`, `GET /api/glossary/:term`, `GET /api/glossary/categories` endpoints for term definition, lookup, listing, and category browsing. (`src/server/routes/glossary.ts`, `src/server/new-router.ts`)
+- **AgentLint CLI agent-id support** — `cortex agent lint check <agent-id>` now accepts an optional agent ID for per-agent linting. (`packages/cli/src/cli/agentlint-cmd.ts`, `src/cli/agentlint-cmd.ts`)
+- **/soul TUI slash command** — added `/soul` to TUI completions for showing agent soul/prompt context. (`packages/cli/src/tui/completions.ts`, `src/tui/completions.ts`)
+- **Tool toggle/stats endpoints** — `POST /api/tools/:name/toggle` and `GET /api/tools/:name/stats` route handlers for enabling/disabling tools and querying usage stats. (`src/server/routes/tools-list.ts`)
+- **MCP Gateway approval workflow** — `createApproval()`, `approveGatewayRequest()`, `denyGatewayRequest()`, `getPendingGatewayApprovals()` functions with `POST /api/mcp-gateway/approvals`, `/:id/approve`, `/:id/deny`, `GET /api/mcp-gateway/approvals` REST endpoints. (`packages/server/src/mcp-gateway/gateway.ts`, `src/server/routes/mcp-connections.ts`)
+
 ### Changed
 
 - **Documentation overhaul** — updated all version references from 0.51.0 to 0.53.0 across root
@@ -126,6 +132,16 @@ Versioning: [Semantic Versioning](https://semver.org/)
   migration paths to reflect the packages/core/ source layout.
 
 ### Fixed
+
+- **Wiki accuracy sweep** — fixed 40+ documentation discrepancies across 16 wiki pages: corrected
+  Configuration.md defaults (maxTurns, modelSelection, logging, webAuth, supervisor), Home.md
+  feature counts (9 channel adapters, 11 sub-agent types, 21 DLP scanners), CLI-Reference.md slash
+  commands, Security-Supervisor.md classification default, Code-Sandbox.md Docker images and output
+  limits, Code-Intelligence.md language count, AgentLint.md check count (29), Database-Migrations.md
+  migration count (47) and file paths, Channel-Adapter-API.md shared modules and table name,
+  Model-Routing/Quartermaster.md provider counts, Sub-Agents.md tool lists, Built-in-Tools.md
+  missing file_diff tool, A2A-Protocol.md task states and CLI commands, Architecture.md stale
+  pre-modularization paths, and REST-API.md phantom endpoints (36 marked as planned/🔜).
 
 ### Removed
 

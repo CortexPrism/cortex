@@ -1,7 +1,7 @@
 /**
  * MCP Gateway — Rate limiting, health monitoring, and audit logging.
  */
-import type { AuditLogEntry, HealthCheckResult, McpServerEntry, RateLimitConfig } from './types.ts';
+import type { ApprovalRequest, AuditLogEntry, HealthCheckResult, McpServerEntry, RateLimitConfig } from './types.ts';
 
 export function createRateLimiter(config: RateLimitConfig) {
   const buckets = new Map<string, { tokens: number; lastRefill: number }>();
@@ -154,4 +154,67 @@ export function assessRiskLevel(
   }
 
   return 'low';
+}
+
+const pendingApprovals = new Map<string, ApprovalRequest>();
+
+export function createApproval(
+  serverId: string,
+  toolName: string,
+  args: Record<string, unknown>,
+  requestedBy: string,
+  riskLevel?: ApprovalRequest['riskLevel'],
+): ApprovalRequest {
+  const id = `gw-apr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const request: ApprovalRequest = {
+    id,
+    serverId,
+    toolName,
+    args,
+    riskLevel: riskLevel ?? assessRiskLevel(toolName, args),
+    requestedBy,
+    requestedAt: new Date().toISOString(),
+    status: 'pending',
+  };
+  pendingApprovals.set(id, request);
+  return request;
+}
+
+export function approveGatewayRequest(
+  id: string,
+  reviewedBy: string,
+  reason?: string,
+): boolean {
+  const request = pendingApprovals.get(id);
+  if (!request || request.status !== 'pending') return false;
+  request.status = 'approved';
+  request.reviewedBy = reviewedBy;
+  request.reviewedAt = new Date().toISOString();
+  request.reason = reason;
+  return true;
+}
+
+export function denyGatewayRequest(
+  id: string,
+  reviewedBy: string,
+  reason?: string,
+): boolean {
+  const request = pendingApprovals.get(id);
+  if (!request || request.status !== 'pending') return false;
+  request.status = 'denied';
+  request.reviewedBy = reviewedBy;
+  request.reviewedAt = new Date().toISOString();
+  request.reason = reason;
+  return true;
+}
+
+export function getPendingGatewayApprovals(
+  serverId?: string,
+): ApprovalRequest[] {
+  const all = Array.from(pendingApprovals.values()).filter((r) => r.status === 'pending');
+  return serverId ? all.filter((r) => r.serverId === serverId) : all;
+}
+
+export function getGatewayApproval(id: string): ApprovalRequest | undefined {
+  return pendingApprovals.get(id);
 }

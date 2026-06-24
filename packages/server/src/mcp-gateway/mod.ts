@@ -11,9 +11,14 @@ export type {
 } from './types.ts';
 
 export {
+  approveGatewayRequest,
   assessRiskLevel,
+  createApproval,
   createRateLimiter,
+  denyGatewayRequest,
   getAuditLogs,
+  getGatewayApproval,
+  getPendingGatewayApprovals,
   healthCheck,
   logAudit,
 } from './gateway.ts';
