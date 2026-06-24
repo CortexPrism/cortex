@@ -5,7 +5,7 @@ All notable changes to CortexPrism are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)\
 Versioning: [Semantic Versioning](https://semver.org/)
 
-## [Unreleased]
+## [0.53.0] - 2026-06-24
 
 ### Added
 
@@ -110,6 +110,18 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - **`getAgentsForConfigFallback()`** — unused export from `src/db/agents.ts`.
 - **`getUserScopeFilter()`** — unused export from `src/server/guards.ts`.
 - **`extractIdentity` import** — removed dead import from `src/server/routes/auth-guard.ts`.
+
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+### Security
 
 ## [0.52.0] - 2026-06-23
 
