@@ -50,7 +50,10 @@ export const routes: RouteHandler[] = [
       };
       if (!body.name?.trim()) return json({ error: 'Team name required' }, 400);
       if (body.joinPolicy && !VALID_JOIN_POLICIES.includes(body.joinPolicy)) {
-        return json({ error: `Invalid join policy. Must be: ${VALID_JOIN_POLICIES.join(', ')}` }, 400);
+        return json(
+          { error: `Invalid join policy. Must be: ${VALID_JOIN_POLICIES.join(', ')}` },
+          400,
+        );
       }
       const db = await getCoreDb();
       const id = `team_${crypto.randomUUID()}`;
@@ -135,7 +138,10 @@ export const routes: RouteHandler[] = [
         join_policy?: string;
       };
       if (body.join_policy !== undefined && !VALID_JOIN_POLICIES.includes(body.join_policy)) {
-        return json({ error: `Invalid join policy. Must be: ${VALID_JOIN_POLICIES.join(', ')}` }, 400);
+        return json(
+          { error: `Invalid join policy. Must be: ${VALID_JOIN_POLICIES.join(', ')}` },
+          400,
+        );
       }
       const sets: string[] = [];
       const vals: InValue[] = [];

@@ -65,19 +65,22 @@ export const scheduleTool: Tool = {
       {
         name: 'command',
         type: 'string',
-        description: 'Shell command or task description. For agent turns, use agent_prompt instead.',
+        description:
+          'Shell command or task description. For agent turns, use agent_prompt instead.',
         required: false,
       },
       {
         name: 'agent_prompt',
         type: 'string',
-        description: 'Prompt for an agent turn task. When provided, the job dispatches an AI agent turn instead of a shell command.',
+        description:
+          'Prompt for an agent turn task. When provided, the job dispatches an AI agent turn instead of a shell command.',
         required: false,
       },
       {
         name: 'agent_id',
         type: 'string',
-        description: 'Agent ID to use for agent turn tasks (default: "default"). Only used with agent_prompt.',
+        description:
+          'Agent ID to use for agent turn tasks (default: "default"). Only used with agent_prompt.',
         required: false,
       },
       {

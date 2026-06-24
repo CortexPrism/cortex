@@ -30,7 +30,9 @@ async function getSwarmCoordinator() {
 
 // ── Instance Identity ──────────────────────────────────────────
 
-async function getOrCreateInstanceIdentity(): Promise<{ id: string; publicKey: string; instanceName: string | null }> {
+async function getOrCreateInstanceIdentity(): Promise<
+  { id: string; publicKey: string; instanceName: string | null }
+> {
   const db = await getCoreDb();
   const existing = await db.get<{ id: string; public_key: string; instance_name: string | null }>(
     `SELECT id, public_key, instance_name FROM instance_identity LIMIT 1`,
@@ -142,7 +144,11 @@ export const routes: RouteHandler[] = [
         return json({ id: existing.id, publicKey: publicPem });
       }
       const hostname = (() => {
-        try { return Deno.hostname(); } catch { return 'cortex'; }
+        try {
+          return Deno.hostname();
+        } catch {
+          return 'cortex';
+        }
       })();
       const instanceName = Deno.env.get('CORTEX_INSTANCE_NAME') ?? hostname;
       const id = `inst_${crypto.randomUUID()}`;
@@ -235,9 +241,7 @@ export const routes: RouteHandler[] = [
       try {
         const instIdentity = await getOrCreateInstanceIdentity();
         const resp = await fetch(`${body.endpoint.replace(/\/$/, '')}/api/federation/identity`, {
-          headers: instIdentity.publicKey
-            ? { 'x-cortex-pubkey': instIdentity.publicKey }
-            : {},
+          headers: instIdentity.publicKey ? { 'x-cortex-pubkey': instIdentity.publicKey } : {},
         });
         if (resp.ok) {
           const peerIdentity = await resp.json() as { publicKey?: string };

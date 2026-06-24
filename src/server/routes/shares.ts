@@ -107,7 +107,9 @@ export const routes: RouteHandler[] = [
       const identity = getIdentity(req);
       if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
       const db = await getCoreDb();
-      const share = await db.get<{ from_user_id: string; resource_type: string; resource_id: string }>(
+      const share = await db.get<
+        { from_user_id: string; resource_type: string; resource_id: string }
+      >(
         `SELECT from_user_id, resource_type, resource_id FROM resource_shares WHERE id = ?`,
         [m[1]],
       );

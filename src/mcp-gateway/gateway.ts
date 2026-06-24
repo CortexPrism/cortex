@@ -1,7 +1,13 @@
 /**
  * MCP Gateway — Rate limiting, health monitoring, and audit logging.
  */
-import type { ApprovalRequest, AuditLogEntry, HealthCheckResult, McpServerEntry, RateLimitConfig } from './types.ts';
+import type {
+  ApprovalRequest,
+  AuditLogEntry,
+  HealthCheckResult,
+  McpServerEntry,
+  RateLimitConfig,
+} from './types.ts';
 
 export function createRateLimiter(config: RateLimitConfig) {
   const buckets = new Map<string, { tokens: number; lastRefill: number }>();

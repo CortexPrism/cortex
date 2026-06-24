@@ -112,7 +112,9 @@ export async function createUser(
     );
     const admins: string[] = [];
     if (existing) {
-      try { admins.push(...JSON.parse(existing.value)); } catch { /* */ }
+      try {
+        admins.push(...JSON.parse(existing.value));
+      } catch { /* */ }
     }
     if (!admins.includes(id)) admins.push(id);
     await db.run(
@@ -267,7 +269,9 @@ export async function changeUserPassword(
     throw new Error('Password must contain at least 2 of: lowercase, uppercase, numbers, symbols');
   }
   const db = await getCoreDb();
-  const user = await db.get<{ password_hash: string; password_salt: string; disabled_at: string | null }>(
+  const user = await db.get<
+    { password_hash: string; password_salt: string; disabled_at: string | null }
+  >(
     `SELECT password_hash, password_salt, disabled_at FROM users WHERE id = ?`,
     [userId],
   );
@@ -338,7 +342,10 @@ export async function deleteUser(userId: string): Promise<boolean> {
   if (!user) return false;
   await db.run(`DELETE FROM user_tokens WHERE user_id = ?`, [userId]);
   await db.run(`DELETE FROM team_memberships WHERE user_id = ?`, [userId]);
-  await db.run(`DELETE FROM resource_shares WHERE from_user_id = ? OR to_user_id = ?`, [userId, userId]);
+  await db.run(`DELETE FROM resource_shares WHERE from_user_id = ? OR to_user_id = ?`, [
+    userId,
+    userId,
+  ]);
   await db.run(`DELETE FROM users WHERE id = ?`, [userId]);
 
   const adminsRow = await db.get<{ value: string }>(
@@ -565,7 +572,11 @@ export async function checkVaultAvailability(): Promise<boolean> {
   }
 }
 
-export async function changePassword(oldPassword: string, newPassword: string, userId?: string): Promise<boolean> {
+export async function changePassword(
+  oldPassword: string,
+  newPassword: string,
+  userId?: string,
+): Promise<boolean> {
   if (userId) {
     return await changeUserPassword(userId, oldPassword, newPassword);
   }
@@ -656,7 +667,10 @@ export async function listUserSessions(userId: string): Promise<Session[]> {
   return userSessions;
 }
 
-export async function destroyAllUserSessions(userId: string, exceptSessionId?: string): Promise<void> {
+export async function destroyAllUserSessions(
+  userId: string,
+  exceptSessionId?: string,
+): Promise<void> {
   for (const [id, session] of sessions) {
     if (session.userId === userId && id !== exceptSessionId) {
       sessions.delete(id);

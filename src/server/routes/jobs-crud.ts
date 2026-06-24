@@ -77,7 +77,9 @@ export const routes: RouteHandler[] = [
     pattern: /^\/api\/jobs\/batch$/,
     handler: async (req) => {
       const body = await req.json() as { ids: string[] };
-      const { deleteJobsBatch } = await import('../../../packages/infra/src/scheduler/scheduler.ts');
+      const { deleteJobsBatch } = await import(
+        '../../../packages/infra/src/scheduler/scheduler.ts'
+      );
       await deleteJobsBatch(body.ids ?? []);
       return json({ ok: true });
     },
@@ -88,7 +90,9 @@ export const routes: RouteHandler[] = [
     handler: async (_req, path) => {
       const m = path.match(/^\/api\/jobs\/status\/([^/]+)$/);
       if (!m) return json({ error: 'Not found' }, 404);
-      const { deleteJobsByStatus } = await import('../../../packages/infra/src/scheduler/scheduler.ts');
+      const { deleteJobsByStatus } = await import(
+        '../../../packages/infra/src/scheduler/scheduler.ts'
+      );
       await deleteJobsByStatus(
         m[1] as import('../../../packages/infra/src/scheduler/scheduler.ts').JobStatus,
       );

@@ -42,7 +42,9 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/jobs\/recover$/,
     handler: async (req) => {
-      const { recoverStaleJobs } = await import('../../../packages/infra/src/scheduler/scheduler.ts');
+      const { recoverStaleJobs } = await import(
+        '../../../packages/infra/src/scheduler/scheduler.ts'
+      );
       const body = await req.json().catch(() => ({})) as { timeoutMs?: number };
       const result = await recoverStaleJobs(body.timeoutMs);
       return json(result);
