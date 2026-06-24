@@ -1,6 +1,6 @@
 import { err, json, notFound, type RouteHandler } from './_helpers.ts';
 import { getIdentity } from './auth-guard.ts';
-import { requireTeamAdmin, requireInstanceAdmin, requireTeamMember } from '../guards.ts';
+import { requireInstanceAdmin, requireTeamAdmin, requireTeamMember } from '../guards.ts';
 import { getCoreDb } from '../../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 
@@ -51,7 +51,13 @@ export const routes: RouteHandler[] = [
       await db.run(
         `INSERT INTO teams (id, name, description, join_policy, created_by)
          VALUES (?, ?, ?, ?, ?)`,
-        [id, body.name.trim(), body.description ?? null, body.joinPolicy ?? 'closed', identity.userId!] as InValue[],
+        [
+          id,
+          body.name.trim(),
+          body.description ?? null,
+          body.joinPolicy ?? 'closed',
+          identity.userId!,
+        ] as InValue[],
       );
       await db.run(
         `INSERT INTO team_memberships (user_id, team_id, role, joined_at)
@@ -71,13 +77,15 @@ export const routes: RouteHandler[] = [
       if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
       const db = await getCoreDb();
       const team = await db.get<Record<string, unknown>>(
-        `SELECT * FROM teams WHERE id = ?`, [m[1]],
+        `SELECT * FROM teams WHERE id = ?`,
+        [m[1]],
       );
       if (!team) return notFound('Team not found');
       const guard = await requireTeamMember(identity, m[1]);
       if (guard) return guard;
       const memberCount = await db.get<{ cnt: number }>(
-        `SELECT COUNT(*) as cnt FROM team_memberships WHERE team_id = ?`, [m[1]],
+        `SELECT COUNT(*) as cnt FROM team_memberships WHERE team_id = ?`,
+        [m[1]],
       );
       return json({ ...team, memberCount: memberCount?.cnt ?? 0 });
     },
@@ -92,12 +100,25 @@ export const routes: RouteHandler[] = [
       if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
       const guard = await requireTeamAdmin(identity, m[1]);
       if (guard) return guard;
-      const body = await req.json() as { name?: string; description?: string; join_policy?: string };
+      const body = await req.json() as {
+        name?: string;
+        description?: string;
+        join_policy?: string;
+      };
       const sets: string[] = [];
       const vals: InValue[] = [];
-      if (body.name !== undefined) { sets.push('name = ?'); vals.push(body.name); }
-      if (body.description !== undefined) { sets.push('description = ?'); vals.push(body.description); }
-      if (body.join_policy !== undefined) { sets.push('join_policy = ?'); vals.push(body.join_policy); }
+      if (body.name !== undefined) {
+        sets.push('name = ?');
+        vals.push(body.name);
+      }
+      if (body.description !== undefined) {
+        sets.push('description = ?');
+        vals.push(body.description);
+      }
+      if (body.join_policy !== undefined) {
+        sets.push('join_policy = ?');
+        vals.push(body.join_policy);
+      }
       if (sets.length === 0) return json({ error: 'No fields to update' }, 400);
       vals.push(m[1]);
       const db = await getCoreDb();
@@ -232,7 +253,11 @@ export const routes: RouteHandler[] = [
       const { registerAgent } = await import('../../agent/manager.ts');
       const body = await req.json() as Record<string, unknown>;
       try {
-        const agent = await registerAgent(body as Parameters<typeof registerAgent>[0], undefined, m[1]);
+        const agent = await registerAgent(
+          body as Parameters<typeof registerAgent>[0],
+          undefined,
+          m[1],
+        );
         return json(agent, 201);
       } catch (e) {
         return err((e as Error).message, 400);

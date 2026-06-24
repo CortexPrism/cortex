@@ -92,8 +92,11 @@ export const routes: RouteHandler[] = [
       const identity = getIdentity(req);
       const agent = await getAgent(m[1]);
       if (!agent) return notFound('Agent not found');
-      const scope = (agent as AgentConfig & { user_id?: string; team_id?: string });
-      if (identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId && !identity.teamIds?.includes(scope.team_id ?? '')) {
+      const scope = agent as AgentConfig & { user_id?: string; team_id?: string };
+      if (
+        identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId &&
+        !identity.teamIds?.includes(scope.team_id ?? '')
+      ) {
         return json({ error: 'Forbidden' }, 403);
       }
       return json(agent);
@@ -146,8 +149,11 @@ export const routes: RouteHandler[] = [
       const identity = getIdentity(req);
       const agent = await getAgent(m[1]);
       if (!agent) return notFound('Agent not found');
-      const scope = (agent as AgentConfig & { user_id?: string; team_id?: string });
-      if (identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId && !identity.teamIds?.includes(scope.team_id ?? '')) {
+      const scope = agent as AgentConfig & { user_id?: string; team_id?: string };
+      if (
+        identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId &&
+        !identity.teamIds?.includes(scope.team_id ?? '')
+      ) {
         return json({ error: 'Forbidden' }, 403);
       }
       const body = await req.json() as Partial<Omit<AgentConfig, 'id' | 'createdAt'>>;
@@ -200,8 +206,11 @@ export const routes: RouteHandler[] = [
       const identity = getIdentity(req);
       const agent = await getAgent(m[1]);
       if (!agent) return notFound('Agent not found');
-      const scope = (agent as AgentConfig & { user_id?: string; team_id?: string });
-      if (identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId && !identity.teamIds?.includes(scope.team_id ?? '')) {
+      const scope = agent as AgentConfig & { user_id?: string; team_id?: string };
+      if (
+        identity.type === 'user' && scope.user_id && scope.user_id !== identity.userId &&
+        !identity.teamIds?.includes(scope.team_id ?? '')
+      ) {
         return json({ error: 'Forbidden' }, 403);
       }
       try {

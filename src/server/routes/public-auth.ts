@@ -27,7 +27,7 @@ export const routes: RouteHandler[] = [
     handler: async (req) => {
       const pwSet = await hasPassword();
       const config = await loadConfig();
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (identity.type === 'user') {
         return json({
           authenticated: true,
@@ -103,7 +103,11 @@ export const routes: RouteHandler[] = [
             ).catch(() => {});
           } catch { /* non-critical */ }
           return json(
-            { success: true, sessionId: session.id, user: { id: user.id, username: user.username } },
+            {
+              success: true,
+              sessionId: session.id,
+              user: { id: user.id, username: user.username },
+            },
             200,
             setSessionCookie(session.id, req),
           );
@@ -132,7 +136,7 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/auth\/check$/,
     handler: async (req) => {
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       const cookies = parseCookies(req.headers.get('cookie') || '');
       const sessionId = cookies['cortex_session'];
       const valid = sessionId ? validateSession(sessionId) : false;
@@ -179,7 +183,7 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/auth\/tokens$/,
     handler: async (req) => {
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (identity.type !== 'user') {
         return json({ error: 'Authentication required' }, 401);
       }
@@ -191,7 +195,7 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/auth\/tokens$/,
     handler: async (req) => {
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (identity.type !== 'user') {
         return json({ error: 'Authentication required' }, 401);
       }
@@ -220,7 +224,7 @@ export const routes: RouteHandler[] = [
       if (!m) {
         return json({ error: 'Token not found' }, 404);
       }
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (identity.type !== 'user') {
         return json({ error: 'Authentication required' }, 401);
       }
@@ -234,7 +238,7 @@ export const routes: RouteHandler[] = [
     method: 'GET',
     pattern: /^\/api\/users$/,
     handler: async (req) => {
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (!identity.isInstanceAdmin) {
         return json({ error: 'Forbidden' }, 403);
       }
@@ -247,7 +251,7 @@ export const routes: RouteHandler[] = [
     method: 'POST',
     pattern: /^\/api\/users$/,
     handler: async (req) => {
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (!identity.isInstanceAdmin) {
         return json({ error: 'Forbidden' }, 403);
       }
@@ -279,7 +283,7 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/users\/([^/]+)\/disable$/);
       if (!m) return json({ error: 'Not found' }, 404);
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (!identity.isInstanceAdmin) {
         return json({ error: 'Forbidden' }, 403);
       }
@@ -295,7 +299,7 @@ export const routes: RouteHandler[] = [
     handler: async (req, path) => {
       const m = path.match(/^\/api\/users\/([^/]+)\/enable$/);
       if (!m) return json({ error: 'Not found' }, 404);
-      const identity = (await extractIdentity(req));
+      const identity = await extractIdentity(req);
       if (!identity.isInstanceAdmin) {
         return json({ error: 'Forbidden' }, 403);
       }

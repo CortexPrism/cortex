@@ -32,7 +32,11 @@ export const routes: RouteHandler[] = [
       if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
       const guard = await requireInstanceAdmin(identity);
       if (guard) return guard;
-      const body = await req.json() as { endpoint: string; pairing_token: string; peer_name?: string };
+      const body = await req.json() as {
+        endpoint: string;
+        pairing_token: string;
+        peer_name?: string;
+      };
       if (!body.endpoint || !body.pairing_token) {
         return json({ error: 'endpoint and pairing_token required' }, 400);
       }

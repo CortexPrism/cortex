@@ -195,7 +195,9 @@ export async function getAgentsForConfigFallback(): Promise<Record<string, Agent
   return agents;
 }
 
-function rowToAgent(row: Record<string, unknown>): AgentConfig & { user_id?: string; team_id?: string } {
+function rowToAgent(
+  row: Record<string, unknown>,
+): AgentConfig & { user_id?: string; team_id?: string } {
   return {
     id: row.id as string,
     name: row.name as string,

@@ -2,7 +2,7 @@ import { loadConfig, saveConfig } from '../config/config.ts';
 import { vaultDelete, vaultGet, vaultStore } from '../security/vault.ts';
 import { getCoreDb } from '../db/client.ts';
 import type { RequestIdentity } from './identity.ts';
-import { createAnonymousIdentity, createUserIdentity, createInstanceIdentity } from './identity.ts';
+import { createAnonymousIdentity, createInstanceIdentity, createUserIdentity } from './identity.ts';
 import type { InValue } from 'npm:@libsql/client';
 
 export interface Session {
@@ -118,15 +118,17 @@ export async function createUser(
   return { id, username };
 }
 
-export async function getUserByUsername(username: string): Promise<{
-  id: string;
-  username: string;
-  display_name: string | null;
-  password_hash: string;
-  password_salt: string;
-  email: string | null;
-  disabled_at: string | null;
-} | null> {
+export async function getUserByUsername(username: string): Promise<
+  {
+    id: string;
+    username: string;
+    display_name: string | null;
+    password_hash: string;
+    password_salt: string;
+    email: string | null;
+    disabled_at: string | null;
+  } | null
+> {
   const db = await getCoreDb();
   const row = await db.get<{
     id: string;
@@ -144,13 +146,15 @@ export async function getUserByUsername(username: string): Promise<{
   return row ?? null;
 }
 
-export async function getUserById(userId: string): Promise<{
-  id: string;
-  username: string;
-  display_name: string | null;
-  email: string | null;
-  disabled_at: string | null;
-} | null> {
+export async function getUserById(userId: string): Promise<
+  {
+    id: string;
+    username: string;
+    display_name: string | null;
+    email: string | null;
+    disabled_at: string | null;
+  } | null
+> {
   const db = await getCoreDb();
   const row = await db.get<{
     id: string;
@@ -165,10 +169,12 @@ export async function getUserById(userId: string): Promise<{
   return row ?? null;
 }
 
-export async function verifyUserPassword(username: string, password: string): Promise<{
-  id: string;
-  username: string;
-} | null> {
+export async function verifyUserPassword(username: string, password: string): Promise<
+  {
+    id: string;
+    username: string;
+  } | null
+> {
   const user = await getUserByUsername(username);
   if (!user || user.disabled_at) return null;
 
@@ -204,7 +210,16 @@ export async function isInstanceAdmin(userId: string): Promise<boolean> {
 }
 
 export async function listUsers(): Promise<
-  Array<{ id: string; username: string; display_name: string | null; email: string | null; disabled_at: string | null; created_at: string }>
+  Array<
+    {
+      id: string;
+      username: string;
+      display_name: string | null;
+      email: string | null;
+      disabled_at: string | null;
+      created_at: string;
+    }
+  >
 > {
   const db = await getCoreDb();
   return await db.all(
@@ -260,15 +275,17 @@ export async function createApiToken(
 
 export async function listApiTokens(
   userId: string,
-): Promise<Array<{
-  id: string;
-  name: string;
-  team_ids: string;
-  created_at: string;
-  expires_at: string | null;
-  last_used_at: string | null;
-  revoked_at: string | null;
-}>> {
+): Promise<
+  Array<{
+    id: string;
+    name: string;
+    team_ids: string;
+    created_at: string;
+    expires_at: string | null;
+    last_used_at: string | null;
+    revoked_at: string | null;
+  }>
+> {
   const db = await getCoreDb();
   return await db.all(
     `SELECT id, name, team_ids, created_at, expires_at, last_used_at, revoked_at
@@ -289,10 +306,12 @@ export async function revokeApiToken(userId: string, tokenId: string): Promise<b
   return true;
 }
 
-export async function validateApiToken(token: string): Promise<{
-  userId: string;
-  teamIds: string[];
-} | null> {
+export async function validateApiToken(token: string): Promise<
+  {
+    userId: string;
+    teamIds: string[];
+  } | null
+> {
   if (!token.startsWith(TOKEN_PREFIX) && !token.startsWith('cortex_node_')) return null;
   const db = await getCoreDb();
   const tokenHash = await sha256(token);
@@ -542,10 +561,18 @@ export async function extractIdentity(req: Request): Promise<RequestIdentity> {
     if (result && result.userId) {
       const user = await getUserById(result.userId);
       if (user) {
-        const teamIds = result.teamIds.length > 0 ? result.teamIds : await getUserTeams(result.userId);
+        const teamIds = result.teamIds.length > 0
+          ? result.teamIds
+          : await getUserTeams(result.userId);
         const admin = await isInstanceAdmin(result.userId);
         const currentTeam = req.headers.get('x-cortex-team') ?? teamIds[0];
-        return createUserIdentity(result.userId, user.username, teamIds, currentTeam ?? undefined, admin);
+        return createUserIdentity(
+          result.userId,
+          user.username,
+          teamIds,
+          currentTeam ?? undefined,
+          admin,
+        );
       }
     }
     // Node tokens for instance-scoped access

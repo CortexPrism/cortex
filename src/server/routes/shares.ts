@@ -20,7 +20,9 @@ export const routes: RouteHandler[] = [
         return json({ error: 'resource_type, resource_id, and to_user_id required' }, 400);
       }
       const db = await getCoreDb();
-      const recipient = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [body.to_user_id]);
+      const recipient = await db.get<{ id: string }>(`SELECT id FROM users WHERE id = ?`, [
+        body.to_user_id,
+      ]);
       if (!recipient) return json({ error: 'Recipient user not found' }, 404);
 
       const ownerGuard = await requireResourceOwner(identity, body.resource_type, body.resource_id);
@@ -82,7 +84,8 @@ export const routes: RouteHandler[] = [
       if (identity.type !== 'user') return json({ error: 'Authentication required' }, 401);
       const db = await getCoreDb();
       const share = await db.get<{ from_user_id: string }>(
-        `SELECT from_user_id FROM resource_shares WHERE id = ?`, [m[1]],
+        `SELECT from_user_id FROM resource_shares WHERE id = ?`,
+        [m[1]],
       );
       if (!share) return notFound('Share not found');
       if (share.from_user_id !== identity.userId && !identity.isInstanceAdmin) {

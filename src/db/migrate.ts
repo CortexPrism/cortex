@@ -461,7 +461,9 @@ export async function createAutoAdmin(
     // Interactive terminal: prompt for password
     pw = prompt(`Admin password for "${autoUsername}" (min 8 chars, 2+ classes): `) || '';
     if (!pw || pw.length < 8) {
-      console.log(`  ⚠ Password too short or empty — admin not created. Run \`cortex setup\` later.`);
+      console.log(
+        `  ⚠ Password too short or empty — admin not created. Run \`cortex setup\` later.`,
+      );
       return null;
     }
   }

@@ -15,7 +15,10 @@ async function getAuthToken(): Promise<string | null> {
 
 async function saveAuthToken(token: string): Promise<void> {
   await Deno.mkdir(AUTH_FILE.replace(/\/[^/]+$/, ''), { recursive: true });
-  await Deno.writeTextFile(AUTH_FILE, JSON.stringify({ token, savedAt: new Date().toISOString() }, null, 2));
+  await Deno.writeTextFile(
+    AUTH_FILE,
+    JSON.stringify({ token, savedAt: new Date().toISOString() }, null, 2),
+  );
 }
 
 async function clearAuthToken(): Promise<void> {
@@ -74,10 +77,18 @@ export const loginCommand = cortexCommand('login')
       const { status, data } = await apiRequest('/api/auth/login', 'POST', { username, password });
       if (status === 200 && (data as Record<string, unknown>).sessionId) {
         const d = data as Record<string, unknown>;
-        console.log(`Logged in as ${username}.${d.user ? ` User ID: ${(d.user as Record<string,string>).id}` : ''}`);
-        console.log('Note: Web sessions are ephemeral. Use `cortex login --token <token>` with an API token for persistent CLI auth.');
+        console.log(
+          `Logged in as ${username}.${
+            d.user ? ` User ID: ${(d.user as Record<string, string>).id}` : ''
+          }`,
+        );
+        console.log(
+          'Note: Web sessions are ephemeral. Use `cortex login --token <token>` with an API token for persistent CLI auth.',
+        );
       } else {
-        console.error(`Login failed: ${(data as Record<string, unknown>).error || 'Unknown error'}`);
+        console.error(
+          `Login failed: ${(data as Record<string, unknown>).error || 'Unknown error'}`,
+        );
         Deno.exit(1);
       }
     } catch (e) {
