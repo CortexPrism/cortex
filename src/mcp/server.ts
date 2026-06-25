@@ -44,7 +44,12 @@ async function getToolDefinitions() {
   }));
 }
 
+let builtinToolsRegistered = false;
+
 function registerBuiltinTools(): void {
+  if (builtinToolsRegistered) return;
+  builtinToolsRegistered = true;
+
   mcpTools.set('cortex.search_memory', {
     name: 'cortex.search_memory',
     description: 'Search Cortex long-term memory',

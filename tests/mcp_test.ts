@@ -32,10 +32,18 @@ import {
 } from '../src/mcp-gateway/registry.ts';
 import type { McpServerEntry } from '../src/mcp-gateway/types.ts';
 
+const TEST_SERVER_IDS: string[] = [];
+const TEST_SERVER_PREFIX = 'test-srv-';
+
+function trackId(id: string): string {
+  TEST_SERVER_IDS.push(id);
+  return id;
+}
+
 function makeEntry(overrides: Partial<McpServerEntry> = {}): McpServerEntry {
   return {
-    id: overrides.id ?? crypto.randomUUID(),
-    name: overrides.name ?? 'test-server',
+    id: overrides.id ?? trackId(TEST_SERVER_PREFIX + crypto.randomUUID()),
+    name: overrides.name ?? 'test-gateway-server',
     endpoint: overrides.endpoint ?? 'http://localhost:9001/mcp',
     transport: overrides.transport ?? 'http',
     status: overrides.status ?? 'healthy',
@@ -49,7 +57,7 @@ function makeEntry(overrides: Partial<McpServerEntry> = {}): McpServerEntry {
 }
 
 Deno.test('mcp-gateway/registry: registerServer and getServer', async () => {
-  const entry = makeEntry({ id: 'srv-1', name: 'alpha' });
+  const entry = makeEntry({ id: trackId('srv-1'), name: 'alpha' });
   await registerServer(entry);
 
   const found = await getServer('srv-1');
@@ -59,8 +67,8 @@ Deno.test('mcp-gateway/registry: registerServer and getServer', async () => {
 });
 
 Deno.test('mcp-gateway/registry: listServers returns all entries', async () => {
-  await registerServer(makeEntry({ id: 'srv-a', name: 'server-a' }));
-  await registerServer(makeEntry({ id: 'srv-b', name: 'server-b' }));
+  await registerServer(makeEntry({ id: trackId('srv-a'), name: 'server-a' }));
+  await registerServer(makeEntry({ id: trackId('srv-b'), name: 'server-b' }));
 
   const all = await listServers();
   assertGreater(all.length, 1);
@@ -70,16 +78,16 @@ Deno.test('mcp-gateway/registry: listServers returns all entries', async () => {
 });
 
 Deno.test('mcp-gateway/registry: updateServer modifies fields and sets updatedAt', async () => {
-  await registerServer(makeEntry({ id: 'srv-up', name: 'before' }));
+  await registerServer(makeEntry({ id: trackId('srv-up'), name: 'before' }));
   const original = await getServer('srv-up');
   assertExists(original);
   const originalUpdatedAt = String(original.updatedAt);
 
   await new Promise((r) => setTimeout(r, 5));
-  const updated = await updateServer('srv-up', { name: 'after', toolCount: 5 });
+  const updated = await updateServer('srv-up', { name: 'after', tags: ['updated'] });
   assertExists(updated);
   assertEquals(updated.name, 'after');
-  assertEquals(updated.toolCount, 5);
+  assertEquals(updated.tags, ['updated']);
   assertEquals(updated.id, 'srv-up');
   assertEquals(updated.createdAt, original.createdAt);
   assert(updated.updatedAt !== originalUpdatedAt);
@@ -91,7 +99,7 @@ Deno.test('mcp-gateway/registry: updateServer returns null for missing id', asyn
 });
 
 Deno.test('mcp-gateway/registry: removeServer deletes entry', async () => {
-  await registerServer(makeEntry({ id: 'srv-rm', name: 'to-remove' }));
+  await registerServer(makeEntry({ id: trackId('srv-rm'), name: 'to-remove' }));
   assert(await getServer('srv-rm'));
   const removed = await removeServer('srv-rm');
   assertEquals(removed, true);
@@ -104,14 +112,15 @@ Deno.test('mcp-gateway/registry: removeServer returns false for missing', async 
 
 Deno.test('mcp-gateway/registry: getServerCount reflects entries', async () => {
   const before = await getServerCount();
-  await registerServer(makeEntry({ id: 'cnt-' + crypto.randomUUID() }));
+  const id = trackId('cnt-' + crypto.randomUUID());
+  await registerServer(makeEntry({ id }));
   assertEquals(await getServerCount(), before + 1);
 });
 
 Deno.test('mcp-gateway/registry: getHealthyServers filters by status', async () => {
-  await registerServer(makeEntry({ id: 'healthy-1', status: 'healthy' }));
-  await registerServer(makeEntry({ id: 'unhealthy-1', status: 'unhealthy' }));
-  await registerServer(makeEntry({ id: 'degraded-1', status: 'degraded' }));
+  await registerServer(makeEntry({ id: trackId('healthy-1'), status: 'healthy' }));
+  await registerServer(makeEntry({ id: trackId('unhealthy-1'), status: 'unhealthy' }));
+  await registerServer(makeEntry({ id: trackId('degraded-1'), status: 'degraded' }));
 
   const healthy = await getHealthyServers();
   assert(healthy.length >= 1);
@@ -128,8 +137,8 @@ Deno.test('mcp-gateway/registry: getDegradedServers filters degraded+unhealthy',
 });
 
 Deno.test('mcp-gateway/registry: findServersByTag matches tags', async () => {
-  await registerServer(makeEntry({ id: 'tagged-1', tags: ['prod', 'critical'] }));
-  await registerServer(makeEntry({ id: 'tagged-2', tags: ['staging'] }));
+  await registerServer(makeEntry({ id: trackId('tagged-1'), tags: ['prod', 'critical'] }));
+  await registerServer(makeEntry({ id: trackId('tagged-2'), tags: ['staging'] }));
 
   const prod = await findServersByTag('prod');
   assert(prod.length >= 1);
@@ -144,8 +153,8 @@ Deno.test('mcp-gateway/registry: findServersByTag returns empty for missing tag'
 });
 
 Deno.test('mcp-gateway/registry: getServersByTransport filters by transport', async () => {
-  await registerServer(makeEntry({ id: 'http-1', transport: 'http' }));
-  await registerServer(makeEntry({ id: 'stdio-1', transport: 'stdio' }));
+  await registerServer(makeEntry({ id: trackId('http-1'), transport: 'http' }));
+  await registerServer(makeEntry({ id: trackId('stdio-1'), transport: 'stdio' }));
 
   const httpOnly = await getServersByTransport('http');
   for (const s of httpOnly) {
@@ -192,8 +201,8 @@ Deno.test('mcp-gateway/gateway: createRateLimiter buckets are isolated per key',
   assertEquals(limiter.allowRequest('k2'), true);
 });
 
-Deno.test('mcp-gateway/gateway: logAudit creates entry with id and timestamp', () => {
-  const entry = logAudit({
+Deno.test('mcp-gateway/gateway: logAudit creates entry with id and timestamp', async () => {
+  const entry = await logAudit({
     serverId: 'srv-1',
     toolName: 'test_tool',
     clientId: 'agent-42',
@@ -208,17 +217,23 @@ Deno.test('mcp-gateway/gateway: logAudit creates entry with id and timestamp', (
   assertEquals(entry.latencyMs, 100);
 });
 
-Deno.test('mcp-gateway/gateway: getAuditLogs returns recent entries', () => {
-  logAudit({ serverId: 'srv-a', toolName: 'a', clientId: 'c', success: true, latencyMs: 5 });
-  logAudit({ serverId: 'srv-a', toolName: 'b', clientId: 'c', success: false, latencyMs: 10 });
+Deno.test('mcp-gateway/gateway: getAuditLogs returns recent entries', async () => {
+  await logAudit({ serverId: 'srv-a', toolName: 'a', clientId: 'c', success: true, latencyMs: 5 });
+  await logAudit({
+    serverId: 'srv-a',
+    toolName: 'b',
+    clientId: 'c',
+    success: false,
+    latencyMs: 10,
+  });
 
   const all = getAuditLogs(undefined, 10);
   assert(all.length >= 2);
 });
 
-Deno.test('mcp-gateway/gateway: getAuditLogs filters by serverId', () => {
-  logAudit({ serverId: 'srv-x', toolName: 'x', clientId: 'c', success: true, latencyMs: 5 });
-  logAudit({ serverId: 'srv-y', toolName: 'y', clientId: 'c', success: true, latencyMs: 5 });
+Deno.test('mcp-gateway/gateway: getAuditLogs filters by serverId', async () => {
+  await logAudit({ serverId: 'srv-x', toolName: 'x', clientId: 'c', success: true, latencyMs: 5 });
+  await logAudit({ serverId: 'srv-y', toolName: 'y', clientId: 'c', success: true, latencyMs: 5 });
 
   const srvX = getAuditLogs('srv-x', 10);
   for (const e of srvX) {
@@ -253,8 +268,8 @@ Deno.test('mcp-gateway/gateway: assessRiskLevel returns critical for catastrophi
   assertEquals(assessRiskLevel('exec_cmd', { cmd: 'rm -rf /' }), 'critical');
 });
 
-Deno.test('mcp-gateway/gateway: createApproval generates unique id and sets pending', () => {
-  const req = createApproval('srv-1', 'delete', { path: '/tmp/x' }, 'agent-1');
+Deno.test('mcp-gateway/gateway: createApproval generates unique id and sets pending', async () => {
+  const req = await createApproval('srv-1', 'delete', { path: '/tmp/x' }, 'agent-1');
   assertMatch(req.id, /^gw-apr_/);
   assertEquals(req.serverId, 'srv-1');
   assertEquals(req.toolName, 'delete');
@@ -262,17 +277,17 @@ Deno.test('mcp-gateway/gateway: createApproval generates unique id and sets pend
   assertEquals(req.requestedBy, 'agent-1');
 });
 
-Deno.test('mcp-gateway/gateway: createApproval uses provided riskLevel', () => {
-  const req = createApproval('srv-1', 'read', {}, 'agent', 'critical');
+Deno.test('mcp-gateway/gateway: createApproval uses provided riskLevel', async () => {
+  const req = await createApproval('srv-1', 'read', {}, 'agent', 'critical');
   assertEquals(req.riskLevel, 'critical');
 });
 
-Deno.test('mcp-gateway/gateway: approveGatewayRequest transitions status', () => {
-  const req = createApproval('srv-1', 'test', {}, 'agent');
-  const result = approveGatewayRequest(req.id, 'admin', 'approved ok');
+Deno.test('mcp-gateway/gateway: approveGatewayRequest transitions status', async () => {
+  const req = await createApproval('srv-1', 'test', {}, 'agent');
+  const result = await approveGatewayRequest(req.id, 'admin', 'approved ok');
   assertEquals(result, true);
 
-  const fetched = getGatewayApproval(req.id);
+  const fetched = await getGatewayApproval(req.id);
   assertExists(fetched);
   assertEquals(fetched.status, 'approved');
   assertEquals(fetched.reviewedBy, 'admin');
@@ -280,57 +295,57 @@ Deno.test('mcp-gateway/gateway: approveGatewayRequest transitions status', () =>
   assertExists(fetched.reviewedAt);
 });
 
-Deno.test('mcp-gateway/gateway: approveGatewayRequest fails for non-pending', () => {
-  const req = createApproval('srv-1', 'test', {}, 'agent');
-  approveGatewayRequest(req.id, 'admin');
-  const retry = approveGatewayRequest(req.id, 'admin2');
+Deno.test('mcp-gateway/gateway: approveGatewayRequest fails for non-pending', async () => {
+  const req = await createApproval('srv-1', 'test', {}, 'agent');
+  await approveGatewayRequest(req.id, 'admin');
+  const retry = await approveGatewayRequest(req.id, 'admin2');
   assertEquals(retry, false);
 });
 
-Deno.test('mcp-gateway/gateway: approveGatewayRequest fails for missing id', () => {
-  assertEquals(approveGatewayRequest('nonexistent', 'admin'), false);
+Deno.test('mcp-gateway/gateway: approveGatewayRequest fails for missing id', async () => {
+  assertEquals(await approveGatewayRequest('nonexistent', 'admin'), false);
 });
 
-Deno.test('mcp-gateway/gateway: denyGatewayRequest transitions status', () => {
-  const req = createApproval('srv-1', 'test', {}, 'agent');
-  const result = denyGatewayRequest(req.id, 'admin', 'too risky');
+Deno.test('mcp-gateway/gateway: denyGatewayRequest transitions status', async () => {
+  const req = await createApproval('srv-1', 'test', {}, 'agent');
+  const result = await denyGatewayRequest(req.id, 'admin', 'too risky');
   assertEquals(result, true);
 
-  const fetched = getGatewayApproval(req.id)!;
+  const fetched = (await getGatewayApproval(req.id))!;
   assertEquals(fetched.status, 'denied');
   assertEquals(fetched.reason, 'too risky');
 });
 
-Deno.test('mcp-gateway/gateway: denyGatewayRequest fails for non-pending', () => {
-  const req = createApproval('srv-1', 'test', {}, 'agent');
-  denyGatewayRequest(req.id, 'admin');
-  assertEquals(denyGatewayRequest(req.id, 'admin2'), false);
+Deno.test('mcp-gateway/gateway: denyGatewayRequest fails for non-pending', async () => {
+  const req = await createApproval('srv-1', 'test', {}, 'agent');
+  await denyGatewayRequest(req.id, 'admin');
+  assertEquals(await denyGatewayRequest(req.id, 'admin2'), false);
 });
 
-Deno.test('mcp-gateway/gateway: getPendingGatewayApprovals returns only pending', () => {
-  const r1 = createApproval('srv-1', 't1', {}, 'agent');
-  const r2 = createApproval('srv-1', 't2', {}, 'agent');
-  denyGatewayRequest(r1.id, 'admin');
+Deno.test('mcp-gateway/gateway: getPendingGatewayApprovals returns only pending', async () => {
+  const r1 = await createApproval('srv-1', 't1', {}, 'agent');
+  const r2 = await createApproval('srv-1', 't2', {}, 'agent');
+  await denyGatewayRequest(r1.id, 'admin');
 
-  const pending = getPendingGatewayApprovals();
+  const pending = await getPendingGatewayApprovals();
   assert(pending.length >= 1);
   for (const p of pending) {
     assertEquals(p.status, 'pending');
   }
 });
 
-Deno.test('mcp-gateway/gateway: getPendingGatewayApprovals filters by serverId', () => {
-  const r1 = createApproval('srv-a', 't1', {}, 'agent');
-  const r2 = createApproval('srv-b', 't2', {}, 'agent');
+Deno.test('mcp-gateway/gateway: getPendingGatewayApprovals filters by serverId', async () => {
+  const r1 = await createApproval('srv-a', 't1', {}, 'agent');
+  const r2 = await createApproval('srv-b', 't2', {}, 'agent');
 
-  const srvA = getPendingGatewayApprovals('srv-a');
+  const srvA = await getPendingGatewayApprovals('srv-a');
   for (const p of srvA) {
     assertEquals(p.serverId, 'srv-a');
   }
 });
 
-Deno.test('mcp-gateway/gateway: getGatewayApproval returns undefined for missing', () => {
-  assertEquals(getGatewayApproval('no-such-id'), undefined);
+Deno.test('mcp-gateway/gateway: getGatewayApproval returns undefined for missing', async () => {
+  assertEquals(await getGatewayApproval('no-such-id'), undefined);
 });
 
 // ── MCP Server JSON-RPC ─────────────────────────────────────────────────
@@ -607,7 +622,7 @@ import {
 } from '../src/mcp-gateway/mod.ts';
 
 Deno.test('mcp-gateway/mod: barrel exports are functional', async () => {
-  const entry = makeEntry({ id: 'mod-test', name: 'barrel-test' });
+  const entry = makeEntry({ id: trackId('mod-test'), name: 'barrel-test' });
   await registerServerFromMod(entry);
   const found = await getServerFromMod('mod-test');
   assertExists(found);
@@ -635,4 +650,31 @@ Deno.test('mcp-gateway/gateway: healthCheck returns unknown for stdio transport'
   assertEquals(result.status, 'unknown');
   assertEquals(result.toolCount, 0);
   assertStringIncludes(result.error ?? '', 'Stdio health checks not supported');
+});
+
+// ── Cleanup ─────────────────────────────────────────────────────────────
+
+Deno.test('mcp-gateway/cleanup: remove all test-created servers', async () => {
+  for (const id of TEST_SERVER_IDS) {
+    await removeServer(id).catch(() => {});
+  }
+  const remaining = await listServers();
+  for (const s of remaining) {
+    if (
+      s.name === 'test-gateway-server' ||
+      s.name === 'test-server' ||
+      s.id.startsWith(TEST_SERVER_PREFIX) ||
+      s.id.startsWith('srv-') ||
+      s.id.startsWith('healthy-') ||
+      s.id.startsWith('unhealthy-') ||
+      s.id.startsWith('degraded-') ||
+      s.id.startsWith('tagged-') ||
+      s.id.startsWith('http-') ||
+      s.id.startsWith('stdio-') ||
+      s.id.startsWith('cnt-') ||
+      s.id === 'mod-test'
+    ) {
+      await removeServer(s.id).catch(() => {});
+    }
+  }
 });

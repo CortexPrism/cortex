@@ -2,12 +2,24 @@
  * MCP Server Registry — CRUD operations for managed MCP servers.
  * Persists to cortex.db via mcp_gateway_servers table (migration 049).
  */
+import { logger } from '../utils/logger.ts';
 import { getCoreDb } from '../db/client.ts';
 import type { Db } from '../db/client.ts';
 import type { McpServerEntry } from './types.ts';
 
+const _log = logger('mcp:gateway:registry');
+
 const memoryStore = new Map<string, McpServerEntry>();
 let dbLoaded = false;
+
+const UPDATEABLE_FIELDS: readonly (keyof McpServerEntry)[] = [
+  'name',
+  'endpoint',
+  'transport',
+  'tags',
+] as const;
+
+const UPDATEABLE_SET = new Set<string>(UPDATEABLE_FIELDS);
 
 function toDbRow(entry: McpServerEntry) {
   return {
@@ -51,6 +63,7 @@ async function getDb(): Promise<Db | null> {
   try {
     return await getCoreDb();
   } catch {
+    _log.warn('Core DB not available — gateway registry is memory-only');
     return null;
   }
 }
@@ -70,7 +83,7 @@ async function loadIntoMemory(): Promise<void> {
       memoryStore.set(row.id as string, fromDbRow(row));
     }
   } catch {
-    // table may not exist yet (pre-migration)
+    _log.warn('mcp_gateway_servers table not available (pre-migration)');
   }
   dbLoaded = true;
 }
@@ -92,8 +105,11 @@ export async function registerServer(entry: McpServerEntry): Promise<void> {
         ...Object.values(toDbRow(entry)),
       ],
     );
-  } catch {
-    // table may not exist yet
+  } catch (err: unknown) {
+    _log.error(
+      `Failed to persist server "${entry.id}" to DB: ${(err as Error).message}. ` +
+        'Server exists in memory only.',
+    );
   }
 }
 
@@ -122,9 +138,17 @@ export async function updateServer(
   const existing = memoryStore.get(id);
   if (!existing) return null;
 
+  // Only allow safe fields to be updated — ignore protected fields
+  const filtered: Partial<McpServerEntry> = {};
+  for (const key of Object.keys(updates)) {
+    if (UPDATEABLE_SET.has(key)) {
+      (filtered as Record<string, unknown>)[key] = (updates as Record<string, unknown>)[key];
+    }
+  }
+
   const updated: McpServerEntry = {
     ...existing,
-    ...updates,
+    ...filtered,
     id: existing.id,
     createdAt: existing.createdAt,
     updatedAt: new Date().toISOString(),
@@ -157,8 +181,11 @@ export async function updateServer(
         updated.id,
       ],
     );
-  } catch {
-    // table may not exist yet
+  } catch (err: unknown) {
+    _log.error(
+      `Failed to persist update for server "${id}" to DB: ${(err as Error).message}. ` +
+        'Update exists in memory only.',
+    );
   }
   return updated;
 }
@@ -171,8 +198,11 @@ export async function removeServer(id: string): Promise<boolean> {
   if (!db) return deleted;
   try {
     await db.run('DELETE FROM mcp_gateway_servers WHERE id = ?', [id]);
-  } catch {
-    // table may not exist yet
+  } catch (err: unknown) {
+    _log.error(
+      `Failed to delete server "${id}" from DB: ${(err as Error).message}. ` +
+        'Server removed from memory only.',
+    );
   }
   return deleted;
 }

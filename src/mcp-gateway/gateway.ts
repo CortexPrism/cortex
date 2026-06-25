@@ -1,6 +1,11 @@
 /**
  * MCP Gateway — Rate limiting, health monitoring, and audit logging.
+ * Audit entries and approval requests are persisted to cortex.db
+ * (tables created by migrations 049 + 055) and mirrored in-memory
+ * for fast reads.
  */
+import { getCoreDb } from '../db/client.ts';
+import type { Db } from '../db/client.ts';
 import type {
   ApprovalRequest,
   AuditLogEntry,
@@ -8,6 +13,8 @@ import type {
   McpServerEntry,
   RateLimitConfig,
 } from './types.ts';
+
+// ── Rate Limiter ─────────────────────────────────────────────────────────
 
 export function createRateLimiter(config: RateLimitConfig) {
   const buckets = new Map<string, { tokens: number; lastRefill: number }>();
@@ -40,6 +47,8 @@ export function createRateLimiter(config: RateLimitConfig) {
     },
   };
 }
+
+// ── Health Check ─────────────────────────────────────────────────────────
 
 export async function healthCheck(server: McpServerEntry): Promise<HealthCheckResult> {
   const start = Date.now();
@@ -103,9 +112,45 @@ export async function healthCheck(server: McpServerEntry): Promise<HealthCheckRe
   }
 }
 
-const auditLog: AuditLogEntry[] = [];
+// ── Audit Log — in-memory + DB ──────────────────────────────────────────
 
-export function logAudit(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): AuditLogEntry {
+const auditLog: AuditLogEntry[] = [];
+let auditDbLoaded = false;
+
+async function loadAuditFromDb(): Promise<void> {
+  if (auditDbLoaded) return;
+  auditDbLoaded = true;
+  let db: Db | null = null;
+  try {
+    db = await getCoreDb();
+  } catch {
+    return;
+  }
+  try {
+    const rows = await db.all<Record<string, unknown>>(
+      'SELECT * FROM mcp_gateway_audit ORDER BY timestamp DESC LIMIT 1000',
+    );
+    for (const row of rows) {
+      auditLog.push({
+        id: row.id as string,
+        timestamp: row.timestamp as string,
+        serverId: row.server_id as string,
+        toolName: row.tool_name as string,
+        clientId: row.client_id as string,
+        success: (row.success as number) === 1,
+        latencyMs: (row.latency_ms as number) ?? 0,
+        errorCode: (row.error_code as string) ?? undefined,
+        tokensUsed: (row.tokens_used as number) ?? undefined,
+      });
+    }
+  } catch {
+    // table may not exist yet (pre-migration)
+  }
+}
+
+export async function logAudit(
+  entry: Omit<AuditLogEntry, 'id' | 'timestamp'>,
+): Promise<AuditLogEntry> {
   const log: AuditLogEntry = {
     ...entry,
     id: crypto.randomUUID(),
@@ -113,6 +158,34 @@ export function logAudit(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): AuditL
   };
   auditLog.push(log);
   if (auditLog.length > 10_000) auditLog.shift();
+
+  await loadAuditFromDb();
+  let db: Db | null = null;
+  try {
+    db = await getCoreDb();
+  } catch {
+    return log;
+  }
+  try {
+    await db.run(
+      `INSERT INTO mcp_gateway_audit
+       (id, timestamp, server_id, tool_name, client_id, success, latency_ms, error_code, tokens_used)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        log.id,
+        log.timestamp,
+        log.serverId,
+        log.toolName,
+        log.clientId,
+        log.success ? 1 : 0,
+        log.latencyMs,
+        log.errorCode ?? null,
+        log.tokensUsed ?? null,
+      ],
+    );
+  } catch {
+    // non-critical — audit is best-effort persistence
+  }
   return log;
 }
 
@@ -123,6 +196,8 @@ export function getAuditLogs(
   const filtered = serverId ? auditLog.filter((e) => e.serverId === serverId) : auditLog;
   return filtered.slice(-limit).reverse();
 }
+
+// ── Risk Assessment ──────────────────────────────────────────────────────
 
 export function assessRiskLevel(
   toolName: string,
@@ -162,15 +237,92 @@ export function assessRiskLevel(
   return 'low';
 }
 
-const pendingApprovals = new Map<string, ApprovalRequest>();
+// ── Gateway Approvals — in-memory + DB ──────────────────────────────────
 
-export function createApproval(
+const pendingApprovals = new Map<string, ApprovalRequest>();
+let approvalsDbLoaded = false;
+
+async function loadApprovalsFromDb(): Promise<void> {
+  if (approvalsDbLoaded) return;
+  approvalsDbLoaded = true;
+  let db: Db | null = null;
+  try {
+    db = await getCoreDb();
+  } catch {
+    return;
+  }
+  try {
+    const rows = await db.all<Record<string, unknown>>(
+      "SELECT * FROM mcp_gateway_approvals WHERE status IN ('pending') ORDER BY requested_at DESC",
+    );
+    for (const row of rows) {
+      pendingApprovals.set(row.id as string, {
+        id: row.id as string,
+        serverId: row.server_id as string,
+        toolName: row.tool_name as string,
+        args: typeof row.args_json === 'string' ? JSON.parse(row.args_json) : {},
+        riskLevel: (row.risk_level as ApprovalRequest['riskLevel']) ?? 'low',
+        requestedBy: (row.requested_by as string) ?? 'unknown',
+        requestedAt: (row.requested_at as string) ?? new Date().toISOString(),
+        status: (row.status as ApprovalRequest['status']) ?? 'pending',
+        reviewedBy: (row.reviewed_by as string) ?? undefined,
+        reviewedAt: (row.reviewed_at as string) ?? undefined,
+        reason: (row.reason as string) ?? undefined,
+      });
+    }
+  } catch {
+    // table may not exist yet (pre-migration)
+  }
+}
+
+function rowFromApproval(req: ApprovalRequest) {
+  return [
+    req.id,
+    req.serverId,
+    req.toolName,
+    JSON.stringify(req.args),
+    req.riskLevel,
+    req.requestedBy,
+    req.requestedAt,
+    req.status,
+    req.reviewedBy ?? null,
+    req.reviewedAt ?? null,
+    req.reason ?? null,
+  ];
+}
+
+async function upsertApprovalDb(req: ApprovalRequest): Promise<void> {
+  let db: Db | null = null;
+  try {
+    db = await getCoreDb();
+  } catch {
+    return;
+  }
+  try {
+    await db.run(
+      `INSERT INTO mcp_gateway_approvals
+       (id, server_id, tool_name, args_json, risk_level, requested_by, requested_at,
+        status, reviewed_by, reviewed_at, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         status = excluded.status,
+         reviewed_by = excluded.reviewed_by,
+         reviewed_at = excluded.reviewed_at,
+         reason = excluded.reason`,
+      rowFromApproval(req),
+    );
+  } catch {
+    // non-critical — approvals persistence is best-effort
+  }
+}
+
+export async function createApproval(
   serverId: string,
   toolName: string,
   args: Record<string, unknown>,
   requestedBy: string,
   riskLevel?: ApprovalRequest['riskLevel'],
-): ApprovalRequest {
+): Promise<ApprovalRequest> {
   const id = `gw-apr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const request: ApprovalRequest = {
     id,
@@ -183,44 +335,52 @@ export function createApproval(
     status: 'pending',
   };
   pendingApprovals.set(id, request);
+  await loadApprovalsFromDb();
+  await upsertApprovalDb(request);
   return request;
 }
 
-export function approveGatewayRequest(
+export async function approveGatewayRequest(
   id: string,
   reviewedBy: string,
   reason?: string,
-): boolean {
+): Promise<boolean> {
+  await loadApprovalsFromDb();
   const request = pendingApprovals.get(id);
   if (!request || request.status !== 'pending') return false;
   request.status = 'approved';
   request.reviewedBy = reviewedBy;
   request.reviewedAt = new Date().toISOString();
   request.reason = reason;
+  await upsertApprovalDb(request);
   return true;
 }
 
-export function denyGatewayRequest(
+export async function denyGatewayRequest(
   id: string,
   reviewedBy: string,
   reason?: string,
-): boolean {
+): Promise<boolean> {
+  await loadApprovalsFromDb();
   const request = pendingApprovals.get(id);
   if (!request || request.status !== 'pending') return false;
   request.status = 'denied';
   request.reviewedBy = reviewedBy;
   request.reviewedAt = new Date().toISOString();
   request.reason = reason;
+  await upsertApprovalDb(request);
   return true;
 }
 
-export function getPendingGatewayApprovals(
+export async function getPendingGatewayApprovals(
   serverId?: string,
-): ApprovalRequest[] {
+): Promise<ApprovalRequest[]> {
+  await loadApprovalsFromDb();
   const all = Array.from(pendingApprovals.values()).filter((r) => r.status === 'pending');
   return serverId ? all.filter((r) => r.serverId === serverId) : all;
 }
 
-export function getGatewayApproval(id: string): ApprovalRequest | undefined {
+export async function getGatewayApproval(id: string): Promise<ApprovalRequest | undefined> {
+  await loadApprovalsFromDb();
   return pendingApprovals.get(id);
 }

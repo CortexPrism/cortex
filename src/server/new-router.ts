@@ -61,6 +61,8 @@ import { routes as workflowsRoutes } from './routes/workflows.ts';
 import { routes as cacpRoutes } from './routes/cacp.ts';
 import { routes as sandboxRoutes } from './routes/sandbox.ts';
 import { routes as mcpConnectionsRoutes } from './routes/mcp-connections.ts';
+import { routes as mcpGatewayRoutes } from './routes/mcp-gateway-routes.ts';
+import { routes as chromeBridgeRoutes } from './routes/chrome-bridge-routes.ts';
 import { routes as evalRoutes } from './routes/eval-routes.ts';
 import { routes as sessionLinksRoutes } from './routes/session-links.ts';
 import { routes as workspaceSnapshotsRoutes } from './routes/workspace-snapshots.ts';
@@ -143,6 +145,8 @@ const protectedRoutes: RouteHandler[] = [
   ...cacpRoutes,
   ...sandboxRoutes,
   ...mcpConnectionsRoutes,
+  ...mcpGatewayRoutes,
+  ...chromeBridgeRoutes,
   ...evalRoutes,
   ...sessionLinksRoutes,
   ...workspaceSnapshotsRoutes,

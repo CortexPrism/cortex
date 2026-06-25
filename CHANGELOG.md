@@ -7,7 +7,53 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ## [Unreleased]
 
+### Fixed
+
+- **MCP gateway audit + approvals lost on restart** — `logAudit()`, `createApproval()`,
+  `approveGatewayRequest()`, and `denyGatewayRequest()` now persist to `cortex.db` via
+  write-through to the `mcp_gateway_audit` and `mcp_gateway_approvals` tables (migration 055).
+  Previously all gateway state was in-memory only and lost on every server restart.
+  (`packages/server/src/mcp-gateway/gateway.ts`, migration `055_mcp_gateway_approvals.sql`)
+
+- **MCP gateway registry DB errors silently swallowed** — `registerServer()`, `updateServer()`,
+  and `removeServer()` now log DB write failures via the `mcp:gateway:registry` logger instead
+  of silently discarding errors. Previously a failed DB write would leave in-memory state out
+  of sync with the database with no indication anything went wrong.
+  (`packages/server/src/mcp-gateway/registry.ts`)
+
+- **`updateServer()` field protection** — only `name`, `endpoint`, `transport`, and `tags` can
+  now be updated via `updateServer()`. Previously any caller could overwrite protected fields
+  like `id`, `createdAt`, `status`, or `tools` by spreading arbitrary `Partial<McpServerEntry>`.
+  (`packages/server/src/mcp-gateway/registry.ts`)
+
+- **`registerBuiltinTools()` called on every HTTP request** — guarded with a module-level
+  boolean flag so `loadConfig()` and tool registration run once, not on every `/mcp` request.
+  (`src/mcp/server.ts`)
+
+- **Test server entries leaking into production DB** — MCP gateway tests now track all
+  registered server IDs and run a cleanup step that removes test entries from both memory
+  and the database, including retroactive cleanup of entries leaked by prior test runs.
+  (`tests/mcp_test.ts`)
+
 ### Changed
+
+- **Gateway health-retry endpoint now functional** — `POST /api/mcp-gateway/health-retry`
+  previously returned a static acknowledgment without running a health check. It now calls
+  `healthCheck()`, returns the real `HealthCheckResult`, and updates the server's status
+  and `toolCount` in the registry if they changed.
+  (`src/server/routes/mcp-gateway-routes.ts`)
+
+- **MCP route file split into three concerns** — the 387-line `mcp-connections.ts` route file
+  handled MCP connections, the gateway API, and chrome-bridge in one file. Split into:
+  `mcp-connections.ts` (connection CRUD), `mcp-gateway-routes.ts` (gateway servers, audit,
+  approvals, health), and `chrome-bridge-routes.ts` (chrome-bridge integration).
+  (`src/server/routes/{mcp-connections,mcp-gateway-routes,chrome-bridge-routes}.ts`,
+  `src/server/new-router.ts`)
+
+- **Gateway server listing includes live connection state** — `GET /api/mcp-gateway/servers`
+  now includes a `connected` field for each server, bridged from the live MCP client
+  connections via `listConnections()`.
+  (`src/server/routes/mcp-gateway-routes.ts`)
 
 - **Scheduler package migration** — the canonical scheduler, cron parser, and daemon process moved
   from `src/scheduler/` and `src/processes/scheduler-process.ts` into `packages/infra/src/scheduler/`

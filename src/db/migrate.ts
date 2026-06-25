@@ -438,6 +438,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '054_auto_apply.sql',
       label: 'cortex.db (auto-apply support)',
     },
+    {
+      db: coreDb,
+      sqlFile: '055_mcp_gateway_approvals.sql',
+      label: 'cortex.db (MCP gateway approvals)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
