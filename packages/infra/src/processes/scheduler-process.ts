@@ -71,23 +71,37 @@ async function runDueJobs(): Promise<void> {
         }
       } else if (job.action_kind === 'agent_turn') {
         _log.info(`dispatching agent turn`, { jobId: job.id, name: job.name });
-        let config: { prompt?: string; agent_id?: string } = {};
+        const fullConfig: {
+          prompt?: string;
+          agent_id?: string;
+          session_id?: string;
+          orchestrationResume?: {
+            waitBarrierId: string;
+            runIds: string[];
+            awaitMode?: string;
+            barrierLabel?: string;
+          };
+        } = {};
         try {
-          config = JSON.parse(job.action_config ?? '{}');
+          Object.assign(fullConfig, JSON.parse(job.action_config ?? '{}'));
         } catch { /* use defaults */ }
 
-        const prompt = config.prompt ?? job.command;
-        const agentId = config.agent_id ?? 'default';
+        const prompt = fullConfig.prompt ?? job.command;
+        const agentId = fullConfig.agent_id ?? 'default';
 
         const { createTriggerJobCreator } = await import(
           '../../../../src/triggers/job-creator.ts'
         );
         const jobCreator = createTriggerJobCreator();
-        const result = await jobCreator.createJob(agentId, prompt);
+        const result = await jobCreator.createJob(agentId, prompt, {
+          sessionId: fullConfig.session_id,
+          orchestrationResume: fullConfig.orchestrationResume,
+        });
 
         const elapsed = Date.now() - t0;
+        const resumeSuffix = fullConfig.orchestrationResume ? ' (resume)' : '';
         await markJobDone(job.id, runId, {
-          stdout: `Agent turn dispatched: session=${result.sessionId} turn=${result.turnId}`,
+          stdout: `Agent turn dispatched${resumeSuffix}: session=${result.sessionId} turn=${result.turnId}`,
           durationMs: elapsed,
           exitCode: 0,
         });
@@ -97,6 +111,7 @@ async function runDueJobs(): Promise<void> {
           sessionId: result.sessionId,
           duration: formatDuration(elapsed),
           kind: 'agent_turn',
+          isResume: !!fullConfig.orchestrationResume,
         });
 
         if (job.kind === 'cron' && job.schedule) {

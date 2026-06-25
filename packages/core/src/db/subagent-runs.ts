@@ -459,6 +459,41 @@ export async function expelExpiredWaitBarriers(
   );
 }
 
+/**
+ * Expire ALL active wait barriers across all sessions that are past the
+ * expiry threshold.  Called by the scheduler poll cycle so that yielded
+ * sessions (which never call sub_agent_wait again) still get their
+ * barriers expired.
+ */
+export async function expelAllExpiredWaitBarriers(
+  expiryMinutes = 30,
+): Promise<void> {
+  const db = await getCoreDb();
+  await db.run(
+    `UPDATE subagent_wait_barriers SET status = 'expired', resolved_at = datetime('now')
+     WHERE status = 'active'
+       AND created_at < datetime('now', ? || ' minutes')`,
+    [String(-expiryMinutes)],
+  );
+}
+
+/**
+ * Mark sub-agent runs that have been stuck in 'running' longer than
+ * `timeoutMs` as failed.
+ */
+export async function failStaleSubagentRuns(
+  timeoutMs: number,
+): Promise<void> {
+  const db = await getCoreDb();
+  const timeoutSeconds = Math.floor(timeoutMs / 1000);
+  await db.run(
+    `UPDATE subagent_runs SET status = 'failed', error = 'Timed out after ${timeoutSeconds}s', completed_at = datetime('now')
+     WHERE status = 'running'
+       AND started_at < datetime('now', ? || ' seconds')`,
+    [String(-timeoutSeconds)],
+  );
+}
+
 export async function getRunDepth(runId: string): Promise<number> {
   const db = await getCoreDb();
   const row = await db.get<{ depth: number }>(

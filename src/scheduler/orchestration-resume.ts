@@ -1,10 +1,19 @@
 import { getCoreDb } from '../db/client.ts';
 import type { Db } from '../db/client.ts';
 import { logger } from '../utils/logger.ts';
-import { isTerminalStatus } from '../db/subagent-runs.ts';
+import {
+  expelAllExpiredWaitBarriers,
+  failStaleSubagentRuns,
+  isTerminalStatus,
+} from '../db/subagent-runs.ts';
 import type { SubagentRunStatus } from '../db/subagent-runs.ts';
 
 const _log = logger('orchestration-resume');
+
+/** Max time a child sub-agent can be 'running' before being auto-failed (15 min). */
+const STALE_CHILD_TIMEOUT_MS = 15 * 60 * 1000;
+/** Barrier expiry threshold (30 min — matches the default in expelExpiredWaitBarriers). */
+const BARRIER_EXPIRY_MINUTES = 30;
 
 interface PendingBundle {
   id: string;
@@ -34,6 +43,20 @@ export async function checkPendingResumes(): Promise<number> {
       delivered_at TEXT
     )
   `);
+
+  // ── Housekeeping: expire stale barriers and failed children ──────────
+  await expelAllExpiredWaitBarriers(BARRIER_EXPIRY_MINUTES);
+  await failStaleSubagentRuns(STALE_CHILD_TIMEOUT_MS);
+
+  // Expire any pending bundles whose associated wait barrier is no
+  // longer active (expired or resolved without delivery).
+  await db.run(
+    `UPDATE orchestration_resume_bundles SET status = 'expired'
+     WHERE status = 'pending'
+       AND wait_barrier_id NOT IN (
+         SELECT id FROM subagent_wait_barriers WHERE status = 'active'
+       )`,
+  );
 
   const bundles = await db.all<PendingBundle>(
     `SELECT * FROM orchestration_resume_bundles

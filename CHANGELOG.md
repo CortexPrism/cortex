@@ -85,6 +85,45 @@ Versioning: [Semantic Versioning](https://semver.org/)
   and `schedule_config='{}'` in the insert.
   (`src/scheduler/orchestration-resume.ts`)
 
+- **Wait barrier expiry never called for yielded sessions** — `expelExpiredWaitBarriers()`
+  was only invoked from inside the `sub_agent_wait` tool's `execute()` method, meaning
+  sessions that yielded their turn (via `yieldTurn: true`) never had their wait barriers
+  expired. Barriers older than the 30-minute threshold remained `active` indefinitely,
+  preventing `checkPendingResumes()` from delivering the resume (the expired barriers
+  blocked cascade expiry of the associated `orchestration_resume_bundles`). Added
+  `expelAllExpiredWaitBarriers()` — a session-agnostic variant called from the scheduler
+  poll cycle every 30 seconds — so yielded sessions are no longer a blind spot.
+  (`packages/core/src/db/subagent-runs.ts`, `src/db/subagent-runs.ts`,
+  `src/scheduler/orchestration-resume.ts`)
+
+- **Stuck sub-agent children blocked resume delivery forever** — `checkPendingResumes()`
+  polled child run terminal status via `checkAllChildrenTerminal()` but never detected
+  children that had been in `running` status past a reasonable timeout. Silently crashed
+  child processes (fire-and-forget spawn pattern in `sub_agent_spawn`) left runs stuck
+  in `running` with no error, which `isTerminalStatus()` treated as non-terminal,
+  causing the resume bundle to be skipped every poll cycle — a permanent deadlock. Added
+  `failStaleSubagentRuns()` which is called at the start of each scheduler poll to mark
+  runs as `failed` if they have been `running` longer than 15 minutes. Combined with the
+  barrier expiry fix, this breaks the deadlock: stuck children → auto-failed → terminal
+  → resume delivered.
+  (`packages/core/src/db/subagent-runs.ts`, `src/db/subagent-runs.ts`,
+  `src/scheduler/orchestration-resume.ts`)
+
+- **Scheduler dropped `orchestrationResume` config when dispatching agent turns** — the
+  `runDueJobs()` dispatcher in the scheduler daemon only destructured `prompt` and
+  `agent_id` from `job.action_config`, silently dropping the `session_id` and
+  `orchestrationResume` fields that `checkPendingResumes()` had included in the adhoc
+  job payload. This meant even when a resume job was successfully created, it ran as a
+  fresh ephemeral agent turn instead of resuming the yielded session with the collected
+  sub-agent results. Extended the config destructuring to pass `session_id` and
+  `orchestrationResume` through to `createJob()`. The trigger job creator
+  (`createTriggerJobCreator()`) now accepts an optional `resumeOpts` parameter: when
+  `sessionId` is provided, it reuses the existing session DB (via `openExistingSession()`)
+  instead of creating a new ephemeral session, passes `orchestrationResume` through to
+  `agentTurn()`, and keeps the session open after the turn (`keepSessionOpen: true`).
+  Standard trigger-driven jobs (no `sessionId`) follow the original code path unchanged.
+  (`packages/infra/src/processes/scheduler-process.ts`, `src/triggers/job-creator.ts`)
+
 ### Added
 
 - **Container workspace isolation** — when Docker is available, agents now get
