@@ -58,7 +58,7 @@ export const fileWriteTool: Tool = {
         await Deno.mkdir(dirname(filePath), { recursive: true }).catch(() => {});
       }
       const existing = ws && workspace === 'agent'
-        ? await ws.readFile(filePath)
+        ? await ws.readFile(filePath).catch(() => '')
         : await Deno.readTextFile(filePath).catch(() => '');
       if (ws && workspace === 'agent') {
         await ws.writeFile(filePath, content);
