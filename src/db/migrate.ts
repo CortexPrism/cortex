@@ -83,7 +83,7 @@ const DB_FILES = ['cortex.db', 'memory.db', 'lens.db', 'vault.db', 'plugins.db']
 
 const MAX_BACKUPS = 5;
 
-async function checkpointWal(db: Db): Promise<void> {
+export async function checkpointWal(db: Db): Promise<void> {
   try {
     await db.run('PRAGMA wal_checkpoint(TRUNCATE)');
   } catch {
@@ -145,28 +145,39 @@ async function pruneBackups(): Promise<void> {
 async function tryRecover(dbPath: string): Promise<boolean> {
   if (!await exists(dbPath)) return false;
 
-  // Try opening the DB. SQLite auto-recovers WAL from unclean shutdown.
-  // Only treat as corrupt if it throws SQLITE_CORRUPT.
   let isCorrupt = false;
+  let corruptReason = '';
   try {
     const testClient = createClient({ url: `file:${dbPath}` });
-    await testClient.execute('SELECT 1');
+    const result = await testClient.execute('PRAGMA integrity_check');
+    const rows = result.rows as unknown as Array<{ integrity_check: string }>;
+    for (const row of rows) {
+      if (row.integrity_check !== 'ok') {
+        isCorrupt = true;
+        corruptReason = row.integrity_check;
+        break;
+      }
+    }
     testClient.close();
   } catch (e) {
+    const msg = (e as Error).message ?? '';
     if (
-      (e as Error).message?.includes('SQLITE_CORRUPT') ||
-      (e as Error).message?.includes('disk image is malformed')
+      msg.includes('SQLITE_CORRUPT') ||
+      msg.includes('disk image is malformed') ||
+      msg.includes('malformed database schema')
     ) {
-      console.log(`  ⚠ ${basename(dbPath)} is corrupted (SQLITE_CORRUPT) — will recover`);
+      console.log(`  ⚠ ${basename(dbPath)} is corrupted (${msg.slice(0, 80)}) — will recover`);
       isCorrupt = true;
+      corruptReason = msg;
     } else {
-      // Other errors (permission, etc.) — don't try to recover
-      console.error(`  ✗ ${basename(dbPath)} open failed: ${(e as Error).message}`);
+      console.error(`  ✗ ${basename(dbPath)} open failed: ${msg}`);
       return false;
     }
   }
 
   if (!isCorrupt) return false;
+
+  console.log(`  ⚠ ${basename(dbPath)} integrity failure: ${corruptReason.slice(0, 120)}`);
 
   const entries: Deno.DirEntry[] = [];
   for await (const entry of Deno.readDir(PATHS.backupsDir)) {
@@ -199,16 +210,78 @@ async function tryRecover(dbPath: string): Promise<boolean> {
       }
     }
 
-    return true;
+    // Verify restored backup passes integrity check
+    try {
+      const verifyClient = createClient({ url: `file:${dbPath}` });
+      const verifyResult = await verifyClient.execute('PRAGMA integrity_check');
+      const verifyRows = verifyResult.rows as unknown as Array<{ integrity_check: string }>;
+      const verifyOk = verifyRows.length === 1 && verifyRows[0].integrity_check === 'ok';
+      verifyClient.close();
+      if (verifyOk) {
+        console.log(`  ✓ ${basename(dbPath)} restored from backup — integrity check passed`);
+        return true;
+      } else {
+        console.warn(
+          `  ⚠ Restored ${basename(dbPath)} still has integrity issues — trying older backup`,
+        );
+      }
+    } catch {
+      console.warn(
+        `  ⚠ Restored ${basename(dbPath)} failed to open — trying older backup`,
+      );
+    }
   }
 
   if (isCorrupt) {
     console.error(
-      `  ✗ ${basename(dbPath)} is corrupted and no backup exists — manual recovery required`,
+      `  ✗ ${basename(dbPath)} has corruption and no healthy backup found.`,
+    );
+    console.error(
+      `    To recover manually:`,
+    );
+    if (await exists(PATHS.backupsDir)) {
+      console.error(`    1. Find a healthy backup in ${PATHS.backupsDir}`);
+      console.error(`    2. Copy cortex.db from the backup into ${PATHS.dataDir}`);
+      console.error(`    3. Remove any <dbname>-wal and <dbname>-shm files`);
+      console.error(`    4. Restart the server`);
+    }
+    console.error(
+      `    If no healthy backup exists, delete the corrupted database to start fresh.`,
     );
   }
 
   return false;
+}
+
+async function integrityCheck(db: Db, label: string): Promise<string[]> {
+  try {
+    const rows = await db.all<{ integrity_check: string }>('PRAGMA integrity_check');
+    const errors: string[] = [];
+    for (const row of rows) {
+      const val = row.integrity_check;
+      if (val !== 'ok') errors.push(val);
+    }
+    return errors;
+  } catch (e) {
+    return [`${label}: integrity_check failed — ${(e as Error).message}`];
+  }
+}
+
+async function checkAllDatabases(
+  dbs: Map<string, Db>,
+  labels: Map<string, string>,
+): Promise<boolean> {
+  let allOk = true;
+  for (const [name, db] of dbs) {
+    const label = labels.get(name) ?? name;
+    const errors = await integrityCheck(db, label);
+    if (errors.length > 0) {
+      allOk = false;
+      console.error(`  ✗ ${label} integrity errors:`);
+      for (const err of errors) console.error(`    • ${err}`);
+    }
+  }
+  return allOk;
 }
 
 export async function runMigrations(): Promise<void> {
@@ -229,6 +302,34 @@ export async function runMigrations(): Promise<void> {
   const lensDb = await getLensDb();
   const vaultDb = await getVaultDb();
   const pluginsDb = await getPluginsDb();
+
+  const integrityLabels = new Map([
+    ['cortex.db', 'cortex.db'],
+    ['memory.db', 'memory.db'],
+    ['lens.db', 'lens.db'],
+    ['vault.db', 'vault.db'],
+    ['plugins.db', 'plugins.db'],
+  ]);
+  const integrityDbs = new Map<string, Db>([
+    ['cortex.db', coreDb],
+    ['memory.db', memoryDb],
+    ['lens.db', lensDb],
+    ['vault.db', vaultDb],
+    ['plugins.db', pluginsDb],
+  ]);
+
+  if (!await checkAllDatabases(integrityDbs, integrityLabels)) {
+    console.error(
+      '\n  Database corruption detected. The server cannot start with corrupted databases.',
+    );
+    console.error(
+      '  To recover: restore from backups in ' + PATHS.backupsDir,
+    );
+    console.error(
+      '  Backups are created automatically before each migration run.',
+    );
+    Deno.exit(1);
+  }
 
   const dbMap = new Map<string, Db>([
     ['cortex.db', coreDb],
@@ -443,6 +544,11 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '055_mcp_gateway_approvals.sql',
       label: 'cortex.db (MCP gateway approvals)',
     },
+    {
+      db: coreDb,
+      sqlFile: '056_workspace_policy.sql',
+      label: 'cortex.db (workspace boundary policy)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {
@@ -471,6 +577,14 @@ export async function runMigrations(): Promise<void> {
   // Run sensitivity backfill if needed (one-time after adding sensitivity columns)
   const { runBackfill } = await import('../security/backfill.ts');
   await runBackfill();
+
+  // Final health check — warn (don't abort) on post-migration issues
+  const postCheckOk = await checkAllDatabases(integrityDbs, integrityLabels);
+  if (!postCheckOk) {
+    console.warn(
+      '  ⚠ Post-migration integrity issues detected. Some features may be degraded.',
+    );
+  }
 }
 
 export async function createAutoAdmin(

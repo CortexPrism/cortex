@@ -1,7 +1,14 @@
 import { getCoreDb } from '../db/client.ts';
 import type { InValue } from 'npm:@libsql/client';
 
-export type PolicyKind = 'tool' | 'shell' | 'domain' | 'capability' | 'path' | 'computer';
+export type PolicyKind =
+  | 'tool'
+  | 'shell'
+  | 'domain'
+  | 'capability'
+  | 'path'
+  | 'computer'
+  | 'workspace';
 export type PolicyEffect = 'allow' | 'deny';
 
 export interface PolicyRule {

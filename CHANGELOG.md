@@ -35,6 +35,19 @@ Versioning: [Semantic Versioning](https://semver.org/)
   and the database, including retroactive cleanup of entries leaked by prior test runs.
   (`tests/mcp_test.ts`)
 
+- **Agent workspace boundary escape** — non-admin agents could bypass workspace isolation
+  by specifying `workspace: "global"` in file tools (`file_list`, `file_tree`) and shell
+  commands, accessing the host filesystem outside their agent workspace directory. Added a
+  new `workspace` `PolicyKind` with a `default_deny_workspace_global` deny rule (priority 150,
+  migration 056) that blocks `workspace:global` access unless an explicit allow rule exists.
+  The shell tool now defaults to agent workspace and validates `cwd` via
+  `resolveWorkspacePath`. When compliance classifies a turn as `critical` risk, subsequent
+  turns in that session are now blocked rather than only logged.
+  (`src/security/policy.ts`, `src/security/validator.ts`, `packages/gate/src/security/policy.ts`,
+  `packages/gate/src/security/validator.ts`, `src/tools/builtin/shell.ts`,
+  `src/pipeline/builtin.ts`, migration `056_workspace_policy.sql`,
+  `tests/workspace_policy_test.ts`)
+
 ### Changed
 
 - **Gateway health-retry endpoint now functional** — `POST /api/mcp-gateway/health-retry`
@@ -267,6 +280,24 @@ Versioning: [Semantic Versioning](https://semver.org/)
   an explicit `fileNodeIdMap` parameter from callers, ensuring edge source-ID fallbacks point to
   real CodeFile containers rather than unrelated symbol nodes.
   (`src/codegraph/sync.ts`, `src/codegraph/resolver.ts`)
+
+- **Database corruption defenses** — four-layer protection against SQLite corruption from
+  concurrent server instances, crashes, and unclean shutdowns:
+  1. **Pre-start integrity check** — `runMigrations()` now runs `PRAGMA integrity_check` on all
+     5 databases before applying migrations. If corruption is detected, the server refuses to start
+     with a clear error message pointing to the backups directory.
+  2. **Single-instance PID lock** — a `server.pid` file is checked before any initialization.
+     If another cortex server process is alive and holding the lock, the new instance exits
+     immediately with the running PID. Stale PID files from dead processes are cleaned up
+     automatically.
+  3. **WAL checkpoint on graceful shutdown** — the shutdown handler now checkpoints all databases
+     with `PRAGMA wal_checkpoint(TRUNCATE)`, ensuring WAL data is merged into the main database
+     file before exit.
+  4. **Enhanced `tryRecover()`** — recovery uses `PRAGMA integrity_check` instead of `SELECT 1`
+     for corruption detection, catches `malformed database schema` errors, verifies restored
+     backups pass integrity checks before accepting them, and falls through to older backups when
+     the latest is also corrupted. Recovery instructions are printed when no healthy backup exists.
+  (`src/db/migrate.ts`, `src/server/server.ts`)
 
 ## [0.53.1] - 2026-06-24
 

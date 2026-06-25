@@ -54,6 +54,23 @@ export async function validateToolCall(
   }
 
   if (toolName === 'shell' || toolName === 'code_exec') {
+    const wsArg = args.workspace;
+    if (wsArg === 'global' || wsArg === 'agent') {
+      const wsDecision = await checkPolicy('workspace', String(wsArg));
+      if (!wsDecision.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'validator',
+          action: `workspace:${toolName}`,
+          summary: `Workspace access denied: ${wsArg}`,
+          started_at: new Date().toISOString(),
+          payload: { tool: toolName, workspace: wsArg, rule: wsDecision.rule?.id },
+        });
+        return { allowed: false, reason: wsDecision.reason };
+      }
+    }
+
     const command = String(args.command ?? args.code ?? '');
     const shellDecision = await checkPolicy('shell', command);
 
@@ -128,8 +145,26 @@ export async function validateToolCall(
     }
   }
 
-  // Path-based policy check for file tools
+  // Workspace policy check for file tools with workspace parameter
   if (FILE_TOOLS.has(toolName)) {
+    const workspaceArg = args.workspace;
+    if (workspaceArg === 'global' || workspaceArg === 'agent') {
+      const wsValue = String(workspaceArg);
+      const wsDecision = await checkPolicy('workspace', wsValue);
+      if (!wsDecision.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'validator',
+          action: `workspace:${toolName}`,
+          summary: `Workspace access denied: ${wsValue}`,
+          started_at: new Date().toISOString(),
+          payload: { tool: toolName, workspace: wsValue, rule: wsDecision.rule?.id },
+        });
+        return { allowed: false, reason: wsDecision.reason };
+      }
+    }
+
     const pathArg = args.path ?? args.source ?? args.pattern ?? '';
     if (typeof pathArg === 'string' && pathArg) {
       const pathDecision = await checkPolicy('path', pathArg);

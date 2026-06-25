@@ -40,6 +40,7 @@ interface LoopDetectionState {
 
 const summarizationStates = new Map<string, SummarizationState>();
 const loopStates = new Map<string, LoopDetectionState>();
+const criticalSessions = new Set<string>();
 
 class ContentSafetyHook implements PipelineHook {
   name = '@cortex/content-safety';
@@ -539,7 +540,7 @@ class DLPGuardHook implements PipelineHook {
 
 class ComplianceHook implements PipelineHook {
   name = '@cortex/compliance';
-  stages: PipelineStage[] = ['pre-assess', 'post-tool', 'post-output'];
+  stages: PipelineStage[] = ['pre-assess', 'pre-tool', 'post-tool', 'post-output'];
   priority = 7;
   async = true;
   disableable = true;
@@ -562,6 +563,18 @@ class ComplianceHook implements PipelineHook {
         const sensitivity = classifyContent(inputText);
         const state = ctx.state as Record<string, unknown>;
         state.complianceSensitivityLevel = sensitivity;
+      }
+
+      if (ctx.stage === 'pre-tool') {
+        if (criticalSessions.has(ctx.sessionId)) {
+          return {
+            abort: {
+              reason: 'critical_risk',
+              message: 'Turn blocked: previous turn was flagged as critical risk by compliance. ' +
+                'Review and approve before continuing.',
+            },
+          };
+        }
       }
 
       if (ctx.stage === 'post-tool' && ctx.toolCall) {
@@ -603,7 +616,7 @@ class ComplianceHook implements PipelineHook {
         const cleanDomains = extractHostnames(acc?.domainsContacted ?? []);
 
         // Record consolidated turn compliance
-        await recordTurnCompliance({
+        const record = await recordTurnCompliance({
           sessionId: ctx.sessionId,
           turnId: ctx.turnId,
           sensitivityLevel: state.complianceSensitivityLevel as
@@ -619,6 +632,10 @@ class ComplianceHook implements PipelineHook {
           modelUsed: ctx.state.model,
           dataInvolved: [ctx.state.userMessage, ctx.output ?? ''].filter(Boolean),
         });
+
+        if (record.riskLevel === 'critical') {
+          criticalSessions.add(ctx.sessionId);
+        }
 
         // Cleanup accumulator for this turn
         this.turnAccumulator.delete(turnKey);
@@ -711,4 +728,5 @@ export function registerBuiltinHooks(): void {
 export function cleanupSessionState(sessionId: string): void {
   summarizationStates.delete(sessionId);
   loopStates.delete(sessionId);
+  criticalSessions.delete(sessionId);
 }

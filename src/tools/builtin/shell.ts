@@ -1,5 +1,7 @@
 import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { getShellCommand, isWindows } from '../../utils/platform.ts';
+import { normalize, resolve } from '@std/path';
+import { resolveWorkspacePath } from '../../workspace/paths.ts';
 
 const TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
@@ -39,7 +41,7 @@ export const shellTool: Tool = {
       {
         name: 'cwd',
         type: 'string',
-        description: 'Working directory for the command (defaults to session working dir)',
+        description: 'Working directory for the command (defaults to agent workspace)',
         descriptionKey: 'tools.shell.params.cwd',
         required: false,
       },
@@ -50,6 +52,13 @@ export const shellTool: Tool = {
         descriptionKey: 'tools.shell.params.timeout',
         required: false,
       },
+      {
+        name: 'workspace',
+        type: 'string',
+        description: 'Target workspace: "agent" (default) or "global"',
+        required: false,
+        enum: ['agent', 'global'],
+      },
     ],
   },
 
@@ -59,7 +68,7 @@ export const shellTool: Tool = {
   ): Promise<ToolCallResult> {
     const start = Date.now();
     const command = String(args.command ?? '').trim();
-    const cwd = String(args.cwd ?? context.workingDir);
+    const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
     const timeout = typeof args.timeout === 'number' ? args.timeout : TIMEOUT_MS;
 
     if (!command) {
@@ -68,6 +77,18 @@ export const shellTool: Tool = {
 
     if (!isSafe(command)) {
       return result(false, '', `Command blocked by safety filter: ${command}`, start);
+    }
+
+    let cwd: string;
+    if (args.cwd) {
+      const rawCwd = String(args.cwd);
+      try {
+        cwd = resolveWorkspacePath(context.agentId, rawCwd, workspace);
+      } catch {
+        return result(false, '', `cwd "${rawCwd}" is outside the allowed workspace`, start);
+      }
+    } else {
+      cwd = workspace === 'agent' ? context.workspaceDir : context.workingDir;
     }
 
     if (context.approvalGate) {
@@ -93,7 +114,6 @@ export const shellTool: Tool = {
             child.kill();
           } else {
             child.kill('SIGTERM');
-            // Give SIGTERM 2 seconds to work, then SIGKILL
             setTimeout(() => {
               try {
                 child.kill('SIGKILL');
