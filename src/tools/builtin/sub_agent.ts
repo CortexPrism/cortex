@@ -55,7 +55,7 @@ async function executeOnce(
         inheritedProvider: context.provider,
       },
       subAgentType,
-    });
+    }, undefined, context.registerChildPid);
 
     for await (const event of iter) {
       switch (event.type) {

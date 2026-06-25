@@ -30,23 +30,33 @@ export const fileInfoTool: Tool = {
     const start = Date.now();
     const rawPath = String(args.path ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
+    const ws = context.agentWorkspace;
 
     try {
       await ensureAgentWorkspace(context.agentId);
       const filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
-      const stat = await Deno.stat(filePath);
-      const type = stat.isFile
-        ? 'file'
-        : stat.isDirectory
-        ? 'directory'
-        : stat.isSymlink
-        ? 'symlink'
-        : 'other';
-      const size = stat.size;
-      const mtime = stat.mtime?.toISOString() ?? 'N/A';
-      const birthtime = stat.birthtime?.toISOString() ?? 'N/A';
-      const mode = stat.mode?.toString(8) ?? 'N/A';
+      let type: string;
+      let size: number;
+      let mtime: string;
+      let birthtime: string;
+      let mode: string;
+
+      if (ws && workspace === 'agent') {
+        const s = await ws.stat(filePath);
+        type = s.isFile ? 'file' : s.isDirectory ? 'directory' : 'other';
+        size = s.size;
+        mtime = s.mtime?.toISOString() ?? 'N/A';
+        birthtime = 'N/A';
+        mode = 'N/A';
+      } else {
+        const s = await Deno.stat(filePath);
+        type = s.isFile ? 'file' : s.isDirectory ? 'directory' : s.isSymlink ? 'symlink' : 'other';
+        size = s.size;
+        mtime = s.mtime?.toISOString() ?? 'N/A';
+        birthtime = s.birthtime?.toISOString() ?? 'N/A';
+        mode = s.mode?.toString(8) ?? 'N/A';
+      }
 
       const output = [
         `Path: ${filePath}`,

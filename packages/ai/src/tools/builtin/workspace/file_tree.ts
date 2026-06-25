@@ -1,4 +1,4 @@
-import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
+import type { AgentWorkspaceLike, Tool, ToolCallResult, ToolContext } from '../../types.ts';
 import {
   ensureAgentWorkspace,
   resolveWorkspacePath,
@@ -37,13 +37,21 @@ export const fileTreeTool: Tool = {
     const rawPath = String(args.path ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
     const maxDepth = typeof args.maxDepth === 'number' ? args.maxDepth : 5;
+    const ws = context.agentWorkspace;
 
     try {
       await ensureAgentWorkspace(context.agentId);
       const dirPath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
       const lines: string[] = [dirPath];
-      await buildTree(dirPath, '', lines, maxDepth, 0);
+      await buildTree(
+        dirPath,
+        '',
+        lines,
+        maxDepth,
+        0,
+        ws && workspace === 'agent' ? ws : undefined,
+      );
 
       return {
         toolName: 'file_tree',
@@ -69,13 +77,21 @@ async function buildTree(
   lines: string[],
   maxDepth: number,
   depth: number,
+  ws?: AgentWorkspaceLike,
 ): Promise<void> {
   if (depth >= maxDepth) return;
 
   const entries: string[] = [];
-  const dir = Deno.readDir(dirPath);
-  for await (const entry of dir) {
-    entries.push(entry.name);
+  if (ws) {
+    const dirEntries = await ws.readDir(dirPath);
+    for (const entry of dirEntries) {
+      entries.push(entry.name);
+    }
+  } else {
+    const dir = Deno.readDir(dirPath);
+    for await (const entry of dir) {
+      entries.push(entry.name);
+    }
   }
   entries.sort((a, b) => a.localeCompare(b));
 
@@ -84,18 +100,24 @@ async function buildTree(
     const connector = isLast ? '└── ' : '├── ';
     const entryPath = `${dirPath}/${entries[i]}`;
 
-    let stat: Deno.FileInfo;
+    let isDir = false;
     try {
-      stat = await Deno.stat(entryPath);
+      if (ws) {
+        const s = await ws.stat(entryPath);
+        isDir = s.isDirectory;
+      } else {
+        const s = await Deno.stat(entryPath);
+        isDir = s.isDirectory;
+      }
     } catch {
       lines.push(`${prefix}${connector}${entries[i]}`);
       continue;
     }
 
-    if (stat.isDirectory) {
+    if (isDir) {
       lines.push(`${prefix}${connector}${entries[i]}/`);
       const childPrefix = isLast ? '    ' : '│   ';
-      await buildTree(entryPath, `${prefix}${childPrefix}`, lines, maxDepth, depth + 1);
+      await buildTree(entryPath, `${prefix}${childPrefix}`, lines, maxDepth, depth + 1, ws);
     } else {
       lines.push(`${prefix}${connector}${entries[i]}`);
     }

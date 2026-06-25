@@ -46,6 +46,7 @@ export const fileMoveTool: Tool = {
     const rawDestination = String(args.destination ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
     const overwrite = args.overwrite === true;
+    const ws = context.agentWorkspace;
 
     try {
       if (workspace === 'agent') await ensureAgentWorkspace(context.agentId);
@@ -56,7 +57,9 @@ export const fileMoveTool: Tool = {
       // Check source exists
       let sourceInfo;
       try {
-        sourceInfo = await Deno.stat(sourcePath);
+        sourceInfo = ws && workspace === 'agent'
+          ? await ws.stat(sourcePath)
+          : await Deno.stat(sourcePath);
       } catch {
         return {
           toolName: 'file_move',
@@ -73,7 +76,9 @@ export const fileMoveTool: Tool = {
       }
 
       // Check destination
-      const destExists = await Deno.stat(destPath).then(() => true).catch(() => false);
+      const destExists = ws && workspace === 'agent'
+        ? await ws.stat(destPath).then(() => true).catch(() => false)
+        : await Deno.stat(destPath).then(() => true).catch(() => false);
       if (destExists && !overwrite) {
         return {
           toolName: 'file_move',
@@ -92,7 +97,9 @@ export const fileMoveTool: Tool = {
 
       // Read content for logging (files only)
       const beforeContent = sourceInfo.isFile
-        ? await Deno.readTextFile(sourcePath).catch(() => '')
+        ? (ws && workspace === 'agent'
+          ? await ws.readFile(sourcePath).catch(() => '')
+          : await Deno.readTextFile(sourcePath).catch(() => ''))
         : '';
 
       // Ensure parent directory exists
@@ -100,7 +107,11 @@ export const fileMoveTool: Tool = {
 
       // Remove destination if overwriting
       if (destExists && overwrite) {
-        await Deno.remove(destPath, { recursive: true });
+        if (ws && workspace === 'agent') {
+          await ws.remove(destPath, true);
+        } else {
+          await Deno.remove(destPath, { recursive: true });
+        }
       }
 
       // Perform move (atomic rename if possible)

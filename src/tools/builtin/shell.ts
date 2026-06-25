@@ -99,39 +99,57 @@ export const shellTool: Tool = {
     }
 
     try {
-      const shell = getShellCommand();
-      const proc = new Deno.Command(shell.cmd, {
-        args: shell.args(command),
-        cwd,
-        stdout: 'piped',
-        stderr: 'piped',
-      });
+      let code: number;
+      let outText: string;
+      let errText: string;
 
-      const child = proc.spawn();
-      const timer = setTimeout(() => {
-        try {
-          if (isWindows()) {
-            child.kill();
-          } else {
-            child.kill('SIGTERM');
-            setTimeout(() => {
-              try {
-                child.kill('SIGKILL');
-              } catch {
-                // already exited
-              }
-            }, 2000);
+      if (context.agentWorkspace && context.agentWorkspace.type === 'container') {
+        const containerCwd = cwd.startsWith(context.workspaceDir)
+          ? '/workspace' + cwd.slice(context.workspaceDir.length)
+          : '/workspace';
+        const execResult = await context.agentWorkspace.exec(command, {
+          cwd: containerCwd,
+          timeoutMs: timeout,
+        });
+        code = execResult.exitCode;
+        outText = execResult.stdout.slice(0, MAX_OUTPUT_BYTES);
+        errText = execResult.stderr.slice(0, MAX_OUTPUT_BYTES);
+      } else {
+        const shell = getShellCommand();
+        const proc = new Deno.Command(shell.cmd, {
+          args: shell.args(command),
+          cwd,
+          stdout: 'piped',
+          stderr: 'piped',
+        });
+
+        const child = proc.spawn();
+        const timer = setTimeout(() => {
+          try {
+            if (isWindows()) {
+              child.kill();
+            } else {
+              child.kill('SIGTERM');
+              setTimeout(() => {
+                try {
+                  child.kill('SIGKILL');
+                } catch {
+                  // already exited
+                }
+              }, 2000);
+            }
+          } catch {
+            // already exited
           }
-        } catch {
-          // already exited
-        }
-      }, timeout);
+        }, timeout);
 
-      const { code, stdout, stderr } = await child.output();
-      clearTimeout(timer);
+        const output = await child.output();
+        clearTimeout(timer);
 
-      const outText = new TextDecoder().decode(stdout.slice(0, MAX_OUTPUT_BYTES));
-      const errText = new TextDecoder().decode(stderr.slice(0, MAX_OUTPUT_BYTES));
+        code = output.code;
+        outText = new TextDecoder().decode(output.stdout.slice(0, MAX_OUTPUT_BYTES));
+        errText = new TextDecoder().decode(output.stderr.slice(0, MAX_OUTPUT_BYTES));
+      }
 
       const combined = [
         outText && `stdout:\n${outText}`,

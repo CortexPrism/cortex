@@ -3,6 +3,8 @@ import { createPipelineContext, runHooksForStage } from '../../pipeline/manager.
 import { registerBuiltinHooks } from '../../pipeline/builtin.ts';
 import { nanoid } from '../helpers/nanoid.ts';
 import { persistMessage } from './history.ts';
+import { getOrCreateWorkspace } from '../../workspace/agent-workspace.ts';
+import type { AgentWorkspace } from '../../workspace/agent-workspace.ts';
 import type { AgentTurnOptions } from '../types.ts';
 import type { TurnContext } from '../pipeline/context.ts';
 
@@ -116,6 +118,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
       result,
       yielded: false,
       orchestrationResume: undefined,
+      childPids: new Set(),
+      agentWorkspace: undefined,
     };
     return ctx;
   }
@@ -138,9 +142,17 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     DEFAULT_MAX_TOOL_ROUNDS;
 
   const registry = options.registry;
+  let agentWorkspace: AgentWorkspace | undefined;
+
   const toolCtx = registry && options.toolContext
     ? { ...options.toolContext, sessionId }
     : undefined;
+
+  if (toolCtx) {
+    const agentId = toolCtx.agentId || 'assistant';
+    agentWorkspace = await getOrCreateWorkspace(agentId);
+    toolCtx.agentWorkspace = agentWorkspace;
+  }
   _log.debug(`Starting main loop`, {
     turnId,
     maxToolRounds,
@@ -156,6 +168,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     turnId,
     durationMs: 0,
   };
+
+  const childPids = new Set<number>();
 
   const ctx: TurnContext = {
     options,
@@ -173,7 +187,12 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     errorMsg: undefined,
     hitToolCeiling: false,
     registry,
-    toolCtx,
+    toolCtx: toolCtx
+      ? {
+        ...toolCtx,
+        registerChildPid: (pid: number) => childPids.add(pid),
+      }
+      : undefined,
     metaAssessment: undefined!,
     hasDocumentContext: false,
     effectiveSystemPrompt: '',
@@ -189,6 +208,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     result,
     yielded: false,
     orchestrationResume: undefined,
+    childPids,
+    agentWorkspace,
   };
 
   return ctx;

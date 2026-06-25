@@ -150,6 +150,32 @@ export type ToolProgressEvent =
   }
   | { type: 'sub_agent_apply_result'; runId: string; success: boolean; error?: string };
 
+export interface AgentWorkspaceLike {
+  readonly agentId: string;
+  readonly workspaceDir: string;
+  readonly type: 'host' | 'container';
+  resolvePath(rawPath: string, workspace?: 'agent' | 'global'): string;
+  exec(command: string, opts?: {
+    cwd?: string;
+    timeoutMs?: number;
+    env?: Record<string, string>;
+  }): Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+    timedOut: boolean;
+  }>;
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  readFileRaw(path: string): Promise<Uint8Array>;
+  stat(path: string): Promise<{ isFile: boolean; isDirectory: boolean; size: number; mtime: Date | null }>;
+  readDir(path: string): Promise<Array<{ name: string; isFile: boolean; isDirectory: boolean }>>;
+  mkdir(path: string, recursive?: boolean): Promise<void>;
+  remove(path: string, recursive?: boolean): Promise<void>;
+  init(): Promise<void>;
+  destroy(): Promise<void>;
+}
+
 export interface ToolContext {
   sessionId: string;
   workingDir: string;
@@ -168,4 +194,8 @@ export interface ToolContext {
   ) => Promise<boolean>;
   /** Stream real-time tool execution progress events to the client */
   onProgress?: (event: ToolProgressEvent) => void;
+  /** Register a sub-agent child process PID so it can be killed on turn cancellation */
+  registerChildPid?: (pid: number) => void;
+  /** Agent workspace instance for container-aware shell execution */
+  agentWorkspace?: AgentWorkspaceLike;
 }

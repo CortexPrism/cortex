@@ -13,6 +13,7 @@ import { runPostLlm, runPreOutput } from './post/response.ts';
 import { fireBackgroundTasks } from './post/background.ts';
 import { runCleanup } from './post/cleanup.ts';
 import { getCoreDb } from '../db/client.ts';
+import { killProcessById } from '../utils/platform.ts';
 
 const _log = logger('agent:loop');
 
@@ -50,6 +51,16 @@ export async function agentTurn(options: AgentTurnOptions): Promise<AgentTurnRes
         sessionId: ctx.options.sessionId,
         message: ctx.errorMsg,
       });
+
+      // Kill any running sub-agent child processes
+      for (const pid of ctx.childPids) {
+        try {
+          killProcessById(pid);
+        } catch {
+          // process already exited
+        }
+      }
+      ctx.childPids.clear();
       if (!ctx.response || ctx.response.trim().length === 0) {
         if (ctx.collectedToolCalls.length > 0) {
           const lastTool = ctx.collectedToolCalls[ctx.collectedToolCalls.length - 1];

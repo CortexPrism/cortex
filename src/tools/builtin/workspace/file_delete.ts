@@ -41,6 +41,7 @@ export const fileDeleteTool: Tool = {
     const rawPath = String(args.path ?? '');
     const recursive = args.recursive === true;
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
+    const ws = context.agentWorkspace;
 
     try {
       await ensureAgentWorkspace(context.agentId);
@@ -58,20 +59,28 @@ export const fileDeleteTool: Tool = {
 
       let beforeText = '';
       try {
-        beforeText = await Deno.readTextFile(filePath);
+        beforeText = ws && workspace === 'agent'
+          ? await ws.readFile(filePath)
+          : await Deno.readTextFile(filePath);
       } catch {
         // Directory or non-text file
       }
 
-      const stat = await Deno.stat(filePath);
+      const stat = ws && workspace === 'agent'
+        ? await ws.stat(filePath)
+        : await Deno.stat(filePath);
       if (stat.isDirectory && !recursive) {
         throw new Error(`"${filePath}" is a directory; use recursive=true to delete it`);
       }
 
-      if (stat.isDirectory) {
-        await Deno.remove(filePath, { recursive: true });
+      if (ws && workspace === 'agent') {
+        await ws.remove(filePath, stat.isDirectory ? true : false);
       } else {
-        await Deno.remove(filePath);
+        if (stat.isDirectory) {
+          await Deno.remove(filePath, { recursive: true });
+        } else {
+          await Deno.remove(filePath);
+        }
       }
 
       const workspaceDir = workspace === 'agent'

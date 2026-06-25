@@ -71,8 +71,8 @@ export async function checkPendingResumes(): Promise<number> {
       const jobId = `orch-resume-${bundle.wait_barrier_id}`;
 
       await db.run(
-        `INSERT INTO jobs (id, name, command, kind, action_kind, action_config, status, created_at, next_run_at)
-         VALUES (?, ?, ?, 'adhoc', 'agent_turn', ?, 'pending', datetime('now'), datetime('now'))`,
+        `INSERT INTO jobs (id, name, command, kind, schedule_kind, schedule_config, action_kind, action_config, status, created_at, next_run_at)
+         VALUES (?, ?, ?, 'adhoc', 'adhoc', '{}', 'agent_turn', ?, 'pending', datetime('now'), datetime('now'))`,
         [
           jobId,
           `Orchestration resume: ${bundle.barrier_label || bundle.wait_barrier_id}`,

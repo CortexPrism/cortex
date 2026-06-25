@@ -1,5 +1,5 @@
-import { extname, join, resolve } from '@std/path';
-import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
+import { extname } from '@std/path';
+import type { AgentWorkspaceLike, Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { ensureAgentWorkspace, resolveWorkspacePath } from '../../workspace/paths.ts';
 
 const MAX_BYTES = 64 * 1024;
@@ -112,10 +112,10 @@ function isBinaryContent(buffer: Uint8Array, sampleSize = 512): boolean {
   return (nullBytes / sample.length > 0.01) || (controlChars / sample.length > 0.1);
 }
 
-async function tryReadPdf(filePath: string): Promise<string | null> {
+async function tryReadPdf(filePath: string, ws: AgentWorkspaceLike | undefined, workspace: 'agent' | 'global'): Promise<string | null> {
   try {
     const { extractPdfText } = await import('../../utils/pdf.ts');
-    const data = await Deno.readFile(filePath);
+    const data = ws && workspace === 'agent' ? await ws.readFileRaw(filePath) : await Deno.readFile(filePath);
     return await extractPdfText(data);
   } catch {
     return null;
@@ -179,22 +179,23 @@ export const fileReadEnhancedTool: Tool = {
       await ensureAgentWorkspace(context.agentId);
       filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
     } catch {
-      filePath = rawPath.startsWith('/') ? rawPath : resolve(join(context.workingDir, rawPath));
+      return result(false, '', `Path "${rawPath}" is outside the allowed workspace`, start);
     }
 
     try {
-      const stat = await Deno.stat(filePath);
+      const ws = context.agentWorkspace;
+      const s = ws && workspace === 'agent' ? await ws.stat(filePath) : await Deno.stat(filePath);
 
-      if (!stat.isFile) {
+      if (!s.isFile) {
         return result(false, '', `Not a file: ${filePath}`, start);
       }
 
-      const fileSize = stat.size ?? 0;
+      const fileSize = s.size ?? 0;
       const language = detectLanguage(filePath);
 
       // Handle PDFs
       if (PDF_EXT.test(filePath)) {
-        const pdfText = await tryReadPdf(filePath);
+        const pdfText = await tryReadPdf(filePath, ws, workspace);
         if (pdfText) {
           const maxLines = 150;
           const maxChars = 8000;
@@ -253,7 +254,7 @@ export const fileReadEnhancedTool: Tool = {
         };
       }
 
-      const raw = await Deno.readFile(filePath);
+      const raw = ws && workspace === 'agent' ? await ws.readFileRaw(filePath) : await Deno.readFile(filePath);
 
       // Binary content check (after reading first chunk)
       if (!forceRead && isBinaryContent(raw)) {

@@ -46,14 +46,25 @@ export const fileWriteTool: Tool = {
     const explicitWorkspace = args.workspace as 'agent' | 'global' | 'config' | undefined;
     const workspace: 'agent' | 'global' | 'config' = explicitWorkspace ??
       (SOUL_FILES.has(rawPath) ? 'config' : 'agent');
+    const ws = context.agentWorkspace;
 
     try {
       if (workspace !== 'config') await ensureAgentWorkspace(context.agentId);
       const filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
-      await Deno.mkdir(dirname(filePath), { recursive: true }).catch(() => {});
-      const existing = await Deno.readTextFile(filePath).catch(() => '');
-      await Deno.writeTextFile(filePath, content);
+      if (ws && workspace === 'agent') {
+        await ws.mkdir(dirname(filePath), true);
+      } else {
+        await Deno.mkdir(dirname(filePath), { recursive: true }).catch(() => {});
+      }
+      const existing = ws && workspace === 'agent'
+        ? await ws.readFile(filePath)
+        : await Deno.readTextFile(filePath).catch(() => '');
+      if (ws && workspace === 'agent') {
+        await ws.writeFile(filePath, content);
+      } else {
+        await Deno.writeTextFile(filePath, content);
+      }
 
       if (workspace !== 'config') {
         const workspaceDir = workspace === 'agent'

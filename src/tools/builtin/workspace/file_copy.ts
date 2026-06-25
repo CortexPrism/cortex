@@ -1,4 +1,4 @@
-import type { Tool, ToolCallResult, ToolContext } from '../../types.ts';
+import type { AgentWorkspaceLike, Tool, ToolCallResult, ToolContext } from '../../types.ts';
 import { ensureAgentWorkspace, resolveWorkspacePath } from '../../../workspace/paths.ts';
 import { gitAutoCommit, gitEnsureBranch } from '../../../workspace/git.ts';
 import { logFileEdit } from './common.ts';
@@ -46,6 +46,7 @@ export const fileCopyTool: Tool = {
     const rawDestination = String(args.destination ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
     const overwrite = args.overwrite === true;
+    const ws = context.agentWorkspace;
 
     try {
       if (workspace === 'agent') await ensureAgentWorkspace(context.agentId);
@@ -56,7 +57,9 @@ export const fileCopyTool: Tool = {
       // Check source exists
       let sourceInfo;
       try {
-        sourceInfo = await Deno.stat(sourcePath);
+        sourceInfo = ws && workspace === 'agent'
+          ? await ws.stat(sourcePath)
+          : await Deno.stat(sourcePath);
       } catch {
         return {
           toolName: 'file_copy',
@@ -73,7 +76,9 @@ export const fileCopyTool: Tool = {
       }
 
       // Check destination
-      const destExists = await Deno.stat(destPath).then(() => true).catch(() => false);
+      const destExists = ws && workspace === 'agent'
+        ? await ws.stat(destPath).then(() => true).catch(() => false)
+        : await Deno.stat(destPath).then(() => true).catch(() => false);
       if (destExists && !overwrite) {
         return {
           toolName: 'file_copy',
@@ -95,7 +100,7 @@ export const fileCopyTool: Tool = {
 
       // Perform copy
       if (sourceInfo.isDirectory) {
-        await copyDirectory(sourcePath, destPath);
+        await copyDirectory(sourcePath, destPath, ws && workspace === 'agent' ? ws : undefined);
       } else {
         await Deno.copyFile(sourcePath, destPath);
       }
@@ -108,7 +113,11 @@ export const fileCopyTool: Tool = {
       await gitAutoCommit(workspaceDir, context.agentId, destPath, 'file_copy');
 
       // Log the operation
-      const content = sourceInfo.isFile ? await Deno.readTextFile(sourcePath).catch(() => '') : '';
+      const content = sourceInfo.isFile
+        ? (ws && workspace === 'agent'
+          ? await ws.readFile(sourcePath).catch(() => '')
+          : await Deno.readTextFile(sourcePath).catch(() => ''))
+        : '';
       await logFileEdit({
         agentId: context.agentId,
         sessionId: context.sessionId,
@@ -143,15 +152,27 @@ export const fileCopyTool: Tool = {
   },
 };
 
-async function copyDirectory(src: string, dest: string): Promise<void> {
+async function copyDirectory(
+  src: string,
+  dest: string,
+  ws?: AgentWorkspaceLike,
+): Promise<void> {
   await ensureDir(dest);
 
-  for await (const entry of Deno.readDir(src)) {
+  const entries = ws ? await ws.readDir(src) : await (async () => {
+    const result: Array<{ name: string; isFile: boolean; isDirectory: boolean }> = [];
+    for await (const entry of Deno.readDir(src)) {
+      result.push({ name: entry.name, isFile: entry.isFile, isDirectory: entry.isDirectory });
+    }
+    return result;
+  })();
+
+  for (const entry of entries) {
     const srcPath = `${src}/${entry.name}`;
     const destPath = `${dest}/${entry.name}`;
 
     if (entry.isDirectory) {
-      await copyDirectory(srcPath, destPath);
+      await copyDirectory(srcPath, destPath, ws);
     } else {
       await Deno.copyFile(srcPath, destPath);
     }

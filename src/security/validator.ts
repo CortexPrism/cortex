@@ -370,6 +370,23 @@ export async function validateNodeDirective(
         return { allowed: false, reason: cmdCheck.reason };
       }
     }
+
+    const wsArg = args.workspace;
+    if (wsArg === 'global' || wsArg === 'agent') {
+      const wsDecision = await checkPolicy('workspace', String(wsArg));
+      if (!wsDecision.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'hub',
+          action: `node_directive:${toolName}:workspace`,
+          summary: `Workspace access denied for node directive: ${wsArg}`,
+          started_at: new Date().toISOString(),
+          payload: { nodeId, tier, tool: toolName, workspace: wsArg, rule: wsDecision.rule?.id },
+        });
+        return { allowed: false, reason: wsDecision.reason };
+      }
+    }
   }
 
   // Layer 2.5: Web domain policy checks for node directives
@@ -441,6 +458,23 @@ export async function validateNodeDirective(
           payload: { nodeId, tier, tool: toolName, path: pathArg.slice(0, 200) },
         });
         return { allowed: false, reason: pathCheck.reason };
+      }
+    }
+
+    const wsArg = args.workspace;
+    if (wsArg === 'global' || wsArg === 'agent') {
+      const wsDecision = await checkPolicy('workspace', String(wsArg));
+      if (!wsDecision.allowed) {
+        await logEvent({
+          event_type: 'policy_check',
+          session_id: sessionId,
+          actor: 'hub',
+          action: `node_directive:${toolName}:workspace`,
+          summary: `Workspace access denied for node directive: ${wsArg}`,
+          started_at: new Date().toISOString(),
+          payload: { nodeId, tier, tool: toolName, workspace: wsArg, rule: wsDecision.rule?.id },
+        });
+        return { allowed: false, reason: wsDecision.reason };
       }
     }
   }

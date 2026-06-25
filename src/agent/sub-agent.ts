@@ -83,6 +83,7 @@ function nextId(): string {
 export async function* spawnSubAgent(
   task: Omit<SubAgentTask, 'id'> & { subAgentType?: SubAgentType },
   onChunk?: (delta: string) => void,
+  registerPid?: (pid: number) => void,
 ): AsyncIterable<SubAgentEvent> {
   const id = nextId();
   const fullTask: SubAgentTask = { ...task, id, subAgentType: task.subAgentType };
@@ -129,6 +130,8 @@ export async function* spawnSubAgent(
   });
 
   const child = cmd.spawn();
+
+  if (registerPid) registerPid(child.pid);
 
   // Register the child process in the OS kernel for process tree tracking.
   const { kernel: k } = await import('../kernel/mod.ts');

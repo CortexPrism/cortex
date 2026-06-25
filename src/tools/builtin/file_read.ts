@@ -1,15 +1,14 @@
-import { join, resolve } from '@std/path';
-import type { Tool, ToolCallResult, ToolContext } from '../types.ts';
+import type { AgentWorkspaceLike, Tool, ToolCallResult, ToolContext } from '../types.ts';
 import { ensureAgentWorkspace, resolveWorkspacePath } from '../../workspace/paths.ts';
 
 const MAX_BYTES = 64 * 1024;
 
 const PDF_EXT = /\.pdf$/i;
 
-async function tryReadPdf(filePath: string): Promise<string | null> {
+async function tryReadPdf(filePath: string, ws: AgentWorkspaceLike | undefined, workspace: 'agent' | 'global'): Promise<string | null> {
   try {
     const { extractPdfText } = await import('../../utils/pdf.ts');
-    const data = await Deno.readFile(filePath);
+    const data = ws && workspace === 'agent' ? await ws.readFileRaw(filePath) : await Deno.readFile(filePath);
     return await extractPdfText(data);
   } catch {
     return null;
@@ -72,17 +71,24 @@ export const fileReadTool: Tool = {
       await ensureAgentWorkspace(context.agentId);
       filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
     } catch {
-      filePath = rawPath.startsWith('/') ? rawPath : resolve(join(context.workingDir, rawPath));
+      return {
+        toolName: 'file_read',
+        success: false,
+        output: '',
+        error: `Path "${rawPath}" is outside the allowed workspace`,
+        durationMs: Date.now() - start,
+      };
     }
 
     try {
-      const stat = await Deno.stat(filePath);
-      if (!stat.isFile) {
+      const ws = context.agentWorkspace;
+      const s = ws && workspace === 'agent' ? await ws.stat(filePath) : await Deno.stat(filePath);
+      if (!s.isFile) {
         return result(false, '', `Not a file: ${filePath}`, start);
       }
 
       if (PDF_EXT.test(filePath)) {
-        const pdfText = await tryReadPdf(filePath);
+        const pdfText = await tryReadPdf(filePath, ws, workspace);
         if (pdfText) {
           const maxLines = 150;
           const maxChars = 8000;
@@ -111,7 +117,7 @@ export const fileReadTool: Tool = {
         );
       }
 
-      const raw = await Deno.readFile(filePath);
+      const raw = ws && workspace === 'agent' ? await ws.readFileRaw(filePath) : await Deno.readFile(filePath);
       const slice = raw.slice(0, MAX_BYTES);
       const text = new TextDecoder().decode(slice);
       const truncated = raw.byteLength > MAX_BYTES;

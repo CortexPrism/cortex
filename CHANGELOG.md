@@ -48,6 +48,71 @@ Versioning: [Semantic Versioning](https://semver.org/)
   `src/pipeline/builtin.ts`, migration `056_workspace_policy.sql`,
   `tests/workspace_policy_test.ts`)
 
+- **Workspace path resolution allowed global access from agent scope** — `resolveWorkspacePath()`
+  included `globalDir` in the allowed roots for `workspace: 'agent'`, letting agents read and
+  write anywhere on the host even when confined to agent workspace. Removed `globalDir` from
+  the agent-scope allowed roots so `workspace: 'agent'` only resolves paths within
+  `~/.cortex/data/workspaces/<agentId>/`. Also fixed `file_read` and `file_read_enhanced`
+  catch-block fallbacks that silently bypassed workspace boundary on resolution failure.
+  (`src/workspace/paths.ts`, `src/tools/builtin/file_read.ts`,
+  `src/tools/builtin/file_read_enhanced.ts`)
+
+- **Node directives bypassed workspace policy** — `validateNodeDirective()` checked path
+  tier restrictions but never enforced workspace policy for file tools or shell commands.
+  Added workspace policy checks to `validateNodeDirective()` for both file tools (Layer 3)
+  and shell/code_exec tools (Layer 2), preventing swarm/hub node directives from
+  circumventing workspace boundary enforcement.
+  (`src/security/validator.ts`)
+
+- **Stop/cancel did not kill sub-agent processes** — `stopDaemons()` only killed
+  supervisor, validator, executor, and scheduler daemons, leaving orphaned
+  `sub-agent-entry` processes running indefinitely. Added `'sub-agent-entry'` to
+  kill patterns. Additionally, when an agent turn is cancelled via AbortSignal,
+  running sub-agent child processes are now tracked via `childPids` on `TurnContext`
+  and killed via `killProcessById()` in the abort handler. Sub-agent spawning tools
+  register their child PIDs through the new `registerChildPid` callback on
+  `ToolContext`.
+  (`src/cli/daemon.ts`, `src/agent/loop.ts`, `src/agent/stages/setup.ts`,
+  `src/agent/sub-agent.ts`, `src/agent/pipeline/context.ts`, `src/tools/types.ts`,
+  `src/tools/builtin/sub_agent.ts`, `src/tools/builtin/sub_agent_spawn.ts`)
+
+- **Orchestration resume delivery failed on jobs table constraint** — when background
+  sub-agents completed, the executor daemon's `checkPendingResumes()` tried to insert a
+  resume job but the `INSERT INTO jobs` statement was missing `schedule_kind` and
+  `schedule_config` columns (both `NOT NULL`), causing a `SQLITE_CONSTRAINT_NOTNULL`
+  error. This left parent sessions permanently stuck in yielded state waiting for
+  sub-agents that had already completed. Fixed by including `schedule_kind='adhoc'`
+  and `schedule_config='{}'` in the insert.
+  (`src/scheduler/orchestration-resume.ts`)
+
+### Added
+
+- **Container workspace isolation** — when Docker is available, agents now get
+  containerized workspaces backed by persistent Docker containers (or gVisor if
+  available). Two workspace implementations: `HostWorkspace` (current behavior,
+  direct host filesystem) and `ContainerWorkspace` (Docker container with
+  `--read-only` root, `--cap-drop=ALL`, `--network=none`, bind-mounted workspace
+  at `/workspace`). The `AgentWorkspace` abstraction provides `readFile`, `writeFile`,
+  `readFileRaw`, `stat`, `readDir`, `mkdir`, `remove` methods plus `exec()` for
+  shell commands. All 15+ file tools now route I/O through the workspace abstraction —
+  `docker exec` inside the container for contained mode, `Deno.*` APIs for host
+  mode. Workspaces are cached per-agent via `getOrCreateWorkspace()` and reused
+  across turns. Docker absence falls back transparently to `HostWorkspace`.
+  (`src/workspace/agent-workspace.ts`, `src/workspace/file-io.ts`,
+  `src/agent/stages/setup.ts`, `src/agent/pipeline/context.ts`,
+  `src/tools/types.ts`, `src/tools/builtin/shell.ts`, all file tools under
+  `src/tools/builtin/file_*.ts` and `src/tools/builtin/workspace/file_*.ts`)
+
+- **Host filesystem access escape hatch** — agents can still access the host
+  filesystem when explicitly permitted. The existing `workspace` parameter on
+  file tools (`'agent'` vs `'global'`) serves as the selector. `workspace: 'global'`
+  is policy-gated via the `workspace` policy kind (migration 056, denied by default)
+  and can be enabled per-agent via `cortex policy add --kind workspace --effect allow
+  --pattern 'global'`. When `workspace: 'global'` is used, file I/O goes directly to
+  the host (via `Deno.*` APIs), bypassing the container. This enables use cases
+  like configuring Apache on the host system.
+  (`src/security/policy.ts`, migration `056_workspace_policy.sql`)
+
 ### Changed
 
 - **Gateway health-retry endpoint now functional** — `POST /api/mcp-gateway/health-retry`

@@ -53,12 +53,15 @@ export const fileEditTool: Tool = {
     const start = Date.now();
     const rawPath = String(args.path ?? '');
     const workspace = (args.workspace as 'agent' | 'global') ?? 'agent';
+    const ws = context.agentWorkspace;
 
     try {
       await ensureAgentWorkspace(context.agentId);
       const filePath = resolveWorkspacePath(context.agentId, rawPath, workspace);
 
-      const beforeText = await Deno.readTextFile(filePath);
+      const beforeText = ws && workspace === 'agent'
+        ? await ws.readFile(filePath)
+        : await Deno.readTextFile(filePath);
 
       let afterText: string;
 
@@ -74,7 +77,11 @@ export const fileEditTool: Tool = {
         throw new Error('Edit would produce an empty file — aborted');
       }
 
-      await Deno.writeTextFile(filePath, afterText);
+      if (ws && workspace === 'agent') {
+        await ws.writeFile(filePath, afterText);
+      } else {
+        await Deno.writeTextFile(filePath, afterText);
+      }
 
       const workspaceDir = workspace === 'agent'
         ? await ensureAgentWorkspace(context.agentId)

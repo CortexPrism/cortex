@@ -328,7 +328,7 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
               inheritedModel: context.model,
               inheritedProvider: context.provider,
             },
-          });
+          }, undefined, context.registerChildPid);
 
           let response = '';
           for await (const event of iter) {

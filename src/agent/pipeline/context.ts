@@ -4,6 +4,7 @@ import type { ToolRegistry } from '../../tools/registry.ts';
 import type { ToolContext } from '../../tools/types.ts';
 import type { AgentState } from '../../pipeline/types.ts';
 import type { AgentTurnOptions, AgentTurnResult } from '../types.ts';
+import type { AgentWorkspace } from '../../workspace/agent-workspace.ts';
 
 export interface TurnContext {
   options: AgentTurnOptions;
@@ -44,4 +45,6 @@ export interface TurnContext {
     awaitMode?: string;
     barrierLabel?: string;
   } | undefined;
+  childPids: Set<number>;
+  agentWorkspace: AgentWorkspace | undefined;
 }

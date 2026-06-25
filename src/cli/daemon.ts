@@ -129,6 +129,7 @@ export async function stopDaemons(): Promise<void> {
     'validator-process',
     'executor-process',
     'scheduler-process',
+    'sub-agent-entry',
   ];
   for (const pat of patterns) {
     try {
