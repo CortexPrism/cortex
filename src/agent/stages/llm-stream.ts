@@ -312,9 +312,10 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
 
     if (isStuckInPromiseLoop) {
       _log.warn(`Agent stuck in promise loop, attempting tool execution`, {
+        turnId,
         round,
         responseLength: roundResponse.length,
-        fullResponse: roundResponse.slice(0, 1000),
+        responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
       });
 
       const searchQueryMatch = roundResponse.match(
@@ -445,7 +446,9 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
 
     if (hasMalformedToolCall) {
       _log.warn(`Malformed tool call detected, asking LLM to retry with correct format`, {
+        turnId,
         round,
+        responseLength: roundResponse.length,
         responsePreview: roundResponse.slice(0, 200).replace(/\n/g, '\\n'),
       });
       const blockHint = hasToolCallBlock
@@ -528,6 +531,7 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
           const normalizedPast = pastOutput.replace(/\s+/g, ' ').toLowerCase();
           if (normalizedPast.includes(normalizedQuery) && normalizedQuery.length > 30) {
             _log.warn(`Self-referential tool call detected`, {
+              turnId,
               round,
               toolName: tc.toolName,
               queryPreview: query.slice(0, 80),
@@ -549,6 +553,7 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
           turnId,
           round,
           toolNames: toolCalls.map((t) => t.toolName).join(','),
+          roundsSinceOutput: consecutiveSearchRounds,
         },
       );
       recursionWarning =

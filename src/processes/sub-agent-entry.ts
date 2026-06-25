@@ -22,7 +22,10 @@ import { requestHumanApproval } from '../security/approval.ts';
 import { initSessionDb } from '../db/migrate.ts';
 import { closeSession, createSession } from '../db/sessions.ts';
 import { runMigrations } from '../db/migrate.ts';
+import { logger } from '../utils/logger.ts';
 import type { Tool } from '../tools/types.ts';
+
+const _log = logger('sub-agent-entry');
 
 interface InitMessage {
   type: 'init';
@@ -77,6 +80,13 @@ async function main(): Promise<void> {
   const { config, agentConfig } = init;
   const taskId = config.id;
   const instruction = config.instruction;
+
+  _log.info(`Sub-agent starting`, {
+    taskId,
+    type: config.subAgentType ?? 'general',
+    parentSession: config.parentSessionId,
+    instructionPreview: instruction.slice(0, 120),
+  });
 
   try {
     // Prevent sub-agent processes from opening shared databases that the
@@ -169,6 +179,8 @@ async function main(): Promise<void> {
     // Signal ready
     send({ type: 'ready' });
 
+    _log.info(`Sub-agent running agent turn`, { taskId, sessionId, model });
+
     // Run the agent turn
     const result = await agentTurn({
       userMessage: instruction,
@@ -211,6 +223,15 @@ async function main(): Promise<void> {
     await closeSession(sessionId).catch(() => {});
     sessionDb.close();
 
+    _log.info(`Sub-agent completed`, {
+      taskId,
+      sessionId,
+      tokensIn: result.tokensIn,
+      tokensOut: result.tokensOut,
+      durationMs: result.durationMs,
+      responseLength: result.response.length,
+    });
+
     // Send result
     send({
       type: 'done',
@@ -224,11 +245,34 @@ async function main(): Promise<void> {
       },
     });
   } catch (e) {
+    const errMsg = (e as Error).message;
+    _log.error(`Sub-agent crashed`, {
+      taskId,
+      sessionId: `sub_${taskId}_*`,
+      error: errMsg,
+      stack: (e as Error).stack,
+    });
     send({
       type: 'error',
-      error: (e as Error).message,
+      error: errMsg,
     });
   }
 }
 
 main();
+
+// Catch unhandled rejections and exceptions so crashes always produce log output,
+// even when the try/catch in main() doesn't catch them (e.g. OOM, segfault
+// replacements, or promise rejections outside the main chain).
+globalThis.addEventListener('unhandledrejection', (event) => {
+  _log.error(`Sub-agent unhandled rejection`, {
+    error: (event.reason as Error)?.message ?? String(event.reason),
+    stack: (event.reason as Error)?.stack,
+  });
+});
+globalThis.addEventListener('error', (event) => {
+  _log.error(`Sub-agent uncaught error`, {
+    error: event.error?.message ?? event.message,
+    stack: event.error?.stack,
+  });
+});

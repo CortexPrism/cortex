@@ -65,6 +65,17 @@ export async function checkPendingResumes(): Promise<number> {
      LIMIT 50`,
   );
 
+  if (bundles.length > 0) {
+    _log.info(`Checking ${bundles.length} pending resume bundle(s)`, {
+      bundles: bundles.map((b) => ({
+        id: b.id,
+        session: b.session_id,
+        label: b.barrier_label,
+        awaitMode: b.await_mode,
+      })),
+    });
+  }
+
   let delivered = 0;
 
   for (const bundle of bundles) {
@@ -72,6 +83,7 @@ export async function checkPendingResumes(): Promise<number> {
     try {
       runIds = JSON.parse(bundle.run_ids_json);
     } catch {
+      _log.warn(`Bundle has malformed run_ids_json, expiring`, { bundleId: bundle.id });
       await db.run(
         `UPDATE orchestration_resume_bundles SET status = 'expired' WHERE id = ?`,
         [bundle.id],
@@ -80,6 +92,7 @@ export async function checkPendingResumes(): Promise<number> {
     }
 
     if (runIds.length === 0) {
+      _log.warn(`Bundle has empty run_ids, expiring`, { bundleId: bundle.id });
       await db.run(
         `UPDATE orchestration_resume_bundles SET status = 'expired' WHERE id = ?`,
         [bundle.id],
@@ -87,8 +100,31 @@ export async function checkPendingResumes(): Promise<number> {
       continue;
     }
 
-    const allTerminal = await checkAllChildrenTerminal(db, runIds);
-    if (!allTerminal) continue;
+    // Inspect child statuses for observability BEFORE the terminal check
+    const childStatuses: Array<{ runId: string; status: string }> = [];
+    for (const runId of runIds) {
+      const row = await db.get<{ status: string }>(
+        `SELECT status FROM subagent_runs WHERE id = ?`,
+        [runId],
+      );
+      childStatuses.push({ runId, status: row?.status ?? 'not_found' });
+    }
+    const terminalCount = childStatuses.filter((c) =>
+      ['completed', 'failed', 'ready_for_apply', 'consumed', 'cancelled'].includes(c.status)
+    ).length;
+
+    const allTerminal = terminalCount === runIds.length;
+
+    if (!allTerminal) {
+      _log.debug(`Bundle not yet deliverable — children not all terminal`, {
+        bundleId: bundle.id,
+        sessionId: bundle.session_id,
+        totalChildren: runIds.length,
+        terminalCount,
+        statuses: childStatuses.map((c) => `${c.runId.slice(-12)}:${c.status}`).join(', '),
+      });
+      continue;
+    }
 
     try {
       const jobId = `orch-resume-${bundle.wait_barrier_id}`;

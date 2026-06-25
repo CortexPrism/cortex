@@ -6,6 +6,9 @@ import { getDefaultAgent, type loadAgentIdentity } from './manager.ts';
 import type { AgentConfig } from '../../../../src/config/config.ts';
 import type { SubAgentType } from './sub-agent-types.ts';
 import { getSubAgentType } from './sub-agent-types.ts';
+import { logger } from '../../../../src/utils/logger.ts';
+
+const _log = logger('sub-agent');
 
 /** Configuration for spawning a sub-agent */
 export interface SubAgentConfig {
@@ -114,6 +117,13 @@ export async function* spawnSubAgent(
 
   const timeout = task.config.timeout ?? 120_000;
 
+  _log.info(`Spawning sub-agent process`, {
+    taskId: id,
+    type: task.subAgentType ?? 'general',
+    timeout,
+    agentId: effectiveAgent.id,
+  });
+
   // Spawn the sub-agent process
   const cmd = new Deno.Command(Deno.execPath(), {
     args: [
@@ -129,6 +139,8 @@ export async function* spawnSubAgent(
   });
 
   const child = cmd.spawn();
+
+  _log.info(`Sub-agent process spawned`, { taskId: id, pid: child.pid });
 
   // Register the child process in the OS kernel for process tree tracking.
   const { kernel: k } = await import('../kernel/mod.ts');
@@ -160,6 +172,7 @@ export async function* spawnSubAgent(
 
   for await (const line of lineReader) {
     if (Date.now() - startTime > timeout) {
+      _log.warn(`Sub-agent timed out`, { taskId: id, pid: child.pid, timeout, elapsed: Date.now() - startTime });
       child.kill(isWindows() ? undefined : 'SIGTERM');
       yield { type: 'error', error: `Sub-agent timed out after ${timeout}ms` };
       return;
@@ -174,6 +187,7 @@ export async function* spawnSubAgent(
 
     switch (msg.type) {
       case 'ready':
+        _log.info(`Sub-agent ready`, { taskId: id, pid: child.pid, elapsed: Date.now() - startTime });
         yield { type: 'start' };
         break;
       case 'chunk':
@@ -181,11 +195,24 @@ export async function* spawnSubAgent(
         yield { type: 'chunk', delta: msg.delta };
         break;
       case 'done':
+        _log.info(`Sub-agent process done`, {
+          taskId: id,
+          pid: child.pid,
+          elapsed: Date.now() - startTime,
+          tokensIn: msg.result.tokensIn,
+          tokensOut: msg.result.tokensOut,
+          responseLength: msg.result.response.length,
+        });
         yield { type: 'done', result: msg.result };
         await child.status;
         k.unregisterProcess(child.pid);
         return;
       case 'error':
+        _log.error(`Sub-agent process reported error`, {
+          taskId: id,
+          pid: child.pid,
+          error: msg.error,
+        });
         yield { type: 'error', error: msg.error };
         await child.status;
         k.unregisterProcess(child.pid);
@@ -195,6 +222,12 @@ export async function* spawnSubAgent(
 
   // If we get here without a done/error, something went wrong
   const stderr = await readStderr(child);
+  _log.error(`Sub-agent terminated unexpectedly`, {
+    taskId: id,
+    pid: child.pid,
+    elapsed: Date.now() - startTime,
+    stderr: stderr.slice(0, 1000),
+  });
   yield {
     type: 'error',
     error: `Sub-agent process terminated unexpectedly. Stderr: ${stderr}`,

@@ -312,6 +312,14 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
 
       const { spawnSubAgent } = await import('../../agent/sub-agent.ts');
 
+      _log.info(`Launching background sub-agent`, {
+        runId,
+        taskName,
+        taskType,
+        mode: runMode,
+        depth: childDepth,
+      });
+
       (async () => {
         try {
           const iter = spawnSubAgent({
@@ -349,6 +357,13 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
                 cost_usd: event.result.costUsd,
                 duration_ms: event.result.durationMs,
               };
+
+              _log.info(`Background sub-agent finished`, {
+                runId,
+                taskName,
+                responseLength: response.length,
+                ...usage,
+              });
 
               if (mode === 'write_staged' && isoBaseSnapshotId) {
                 const { captureChangeBundle } = await import(
@@ -410,6 +425,11 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
               }
               return;
             } else if (event.type === 'error') {
+              _log.error(`Background sub-agent failed`, {
+                runId,
+                taskName,
+                error: event.error,
+              });
               await updateSubagentRunStatus(runId, 'failed', {
                 finalResponse: response,
                 error: event.error,
@@ -427,16 +447,36 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
             }
           }
 
+          // Generator exhausted without done/error — unexpected termination
+          _log.error(`Background sub-agent terminated without result`, {
+            runId,
+            taskName,
+            partialResponseLength: response.length,
+          });
           await updateSubagentRunStatus(runId, 'completed', { finalResponse: response });
           await appendRunEvent(nanoid(), runId, 'completed', {});
         } catch (e) {
-          _log.error(`Background sub-agent ${runId} crashed`, { error: e });
-          await updateSubagentRunStatus(runId, 'failed', {
-            error: `Background sub-agent crashed: ${(e as Error).message}`,
+          _log.error(`Background sub-agent ${runId} crashed`, {
+            runId,
+            taskName,
+            error: (e as Error).message,
+            stack: (e as Error).stack,
           });
-          await appendRunEvent(nanoid(), runId, 'failed', {
-            error: `Crash: ${(e as Error).message}`,
-          });
+          // Attempt DB update — log if it also fails
+          try {
+            await updateSubagentRunStatus(runId, 'failed', {
+              error: `Background sub-agent crashed: ${(e as Error).message}`,
+            });
+            await appendRunEvent(nanoid(), runId, 'failed', {
+              error: `Crash: ${(e as Error).message}`,
+            });
+          } catch (dbErr) {
+            _log.error(`Failed to update sub-agent run status after crash`, {
+              runId,
+              dbError: (dbErr as Error).message,
+              originalError: (e as Error).message,
+            });
+          }
         }
       })().catch(() => {});
 
