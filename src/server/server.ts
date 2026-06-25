@@ -33,7 +33,47 @@ export interface ServeOptions {
   host: string;
 }
 
+async function acquireInstanceLock(): Promise<void> {
+  const pidFile = `${PATHS.dataDir}/server.pid`;
+  try {
+    const content = await Deno.readTextFile(pidFile);
+    const existingPid = parseInt(content, 10);
+    if (isNaN(existingPid)) return;
+
+    try {
+      const cmdline = await Deno.readTextFile(`/proc/${existingPid}/cmdline`);
+      if (cmdline.includes('cortex') && cmdline.includes('server')) {
+        console.error(
+          `Another Cortex server is already running (PID ${existingPid}). ` +
+            `Stop it first with \`cortex serve --stop\` or \`kill ${existingPid}\`.`,
+        );
+        Deno.exit(1);
+      }
+    } catch {
+      // PID doesn't exist — stale pid file, clean it up
+    }
+  } catch {
+    // pid file doesn't exist — first start
+  }
+
+  await Deno.mkdir(PATHS.dataDir, { recursive: true });
+  try {
+    await Deno.writeTextFile(pidFile, String(Deno.pid));
+  } catch {
+    // Non-fatal if PID file can't be written
+  }
+}
+
+async function releaseInstanceLock(): Promise<void> {
+  const pidFile = `${PATHS.dataDir}/server.pid`;
+  try {
+    await Deno.remove(pidFile);
+  } catch { /* ignore */ }
+}
+
 export async function startServer(opts: ServeOptions): Promise<void> {
+  await acquireInstanceLock();
+
   await runMigrations();
 
   // Ensure install manifest exists (auto-detect install type)
@@ -431,17 +471,10 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   _log.info(`Cortex server listening on http://${host}:${port}`);
 
-  const pidFile = `${PATHS.dataDir}/server.pid`;
-  try {
-    await Deno.writeTextFile(pidFile, String(Deno.pid));
-  } catch {
-    // Non-fatal if PID file can't be written
-  }
-
   const shutdown = async () => {
     _log.info('Server shutting down...');
     try {
-      await Deno.remove(pidFile).catch(() => {});
+      await releaseInstanceLock();
     } catch { /* ignore */ }
     try {
       await stopAllServices();
@@ -453,6 +486,19 @@ export async function startServer(opts: ServeOptions): Promise<void> {
         '../tools/builtin/chrome_bridge_manager.ts'
       );
       await stopChromeBridge().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      const { getCoreDb, getMemoryDb, getLensDb, getVaultDb, getPluginsDb } = await import(
+        '../db/client.ts'
+      );
+      const { checkpointWal } = await import('../db/migrate.ts');
+      const dbs = [getCoreDb(), getMemoryDb(), getLensDb(), getVaultDb(), getPluginsDb()];
+      for (const db of dbs) {
+        const resolved = await db;
+        try {
+          await checkpointWal(resolved);
+        } catch { /* ignore */ }
+      }
     } catch { /* ignore */ }
     try {
       httpServer.shutdown();
