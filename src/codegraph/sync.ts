@@ -472,7 +472,9 @@ export async function incrementalSync(
       const result = await indexFile(filePath, rootPath);
       if (!result || 'error' in result || result.nodes.length === 0) continue;
 
-      const ext = relPath.includes('.') ? relPath.slice(relPath.lastIndexOf('.')).toLowerCase() : '';
+      const ext = relPath.includes('.')
+        ? relPath.slice(relPath.lastIndexOf('.')).toLowerCase()
+        : '';
       const lang = EXTENSION_LANG_MAP[ext] ?? null;
       const [fileNodeId] = await bulkInsertNodes(
         [{
@@ -541,12 +543,17 @@ export async function incrementalSync(
         const source = await Deno.readTextFile(
           result.relPath.startsWith('/') ? result.relPath : `${rootPath}/${result.relPath}`,
         ).catch(() => null);
-        const ctx = await buildResolutionContext(projectId, [{
-          filePath: result.relPath,
-          source: source ?? '',
-          language: result.language,
-          nodes: result.nodes,
-        }], nodeIdMap, fileNodeIdMap);
+        const ctx = await buildResolutionContext(
+          projectId,
+          [{
+            filePath: result.relPath,
+            source: source ?? '',
+            language: result.language,
+            nodes: result.nodes,
+          }],
+          nodeIdMap,
+          fileNodeIdMap,
+        );
 
         const resolved = await resolveEdges(
           ctx,

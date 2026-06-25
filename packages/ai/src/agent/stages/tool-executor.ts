@@ -182,9 +182,23 @@ export async function runToolCalls(
   } else {
     for (const [index, tc] of toolCalls.entries()) {
       await runToolCall(ctx, round, tc, index, toolResults, shouldRunInParallel, toolCalls.length);
+      if (ctx.yielded) break;
     }
   }
-  _log.debug(`Tool execution loop completed`, { round, resultsCount: toolResults.length });
+
+  for (const result of toolResults) {
+    if (result?.yieldTurn && result?.orchestrationResume) {
+      ctx.yielded = true;
+      ctx.orchestrationResume = result.orchestrationResume;
+      break;
+    }
+  }
+
+  _log.debug(`Tool execution loop completed`, {
+    round,
+    resultsCount: toolResults.length,
+    yielded: ctx.yielded,
+  });
 
   return toolResults;
 }

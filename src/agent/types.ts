@@ -59,6 +59,7 @@ export interface AgentTurnOptions {
   signal?: AbortSignal;
   /** Full agent config — used for personality injection and MQM routing hints */
   agentConfig?: AgentConfig;
+  orchestrationResume?: { waitBarrierId: string; runIds: string[] };
 }
 
 export interface AgentTurnResult {

@@ -11,7 +11,7 @@ export { PATHS } from './src/config/paths.ts';
 export { VERSION } from './src/config/version.ts';
 
 export { closeAll, getCoreDb, getPluginsDb } from './src/db/client.ts';
-export { runMigrations } from './src/db/migrate.ts';
+export * from './src/db/subagent-runs.ts';
 
 export { logger } from './src/utils/logger.ts';
 export type { LogLevel } from './src/utils/logger.ts';

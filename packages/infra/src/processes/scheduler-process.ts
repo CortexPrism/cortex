@@ -206,11 +206,21 @@ export async function runScheduler(): Promise<void> {
 
   await runRecovery();
   await runDueJobs();
+  {
+    const { checkPendingResumes } = await import(
+      '../../../../src/scheduler/orchestration-resume.ts'
+    );
+    await checkPendingResumes();
+  }
 
   setInterval(async () => {
     try {
       await runRecovery();
       await runDueJobs();
+      const { checkPendingResumes } = await import(
+        '../../../../src/scheduler/orchestration-resume.ts'
+      );
+      await checkPendingResumes();
     } catch (e) {
       _log.error(`poll cycle failed`, { error: (e as Error).message });
     }

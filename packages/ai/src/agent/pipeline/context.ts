@@ -37,4 +37,11 @@ export interface TurnContext {
   overallTimer: ReturnType<typeof setTimeout> | undefined;
   aborted: boolean;
   result: AgentTurnResult;
+  yielded: boolean;
+  orchestrationResume: {
+    waitBarrierId: string;
+    runIds: string[];
+    awaitMode?: string;
+    barrierLabel?: string;
+  } | undefined;
 }

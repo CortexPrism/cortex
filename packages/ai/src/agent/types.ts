@@ -56,6 +56,17 @@ export interface AgentTurnOptions {
    * When triggered, the turn returns a partial response gracefully.
    */
   signal?: AbortSignal;
+  /**
+   * Orchestration resume data. When set, the turn is a resume from a
+   * previous sub_agent_wait yield. The loop injects structured child
+   * completion bundles instead of a raw user message.
+   */
+  orchestrationResume?: {
+    waitBarrierId: string;
+    runIds: string[];
+    awaitMode?: string;
+    barrierLabel?: string;
+  };
 }
 
 export interface AgentTurnResult {

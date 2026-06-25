@@ -11,6 +11,9 @@ import { webSearchEnhancedTool } from './builtin/web/search_enhanced.ts';
 import { webFetchEnhancedTool } from './builtin/web/fetch_enhanced.ts';
 import { codeExecTool } from './builtin/code_exec.ts';
 import { subAgentTool } from './builtin/sub_agent.ts';
+import { subAgentSpawnTool } from './builtin/sub_agent_spawn.ts';
+import { subAgentWaitTool } from './builtin/sub_agent_wait.ts';
+import { subAgentApplyTool } from './builtin/sub_agent_apply.ts';
 import { nodeDispatchTool } from './builtin/node_dispatch.ts';
 import { loadSkillTool } from './builtin/load_skill.ts';
 import { skillWriteTool } from './builtin/skill_write.ts';
@@ -230,6 +233,9 @@ export async function registerAllBuiltins(
   // ═════════════════════════════════════════════════════════
   const agentTools = {
     sub_agent: subAgentTool,
+    sub_agent_spawn: subAgentSpawnTool,
+    sub_agent_wait: subAgentWaitTool,
+    sub_agent_apply: subAgentApplyTool,
     node_dispatch: nodeDispatchTool,
     load_skill: loadSkillTool,
     skill_write: skillWriteTool,

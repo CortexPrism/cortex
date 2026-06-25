@@ -100,7 +100,32 @@ Versioning: [Semantic Versioning](https://semver.org/)
   import path resolution (`./foo`, `../bar` → file node lookup by normalized path), same-directory
   scoring for multi-candidate disambiguation, and fuzzy substring fallback against indexed simple
   names. For `IMPORTS` edges specifically, module paths are now resolved to file nodes via
-  path normalization and containment matching. (`src/codegraph/resolver.ts`)
+   path normalization and containment matching. (`src/codegraph/resolver.ts`)
+
+- **Background sub-agent orchestration v2** — extends the v1 spawn/wait/apply lifecycle with
+  six new capabilities: (1) **Multiple wait barriers** — `sub_agent_wait` now supports
+  `await_mode` (`all`/`any`/`count`), `barrier_label` for disambiguation, and concurrent
+  barriers per session via the new `subagent_wait_barriers` table. (2) **Nested
+  orchestration** — background children can spawn grandchildren up to depth 3 (configurable),
+  with max 9 concurrent children per session and orchestration tools stripped from child
+  tool lists. `write_staged` mode is blocked at depth ≥ 2. (3) **Partial apply** —
+  `sub_agent_apply` gained `include_paths`, `include_patterns`, and `exclude_patterns`
+  params for selective change bundle application with glob filtering and skip tracking.
+  (4) **Detached runner leases** — the scheduler daemon now polls `orchestration_resume_bundles`
+  for pending barriers where all children are terminal, creating `agent_turn` jobs with
+  `orchestrationResume` injected for automatic resume delivery without a live WebSocket
+  connection. (5) **Write-capable child workspace support** — `write_staged` mode now
+  provisions workspace snapshots via `captureBaseSnapshot`/`captureChangeBundle` in the new
+  `src/agent/orchestration/isolation.ts` module, capturing pre- and post-run state to produce
+  structured change bundles. (6) **Auto-apply with policy matrix** — `sub_agent_spawn`
+  accepts `auto_apply` and `auto_apply_policy` (allow_delete, file_patterns, max_files,
+  require_supervisor) to automatically apply child change bundles on completion without
+  parent intervention. (4 migrations: `051_wait_barriers.sql`, `052_nested_orchestration.sql`,
+  `053_detached_resume.sql`, `054_auto_apply.sql`. Modules: `src/agent/orchestration/isolation.ts`,
+  `src/scheduler/orchestration-resume.ts`, `packages/gate/src/sandbox/merge.ts`.
+  Tools: `sub_agent_spawn.ts`, `sub_agent_wait.ts`, `sub_agent_apply.ts`, `sub_agent_gate.ts`.
+  Data layer: `src/db/subagent-runs.ts`, agent loop: `src/agent/loop.ts`,
+  scheduler: `packages/infra/src/processes/scheduler-process.ts`)
 
 ### Fixed
 

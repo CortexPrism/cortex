@@ -270,8 +270,10 @@ function findClassMethods(
         });
       }
     }
-    if (child.type === 'class_body' || child.type === 'declaration_list' ||
-        child.type === 'block' || child.type === 'body') {
+    if (
+      child.type === 'class_body' || child.type === 'declaration_list' ||
+      child.type === 'block' || child.type === 'body'
+    ) {
       edges.push(...findClassMethods(child, source, language, classQName, filePath));
     }
   }
@@ -402,8 +404,10 @@ function extractTypeEdges(
 
       // Collect type references from variable declarations inside function bodies
       for (const child of n.namedChildren) {
-        if (child.type === 'variable_declaration' ||
-            child.type === 'lexical_declaration') {
+        if (
+          child.type === 'variable_declaration' ||
+          child.type === 'lexical_declaration'
+        ) {
           const typeAnnot = child.childForFieldName?.('type') ??
             child.childForFieldName?.('typeAnnotation');
           if (typeAnnot) {
@@ -437,9 +441,11 @@ function collectTypeIdentifiers(node: TreeSitterNode): string[] {
   const seen = new Set<string>();
 
   function walk(n: TreeSitterNode): void {
-    if (n.type === 'type_identifier' ||
-        n.type === 'identifier' ||
-        n.type === 'simple_identifier') {
+    if (
+      n.type === 'type_identifier' ||
+      n.type === 'identifier' ||
+      n.type === 'simple_identifier'
+    ) {
       const name = n.text;
       if (!seen.has(name)) {
         seen.add(name);
@@ -447,23 +453,27 @@ function collectTypeIdentifiers(node: TreeSitterNode): string[] {
       }
       return;
     }
-    if (n.type === 'generic_type' ||
-        n.type === 'parameterized_type' ||
-        n.type === 'type_arguments' ||
-        n.type === 'type_parameters' ||
-        n.type === 'union_type' ||
-        n.type === 'intersection_type' ||
-        n.type === 'array_type' ||
-        n.type === 'optional_type') {
+    if (
+      n.type === 'generic_type' ||
+      n.type === 'parameterized_type' ||
+      n.type === 'type_arguments' ||
+      n.type === 'type_parameters' ||
+      n.type === 'union_type' ||
+      n.type === 'intersection_type' ||
+      n.type === 'array_type' ||
+      n.type === 'optional_type'
+    ) {
       for (const child of n.namedChildren) {
         walk(child);
       }
     }
     // For other compound type nodes, recurse into children
     for (const child of n.children) {
-      if (child.type === 'type_identifier' ||
-          child.type === 'identifier' ||
-          child.type === 'simple_identifier') {
+      if (
+        child.type === 'type_identifier' ||
+        child.type === 'identifier' ||
+        child.type === 'simple_identifier'
+      ) {
         const name = child.text;
         if (!seen.has(name)) {
           seen.add(name);

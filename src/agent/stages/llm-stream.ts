@@ -488,6 +488,17 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
 
     const toolResults = await runToolCalls(ctx, round, toolCalls);
 
+    if (ctx.yielded) {
+      _log.info(`Turn yielded for background orchestration`, {
+        turnId,
+        round,
+        waitBarrierId: ctx.orchestrationResume?.waitBarrierId,
+        runIds: ctx.orchestrationResume?.runIds,
+      });
+      ctx.response = ctx.response || 'Turn yielded. Waiting for background sub-agents.';
+      return;
+    }
+
     const resultText = formatToolResults(toolResults);
 
     const allSearchTools = toolCalls.length > 0 &&

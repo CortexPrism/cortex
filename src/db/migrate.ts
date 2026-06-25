@@ -413,6 +413,31 @@ export async function runMigrations(): Promise<void> {
       sqlFile: '049_mcp_gateway.sql',
       label: 'cortex.db (MCP gateway servers + audit)',
     },
+    {
+      db: coreDb,
+      sqlFile: '050_subagent_orchestration.sql',
+      label: 'cortex.db (sub-agent orchestration: runs + events)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '051_wait_barriers.sql',
+      label: 'cortex.db (sub-agent wait barriers)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '052_nested_orchestration.sql',
+      label: 'cortex.db (nested orchestration: parent_run_id + depth)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '053_detached_resume.sql',
+      label: 'cortex.db (detached resume delivery)',
+    },
+    {
+      db: coreDb,
+      sqlFile: '054_auto_apply.sql',
+      label: 'cortex.db (auto-apply support)',
+    },
   ];
 
   for (const { db, sqlFile, label } of targets) {

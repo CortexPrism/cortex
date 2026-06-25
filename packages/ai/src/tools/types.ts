@@ -121,6 +121,13 @@ export interface ToolCallResult {
   truncated?: boolean;
   outputLength?: number;
   durationMs: number;
+  yieldTurn?: boolean;
+  orchestrationResume?: {
+    waitBarrierId: string;
+    runIds: string[];
+    awaitMode?: string;
+    barrierLabel?: string;
+  };
 }
 
 export interface Tool {
@@ -131,7 +138,17 @@ export interface Tool {
 export type ToolProgressEvent =
   | { type: 'sub_agent_start'; id: string; task: string; subAgentType?: string }
   | { type: 'sub_agent_chunk'; id: string; delta: string }
-  | { type: 'sub_agent_end'; id: string; result: string; success: boolean; error?: string };
+  | { type: 'sub_agent_end'; id: string; result: string; success: boolean; error?: string }
+  | { type: 'sub_agent_spawn'; runId: string; taskName: string; taskType?: string; mode: string }
+  | { type: 'sub_agent_spawn_progress'; runId: string; delta: string }
+  | { type: 'sub_agent_spawn_complete'; runId: string; success: boolean; error?: string }
+  | { type: 'sub_agent_wait_registered'; waitBarrierId: string; runIds: string[] }
+  | {
+    type: 'sub_agent_wait_resume';
+    waitBarrierId: string;
+    runs: Array<{ runId: string; status: string; summary?: string }>;
+  }
+  | { type: 'sub_agent_apply_result'; runId: string; success: boolean; error?: string };
 
 export interface ToolContext {
   sessionId: string;

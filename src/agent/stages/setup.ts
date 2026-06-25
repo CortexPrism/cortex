@@ -114,6 +114,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
       overallTimer: undefined,
       aborted: true,
       result,
+      yielded: false,
+      orchestrationResume: undefined,
     };
     return ctx;
   }
@@ -185,6 +187,8 @@ export async function runSetup(options: AgentTurnOptions): Promise<TurnContext> 
     overallTimer: undefined,
     aborted: false,
     result,
+    yielded: false,
+    orchestrationResume: undefined,
   };
 
   return ctx;
