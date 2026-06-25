@@ -262,6 +262,13 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
       currentMessages = postReasonCtx.messages;
     }
 
+    if (!roundResponse.trim() && (tokensIn > 0 || tokensOut > 0)) {
+      _log.warn(`LLM returned empty response despite token usage`, {
+        turnId, round, tokensIn, tokensOut, costUsd,
+        responseLength: roundResponse.length,
+      });
+    }
+
     if (!registry || !toolCtx) break;
 
     let toolCalls: ToolCallRequest[];
@@ -611,6 +618,12 @@ export async function runLLMStream(ctx: TurnContext): Promise<void> {
   if (round >= maxToolRounds && ctx.response === '') {
     ctx.hitToolCeiling = true;
     _log.warn(`Hit tool ceiling with no response`, { round, maxToolRounds });
+  }
+  if (!ctx.response.trim() && (tokensIn > 0 || tokensOut > 0)) {
+    _log.error(`Agent turn produced no response despite token usage`, {
+      turnId, tokensIn, tokensOut, costUsd, round,
+    });
+    ctx.response = 'The model produced no usable response. Try rephrasing your request or switching to a different model.';
   }
   _log.info(`Agent loop completed`, {
     turnId,
