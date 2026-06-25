@@ -127,7 +127,68 @@ Versioning: [Semantic Versioning](https://semver.org/)
   Data layer: `src/db/subagent-runs.ts`, agent loop: `src/agent/loop.ts`,
   scheduler: `packages/infra/src/processes/scheduler-process.ts`)
 
+- **Canonical isolation module** — moved the orchestration workspace isolation provider
+  (`isIsolationAvailable`, `captureBaseSnapshot`, `captureChangeBundle`) from the composition
+  layer (`src/agent/orchestration/`) into the `@cortex/ai` package, so the canonical package
+  tool registry can reach it directly. (`packages/ai/src/agent/orchestration/isolation.ts`)
+
+- **Merge strategy support in sub_agent_apply** — the `sub_agent_apply` tool now accepts a
+  `merge_strategy` parameter (`"exact"` / `"three_way"`). In `three_way` mode, changes are
+  merged via the existing `packages/gate/src/sandbox/merge.ts` module with inline conflict
+  markers (`<<<<<<< parent` / `>>>>>>> child`). (`packages/ai/src/tools/builtin/sub_agent_apply.ts`,
+  `src/tools/builtin/sub_agent_apply.ts`)
+
+- **Patch-based apply** — `sub_agent_apply` now supports `file.patch` entries in change bundles
+  via a unified-diff parser (`parseUnifiedPatch` / `applyPatch`), replacing the previous
+  hard-reject error. (`packages/ai/src/tools/builtin/sub_agent_apply.ts`,
+  `src/tools/builtin/sub_agent_apply.ts`)
+
+- **Supervisor gate for auto-apply** — `autoApplyChangeBundle()` now checks the
+  `require_supervisor` policy and loads `packages/gate/src/security/supervisor.ts` to call
+  `checkAutoApply()` before applying changes. Falls back gracefully if the supervisor module
+  is unavailable. (`packages/ai/src/tools/builtin/sub_agent_spawn.ts`,
+  `src/tools/builtin/sub_agent_spawn.ts`)
+
+- **ToolContext turn/tool-call wiring** — `ToolContext` gains optional `turnId` and `toolCallId`
+  fields, populated by the tool-executor stage. `sub_agent_spawn` now records the actual
+  parent turn and tool-call IDs in `subagent_runs` instead of empty strings.
+  (`packages/ai/src/tools/types.ts`, `src/tools/types.ts`,
+  `src/agent/stages/tool-executor.ts`, `packages/ai/src/tools/builtin/sub_agent_spawn.ts`,
+  `src/tools/builtin/sub_agent_spawn.ts`)
+
+- **Orchestration unit tests** — 13 tests covering three-way merge (clean apply, conflict, delete,
+  new file, same-change), terminal status checks, glob-to-regex conversion, file-path glob
+  matching, unified-diff patch application (insert, add, delete), and CSV parsing.
+  (`tests/orchestration_pure_functions_test.ts`)
+
 ### Fixed
+
+- **Background orchestration tools: package/mirror divergence resolved** — the canonical
+  `packages/ai/src/tools/builtin/` implementations (registered in the tool registry) were
+  significantly behind the `src/tools/builtin/` mirror versions. Synced all four tools:
+  `sub_agent_spawn` now fully supports `write_staged` mode with snapshot isolation, `auto_apply`,
+  `auto_apply_policy`, and tiered gate checking; `sub_agent_gate` gained mode-aware
+  `isBackgroundOrchestrationEnabled(mode?)` where `read_only` is always allowed; `sub_agent_wait`
+  uses mode-aware gating; `sub_agent_apply` gained `merge_strategy` and patch support.
+  (`packages/ai/src/tools/builtin/sub_agent_spawn.ts`,
+  `packages/ai/src/tools/builtin/sub_agent_gate.ts`,
+  `packages/ai/src/tools/builtin/sub_agent_wait.ts`,
+  `packages/ai/src/tools/builtin/sub_agent_apply.ts`)
+
+- **Wait/apply event ordering fixed** — `sub_agent_spawn` now emits `spawn_accepted` and
+  `started` lifecycle events before transitioning the run status to `running`, matching the
+  expected append-only event log order. (`packages/ai/src/tools/builtin/sub_agent_spawn.ts`,
+  `src/tools/builtin/sub_agent_spawn.ts`)
+
+- **DDL duplication removed from agent loop** — `persistResumeBundle()` in `src/agent/loop.ts`
+  had an inline `CREATE TABLE IF NOT EXISTS orchestration_resume_bundles` that duplicated
+  migration 053. Removed the inline DDL; the table is now only created by the migration.
+  (`src/agent/loop.ts`)
+
+- **Unused merge module wired** — `packages/gate/src/sandbox/merge.ts` (`threeWayMerge`) was
+  implemented but never imported by any orchestration code. Now wired into `sub_agent_apply`
+  via the `merge_strategy` parameter. (`packages/ai/src/tools/builtin/sub_agent_apply.ts`,
+  `src/tools/builtin/sub_agent_apply.ts`)
 
 - **Settings panes and workspace tree noise** — restored the settings page DOM structure so the
   General, AI & Models, Tools & Integrations, System, and Debug panes render as sibling sections,

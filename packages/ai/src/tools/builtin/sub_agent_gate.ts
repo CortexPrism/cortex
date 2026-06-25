@@ -1,6 +1,8 @@
 import { getCoreDb } from '@cortex/core';
 
-export async function isBackgroundOrchestrationEnabled(): Promise<boolean> {
+export async function isBackgroundOrchestrationEnabled(mode?: string): Promise<boolean> {
+  if (mode === 'read_only') return true;
+
   const db = await getCoreDb();
   const tableExists = await db.get<{ count: number }>(
     "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name='system_flags'",

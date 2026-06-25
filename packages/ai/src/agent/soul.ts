@@ -1,6 +1,26 @@
 import { exists } from '@std/fs';
 import { PATHS } from '../../../../src/config/paths.ts';
 
+const CURRENT_TIME_SECTION_TITLE = '## Current Time';
+
+export function appendCurrentTimeContext(prompt: string, now = new Date()): string {
+  const trimmed = prompt.trim();
+  if (trimmed.includes(CURRENT_TIME_SECTION_TITLE)) {
+    return trimmed;
+  }
+
+  const currentTimeSection = `${CURRENT_TIME_SECTION_TITLE}
+- UTC now: ${now.toISOString()}
+- Treat this as the current date/time for time-sensitive reasoning.
+- For current events or research, verify source dates and prefer the most recent credible evidence.`;
+
+  if (!trimmed) {
+    return currentTimeSection;
+  }
+
+  return `${trimmed}\n\n---\n\n${currentTimeSection}`;
+}
+
 /** Concise fallback used when no soul file exists at all */
 export const DEFAULT_SOUL = `# Cortex
 
@@ -343,6 +363,11 @@ export function buildSystemPrompt(
   if (user) parts.push(`## User Context\n${user.trim()}`);
   if (memory) parts.push(`## Persistent Memory\n${memory.trim()}`);
   if (extra) parts.push(`---\n\n${extra.trim()}`);
+  parts.push(
+    `---\n\n${CURRENT_TIME_SECTION_TITLE}\n- UTC now: ${
+      new Date().toISOString()
+    }\n- Treat this as the current date/time for time-sensitive reasoning.\n- For current events or research, verify source dates and prefer the most recent credible evidence.`,
+  );
   if (locale && locale !== 'en') {
     parts.push(`---\n\nRespond in ${locale} language when possible.`);
   }

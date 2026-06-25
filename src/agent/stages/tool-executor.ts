@@ -99,7 +99,11 @@ async function runToolCall(
         input: tc.args,
       });
     }
-    const result = await executeTool(tc, registry!, toolCtx!);
+    const result = await executeTool(tc, registry!, {
+      ...toolCtx!,
+      turnId,
+      toolCallId: `${turnId}-tool-${index}-${tc.toolName}`,
+    });
     if (langfuseConfigured()) {
       spanUpdate(toolSpanId, turnId, {
         endTime: new Date().toISOString(),

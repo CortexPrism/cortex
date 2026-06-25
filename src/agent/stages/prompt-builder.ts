@@ -9,6 +9,7 @@ import { buildPreferenceContext } from '../../memory/preference-learner.ts';
 import { applyMetaCogPrefix } from '../metacog.ts';
 import { injectToolsIntoPrompt } from '../../tools/executor.ts';
 import { buildNodeContextSection, injectNodeContext } from '../node-context.ts';
+import { appendCurrentTimeContext } from '../soul.ts';
 import { i18n } from '../../i18n/service.ts';
 import type { TurnContext } from '../pipeline/context.ts';
 import { buildPersonalityPrompt, parsePersonality } from '../personality.ts';
@@ -30,6 +31,7 @@ export async function buildPrompt(ctx: TurnContext): Promise<void> {
       systemPrompt = personalityBlock + '\n\n' + systemPrompt;
     }
   }
+  systemPrompt = appendCurrentTimeContext(systemPrompt);
   const metaAssessment = ctx.metaAssessment;
 
   const memoryEnrichedPrompt = await injectMemory(

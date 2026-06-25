@@ -242,8 +242,8 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
       await createSubagentRun({
         id: runId,
         parentSessionId: context.sessionId,
-        parentTurnId: '',
-        parentToolCallId: '',
+        parentTurnId: context.turnId ?? '',
+        parentToolCallId: context.toolCallId ?? '',
         parentRunId: parentRun?.id,
         depth: childDepth,
         taskName,
@@ -293,6 +293,7 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
       }
 
       await appendRunEvent(nanoid(), runId, 'spawn_requested', { task_name: taskName });
+      await appendRunEvent(nanoid(), runId, 'spawn_accepted', {});
 
       if (context.onProgress) {
         context.onProgress({
@@ -304,11 +305,10 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
         });
       }
 
+      await appendRunEvent(nanoid(), runId, 'started', {});
       if (mode !== 'write_staged') {
         await updateSubagentRunStatus(runId, 'running');
       }
-      await appendRunEvent(nanoid(), runId, 'spawn_accepted', {});
-      await appendRunEvent(nanoid(), runId, 'started', {});
 
       const { spawnSubAgent } = await import('../../agent/sub-agent.ts');
 
@@ -495,6 +495,34 @@ async function autoApplyChangeBundle(
   const allowDelete = policy.allow_delete !== false;
   const maxFiles = (policy.max_files as number) ?? 100;
   const filePatterns = (policy.file_patterns as string[]) ?? [];
+  const requireSupervisor = policy.require_supervisor !== false;
+
+  if (requireSupervisor) {
+    try {
+      const mod = await import(
+        '../../../packages/gate/src/security/supervisor.ts'
+      );
+      if (typeof (mod as Record<string, unknown>).checkAutoApply === 'function') {
+        const approved = await (mod as unknown as Record<string, {
+          checkAutoApply: (
+            runId: string,
+            changeBundle: Record<string, unknown>,
+          ) => Promise<boolean>;
+        }>).checkAutoApply.checkAutoApply(
+          runId,
+          changeBundle as unknown as Record<string, unknown>,
+        );
+        if (!approved) {
+          await appendRunEvent(nanoid(), runId, 'apply_failed', {
+            reason: 'Auto-apply rejected by supervisor.',
+          });
+          return;
+        }
+      }
+    } catch {
+      _log.debug('Supervisor module not available for auto-apply check; proceeding without.');
+    }
+  }
 
   if (changeBundle.files.length > maxFiles) {
     await appendRunEvent(nanoid(), runId, 'apply_failed', {

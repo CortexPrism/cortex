@@ -115,21 +115,6 @@ async function persistResumeBundle(
 ): Promise<void> {
   try {
     const db = await getCoreDb();
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS orchestration_resume_bundles (
-        id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
-        turn_id TEXT NOT NULL,
-        wait_barrier_id TEXT NOT NULL,
-        run_ids_json TEXT NOT NULL DEFAULT '[]',
-        await_mode TEXT DEFAULT 'all',
-        barrier_label TEXT,
-        resume_via TEXT DEFAULT 'websocket',
-        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'expired')),
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        delivered_at TEXT
-      )
-    `);
     await db.run(
       `INSERT INTO orchestration_resume_bundles (id, session_id, turn_id, wait_barrier_id, run_ids_json, await_mode, barrier_label, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,

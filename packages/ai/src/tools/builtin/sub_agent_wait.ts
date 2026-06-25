@@ -82,7 +82,7 @@ export const subAgentWaitTool: Tool = {
   ): Promise<ToolCallResult> {
     const startTime = Date.now();
 
-    if (!(await isBackgroundOrchestrationEnabled())) {
+    if (!(await isBackgroundOrchestrationEnabled('read_only'))) {
       return {
         toolName: 'sub_agent_wait',
         success: false,

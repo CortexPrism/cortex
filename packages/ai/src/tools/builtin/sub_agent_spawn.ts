@@ -95,6 +95,20 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
         description: 'Comma-separated tool allow-list.',
         required: false,
       },
+      {
+        name: 'auto_apply',
+        type: 'string',
+        description:
+          'Automatically apply changes when child completes: "true" or "false". Default is false. Only valid with write_staged mode.',
+        required: false,
+      },
+      {
+        name: 'auto_apply_policy',
+        type: 'string',
+        description:
+          'JSON policy for auto-apply: {"allow_delete": true/false, "file_patterns": ["src/**"], "max_files": 100, "require_supervisor": true}',
+        required: false,
+      },
     ],
     capabilities: ['shell:run'],
   },
@@ -137,7 +151,11 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
       };
     }
 
-    if (!(await isBackgroundOrchestrationEnabled())) {
+    if (
+      !(await isBackgroundOrchestrationEnabled(
+        mode === 'write_staged' ? 'write_staged' : 'read_only',
+      ))
+    ) {
       return {
         toolName: 'sub_agent_spawn',
         success: false,
@@ -192,14 +210,19 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
     }
 
     if (mode === 'write_staged') {
-      return {
-        toolName: 'sub_agent_spawn',
-        success: false,
-        output: '',
-        error:
-          'write_staged mode requires isolated/containerized workspace support, which is not available. Use read_only mode instead.',
-        durationMs: 0,
-      };
+      const { isIsolationAvailable } = await import(
+        '../../agent/orchestration/isolation.ts'
+      );
+      if (!(await isIsolationAvailable())) {
+        return {
+          toolName: 'sub_agent_spawn',
+          success: false,
+          output: '',
+          error:
+            'write_staged mode requires containerized/isolated workspace support (Docker/gVisor). Ensure a container runtime is installed and accessible.',
+          durationMs: 0,
+        };
+      }
     }
 
     let childTools = args.tools
@@ -213,17 +236,21 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
     const taskType = args.task_type ? String(args.task_type) : undefined;
 
     try {
+      const runMode = mode as 'read_only' | 'write_staged';
+
       await createSubagentRun({
         id: runId,
         parentSessionId: context.sessionId,
-        parentTurnId: '', // Filled by the loop
-        parentToolCallId: '', // Filled by the loop
+        parentTurnId: context.turnId ?? '',
+        parentToolCallId: context.toolCallId ?? '',
         parentRunId: parentRun?.id,
         depth: childDepth,
         taskName,
         taskType,
-        mode: 'read_only',
+        mode: runMode,
         contextMode: 'isolated',
+        autoApply: args.auto_apply === 'true',
+        autoApplyPolicy: args.auto_apply_policy ? safeParseJSON(args.auto_apply_policy) : undefined,
         briefPayload: {
           task,
           task_type: taskType,
@@ -236,25 +263,55 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
 
       await appendRunEvent(nanoid(), runId, 'spawn_requested', { task_name: taskName });
 
+      let isoBaseSnapshotId: string | undefined;
+      if (mode === 'write_staged') {
+        const { captureBaseSnapshot } = await import(
+          '../../agent/orchestration/isolation.ts'
+        );
+        const result = await captureBaseSnapshot(
+          context.workspaceDir,
+          context.sessionId,
+          context.agentId,
+        );
+        if (!result.ok) {
+          await updateSubagentRunStatus(runId, 'failed', {
+            error: result.error,
+          });
+          return {
+            toolName: 'sub_agent_spawn',
+            success: false,
+            output: '',
+            error: result.error ?? 'Failed to capture base workspace snapshot.',
+            durationMs: Date.now() - startTime,
+          };
+        }
+        isoBaseSnapshotId = result.baseSnapshotId;
+      }
+
+      await appendRunEvent(nanoid(), runId, 'spawn_accepted', {});
+
       if (context.onProgress) {
         context.onProgress({
           type: 'sub_agent_spawn',
           runId,
           taskName,
           taskType,
-          mode: 'read_only',
+          mode: runMode,
         });
       }
 
-      await updateSubagentRunStatus(runId, 'running');
-      await appendRunEvent(nanoid(), runId, 'spawn_accepted', {});
       await appendRunEvent(nanoid(), runId, 'started', {});
 
-      const { spawnSubAgent } = await import('../../agent/sub-agent.ts');
+      if (mode === 'write_staged' && isoBaseSnapshotId) {
+        await updateSubagentRunStatus(runId, 'running', {
+          baseWorkspaceRef: context.workspaceDir,
+          baseSnapshotId: isoBaseSnapshotId,
+        });
+      } else {
+        await updateSubagentRunStatus(runId, 'running');
+      }
 
-      let response = '';
-      let failed = false;
-      let errMsg = '';
+      const { spawnSubAgent } = await import('../../agent/sub-agent.ts');
 
       (async () => {
         try {
@@ -274,6 +331,7 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
             },
           });
 
+          let response = '';
           for await (const event of iter) {
             if (event.type === 'chunk') {
               response += event.delta;
@@ -292,14 +350,57 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
                 cost_usd: event.result.costUsd,
                 duration_ms: event.result.durationMs,
               };
-              await updateSubagentRunStatus(runId, 'completed', {
-                finalResponse: response,
-                resultSummary: response.slice(0, 500),
-                usageJson: usage,
-              });
-              await appendRunEvent(nanoid(), runId, 'completed', {
-                response_length: response.length,
-              });
+
+              if (mode === 'write_staged' && isoBaseSnapshotId) {
+                const { captureChangeBundle } = await import(
+                  '../../agent/orchestration/isolation.ts'
+                );
+                const bundleResult = await captureChangeBundle(
+                  context.workspaceDir,
+                  isoBaseSnapshotId,
+                  context.sessionId,
+                  context.agentId,
+                );
+                if (bundleResult.ok && bundleResult.changeBundle) {
+                  await updateSubagentRunStatus(runId, 'ready_for_apply', {
+                    finalResponse: response,
+                    resultSummary: response.slice(0, 500),
+                    usageJson: usage,
+                    finalSnapshotId: bundleResult.finalSnapshotId,
+                    changeBundleJson: bundleResult.changeBundle,
+                  });
+                  await appendRunEvent(nanoid(), runId, 'completed', {
+                    response_length: response.length,
+                    change_bundle_files: bundleResult.changeBundle.files.length,
+                  });
+
+                  if (args.auto_apply === 'true') {
+                    try {
+                      await autoApplyChangeBundle(
+                        runId,
+                        bundleResult.changeBundle,
+                        context,
+                      );
+                    } catch (autoErr) {
+                      _log.error(`Auto-apply failed for run ${runId}`, { error: autoErr });
+                    }
+                  }
+                } else {
+                  await updateSubagentRunStatus(runId, 'failed', {
+                    finalResponse: response,
+                    error: bundleResult.error ?? 'Failed to collect change bundle.',
+                  });
+                }
+              } else {
+                await updateSubagentRunStatus(runId, 'completed', {
+                  finalResponse: response,
+                  resultSummary: response.slice(0, 500),
+                  usageJson: usage,
+                });
+                await appendRunEvent(nanoid(), runId, 'completed', {
+                  response_length: response.length,
+                });
+              }
               if (context.onProgress) {
                 context.onProgress({
                   type: 'sub_agent_spawn_complete',
@@ -307,36 +408,27 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
                   success: true,
                 });
               }
+              return;
             } else if (event.type === 'error') {
-              failed = true;
-              errMsg = event.error;
               await updateSubagentRunStatus(runId, 'failed', {
                 finalResponse: response,
-                error: errMsg,
+                error: event.error,
               });
-              await appendRunEvent(nanoid(), runId, 'failed', { error: errMsg });
+              await appendRunEvent(nanoid(), runId, 'failed', { error: event.error });
               if (context.onProgress) {
                 context.onProgress({
                   type: 'sub_agent_spawn_complete',
                   runId,
                   success: false,
-                  error: errMsg,
+                  error: event.error,
                 });
               }
+              return;
             }
           }
 
-          if (
-            !failed && !['completed', 'failed', 'cancelled', 'timed_out'].some((s) => {
-              const run = ['completed', 'failed'];
-              return run.includes('completed');
-            })
-          ) {
-            await updateSubagentRunStatus(runId, 'completed', {
-              finalResponse: response,
-            });
-            await appendRunEvent(nanoid(), runId, 'completed', {});
-          }
+          await updateSubagentRunStatus(runId, 'completed', { finalResponse: response });
+          await appendRunEvent(nanoid(), runId, 'completed', {});
         } catch (e) {
           _log.error(`Background sub-agent ${runId} crashed`, { error: e });
           await updateSubagentRunStatus(runId, 'failed', {
@@ -367,3 +459,143 @@ This tool returns immediately after spawning; use sub_agent_wait to collect resu
     }
   },
 };
+
+function safeParseJSON(raw: unknown): Record<string, unknown> | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(String(raw));
+  } catch {
+    return undefined;
+  }
+}
+
+async function autoApplyChangeBundle(
+  runId: string,
+  changeBundle: {
+    files: Array<{ path: string; content?: string; hash?: string }>;
+    added_files: string[];
+    removed_files: string[];
+    modified_files: string[];
+  },
+  context: ToolContext,
+): Promise<void> {
+  const { appendRunEvent, updateSubagentRunStatus, getSubagentRun } = await import(
+    '@cortex/core'
+  );
+  const { nanoid: nid } = await import('../../agent/helpers/nanoid.ts');
+
+  const run = await getSubagentRun(runId);
+  if (!run) return;
+
+  let policy: Record<string, unknown> = {};
+  try {
+    policy = run.auto_apply_policy_json ? JSON.parse(run.auto_apply_policy_json) : {};
+  } catch { /* use defaults */ }
+
+  const allowDelete = policy.allow_delete !== false;
+  const maxFiles = (policy.max_files as number) ?? 100;
+  const filePatterns = (policy.file_patterns as string[]) ?? [];
+  const requireSupervisor = policy.require_supervisor !== false;
+
+  if (requireSupervisor) {
+    try {
+      const mod = await import(
+        '../../../../gate/src/security/supervisor.ts'
+      );
+      if (typeof (mod as Record<string, unknown>).checkAutoApply === 'function') {
+        const approved = await (mod as Record<string, {
+          checkAutoApply: (
+            runId: string,
+            changeBundle: Record<string, unknown>,
+          ) => Promise<boolean>;
+        }>).checkAutoApply.checkAutoApply(
+          runId,
+          changeBundle as unknown as Record<string, unknown>,
+        );
+        if (!approved) {
+          await appendRunEvent(nid(), runId, 'apply_failed', {
+            reason: 'Auto-apply rejected by supervisor.',
+          });
+          return;
+        }
+      }
+    } catch {
+      _log.debug('Supervisor module not available for auto-apply check; proceeding without.');
+    }
+  }
+
+  if (changeBundle.files.length > maxFiles) {
+    await appendRunEvent(nid(), runId, 'apply_failed', {
+      reason:
+        `Auto-apply blocked: ${changeBundle.files.length} files exceed max_files limit (${maxFiles}).`,
+    });
+    return;
+  }
+
+  const filteredFiles = changeBundle.files.filter((f) => {
+    if (f.content === undefined && !allowDelete) return false;
+    if (filePatterns.length > 0) {
+      return filePatterns.some((p) => matchGlob(p, f.path));
+    }
+    return true;
+  });
+
+  if (filteredFiles.length === 0) {
+    await appendRunEvent(nid(), runId, 'apply_failed', {
+      reason: 'Auto-apply: no files match policy.',
+    });
+    return;
+  }
+
+  const { workspaceDir } = context;
+  for (const file of filteredFiles) {
+    if (file.path.includes('..')) continue;
+    if (file.content !== undefined) {
+      await Deno.writeTextFile(`${workspaceDir}/${file.path}`, file.content);
+    }
+  }
+
+  await updateSubagentRunStatus(runId, 'consumed');
+  await appendRunEvent(nid(), runId, 'apply_succeeded', {
+    auto_applied: true,
+    files_applied: filteredFiles.length,
+  });
+
+  try {
+    const { getCoreDb } = await import('@cortex/core');
+    const coreDb = await getCoreDb();
+    await coreDb.run(
+      `UPDATE subagent_runs SET auto_applied_at = datetime('now') WHERE id = ?`,
+      [runId],
+    );
+  } catch { /* best effort */ }
+}
+
+function matchGlob(pattern: string, filePath: string): boolean {
+  let re = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === '*') {
+      if (pattern[i + 1] === '*') {
+        if (pattern[i + 2] === '/' || pattern[i + 2] === '\\') {
+          re += '(?:.*\\/)?';
+          i += 2;
+        } else {
+          re += '.*';
+          i += 1;
+        }
+      } else {
+        re += '[^/]*';
+      }
+    } else if (ch === '?') {
+      re += '[^/]';
+    } else if (ch === '.') {
+      re += '\\.';
+    } else if (ch === '/') {
+      re += '\\/';
+    } else {
+      re += ch;
+    }
+  }
+  return new RegExp('^' + re + '$').test(filePath);
+}

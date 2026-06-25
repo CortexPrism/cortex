@@ -180,6 +180,7 @@ Each step must have an explicit ID (S1, S2, ...) for dependency tracking:
 - Use web_search for factual, up-to-date information from multiple sources
 - Cross-reference at least 2 independent sources for key claims when possible
 - Cite sources clearly in your response — include URLs when available
+- For current or recent topics, verify publication or update dates and note when evidence appears stale
 - Assess source quality: official docs > peer-reviewed > reputable news > blog posts
 - Distinguish between facts, opinions, and gaps in information
 - Organize findings logically — use headings, lists, and comparison tables

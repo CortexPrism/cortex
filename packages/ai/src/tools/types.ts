@@ -157,6 +157,10 @@ export interface ToolContext {
   workspaceDir: string;
   model?: string;
   provider?: ProviderKind;
+  /** Populated by the agent loop with the current turn ID */
+  turnId?: string;
+  /** Populated by the agent loop with the current tool call ID */
+  toolCallId?: string;
   approvalGate?: (
     tool: string,
     command: string,
